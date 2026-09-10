@@ -10,6 +10,12 @@ CREATE TABLE core.dim_area (
     nombre_area VARCHAR(100) NOT NULL UNIQUE,
     encargado_recepcion VARCHAR(100),
 
+    -- Código corto y estable (ADM, REV, BPO...). Lo fija la transformación de
+    -- ingesta (sql/elt/01_transform_area.sql, versión con validación de áreas
+    -- conocidas); nullable porque una fila creada por otra vía no lo trae de
+    -- entrada.
+    codigo_area VARCHAR(10) UNIQUE,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

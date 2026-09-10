@@ -1,0 +1,698 @@
+{
+  "name": "CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        544
+      ],
+      "id": "c6d32d62-e755-473b-9d1b-43ec5f7b444b",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -704,
+        736
+      ],
+      "id": "36904a8d-bce2-4823-b013-1b027b5b066d",
+      "name": "Schedule - Incremental fallback"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE SCHEMA IF NOT EXISTS staging;\n\nCREATE TABLE IF NOT EXISTS staging.sp_incremental_sync_cursor (\n    sync_key TEXT PRIMARY KEY,\n    list_name TEXT NOT NULL,\n    table_name TEXT NOT NULL,\n    last_success_modified_at TIMESTAMPTZ NOT NULL DEFAULT '2000-01-01 00:00:00+00',\n    last_success_at TIMESTAMPTZ,\n    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE TABLE IF NOT EXISTS staging.sp_clientes_contai_raw (\n    sp_id INTEGER PRIMARY KEY,\n    payload JSONB NOT NULL,\n    extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE TABLE IF NOT EXISTS staging.sp_recibe_helpdesk_raw (\n    sp_id INTEGER PRIMARY KEY,\n    payload JSONB NOT NULL,\n    extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE TABLE IF NOT EXISTS staging.sp_personal_gct_raw (\n    sp_id INTEGER PRIMARY KEY,\n    payload JSONB NOT NULL,\n    extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE TABLE IF NOT EXISTS staging.sp_tipo_req_hd_raw (\n    sp_id INTEGER PRIMARY KEY,\n    payload JSONB NOT NULL,\n    extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE TABLE IF NOT EXISTS staging.sp_helpdesk_raw (\n    sp_id INTEGER PRIMARY KEY,\n    payload JSONB NOT NULL,\n    extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nSELECT NOW() AS infrastructure_checked_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -480,
+        544
+      ],
+      "id": "8792c096-a59b-4d17-b606-eb44c9de60c5",
+      "name": "PG - Ensure Incremental Infrastructure",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Configuración declarativa de listas SharePoint legacy hacia tablas RAW.\n *\n * Notas:\n * - `initialSinceIso` permite una carga inicial desde histórico.\n * - El cursor real queda en staging.sp_incremental_sync_cursor.\n * - La capa RAW no decide qué es válido; la validación ocurre en los SQL de transformación.\n */\nconst lists = [\n  {\n    syncKey: \"clientes_contai\",\n    listName: \"Clientes Contai\",\n    tableName: \"staging.sp_clientes_contai_raw\",\n    initialSinceIso: \"2000-01-01T00:00:00Z\",\n  },\n  {\n    syncKey: \"recibe_helpdesk\",\n    listName: \"RecibeHelpdesk\",\n    tableName: \"staging.sp_recibe_helpdesk_raw\",\n    initialSinceIso: \"2000-01-01T00:00:00Z\",\n  },\n  {\n    syncKey: \"personal_gct\",\n    listName: \"Personal GCT\",\n    tableName: \"staging.sp_personal_gct_raw\",\n    initialSinceIso: \"2000-01-01T00:00:00Z\",\n  },\n  {\n    syncKey: \"tipo_req_hd\",\n    listName: \"TipoReqHD\",\n    tableName: \"staging.sp_tipo_req_hd_raw\",\n    initialSinceIso: \"2000-01-01T00:00:00Z\",\n  },\n  {\n    syncKey: \"helpdesk_bd\",\n    listName: \"HelpDeskBd\",\n    tableName: \"staging.sp_helpdesk_raw\",\n    initialSinceIso: \"2000-01-01T00:00:00Z\",\n  },\n];\n\nreturn lists.map((list) => ({ json: list }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        544
+      ],
+      "id": "dd4f312a-09c9-4d6c-bade-0878457a9b9d",
+      "name": "Code - Configure SharePoint Lists"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "727428cc-6ce7-4683-a8af-1748cc3302e3",
+      "name": "Loop - Lists"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ensure_cursor AS (\n    INSERT INTO staging.sp_incremental_sync_cursor (\n        sync_key,\n        list_name,\n        table_name,\n        last_success_modified_at,\n        updated_at\n    )\n    VALUES (\n        '{{ $json.syncKey }}',\n        '{{ $json.listName.replace(/'/g, \"''\") }}',\n        '{{ $json.tableName }}',\n        '{{ $json.initialSinceIso }}'::timestamptz,\n        NOW()\n    )\n    ON CONFLICT (sync_key) DO NOTHING\n)\nSELECT\n    c.sync_key,\n    c.list_name,\n    c.table_name,\n    c.last_success_modified_at,\n    (c.last_success_modified_at - INTERVAL '5 minutes') AS since_at,\n    to_char(\n        (c.last_success_modified_at - INTERVAL '5 minutes') AT TIME ZONE 'UTC',\n        'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'\n    ) AS since_iso\nFROM staging.sp_incremental_sync_cursor c\nWHERE c.sync_key = '{{ $json.syncKey }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        192,
+        448
+      ],
+      "id": "a5e16e86-527d-4d3c-a997-e0d784f2b363",
+      "name": "PG - Get List Cursor",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://dsasas-my.sharepoint.com/personal/edwinpena_rbcol_co/_api/web/lists/GetByTitle('\" + $json.list_name.replace(/'/g, \"''\") + \"')/items?$top=5000&$orderby=Modified asc&$filter=Modified ge datetime'\" + $json.since_iso + \"'\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftSharePointOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json;odata=nometadata"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        448
+      ],
+      "id": "7acdd5d8-05fc-4bb7-9236-66651662832c",
+      "name": "HTTP - Get Changed SharePoint Items",
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "0SXzHMvQl5qCO5AN",
+          "name": "Cuenta edwin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first()?.json ?? {};\nconst cursor = $(\"PG - Get List Cursor\").first().json;\nconst values = Array.isArray(response.value) ? response.value : [];\n\nconst allowedTables = new Set([\n  \"staging.sp_clientes_contai_raw\",\n  \"staging.sp_recibe_helpdesk_raw\",\n  \"staging.sp_personal_gct_raw\",\n  \"staging.sp_tipo_req_hd_raw\",\n  \"staging.sp_helpdesk_raw\",\n]);\n\nconst tableName = cursor.table_name;\n\nif (!allowedTables.has(tableName)) {\n  throw new Error(`Tabla RAW no permitida para upsert dinámico: ${tableName}`);\n}\n\nfunction sqlString(value) {\n  if (value === null || value === undefined) return \"NULL\";\n  return `'${String(value).replace(/'/g, \"''\")}'`;\n}\n\nfunction jsonSql(value) {\n  return `${sqlString(JSON.stringify(value))}::jsonb`;\n}\n\nif (values.length === 0) {\n  return [\n    {\n      json: {\n        has_items: false,\n        sync_key: cursor.sync_key,\n        list_name: cursor.list_name,\n        table_name: tableName,\n        item_count: 0,\n      },\n    },\n  ];\n}\n\nconst rows = values.map((payload) => {\n  const spId = payload.Id ?? payload.ID;\n  const modifiedAt = payload.Modified;\n\n  if (!spId) {\n    throw new Error(`SharePoint item sin Id/ID en lista ${cursor.list_name}.`);\n  }\n\n  if (!modifiedAt) {\n    throw new Error(`SharePoint item ${spId} sin Modified en lista ${cursor.list_name}.`);\n  }\n\n  return {\n    spId: Number(spId),\n    modifiedAt,\n    sql: `(${Number(spId)}, ${jsonSql(payload)}, NOW())`,\n  };\n});\n\nconst maxModifiedAt = rows\n  .map((row) => row.modifiedAt)\n  .sort()[rows.length - 1];\n\nconst upsertSql = `\nWITH upserted AS (\n    INSERT INTO ${tableName} (\n        sp_id,\n        payload,\n        extracted_at\n    )\n    VALUES\n        ${rows.map((row) => row.sql).join(\",\\n        \")}\n    ON CONFLICT (sp_id)\n    DO UPDATE SET\n        payload = EXCLUDED.payload,\n        extracted_at = NOW()\n    RETURNING sp_id\n)\nSELECT\n    ${sqlString(cursor.sync_key)}::text AS sync_key,\n    ${sqlString(cursor.list_name)}::text AS list_name,\n    ${sqlString(tableName)}::text AS table_name,\n    ${sqlString(maxModifiedAt)}::timestamptz AS max_modified_at,\n    COUNT(*)::int AS affected_rows\nFROM upserted;\n`.trim();\n\nreturn [\n  {\n    json: {\n      has_items: true,\n      sync_key: cursor.sync_key,\n      list_name: cursor.list_name,\n      table_name: tableName,\n      item_count: rows.length,\n      max_modified_at: maxModifiedAt,\n      upsert_sql: upsertSql,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        448
+      ],
+      "id": "1bbbfdf0-148f-475f-85a2-c4625e8cae36",
+      "name": "Code - Build Bulk Raw Upsert"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b96d2dee-e67b-486f-a840-2199ba97b3c9",
+              "leftValue": "={{ $json.has_items }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        864,
+        448
+      ],
+      "id": "7abcd219-6a79-4cc6-8651-d4d4755a3a74",
+      "name": "IF - Has Changed Items"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.upsert_sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1088,
+        448
+      ],
+      "id": "5d8debcc-2f5f-4fd0-a214-d4f074a61529",
+      "name": "PG - Bulk Upsert Raw Items",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE staging.sp_incremental_sync_cursor\nSET\n    last_success_modified_at = GREATEST(\n        last_success_modified_at,\n        '{{ $json.max_modified_at }}'::timestamptz\n    ),\n    last_success_at = NOW(),\n    updated_at = NOW()\nWHERE sync_key = '{{ $json.sync_key }}'\nRETURNING\n    sync_key,\n    list_name,\n    table_name,\n    last_success_modified_at,\n    last_success_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1312,
+        448
+      ],
+      "id": "e316ba80-244a-4608-8ac0-1655762bf57f",
+      "name": "PG - Update List Cursor",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- ============================================================\n-- Transformación: RecibeHelpdesk -> core.dim_area\n-- ============================================================\n-- PROYECTOS Y TI is intentionally excluded as a canonical area. Its request\n-- types remain classified under ADMINISTRACIÓN.\n--\n-- codigo_area is explicit and stable. Unknown source areas abort the transform\n-- instead of being silently inserted with a null or inferred prefix.\n-- ============================================================\n\nDO $validate_source_areas$\nDECLARE\n    v_unknown_areas TEXT;\nBEGIN\n    SELECT string_agg(source_area, ', ' ORDER BY source_area)\n    INTO v_unknown_areas\n    FROM (\n        SELECT DISTINCT TRIM(UPPER(payload->>'Area')) AS source_area\n        FROM staging.sp_recibe_helpdesk_raw\n        WHERE payload->>'Area' IS NOT NULL\n          AND core.norm_text(payload->>'Area') <> 'proyectos y ti'\n          AND core.norm_text(payload->>'Area') NOT IN (\n              'administracion',\n              'administracion recepcion',\n              'bpo',\n              'contabilidad',\n              'impuestos',\n              'legal',\n              'revisoria'\n          )\n    ) AS unknown;\n\n    IF v_unknown_areas IS NOT NULL THEN\n        RAISE EXCEPTION\n            'RecibeHelpdesk contains unknown canonical areas: %',\n            v_unknown_areas;\n    END IF;\nEND;\n$validate_source_areas$;\n\nWITH source_rows AS (\n    SELECT\n        sp_id,\n        core.norm_text(payload->>'Area') AS area_norm,\n        NULLIF(TRIM(LOWER(payload->>'Recibe')), '') AS encargado_recepcion\n    FROM staging.sp_recibe_helpdesk_raw\n    WHERE payload->>'Area' IS NOT NULL\n      AND core.norm_text(payload->>'Area') <> 'proyectos y ti'\n),\ncanonical AS (\n    SELECT\n        MIN(sp_id) AS sp_area_id,\n        CASE area_norm\n            WHEN 'administracion' THEN 'ADMINISTRACIÓN'\n            WHEN 'administracion recepcion' THEN 'ADMINISTRACIÓN-RECEPCIÓN'\n            WHEN 'bpo' THEN 'BPO'\n            WHEN 'contabilidad' THEN 'CONTABILIDAD'\n            WHEN 'impuestos' THEN 'IMPUESTOS'\n            WHEN 'legal' THEN 'LEGAL'\n            WHEN 'revisoria' THEN 'REVISORÍA'\n        END AS nombre_area,\n        CASE area_norm\n            WHEN 'administracion' THEN 'ADM'\n            WHEN 'administracion recepcion' THEN 'ADR'\n            WHEN 'bpo' THEN 'BPO'\n            WHEN 'contabilidad' THEN 'CON'\n            WHEN 'impuestos' THEN 'IMP'\n            WHEN 'legal' THEN 'LEG'\n            WHEN 'revisoria' THEN 'REV'\n        END AS codigo_area,\n        MIN(encargado_recepcion) AS encargado_recepcion\n    FROM source_rows\n    GROUP BY area_norm\n),\nupserted AS (\n    INSERT INTO core.dim_area (\n        sp_area_id,\n        nombre_area,\n        codigo_area,\n        encargado_recepcion\n    )\n    SELECT\n        sp_area_id,\n        nombre_area,\n        codigo_area,\n        encargado_recepcion\n    FROM canonical\n    ON CONFLICT (nombre_area)\n    DO UPDATE SET\n        sp_area_id = EXCLUDED.sp_area_id,\n        codigo_area = EXCLUDED.codigo_area,\n        encargado_recepcion = EXCLUDED.encargado_recepcion,\n        updated_at = NOW()\n    RETURNING id_area\n)\nSELECT\n    '01_transform_area'::TEXT AS transform_step,\n    (SELECT COUNT(*) FROM canonical)::INTEGER AS canonical_areas,\n    (SELECT COUNT(*) FROM upserted)::INTEGER AS upserted_areas,\n    NOW() AS finished_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        640
+      ],
+      "id": "0ea7ba74-b16d-491c-bf40-dd4dfbffb7be",
+      "name": "PG - Transform 01 Area",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Transformación robusta de clientes Contai.\n-- La identidad canónica final debe ser identificacion_fiscal, no sp_cliente_id.\n-- Si SharePoint trae varios registros con el mismo NIT y nombres materialmente distintos,\n-- se registra conflicto en staging.sp_clientes_contai_conflict y no se carga automáticamente.\n\nCREATE TABLE IF NOT EXISTS staging.sp_clientes_contai_conflict (\n    identificacion_fiscal TEXT PRIMARY KEY,\n    conflict_reason TEXT NOT NULL,\n    payloads JSONB NOT NULL,\n    detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE UNIQUE INDEX IF NOT EXISTS uq_dim_cliente_contai_identificacion_fiscal_not_null\nON core.dim_cliente_contai (identificacion_fiscal)\nWHERE identificacion_fiscal IS NOT NULL;\n\nWITH source_rows AS (\n    SELECT\n        sp_id AS sp_cliente_id,\n        NULLIF(TRIM(payload->>'Title'), '') AS identificacion_fiscal,\n        NULLIF(TRIM(UPPER(payload->>'Cliente')), '') AS nombre_cliente,\n        NULLIF(TRIM(UPPER(payload->>'TIPOCLIENTE')), '') AS tipo_cliente,\n        NULLIF(TRIM(UPPER(payload->>'Grupoecon_x00f3_mico')), '') AS grupo_economico,\n        CASE\n            WHEN TRIM(UPPER(payload->>'Estado')) = 'ACTIVO' THEN TRUE\n            ELSE FALSE\n        END AS estado_cliente,\n        NULLIF(payload->>'Modified', '')::timestamptz AS modified_at,\n        payload\n    FROM staging.sp_clientes_contai_raw\n    WHERE payload->>'Cliente' IS NOT NULL\n      AND NULLIF(TRIM(payload->>'Title'), '') IS NOT NULL\n),\nnormalized AS (\n    SELECT\n        source_rows.*,\n        regexp_replace(\n            core.norm_text(nombre_cliente),\n            '[^a-z0-9]+',\n            '',\n            'g'\n        ) AS nombre_cliente_key\n    FROM source_rows\n),\nmaterial_conflicts AS (\n    SELECT\n        identificacion_fiscal,\n        COUNT(DISTINCT nombre_cliente_key) AS nombre_keys,\n        jsonb_agg(\n            jsonb_build_object(\n                'sp_cliente_id', sp_cliente_id,\n                'nombre_cliente', nombre_cliente,\n                'estado_cliente', estado_cliente,\n                'modified_at', modified_at\n            )\n            ORDER BY estado_cliente DESC, modified_at DESC NULLS LAST, sp_cliente_id DESC\n        ) AS payloads\n    FROM normalized\n    GROUP BY identificacion_fiscal\n    HAVING COUNT(DISTINCT nombre_cliente_key) > 1\n),\nregistered_conflicts AS (\n    INSERT INTO staging.sp_clientes_contai_conflict (\n        identificacion_fiscal,\n        conflict_reason,\n        payloads,\n        detected_at,\n        updated_at\n    )\n    SELECT\n        identificacion_fiscal,\n        'Mismo NIT con nombres materialmente distintos en SharePoint.',\n        payloads,\n        NOW(),\n        NOW()\n    FROM material_conflicts\n    ON CONFLICT (identificacion_fiscal)\n    DO UPDATE SET\n        conflict_reason = EXCLUDED.conflict_reason,\n        payloads = EXCLUDED.payloads,\n        updated_at = NOW()\n    RETURNING identificacion_fiscal\n),\ncanonical AS (\n    SELECT DISTINCT ON (normalized.identificacion_fiscal)\n        normalized.sp_cliente_id,\n        normalized.identificacion_fiscal,\n        normalized.nombre_cliente,\n        normalized.tipo_cliente,\n        normalized.grupo_economico,\n        normalized.estado_cliente,\n        normalized.modified_at\n    FROM normalized\n    WHERE NOT EXISTS (\n        SELECT 1\n        FROM material_conflicts\n        WHERE material_conflicts.identificacion_fiscal = normalized.identificacion_fiscal\n    )\n    ORDER BY\n        normalized.identificacion_fiscal,\n        normalized.estado_cliente DESC,\n        normalized.modified_at DESC NULLS LAST,\n        normalized.sp_cliente_id DESC\n),\nupserted AS (\n    INSERT INTO core.dim_cliente_contai (\n        sp_cliente_id,\n        identificacion_fiscal,\n        nombre_cliente,\n        tipo_cliente,\n        grupo_economico,\n        estado_cliente\n    )\n    SELECT\n        sp_cliente_id,\n        identificacion_fiscal,\n        nombre_cliente,\n        tipo_cliente,\n        grupo_economico,\n        estado_cliente\n    FROM canonical\n    ON CONFLICT (identificacion_fiscal)\n    WHERE identificacion_fiscal IS NOT NULL\n    DO UPDATE SET\n        sp_cliente_id = EXCLUDED.sp_cliente_id,\n        nombre_cliente = EXCLUDED.nombre_cliente,\n        tipo_cliente = EXCLUDED.tipo_cliente,\n        grupo_economico = EXCLUDED.grupo_economico,\n        estado_cliente = EXCLUDED.estado_cliente,\n        updated_at = NOW()\n    RETURNING id_cliente_contai\n)\nSELECT\n    '02_transform_clientes'::text AS transform_step_completed_at_end,\n    (SELECT COUNT(*) FROM canonical)::int AS canonical_clientes,\n    (SELECT COUNT(*) FROM material_conflicts)::int AS material_conflicts,\n    (SELECT COUNT(*) FROM upserted)::int AS upserted_clientes,\n    NOW() AS finished_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        640,
+        640
+      ],
+      "id": "d28e4e96-d7a2-4529-9bba-487525bcfca5",
+      "name": "PG - Transform 02 Clientes",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- ================================================\n    -- TRANSFORMACIÓN DE LA TABLA DE PERSONAL\n    -- ================================================\n    INSERT INTO core.dim_personal (\n        sp_personal_id,\n        cedula,\n        nombre_completo,\n        correo_corporativo,\n        id_area,\n        cargo,\n        estado_activo\n    )\n    SELECT\n        MIN(s.sp_id) AS sp_personal_id,\n        TRIM(s.payload->>'Title') AS cedula,\n\n        TRIM(UPPER(COALESCE(\n            s.payload->>'DISPLAYNAME',\n            s.payload->>'field_1',\n            s.payload->>'Foto'\n        ))) AS nombre_completo,\n\n        TRIM(LOWER(s.payload->>'field_2')) AS correo_corporativo,\n        a.id_area,\n        TRIM(UPPER(s.payload->>'CARGO')) AS cargo,\n        CASE\n            WHEN TRIM(UPPER(s.payload->>'Estado')) = 'ACTIVO' THEN TRUE\n            ELSE FALSE\n        END AS estado_activo\n    FROM staging.sp_personal_gct_raw s\n\n    -- EL PUENTE ANTI-TILDES: Quitamos las vocales con tilde de ambos lados solo para comparar\n    LEFT JOIN core.dim_area a\n        ON core.norm_text(a.nombre_area) = CASE\n            WHEN core.norm_text(s.payload->>'field_3') = 'proyectos y ti'\n            THEN 'administracion'\n            ELSE core.norm_text(s.payload->>'field_3')\n        END\n\n    WHERE COALESCE(s.payload->>'DISPLAYNAME', s.payload->>'field_1') IS NOT NULL\n    GROUP BY\n        TRIM(s.payload->>'Title'),\n        TRIM(UPPER(COALESCE(s.payload->>'DISPLAYNAME', s.payload->>'field_1', s.payload->>'Foto'))),\n        TRIM(LOWER(s.payload->>'field_2')),\n        a.id_area,\n        TRIM(UPPER(s.payload->>'CARGO')),\n        CASE WHEN TRIM(UPPER(s.payload->>'Estado')) = 'ACTIVO' THEN TRUE ELSE FALSE END\n    ON CONFLICT (sp_personal_id)\n    DO UPDATE SET\n        cedula = EXCLUDED.cedula,\n        nombre_completo = EXCLUDED.nombre_completo,\n        correo_corporativo = EXCLUDED.correo_corporativo,\n        id_area = EXCLUDED.id_area,\n        cargo = EXCLUDED.cargo,\n        estado_activo = EXCLUDED.estado_activo,\n        updated_at = NOW();\n\nSELECT '03_transform_personal'::text AS transform_step_completed_at_end, NOW() AS finished_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        864,
+        640
+      ],
+      "id": "def89f34-3778-4eaf-9025-1f18619ec543",
+      "name": "PG - Transform 03 Personal",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- =================================================================\n-- RECUPERACIÓN DE EMPLEADOS HISTÓRICOS DESDE LOS TICKETS (INFERIDOS)\n-- =================================================================\nINSERT INTO core.dim_personal (\n    nombre_completo,\n    correo_corporativo,\n    cargo,\n    estado_activo\n)\nSELECT \n    UPPER(SPLIT_PART(correo_fantasma, '@', 1)) AS nombre_completo,\n    correo_fantasma AS correo_corporativo,\n    'EX-EMPLEADO (RECUPERADO DEL HISTORIAL)' AS cargo,\n    FALSE AS estado_activo\nFROM (\n    -- Extraemos todos los correos únicos de los Solicitantes y Asignados en los tickets\n    SELECT TRIM(LOWER(payload->>'Title')) AS correo_fantasma FROM staging.sp_helpdesk_raw\n    UNION\n    SELECT TRIM(LOWER(payload->>'AsignadoA')) FROM staging.sp_helpdesk_raw\n) lista_correos\nWHERE correo_fantasma IS NOT NULL \n  AND correo_fantasma LIKE '%@%.%' -- Validación básica de que sí es un correo\n  -- El filtro mágico: Solo inserta los que NO existan ya en tu dimensión de personal\n  AND correo_fantasma NOT IN (\n      SELECT correo_corporativo \n      FROM core.dim_personal \n      WHERE correo_corporativo IS NOT NULL\n  );\n\nSELECT '04_transform_personal_historico'::text AS transform_step_completed_at_end, NOW() AS finished_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1088,
+        640
+      ],
+      "id": "80b77d0c-a901-4155-b462-4aa65c591066",
+      "name": "PG - Transform 04 Personal Historico",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- ============================================================\n-- Transformación: TipoReqHD -> helpdesk.dim_tipo_requerimiento\n-- ============================================================\n-- Relación real desde SharePoint:\n--   TipoReqHD.Title              -> core.dim_area.nombre_area\n--   TipoReqHD.Tipo_Requerimiento -> tipo_requerimiento\n--   TipoReqHD.Categor_x00ed_a1   -> categoria_1\n--   TipoReqHD.Categor_x00ed_a2   -> categoria_2\n--\n-- Nota:\n--   SharePoint codifica columnas con tilde.\n--   \"Categoría1\" aparece en JSON como \"Categor_x00ed_a1\".\n--   \"Categoría2\" aparece en JSON como \"Categor_x00ed_a2\".\n-- ============================================================\n\nWITH source_rows AS (\n    SELECT DISTINCT ON (\n        s.sp_id\n    )\n        s.sp_id AS sp_tipo_req_id,\n        a.id_area,\n        core.norm_text(s.payload->>'Tipo_Requerimiento') AS tipo_requerimiento,\n        core.norm_text(s.payload->>'Categor_x00ed_a1') AS categoria_1,\n        core.norm_text(s.payload->>'Categor_x00ed_a2') AS categoria_2\n    FROM staging.sp_tipo_req_hd_raw s\n    JOIN core.dim_area a\n        ON core.norm_text(a.nombre_area) = CASE\n            WHEN core.norm_text(s.payload->>'Title') = 'proyectos y ti'\n            THEN 'administracion'\n            ELSE core.norm_text(s.payload->>'Title')\n        END\n    WHERE core.norm_text(s.payload->>'Title') IS NOT NULL\n      AND core.norm_text(s.payload->>'Tipo_Requerimiento') IS NOT NULL\n    ORDER BY\n        s.sp_id\n),\n\nconflicts AS (\n    SELECT\n        src.*,\n        by_sp.id_tipo_req AS existing_by_sp_id,\n        by_nat.id_tipo_req AS existing_by_natural_id\n    FROM source_rows src\n    JOIN helpdesk.dim_tipo_requerimiento by_sp\n        ON by_sp.sp_tipo_req_id = src.sp_tipo_req_id\n    JOIN helpdesk.dim_tipo_requerimiento by_nat\n        ON by_nat.id_area = src.id_area\n       AND by_nat.tipo_requerimiento = src.tipo_requerimiento\n       AND by_nat.categoria_1 IS NOT DISTINCT FROM src.categoria_1\n       AND by_nat.categoria_2 IS NOT DISTINCT FROM src.categoria_2\n    WHERE by_sp.id_tipo_req <> by_nat.id_tipo_req\n),\n\nupdated_by_sp_id AS (\n    UPDATE helpdesk.dim_tipo_requerimiento target\n    SET\n        id_area = src.id_area,\n        tipo_requerimiento = src.tipo_requerimiento,\n        categoria_1 = src.categoria_1,\n        categoria_2 = src.categoria_2,\n        updated_at = NOW()\n    FROM source_rows src\n    WHERE target.sp_tipo_req_id = src.sp_tipo_req_id\n      AND NOT EXISTS (\n          SELECT 1\n          FROM conflicts c\n          WHERE c.sp_tipo_req_id = src.sp_tipo_req_id\n      )\n    RETURNING\n        target.id_tipo_req,\n        target.sp_tipo_req_id\n),\n\nupdated_by_natural_key AS (\n    UPDATE helpdesk.dim_tipo_requerimiento target\n    SET\n        sp_tipo_req_id = CASE\n            WHEN target.sp_tipo_req_id IS NULL THEN src.sp_tipo_req_id\n            ELSE LEAST(target.sp_tipo_req_id, src.sp_tipo_req_id)\n        END,\n        updated_at = NOW()\n    FROM source_rows src\n    WHERE target.id_area = src.id_area\n      AND target.tipo_requerimiento = src.tipo_requerimiento\n      AND target.categoria_1 IS NOT DISTINCT FROM src.categoria_1\n      AND target.categoria_2 IS NOT DISTINCT FROM src.categoria_2\n      AND NOT EXISTS (\n          SELECT 1\n          FROM helpdesk.dim_tipo_requerimiento existing_sp\n          WHERE existing_sp.sp_tipo_req_id = src.sp_tipo_req_id\n            AND existing_sp.id_tipo_req <> target.id_tipo_req\n      )\n      AND NOT EXISTS (\n          SELECT 1\n          FROM conflicts c\n          WHERE c.sp_tipo_req_id = src.sp_tipo_req_id\n      )\n    RETURNING\n        target.id_tipo_req,\n        target.sp_tipo_req_id\n),\n\ninserted AS (\n    INSERT INTO helpdesk.dim_tipo_requerimiento (\n        sp_tipo_req_id,\n        id_area,\n        tipo_requerimiento,\n        categoria_1,\n        categoria_2\n    )\n    SELECT\n        src.sp_tipo_req_id,\n        src.id_area,\n        src.tipo_requerimiento,\n        src.categoria_1,\n        src.categoria_2\n    FROM source_rows src\n    WHERE NOT EXISTS (\n        SELECT 1\n        FROM helpdesk.dim_tipo_requerimiento existing_sp\n        WHERE existing_sp.sp_tipo_req_id = src.sp_tipo_req_id\n    )\n      AND NOT EXISTS (\n        SELECT 1\n        FROM helpdesk.dim_tipo_requerimiento existing_nat\n        WHERE existing_nat.id_area = src.id_area\n          AND existing_nat.tipo_requerimiento = src.tipo_requerimiento\n          AND existing_nat.categoria_1 IS NOT DISTINCT FROM src.categoria_1\n          AND existing_nat.categoria_2 IS NOT DISTINCT FROM src.categoria_2\n    )\n      AND NOT EXISTS (\n          SELECT 1\n          FROM conflicts c\n          WHERE c.sp_tipo_req_id = src.sp_tipo_req_id\n      )\n    ON CONFLICT DO NOTHING\n    RETURNING\n        id_tipo_req,\n        sp_tipo_req_id\n)\n\nSELECT\n    '05_transform_tipo_requerimiento'::text AS transform_step,\n    (SELECT COUNT(*) FROM source_rows)::int AS source_rows,\n    (SELECT COUNT(*) FROM updated_by_sp_id)::int AS updated_by_sp_id,\n    (SELECT COUNT(*) FROM updated_by_natural_key)::int AS updated_by_natural_key,\n    (SELECT COUNT(*) FROM inserted)::int AS inserted_rows,\n    (SELECT COUNT(*) FROM conflicts)::int AS conflict_rows,\n    (\n        SELECT COALESCE(\n            jsonb_agg(\n                jsonb_build_object(\n                    'sp_tipo_req_id', c.sp_tipo_req_id,\n                    'existing_by_sp_id', c.existing_by_sp_id,\n                    'existing_by_natural_id', c.existing_by_natural_id,\n                    'id_area', c.id_area,\n                    'tipo_requerimiento', c.tipo_requerimiento,\n                    'categoria_1', c.categoria_1,\n                    'categoria_2', c.categoria_2\n                )\n            ),\n            '[]'::jsonb\n        )\n        FROM conflicts c\n    ) AS conflict_details,\n    NOW() AS finished_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1312,
+        640
+      ],
+      "id": "cd1a766b-8ad5-45de-ba2c-f0ef81309ae3",
+      "name": "PG - Transform 05 Tipo Requerimiento",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- =================================================================\n-- 06_transform_ticket.sql\n-- TRANSFORMACIÓN DE TICKETS LEGACY SHAREPOINT -> FACT_TICKET\n-- =================================================================\n--\n-- Objetivo:\n--   Transformar registros crudos de staging.sp_helpdesk_raw hacia:\n--\n--     1. helpdesk.fact_ticket\n--        Tabla canónica PostgreSQL-first.\n--\n--     2. helpdesk.ticket_legacy_sharepoint_ref\n--        Tabla puente temporal para preservar relación con SharePoint.\n--\n-- Principios:\n--   - fact_ticket NO depende de SharePoint.\n--   - fact_ticket NO contiene consecutivo_sp.\n--   - fact_ticket NO contiene titulo_ticket.\n--   - Id_Req legacy se conserva como legacy_id_req.\n--   - Title de SharePoint se conserva como legacy_title.\n--   - sp_id se conserva solo en ticket_legacy_sharepoint_ref.\n--   - codigo_ticket lo genera el trigger PostgreSQL al recibir id_area_destino.\n--\n-- Requisitos previos:\n--   - helpdesk.fact_ticket existe.\n--   - helpdesk.ticket_legacy_sharepoint_ref existe.\n--   - helpdesk.next_codigo_ticket(id_area, fecha_creacion) existe.\n--   - staging.sp_helpdesk_raw ya está cargada.\n--   - dimensiones core/helpdesk ya están pobladas.\n-- =================================================================\n\n\n-- =================================================================\n-- 0. MAPEO TEMPORAL SHAREPOINT -> TICKET\n-- =================================================================\n-- Este mapa temporal resuelve la identidad canónica del ticket.\n--\n-- Si el sp_id ya existe en ticket_legacy_sharepoint_ref:\n--   reutiliza el id_ticket existente.\n--\n-- Si el sp_id es nuevo:\n--   genera un id_ticket nuevo que luego se insertará en fact_ticket.\n--\n-- No es una tabla permanente.\n-- No contamina el modelo.\n-- =================================================================\n\nDROP TABLE IF EXISTS tmp_ticket_legacy_map;\n\nCREATE TEMP TABLE tmp_ticket_legacy_map AS\nSELECT\n    s.sp_id,\n    COALESCE(ref.id_ticket, gen_random_uuid()) AS id_ticket,\n    NULLIF(TRIM(s.payload->>'Id_Req'), '') AS legacy_id_req,\n    NULLIF(TRIM(s.payload->>'Title'), '') AS legacy_title,\n    CAST(s.payload->>'Created' AS TIMESTAMPTZ) AS legacy_created_at\nFROM staging.sp_helpdesk_raw s\nLEFT JOIN helpdesk.ticket_legacy_sharepoint_ref ref\n    ON ref.sp_id = s.sp_id;\n\n\n-- =================================================================\n-- 1. TRANSFORMACIÓN DE LA TABLA DE TICKETS\n-- =================================================================\n-- Inserta o actualiza tickets canónicos.\n--\n-- La idempotencia ya no depende de SharePoint ID.\n-- La idempotencia usa id_ticket resuelto en tmp_ticket_legacy_map.\n--\n-- El código visible codigo_ticket no se inserta explícitamente.\n-- El trigger usa id_area_destino y el año de fecha_creacion.\n-- =================================================================\n\nINSERT INTO helpdesk.fact_ticket (\n    id_ticket,\n    descripcion_problema,\n    id_cliente_contai,\n    id_solicitante,\n    id_area_destino,\n    id_asignado,\n    id_estado,\n    id_prioridad,\n    id_tipo_req,\n    fecha_creacion,\n    fecha_limite,\n    fecha_resolucion,\n    respuesta_final,\n    calificacion,\n    origen_sistema\n)\nSELECT\n    ref.id_ticket,\n\n    COALESCE(NULLIF(TRIM(s.payload->>'Requerimiento'), ''), 'Sin descripción') AS descripcion_problema,\n\n    c.id_cliente_contai,\n\n    CASE\n        WHEN c.id_cliente_contai IS NOT NULL THEN NULL\n        ELSE sol.id_personal\n    END AS id_solicitante,\n\n    ad.id_area AS id_area_destino,\n    asig.id_personal AS id_asignado,\n\n    COALESCE(est.id_estado, est_default.id_estado) AS id_estado,\n\n    prio.id_prioridad,\n    tr.id_tipo_req,\n\n    CAST(s.payload->>'Created' AS TIMESTAMPTZ) AS fecha_creacion,\n\n    TO_DATE(\n        NULLIF(TRIM(s.payload->>'Fecha_Max_Respuesta'), ''),\n        'DD/MM/YYYY'\n    )::TIMESTAMPTZ AS fecha_limite,\n\n    CASE\n        WHEN NULLIF(TRIM(s.payload->>'Fecha_Respuesta'), '') IS NULL THEN NULL\n\n        -- Si la fecha de respuesta es anterior al día de creación, es inválida.\n        WHEN TO_DATE(\n                NULLIF(TRIM(s.payload->>'Fecha_Respuesta'), ''),\n                'DD/MM/YYYY'\n             ) < CAST(s.payload->>'Created' AS TIMESTAMPTZ)::DATE\n        THEN NULL\n\n        -- Si la respuesta fue el mismo día de creación, usamos fecha_creacion.\n        -- Esto evita violar el constraint porque SharePoint no trae hora de respuesta.\n        WHEN TO_DATE(\n                NULLIF(TRIM(s.payload->>'Fecha_Respuesta'), ''),\n                'DD/MM/YYYY'\n             ) = CAST(s.payload->>'Created' AS TIMESTAMPTZ)::DATE\n        THEN CAST(s.payload->>'Created' AS TIMESTAMPTZ)\n\n        -- Si fue en un día posterior, medianoche de ese día ya es válida.\n        ELSE TO_DATE(\n                NULLIF(TRIM(s.payload->>'Fecha_Respuesta'), ''),\n                'DD/MM/YYYY'\n             )::TIMESTAMPTZ\n    END AS fecha_resolucion,\n\n    NULLIF(TRIM(s.payload->>'Respuesta'), '') AS respuesta_final,\n\n    CAST(\n        NULLIF(TRIM(s.payload->>'Calificaci_x00f3_n'), '')\n        AS INTEGER\n    ) AS calificacion,\n\n    'SHAREPOINT_LEGACY' AS origen_sistema\n\nFROM staging.sp_helpdesk_raw s\n\nINNER JOIN tmp_ticket_legacy_map ref\n    ON ref.sp_id = s.sp_id\n\nLEFT JOIN core.dim_cliente_contai c\n    ON c.identificacion_fiscal = TRIM(s.payload->>'Nit')\n\nLEFT JOIN core.dim_personal sol\n    ON sol.correo_corporativo = TRIM(LOWER(s.payload->>'Title'))\n\nLEFT JOIN core.dim_personal asig\n    ON asig.correo_corporativo = TRIM(LOWER(s.payload->>'AsignadoA'))\n\nLEFT JOIN core.dim_area ad\n    ON core.norm_text(ad.nombre_area) = CASE\n        WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'proyectos y ti'\n        THEN 'administracion'\n        ELSE core.norm_text(s.payload->>'OData__x00c1_rea_Destino')\n    END\n\nLEFT JOIN helpdesk.dim_estado est\n    ON core.norm_text(s.payload->>'Estado') = core.norm_text(est.nombre_estado)\n\nLEFT JOIN helpdesk.dim_estado est_default\n    ON est_default.nombre_estado = 'ABIERTO'\n\n-- Normalización específica para resolver valores legacy de HelpDeskBd\n-- contra el catálogo actual de TipoReqHD.\n--\n-- Casos detectados:\n--\n-- 1. ADMINISTRACIÓN:\n--    Tickets antiguos traen:\n--      Tipo_Requerimiento = AUTOMATIZACIÓN / TI\n--      Categoría1         = APLICACIÓN / SOPORTE / HARDWARE / SOFTWARE / REDES\n--\n--    Pero el catálogo actual espera:\n--      Tipo_Requerimiento = PROYECTOS Y TI\n--      Categoría1         = AUTOMATIZACIÓN / TI\n--      Categoría2         = APLICACIÓN / SOPORTE / HARDWARE / SOFTWARE / REDES\n--\n-- 2. REVISORÍA:\n--    Tickets antiguos traen:\n--      Tipo_Requerimiento = IMPUESTOS CONSULTA / IMPUESTOS\n--\n--    Pero el catálogo actual espera:\n--      Tipo_Requerimiento = IMPUESTOS ASESORATE\n--\n-- 3. ADMINISTRACIÓN-RECEPCIÓN / OTROS:\n--    Ticket trae categoría OTROS, pero catálogo tiene categoría NULL.\n--\n-- 4. REVISORÍA / OTROS:\n--    Ticket puede venir sin categoría, pero catálogo tiene categoría OTROS.\nLEFT JOIN LATERAL (\n    SELECT\n        CASE\n            -- Legacy ADMINISTRACION:\n            -- TI / SOFTWARE, HARDWARE, REDES\n            -- AUTOMATIZACION / APLICACION, SOPORTE, MEJORAS\n            -- se mapean al catalogo actual:\n            -- PROYECTOS Y TI / TI o AUTOMATIZACION / subcategoria.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('automatizacion', 'ti')\n            THEN 'proyectos y ti'\n\n            -- Algunos registros ya traen PROYECTOS Y TI como tipo.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'\n            THEN 'proyectos y ti'\n\n            -- Legacy REVISORIA:\n            -- IMPUESTOS CONSULTA / IMPUESTOS se mapean al catalogo actual.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('impuestos consulta', 'impuestos')\n            THEN 'impuestos asesorate'\n\n            ELSE core.norm_text(s.payload->>'Tipo_Requerimiento')\n        END AS tipo_requerimiento_match,\n\n        CASE\n            -- ADMINISTRACION legacy: el tipo viejo pasa a categoria 1.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('automatizacion', 'ti')\n            THEN core.norm_text(s.payload->>'Tipo_Requerimiento')\n\n            -- ADMINISTRACION ya con PROYECTOS Y TI:\n            -- Si cat2 es APLICACION/SOPORTE/MEJORAS, realmente pertenece a AUTOMATIZACION.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IN ('aplicacion', 'soporte', 'mejoras')\n            THEN 'automatizacion'\n\n            -- Si cat2 es HARDWARE/SOFTWARE/REDES, pertenece a TI.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IN ('hardware', 'software', 'redes')\n            THEN 'ti'\n\n            -- Algunos registros legacy traen PROYECTOS Y TI / TI / APLICACION.\n            -- APLICACION no es TI, debe caer bajo AUTOMATIZACION.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a1') = 'ti'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IN ('aplicacion', 'soporte', 'mejoras')\n            THEN 'automatizacion'\n\n            -- ADMINISTRACION-RECEPCION / OTROS / OTROS debe mapear a OTROS sin categoria.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion-recepcion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'otros'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a1') = 'otros'\n            THEN NULL\n\n            -- REVISORIA legacy: categoria 1 se conserva como impuesto especifico.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('impuestos consulta', 'impuestos')\n            THEN core.norm_text(s.payload->>'Categor_x00ed_a1')\n\n            -- REVISORIA / OTROS sin categoria debe caer en OTROS.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'otros'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a1') IS NULL\n            THEN 'otros'\n\n            ELSE core.norm_text(s.payload->>'Categor_x00ed_a1')\n        END AS categoria_1_match,\n\n        CASE\n            -- ADMINISTRACION legacy:\n            -- categoria 1 vieja pasa a categoria 2 actual.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('automatizacion', 'ti')\n            THEN core.norm_text(s.payload->>'Categor_x00ed_a1')\n\n            -- ADMINISTRACION ya con PROYECTOS Y TI:\n            -- categoria 2 se conserva como subcategoria.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'\n             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IS NOT NULL\n            THEN core.norm_text(s.payload->>'Categor_x00ed_a2')\n\n            -- REVISORIA legacy no usa categoria 2 en el catalogo actual.\n            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'\n             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('impuestos consulta', 'impuestos')\n            THEN NULL\n\n            ELSE core.norm_text(s.payload->>'Categor_x00ed_a2')\n        END AS categoria_2_match\n) tipo_legacy ON TRUE\n\nLEFT JOIN helpdesk.dim_tipo_requerimiento tr\n    ON tr.id_area = ad.id_area\n   AND core.norm_text(tr.tipo_requerimiento) = tipo_legacy.tipo_requerimiento_match\n   AND COALESCE(core.norm_text(tr.categoria_1), '') = COALESCE(tipo_legacy.categoria_1_match, '')\n   AND COALESCE(core.norm_text(tr.categoria_2), '') = COALESCE(tipo_legacy.categoria_2_match, '')\n\nLEFT JOIN helpdesk.dim_prioridad prio\n    ON UPPER(s.payload->>'Prioridad') LIKE '%' || prio.nombre_prioridad || '%'\n\nWHERE\n    (\n        c.id_cliente_contai IS NOT NULL\n        OR sol.id_personal IS NOT NULL\n    )\n\nON CONFLICT (id_ticket)\nDO UPDATE SET\n    descripcion_problema = EXCLUDED.descripcion_problema,\n    id_cliente_contai = EXCLUDED.id_cliente_contai,\n    id_solicitante = EXCLUDED.id_solicitante,\n    id_area_destino = EXCLUDED.id_area_destino,\n    id_asignado = EXCLUDED.id_asignado,\n    id_estado = EXCLUDED.id_estado,\n    id_prioridad = EXCLUDED.id_prioridad,\n    id_tipo_req = EXCLUDED.id_tipo_req,\n    fecha_creacion = EXCLUDED.fecha_creacion,\n    fecha_limite = EXCLUDED.fecha_limite,\n    fecha_resolucion = EXCLUDED.fecha_resolucion,\n    respuesta_final = EXCLUDED.respuesta_final,\n    calificacion = EXCLUDED.calificacion,\n    origen_sistema = EXCLUDED.origen_sistema,\n    ultima_actualizacion = NOW();\n\n\n-- =================================================================\n-- 2. PERSISTIR REFERENCIA LEGACY SHAREPOINT\n-- =================================================================\n-- Solo se persisten referencias legacy para tickets que sí quedaron\n-- insertados o actualizados en helpdesk.fact_ticket.\n--\n-- Esto evita referencias huérfanas.\n-- =================================================================\n\nINSERT INTO helpdesk.ticket_legacy_sharepoint_ref (\n    id_ticket,\n    sp_id,\n    legacy_id_req,\n    legacy_title,\n    legacy_created_at\n)\nSELECT\n    m.id_ticket,\n    m.sp_id,\n    m.legacy_id_req,\n    m.legacy_title,\n    m.legacy_created_at\nFROM tmp_ticket_legacy_map m\nINNER JOIN helpdesk.fact_ticket f\n    ON f.id_ticket = m.id_ticket\nON CONFLICT (sp_id)\nDO UPDATE SET\n    id_ticket = EXCLUDED.id_ticket,\n    legacy_id_req = EXCLUDED.legacy_id_req,\n    legacy_title = EXCLUDED.legacy_title,\n    legacy_created_at = EXCLUDED.legacy_created_at,\n    updated_at = NOW();\n\nSELECT '06_transform_ticket'::text AS transform_step_completed_at_end, NOW() AS finished_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1536,
+        640
+      ],
+      "id": "653c36db-cb6e-40ed-9819-8fd5cc17574b",
+      "name": "PG - Transform 06 Tickets Legacy",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- =================================================================\n-- 07_transform_ticket_evento.sql\n-- EVENTOS INFERIDOS DESDE COLUMNAS LEGACY DEL TICKET\n-- =================================================================\n--\n-- Estos eventos no vienen como registros independientes desde SharePoint.\n-- Se derivan de columnas de HelpDeskBd almacenadas en staging.sp_helpdesk_raw.\n--\n-- Modelo nuevo:\n--   - helpdesk.fact_ticket ya NO contiene consecutivo_sp.\n--   - La relación con SharePoint vive en helpdesk.ticket_legacy_sharepoint_ref.\n--\n-- Por tanto:\n--   - staging.sp_helpdesk_raw.sp_id se une contra ticket_legacy_sharepoint_ref.sp_id.\n--   - ticket_legacy_sharepoint_ref.id_ticket se une contra fact_ticket.id_ticket.\n--\n-- event_hash evita duplicados si el transform se ejecuta varias veces.\n--\n-- Identidad lógica de evento legacy:\n--   SharePoint sp_id + tipo de evento inferido + contenido normalizado\n-- =================================================================\n\n\n-- =================================================================\n-- 1. INSERCIÓN DE JUSTIFICACIONES DE PRIORIDAD\n-- =================================================================\n\nINSERT INTO helpdesk.fact_ticket_evento (\n    event_hash,\n    id_ticket,\n    tipo_evento,\n    contenido,\n    fecha_registro\n)\nSELECT\n    md5(\n        ref.sp_id::TEXT\n        || '|JUSTIFICACION_PRIORIDAD|'\n        || TRIM(s.payload->>'Justifique_Prioridad')\n    ) AS event_hash,\n\n    f.id_ticket,\n\n    'COMENTARIO' AS tipo_evento,\n\n    'JUSTIFICACIÓN PRIORIDAD: '\n        || TRIM(s.payload->>'Justifique_Prioridad') AS contenido,\n\n    COALESCE(\n        NULLIF(TRIM(s.payload->>'Modified'), '')::TIMESTAMPTZ,\n        NOW()\n    ) AS fecha_registro\n\nFROM staging.sp_helpdesk_raw s\n\nJOIN helpdesk.ticket_legacy_sharepoint_ref ref\n    ON ref.sp_id = s.sp_id\n\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = ref.id_ticket\n\nWHERE\n    NULLIF(TRIM(s.payload->>'Justifique_Prioridad'), '') IS NOT NULL\n\nON CONFLICT (event_hash)\nDO UPDATE SET\n    contenido = EXCLUDED.contenido,\n    fecha_registro = EXCLUDED.fecha_registro;\n\n\n-- =================================================================\n-- 2. INSERCIÓN DE COMENTARIOS ADICIONALES\n-- =================================================================\n\nINSERT INTO helpdesk.fact_ticket_evento (\n    event_hash,\n    id_ticket,\n    tipo_evento,\n    contenido,\n    fecha_registro\n)\nSELECT\n    md5(\n        ref.sp_id::TEXT\n        || '|COMENTARIO_ADICIONAL|'\n        || TRIM(s.payload->>'Comentarios_adicionales')\n    ) AS event_hash,\n\n    f.id_ticket,\n\n    'COMENTARIO' AS tipo_evento,\n\n    'COMENTARIO ADICIONAL: '\n        || TRIM(s.payload->>'Comentarios_adicionales') AS contenido,\n\n    COALESCE(\n        NULLIF(TRIM(s.payload->>'Modified'), '')::TIMESTAMPTZ,\n        NOW()\n    ) AS fecha_registro\n\nFROM staging.sp_helpdesk_raw s\n\nJOIN helpdesk.ticket_legacy_sharepoint_ref ref\n    ON ref.sp_id = s.sp_id\n\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = ref.id_ticket\n\nWHERE\n    NULLIF(TRIM(s.payload->>'Comentarios_adicionales'), '') IS NOT NULL\n\nON CONFLICT (event_hash)\nDO UPDATE SET\n    contenido = EXCLUDED.contenido,\n    fecha_registro = EXCLUDED.fecha_registro;\n\n\n-- =================================================================\n-- 3. INSERCIÓN DE OBSERVACIONES\n-- =================================================================\n\nINSERT INTO helpdesk.fact_ticket_evento (\n    event_hash,\n    id_ticket,\n    tipo_evento,\n    contenido,\n    fecha_registro\n)\nSELECT\n    md5(\n        ref.sp_id::TEXT\n        || '|OBSERVACION|'\n        || TRIM(s.payload->>'Observaci_x00f3_n')\n    ) AS event_hash,\n\n    f.id_ticket,\n\n    'COMENTARIO' AS tipo_evento,\n\n    'OBSERVACIÓN: '\n        || TRIM(s.payload->>'Observaci_x00f3_n') AS contenido,\n\n    COALESCE(\n        NULLIF(TRIM(s.payload->>'Modified'), '')::TIMESTAMPTZ,\n        NOW()\n    ) AS fecha_registro\n\nFROM staging.sp_helpdesk_raw s\n\nJOIN helpdesk.ticket_legacy_sharepoint_ref ref\n    ON ref.sp_id = s.sp_id\n\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = ref.id_ticket\n\nWHERE\n    NULLIF(TRIM(s.payload->>'Observaci_x00f3_n'), '') IS NOT NULL\n\nON CONFLICT (event_hash)\nDO UPDATE SET\n    contenido = EXCLUDED.contenido,\n    fecha_registro = EXCLUDED.fecha_registro;\n\n\n-- =================================================================\n-- 4. INSERCIÓN DE RESPUESTAS SUGERIDAS\n-- =================================================================\n\nINSERT INTO helpdesk.fact_ticket_evento (\n    event_hash,\n    id_ticket,\n    tipo_evento,\n    contenido,\n    fecha_registro\n)\nSELECT\n    md5(\n        ref.sp_id::TEXT\n        || '|RESPUESTA_SUGERIDA|'\n        || TRIM(s.payload->>'Respuesta_Sugerida')\n    ) AS event_hash,\n\n    f.id_ticket,\n\n    'COMENTARIO' AS tipo_evento,\n\n    'RESPUESTA SUGERIDA: '\n        || TRIM(s.payload->>'Respuesta_Sugerida') AS contenido,\n\n    COALESCE(\n        NULLIF(TRIM(s.payload->>'Modified'), '')::TIMESTAMPTZ,\n        NOW()\n    ) AS fecha_registro\n\nFROM staging.sp_helpdesk_raw s\n\nJOIN helpdesk.ticket_legacy_sharepoint_ref ref\n    ON ref.sp_id = s.sp_id\n\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = ref.id_ticket\n\nWHERE\n    NULLIF(TRIM(s.payload->>'Respuesta_Sugerida'), '') IS NOT NULL\n\nON CONFLICT (event_hash)\nDO UPDATE SET\n    contenido = EXCLUDED.contenido,\n    fecha_registro = EXCLUDED.fecha_registro;\n\nSELECT '07_transform_ticket_evento'::text AS transform_step_completed_at_end, NOW() AS finished_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1984,
+        640
+      ],
+      "id": "643227fe-ca30-44a9-af09-34f1165858f0",
+      "name": "PG - Transform 07 Ticket Eventos",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Convierte la salida del loop de listas en un único item de control.\n *\n * El loop entrega varios items, uno por lista configurada.\n * Las transformaciones SQL no deben ejecutarse una vez por lista, sino una\n * sola vez después de terminar toda la extracción incremental RAW.\n */\nconst processedLists = $input.all().map((item) => item.json);\n\nreturn [\n  {\n    json: {\n      phase: \"transform\",\n      processed_list_count: processedLists.length,\n      processed_lists: processedLists.map((item) => ({\n        sync_key: item.syncKey ?? item.sync_key ?? null,\n        list_name: item.listName ?? item.list_name ?? null,\n        table_name: item.tableName ?? item.table_name ?? null,\n      })),\n      started_at: new Date().toISOString(),\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        640
+      ],
+      "id": "d964c64c-3ad3-4c2d-9190-1d9c0595565e",
+      "name": "Code - Start Transform Phase"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS staging.helpdesk_legacy_tipo_req_unmapped (\n    sp_id INTEGER PRIMARY KEY,\n    id_ticket UUID NOT NULL,\n    codigo_ticket TEXT NOT NULL,\n    legacy_id_req TEXT,\n    area_original TEXT,\n    tipo_original TEXT,\n    categoria_1_original TEXT,\n    categoria_2_original TEXT,\n    requerimiento TEXT,\n    fecha_creacion TIMESTAMPTZ,\n    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n    occurrence_count INTEGER NOT NULL DEFAULT 1\n);\n\nCREATE TABLE IF NOT EXISTS staging.helpdesk_legacy_tipo_req_mapping_rule (\n    id_rule UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n\n    source_area_norm TEXT NOT NULL,\n    source_tipo_norm TEXT,\n    source_categoria_1_norm TEXT,\n    source_categoria_2_norm TEXT,\n\n    target_area_norm TEXT NOT NULL,\n    target_tipo_norm TEXT NOT NULL,\n    target_categoria_1_norm TEXT,\n    target_categoria_2_norm TEXT,\n\n    reason TEXT NOT NULL,\n    active BOOLEAN NOT NULL DEFAULT TRUE,\n    priority INTEGER NOT NULL DEFAULT 100,\n\n    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nCREATE UNIQUE INDEX IF NOT EXISTS uq_helpdesk_legacy_tipo_req_mapping_rule_source\nON staging.helpdesk_legacy_tipo_req_mapping_rule (\n    source_area_norm,\n    COALESCE(source_tipo_norm, ''),\n    COALESCE(source_categoria_1_norm, ''),\n    COALESCE(source_categoria_2_norm, '')\n);\n\nINSERT INTO staging.helpdesk_legacy_tipo_req_mapping_rule (\n    source_area_norm,\n    source_tipo_norm,\n    source_categoria_1_norm,\n    source_categoria_2_norm,\n    target_area_norm,\n    target_tipo_norm,\n    target_categoria_1_norm,\n    target_categoria_2_norm,\n    reason,\n    active,\n    priority\n)\nVALUES (\n    core.norm_text('ADMINISTRACIÓN-RECEPCIÓN'),\n    core.norm_text('OTROS'),\n    core.norm_text('OTROS'),\n    NULL,\n    core.norm_text('ADMINISTRACIÓN-RECEPCIÓN'),\n    core.norm_text('OTROS'),\n    NULL,\n    NULL,\n    'Regla legacy: SharePoint registraba ADMINISTRACIÓN-RECEPCIÓN / OTROS / OTROS, pero el catálogo actual representa OTROS sin categorías.',\n    TRUE,\n    10\n)\nON CONFLICT (\n    source_area_norm,\n    COALESCE(source_tipo_norm, ''),\n    COALESCE(source_categoria_1_norm, ''),\n    COALESCE(source_categoria_2_norm, '')\n)\nDO UPDATE SET\n    target_area_norm = EXCLUDED.target_area_norm,\n    target_tipo_norm = EXCLUDED.target_tipo_norm,\n    target_categoria_1_norm = EXCLUDED.target_categoria_1_norm,\n    target_categoria_2_norm = EXCLUDED.target_categoria_2_norm,\n    reason = EXCLUDED.reason,\n    active = TRUE,\n    priority = EXCLUDED.priority,\n    updated_at = NOW();\n\nWITH matched_rules AS (\n    SELECT DISTINCT ON (f.id_ticket)\n        f.id_ticket,\n        tr.id_tipo_req,\n        tr.id_area,\n        rule.id_rule\n    FROM helpdesk.fact_ticket f\n    JOIN helpdesk.ticket_legacy_sharepoint_ref ref\n        ON ref.id_ticket = f.id_ticket\n    JOIN staging.sp_helpdesk_raw s\n        ON s.sp_id = ref.sp_id\n    JOIN staging.helpdesk_legacy_tipo_req_mapping_rule rule\n        ON rule.active = TRUE\n       AND rule.source_area_norm = core.norm_text(s.payload->>'OData__x00c1_rea_Destino')\n       AND COALESCE(rule.source_tipo_norm, '') = COALESCE(core.norm_text(s.payload->>'Tipo_Requerimiento'), '')\n       AND COALESCE(rule.source_categoria_1_norm, '') = COALESCE(core.norm_text(s.payload->>'Categor_x00ed_a1'), '')\n       AND COALESCE(rule.source_categoria_2_norm, '') = COALESCE(core.norm_text(s.payload->>'Categor_x00ed_a2'), '')\n    JOIN core.dim_area area_target\n        ON core.norm_text(area_target.nombre_area) = rule.target_area_norm\n    JOIN helpdesk.dim_tipo_requerimiento tr\n        ON tr.id_area = area_target.id_area\n       AND core.norm_text(tr.tipo_requerimiento) = rule.target_tipo_norm\n       AND COALESCE(core.norm_text(tr.categoria_1), '') = COALESCE(rule.target_categoria_1_norm, '')\n       AND COALESCE(core.norm_text(tr.categoria_2), '') = COALESCE(rule.target_categoria_2_norm, '')\n    WHERE f.origen_sistema = 'SHAREPOINT_LEGACY'\n      AND f.id_tipo_req IS NULL\n    ORDER BY\n        f.id_ticket,\n        rule.priority ASC,\n        rule.created_at ASC\n)\nUPDATE helpdesk.fact_ticket f\nSET\n    id_tipo_req = matched_rules.id_tipo_req,\n    id_area_destino = matched_rules.id_area,\n    ultima_actualizacion = NOW()\nFROM matched_rules\nWHERE f.id_ticket = matched_rules.id_ticket;\n\nDELETE FROM staging.helpdesk_legacy_tipo_req_unmapped u\nUSING helpdesk.ticket_legacy_sharepoint_ref ref\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = ref.id_ticket\nWHERE u.sp_id = ref.sp_id\n  AND f.id_tipo_req IS NOT NULL;\n\nINSERT INTO staging.helpdesk_legacy_tipo_req_unmapped (\n    sp_id,\n    id_ticket,\n    codigo_ticket,\n    legacy_id_req,\n    area_original,\n    tipo_original,\n    categoria_1_original,\n    categoria_2_original,\n    requerimiento,\n    fecha_creacion,\n    first_seen_at,\n    last_seen_at,\n    occurrence_count\n)\nSELECT\n    ref.sp_id,\n    f.id_ticket,\n    f.codigo_ticket,\n    s.payload->>'Id_Req' AS legacy_id_req,\n    s.payload->>'OData__x00c1_rea_Destino' AS area_original,\n    s.payload->>'Tipo_Requerimiento' AS tipo_original,\n    s.payload->>'Categor_x00ed_a1' AS categoria_1_original,\n    s.payload->>'Categor_x00ed_a2' AS categoria_2_original,\n    s.payload->>'Requerimiento' AS requerimiento,\n    f.fecha_creacion,\n    NOW(),\n    NOW(),\n    1\nFROM helpdesk.fact_ticket f\nJOIN helpdesk.ticket_legacy_sharepoint_ref ref\n    ON ref.id_ticket = f.id_ticket\nJOIN staging.sp_helpdesk_raw s\n    ON s.sp_id = ref.sp_id\nWHERE f.origen_sistema = 'SHAREPOINT_LEGACY'\n  AND f.id_tipo_req IS NULL\nON CONFLICT (sp_id)\nDO UPDATE SET\n    id_ticket = EXCLUDED.id_ticket,\n    codigo_ticket = EXCLUDED.codigo_ticket,\n    legacy_id_req = EXCLUDED.legacy_id_req,\n    area_original = EXCLUDED.area_original,\n    tipo_original = EXCLUDED.tipo_original,\n    categoria_1_original = EXCLUDED.categoria_1_original,\n    categoria_2_original = EXCLUDED.categoria_2_original,\n    requerimiento = EXCLUDED.requerimiento,\n    fecha_creacion = EXCLUDED.fecha_creacion,\n    last_seen_at = NOW(),\n    occurrence_count = staging.helpdesk_legacy_tipo_req_unmapped.occurrence_count + 1;\n\nSELECT\n    'apply_legacy_tipo_req_mapping_rules'::text AS transform_step_completed_at_end,\n    (\n        SELECT COUNT(*)\n        FROM staging.helpdesk_legacy_tipo_req_mapping_rule\n        WHERE active = TRUE\n    )::int AS active_mapping_rules,\n    (\n        SELECT COUNT(*)\n        FROM staging.helpdesk_legacy_tipo_req_unmapped\n    )::int AS unmapped_total,\n    NOW() AS finished_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1760,
+        640
+      ],
+      "id": "efd32dce-fe8d-4726-968d-2ad797b476b3",
+      "name": "PG - Apply Legacy TipoReq Mapping Rules",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**Fase de carga Staging**",
+        "height": 208,
+        "width": 1680
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        400
+      ],
+      "id": "9832d631-8985-415f-816a-4d0034923ec3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**Fase de transformación**",
+        "height": 208,
+        "width": 2144,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        608
+      ],
+      "id": "78f4f5bf-c2d8-4ef4-9f40-0babf86b2fad",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "**Fase de preparación**",
+        "height": 416,
+        "width": 720,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        496
+      ],
+      "id": "39bb2639-17cf-436c-90bb-cea416fa1ab0",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "PG - Ensure Incremental Infrastructure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Incremental fallback": {
+      "main": [
+        [
+          {
+            "node": "PG - Ensure Incremental Infrastructure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Ensure Incremental Infrastructure": {
+      "main": [
+        [
+          {
+            "node": "Code - Configure SharePoint Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Configure SharePoint Lists": {
+      "main": [
+        [
+          {
+            "node": "Loop - Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop - Lists": {
+      "main": [
+        [
+          {
+            "node": "Code - Start Transform Phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PG - Get List Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Get List Cursor": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get Changed SharePoint Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Get Changed SharePoint Items": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Bulk Raw Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Bulk Raw Upsert": {
+      "main": [
+        [
+          {
+            "node": "IF - Has Changed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Has Changed Items": {
+      "main": [
+        [
+          {
+            "node": "PG - Bulk Upsert Raw Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop - Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Bulk Upsert Raw Items": {
+      "main": [
+        [
+          {
+            "node": "PG - Update List Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Update List Cursor": {
+      "main": [
+        [
+          {
+            "node": "Loop - Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Transform 01 Area": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 02 Clientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Transform 02 Clientes": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 03 Personal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Transform 03 Personal": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 04 Personal Historico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Transform 04 Personal Historico": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 05 Tipo Requerimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Transform 05 Tipo Requerimiento": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 06 Tickets Legacy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Transform 06 Tickets Legacy": {
+      "main": [
+        [
+          {
+            "node": "PG - Apply Legacy TipoReq Mapping Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Start Transform Phase": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 01 Area",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Apply Legacy TipoReq Mapping Rules": {
+      "main": [
+        [
+          {
+            "node": "PG - Transform 07 Ticket Eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b311da4e-5009-49c8-8221-6033612ff662",
+  "meta": {
+    "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
+  },
+  "nodeGroups": [],
+  "id": "bbNQMaLNYakvoeqb",
+  "tags": []
+}

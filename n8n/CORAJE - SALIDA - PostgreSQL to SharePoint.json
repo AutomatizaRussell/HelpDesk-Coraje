@@ -1,0 +1,611 @@
+{
+  "name": "CORAJE - SALIDA - PostgreSQL to SharePoint",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH next_item AS (\n    SELECT\n        o.id_sync\n    FROM helpdesk.ticket_sync_outbox o\n    JOIN helpdesk.fact_ticket f\n        ON f.id_ticket = o.id_ticket\n    WHERE o.status = 'PENDING'\n      AND o.operation = 'CREATE_TICKET'\n      AND o.target_system = 'SHAREPOINT'\n\n      -- Solo tickets generados desde CORAJE / portal cliente.\n      AND f.origen_sistema = 'PORTAL_CLIENTE'\n\n      -- Solo tickets ya redirigidos.\n      AND f.id_area_destino IS NOT NULL\n      AND f.id_tipo_req IS NOT NULL\n\n      -- No reenviar tickets que ya tengan ítem SharePoint.\n      AND NOT EXISTS (\n          SELECT 1\n          FROM helpdesk.ticket_legacy_sharepoint_ref r\n          WHERE r.id_ticket = f.id_ticket\n            AND r.sp_id IS NOT NULL\n      )\n\n    ORDER BY o.created_at ASC\n    LIMIT 1\n    FOR UPDATE OF o SKIP LOCKED\n),\nclaimed AS (\n    UPDATE helpdesk.ticket_sync_outbox o\n    SET\n        status = 'PROCESSING',\n        attempts = attempts + 1,\n        updated_at = NOW()\n    FROM next_item n\n    WHERE o.id_sync = n.id_sync\n    RETURNING\n        o.id_sync,\n        o.id_ticket,\n        o.operation,\n        o.status,\n        o.attempts\n)\nSELECT *\nFROM claimed;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        912,
+        -800
+      ],
+      "id": "f81bee7a-b2aa-4e6c-81e1-4f4b0d1e0d36",
+      "name": "PG - Claim Next Pending",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    o.id_sync,\n    o.id_ticket,\n\n    f.codigo_ticket,\n    f.descripcion_problema,\n    f.fecha_creacion,\n    f.fecha_limite,\n    f.encargado_interno,\n    f.origen_sistema,\n\n    c.nombre_cliente,\n    c.identificacion_fiscal,\n\n    a.nombre_area,\n\n    tr.tipo_requerimiento,\n    tr.categoria_1,\n    tr.categoria_2,\n\n    e.nombre_estado,\n\n    p.nombre_prioridad,\n    p.dias_sla\n\nFROM helpdesk.ticket_sync_outbox o\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = o.id_ticket\nJOIN core.dim_cliente_contai c\n    ON c.id_cliente_contai = f.id_cliente_contai\nJOIN core.dim_area a\n    ON a.id_area = f.id_area_destino\nJOIN helpdesk.dim_tipo_requerimiento tr\n    ON tr.id_tipo_req = f.id_tipo_req\nJOIN helpdesk.dim_estado e\n    ON e.id_estado = f.id_estado\nLEFT JOIN helpdesk.dim_prioridad p\n    ON p.id_prioridad = f.id_prioridad\nLEFT JOIN helpdesk.ticket_legacy_sharepoint_ref r\n    ON r.id_ticket = f.id_ticket\nWHERE o.id_sync = '{{ $json.id_sync }}'::uuid\n  AND o.status = 'PROCESSING'\n  AND o.operation = 'CREATE_TICKET'\n  AND f.origen_sistema = 'PORTAL_CLIENTE'\n  AND f.id_area_destino IS NOT NULL\n  AND f.id_tipo_req IS NOT NULL\n  AND r.sp_id IS NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1360,
+        -800
+      ],
+      "id": "1bca70a3-e09b-4d3b-a8de-fb59ca3e6de6",
+      "name": "PG - Build Payload",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nfunction toDateOnly(value) {\n  if (!value) return null;\n\n  const date = new Date(value);\n\n  return date.toLocaleDateString(\"es-CO\", {\n    year: \"numeric\",\n    month: \"2-digit\",\n    day: \"2-digit\",\n    timeZone: \"America/Bogota\",\n  });\n}\n\nfunction toHourMinute(value) {\n  if (!value) return null;\n\n  const date = new Date(value);\n\n  return date.toLocaleTimeString(\"es-CO\", {\n    hour: \"2-digit\",\n    minute: \"2-digit\",\n    hour12: false,\n    timeZone: \"America/Bogota\",\n  });\n}\n\nfunction formatPriority(nombrePrioridad, diasSla) {\n  if (!nombrePrioridad || !diasSla) {\n    return \"Media (3 días)\";\n  }\n\n  const normalized =\n    nombrePrioridad.charAt(0).toUpperCase() +\n    nombrePrioridad.slice(1).toLowerCase();\n\n  return `${normalized} (${diasSla} días)`;\n}\n\nconst sharepoint = {\n  Title: \"PORTAL_CLIENTE\",\n\n  Id_Req: item.codigo_ticket,\n  Requerimiento: item.descripcion_problema,\n\n  Fecha_Solicitud: toDateOnly(item.fecha_creacion),\n  Hora_Solicitud: toHourMinute(item.fecha_creacion),\n  Fecha_Max_Respuesta: toDateOnly(item.fecha_limite),\n\n  Nit: item.identificacion_fiscal,\n  Cliente: item.nombre_cliente,\n\n  \n  OData__x00c1_rea_Remite: \"PORTAL_CLIENTE\",\n  OData__x00c1_rea_Destino: item.nombre_area,\n\n\n  Tipo_Requerimiento: item.tipo_requerimiento,\n  Categor_x00ed_a1: item.categoria_1,\n  Estado: \"Abierto\",\n  Prioridad: formatPriority(item.nombre_prioridad, item.dias_sla),\n\n  Recibe: item.encargado_interno,\n  Reasignado: \"SI\",\n};\n\n/**\n * Solo agregamos Categoría 2 si viene con valor real.\n * Esto evita enviar null innecesario a SharePoint.\n */\nif (item.categoria_2) {\n  sharepoint.Categor_x00ed_a2 = item.categoria_2;\n}\n\n/**\n * Marcador temporal para pruebas.\n * Quitar cuando pases a producción real.\n */\nsharepoint.Comentarios_adicionales = \"PRUEBA CORAJE - BORRAR\";\n\nreturn [\n  {\n    json: {\n      id_sync: item.id_sync,\n      id_ticket: item.id_ticket,\n      sharepoint,\n      sharepointBody: {\n        __metadata: {\n          type: \"SP.Data.HelpDeskBdListItem\",\n        },\n        ...sharepoint,\n      },\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        -800
+      ],
+      "id": "9be33ef0-66cb-4c93-aba6-d71d273d9708",
+      "name": "Code - Map SharePoint Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://dsasas-my.sharepoint.com/personal/edwinpena_rbcol_co/_api/web/lists/getbytitle('HelpDeskBd')/items",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftSharePointOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json;odata=verbose"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json;odata=verbose"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json;odata=verbose",
+        "body": "={{ JSON.stringify($json.sharepointBody) }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1808,
+        -800
+      ],
+      "id": "42cbc863-30de-4ed6-994c-60e437147e6a",
+      "name": "HTTP - Create HelpDeskBd Item",
+      "retryOnFail": false,
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "0SXzHMvQl5qCO5AN",
+          "name": "Cuenta edwin"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ac6cd8da-36ea-4bc7-a164-789fb0dc5d75",
+              "leftValue": "={{ $json.sharepoint_created }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2256,
+        -800
+      ],
+      "id": "e5486fda-252e-4ac4-8747-4bbe1d60f3a8",
+      "name": "IF - SharePoint Created"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ref_upsert AS (\n    INSERT INTO helpdesk.ticket_legacy_sharepoint_ref (\n        id_ticket,\n        sp_id,\n        legacy_id_req,\n        legacy_title,\n        legacy_created_at,\n        created_at,\n        updated_at\n    )\n    VALUES (\n        '{{ $(\"Code - Map SharePoint Fields\").item.json.id_ticket }}'::uuid,\n        {{ $json.sp_id }},\n        '{{ $(\"Code - Map SharePoint Fields\").item.json.sharepoint.Id_Req }}',\n        '{{ $(\"Code - Map SharePoint Fields\").item.json.sharepoint.Title }}',\n        NOW(),\n        NOW(),\n        NOW()\n    )\n    ON CONFLICT (id_ticket)\n    DO UPDATE SET\n        sp_id = EXCLUDED.sp_id,\n        legacy_id_req = EXCLUDED.legacy_id_req,\n        legacy_title = EXCLUDED.legacy_title,\n        legacy_created_at = EXCLUDED.legacy_created_at,\n        updated_at = NOW()\n    RETURNING id_ticket\n)\nUPDATE helpdesk.ticket_sync_outbox\nSET\n    status = 'SENT',\n    processed_at = NOW(),\n    updated_at = NOW(),\n    last_error = NULL\nWHERE id_sync = '{{ $(\"Code - Map SharePoint Fields\").item.json.id_sync }}'::uuid\nRETURNING\n    id_sync,\n    id_ticket,\n    status,\n    processed_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2480,
+        -688
+      ],
+      "id": "4ecfaacc-14ed-49a0-9387-acb896adf1d8",
+      "name": "PG - Mark SENT",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE helpdesk.ticket_sync_outbox\nSET\n    status = 'FAILED',\n    last_error = LEFT(\n        COALESCE(\n            '{{ $json.error.message }}',\n            '{{ $json.message }}',\n            '{{ $json.error }}',\n            'Error desconocido al crear ítem en SharePoint'\n        ),\n        2000\n    ),\n    updated_at = NOW()\nWHERE id_sync = '{{ $(\"Code - Map SharePoint Fields\").item.json.id_sync }}'::uuid\nRETURNING\n    id_sync,\n    id_ticket,\n    status,\n    last_error;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2480,
+        -496
+      ],
+      "id": "8fbfdd20-6b02-4d16-adf7-312906937fb9",
+      "name": "PG - Mark FAILED",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "06edafc8-9db3-4a94-95bf-8ac6ca90b461",
+              "leftValue": "={{ $json.id_sync }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        -800
+      ],
+      "id": "5c3f5e8a-3f11-4936-8ccb-e59730bbed88",
+      "name": "IF - Has Claimed Item"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH requeued AS (\n    UPDATE helpdesk.ticket_sync_outbox o\n    SET\n        status = 'PENDING',\n        updated_at = NOW(),\n        last_error = COALESCE(\n            NULLIF(o.last_error, ''),\n            'Requeue automático: PROCESSING vencido sin sp_id.'\n        )\n    WHERE o.status = 'PROCESSING'\n      AND o.operation = 'CREATE_TICKET'\n      AND o.target_system = 'SHAREPOINT'\n      AND o.updated_at < NOW() - INTERVAL '15 minutes'\n      AND NOT EXISTS (\n          SELECT 1\n          FROM helpdesk.ticket_legacy_sharepoint_ref r\n          WHERE r.id_ticket = o.id_ticket\n            AND r.sp_id IS NOT NULL\n      )\n    RETURNING o.id_sync\n)\nSELECT\n    COUNT(*)::int AS requeued_count\nFROM requeued;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        -592
+      ],
+      "id": "d53005aa-1e98-43c5-b819-4d8e9f1e833b",
+      "name": "PG - Requeue Stale Processing",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n/**\n * SharePoint REST puede devolver el ID como d.Id o d.ID.\n * Normalizamos a sp_id numérico y una bandera booleana para el IF.\n */\nconst rawSpId = item.d?.Id ?? item.d?.ID ?? item.Id ?? item.ID ?? null;\nconst spId = rawSpId === null ? null : Number(rawSpId);\n\nreturn [\n  {\n    json: {\n      ...item,\n      sp_id: Number.isFinite(spId) ? spId : null,\n      sharepoint_created: Number.isFinite(spId),\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        -800
+      ],
+      "id": "645694fa-4e40-4def-a805-46da2d03f369",
+      "name": "Code - Normalize SharePoint Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "01a4264c-a05a-4ed8-b80a-fbe08d523155",
+              "leftValue": "={{ ($json.headers[\"x-coraje-secret\"] || \"\").trim() }}",
+              "rightValue": "={{ $env.CORAJE_OUTBOX_KICK_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        -848
+      ],
+      "id": "621c5b6a-f5ef-4cfe-8e66-20baf14d69b2",
+      "name": "IF - Validate CORAJE Secret"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coraje/outbox/kick",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        -848
+      ],
+      "id": "fc095eec-bad1-4850-a281-542121832dbf",
+      "name": "Webhook",
+      "webhookId": "0ffddf87-646f-40a1-84a3-02aca85549da"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        -592
+      ],
+      "id": "e87bc468-50a9-4237-8395-bb7b39634e04",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -400
+      ],
+      "id": "b1af35ab-ab8c-4587-ae03-cb20adce8dfc",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Genera N \"slots\" de procesamiento.\n *\n * Cada slot intentará reclamar 1 ticket pendiente.\n * Si en algún slot ya no hay pendientes, el workflow termina.\n */\nconst maxItemsPerRun = 20;\n\nreturn Array.from({ length: maxItemsPerRun }, (_, index) => ({\n  json: {\n    slot: index + 1,\n    maxItemsPerRun,\n  },\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -592
+      ],
+      "id": "21a35baa-d816-4bcb-8d8a-812568f26078",
+      "name": "Code - Generate Batch Slots"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        688,
+        -592
+      ],
+      "id": "02a6e421-d06b-438b-834e-d7067b31eee2",
+      "name": "Loop - Process Up To 20"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": false,\n  \"error\": \"Unauthorized\"\n}",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16,
+        -752
+      ],
+      "id": "e796c24c-3733-491f-945d-7edef68794cc",
+      "name": "Respond - Unauthorized"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": true,\n  \"accepted\": true\n}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        16,
+        -976
+      ],
+      "id": "b8fe543b-2033-4514-83ed-724fea6aa37a",
+      "name": "Respond - Accepted"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "PG - Claim Next Pending": {
+      "main": [
+        [
+          {
+            "node": "IF - Has Claimed Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Build Payload": {
+      "main": [
+        [
+          {
+            "node": "Code - Map SharePoint Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Map SharePoint Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Create HelpDeskBd Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Create HelpDeskBd Item": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize SharePoint Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - SharePoint Created": {
+      "main": [
+        [
+          {
+            "node": "PG - Mark SENT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PG - Mark FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Has Claimed Item": {
+      "main": [
+        [
+          {
+            "node": "PG - Build Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Requeue Stale Processing": {
+      "main": [
+        [
+          {
+            "node": "Code - Generate Batch Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalize SharePoint Response": {
+      "main": [
+        [
+          {
+            "node": "IF - SharePoint Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Validate CORAJE Secret": {
+      "main": [
+        [
+          {
+            "node": "Respond - Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "IF - Validate CORAJE Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "PG - Requeue Stale Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "PG - Requeue Stale Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Generate Batch Slots": {
+      "main": [
+        [
+          {
+            "node": "Loop - Process Up To 20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop - Process Up To 20": {
+      "main": [
+        [],
+        [
+          {
+            "node": "PG - Claim Next Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Mark SENT": {
+      "main": [
+        [
+          {
+            "node": "Loop - Process Up To 20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Mark FAILED": {
+      "main": [
+        [
+          {
+            "node": "Loop - Process Up To 20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond - Accepted": {
+      "main": [
+        [
+          {
+            "node": "PG - Requeue Stale Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "640718b0-f096-4b41-a5c9-6f4f369a5dd1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
+  },
+  "nodeGroups": [],
+  "id": "3pUfTCwjxpEzNZUA",
+  "tags": []
+}

@@ -164,8 +164,15 @@ LEFT JOIN core.dim_personal sol
 LEFT JOIN core.dim_personal asig
     ON asig.correo_corporativo = TRIM(LOWER(s.payload->>'AsignadoA'))
 
+-- PROYECTOS Y TI no es un área canónica (sql/elt/01_transform_area.sql): sus
+-- tickets se resuelven contra ADMINISTRACIÓN, que es donde vive su catálogo de
+-- tipo_requerimiento.
 LEFT JOIN core.dim_area ad
-    ON core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = core.norm_text(ad.nombre_area)
+    ON core.norm_text(ad.nombre_area) = CASE
+        WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'proyectos y ti'
+        THEN 'administracion'
+        ELSE core.norm_text(s.payload->>'OData__x00c1_rea_Destino')
+    END
 
 LEFT JOIN helpdesk.dim_estado est
     ON core.norm_text(s.payload->>'Estado') = core.norm_text(est.nombre_estado)
