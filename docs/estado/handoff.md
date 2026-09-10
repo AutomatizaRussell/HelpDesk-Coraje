@@ -28,14 +28,16 @@ CAMBIOS DE ESTA UNIDAD:
            y no hace falta reimportar nada a la instancia viva.
          - Sin cambios de esquema, sin ejecución contra la VPS: es una reconciliación de
            código y documentación, no un cambio de comportamiento en producción.
-CAMBIOS SIN CERRAR:
-         - F12 (§5): investigado por lectura de código y `git log` — la hipótesis más
-           probable es que el comentario de n8n sobre `codigo_ticket` describe un diseño
-           nunca construido, no una base viva distinta a lo committeado. Falta la
-           confirmación con la consulta de solo lectura que trae §5 para cerrarlo del
-           todo. Hallazgo colateral real: `codigo_ticket` usa la fecha del servidor al
-           momento del `INSERT`, no `fecha_creacion` del ticket — todo ticket legacy
-           migrado quedó con el año de su corrida de ingesta, no su año histórico real.
+CAMBIOS DE ESTA UNIDAD (continuación):
+         - F12 (§5) **cerrado**: `git log -p` sobre `sql/db/02_functions.sql` descarta
+           que el trigger de dos argumentos que describe el comentario de n8n haya
+           existido alguna vez en el repositorio. El usuario, con el diseño alternativo
+           ya expuesto, decide quedarse con el formato simple — no por costo, sino
+           porque la alternativa tenía un defecto propio (código por área que dejaría
+           de ser estable ante una reasignación). Queda un residuo opcional, de
+           prioridad baja, sin obligación de correrlo: la consulta de solo lectura de
+           §5 para descartar contra la base real (no solo por inferencia) que exista un
+           trigger vivo no committeado.
          - D8 (`Decisiones tomadas y NO implementadas`): decidida — diferida
            deliberadamente. No se construye que n8n lea `sql/elt/` de GitHub mientras no
            haya nada más construido; la mitigación mientras tanto es disciplina de
@@ -176,18 +178,21 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
 | ~~F10~~ | ~~`core.dim_personal` tenía dos filas con el mismo `correo_corporativo`~~ — **cerrado 10-sep-2026, con ejecución real.** `recepcion.gct@rbcol.co` tenía `ccb2a1de...` (activa) y `ef1e69e7...` (fantasma). Esquema aplicado (`es_responsable_historico_no_identificado`, índice único parcial) y la ingesta corrió de punta a punta sin error: 2.559 → 2.825 tickets, 155 → 165 atribuidos al marcador histórico, ninguno a la ocupante actual (§4). El primer intento falló porque n8n tenía publicada la copia sin el fix (confusión de nombres, ver F11) — resuelto reimportando el archivo correcto | ~~Alta~~ | `core.dim_personal`; `specs/tickets.md` §7.3 |
 | ~~F11~~ | ~~`sql/elt/06_transform_ticket.sql` y el nodo `PG - Transform 06 Tickets Legacy` de n8n tenían lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy~~ — **cerrado 10-sep-2026 (corte 4), decisión del usuario: gana n8n.** Reconciliado: el bloque del repositorio se reemplaza por la lógica de n8n. Hallazgo real, más grave que la descripción original: la versión del repositorio no "cubría menos casos" — no cubría ninguno. Comparaba contra literales en MAYÚSCULAS que `core.norm_text()` (siempre minúsculas) nunca podía igualar, así que el bloque completo caía al `ELSE` en cualquier ejecución sobre ese archivo. La copia de n8n, la única que corre en producción, usa minúsculas y es la que clasificó correctamente los 2.825 tickets ingeridos hasta hoy. Sin cambio de comportamiento en producción — n8n ya tenía la versión correcta | ~~Media~~ | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
-| F12 | **Investigado (10-sep-2026), sin cerrar — falta confirmar contra la base real.** El comentario de la copia de n8n sobre `codigo_ticket` dice "el trigger usa `id_area_destino` y el año de `fecha_creacion`" y pide `next_codigo_ticket(id_area, fecha_creacion)` (dos argumentos). `git log -p` sobre `sql/db/02_functions.sql` muestra que la función existe desde `ac57875` (línea base del repositorio) **siempre con cero argumentos** — nunca hubo, en ningún commit, una versión de dos argumentos que luego se haya revertido. No existe ningún `CREATE TRIGGER` en todo `sql/`. Lectura más probable: es documentación de un diseño que alguien redactó y nunca implementó, no evidencia de una base viva distinta a lo committeado — a diferencia de `codigo_area` (corte 3, §7.1), donde sí hubo una contradicción confirmada por ejecución real. **Hallazgo colateral, real y verificado por lectura de código:** `next_codigo_ticket()` usa `EXTRACT(YEAR FROM CURRENT_DATE)` — la fecha del servidor en el momento del `INSERT`, no `fecha_creacion` del ticket. Como el `INSERT` de `06_transform_ticket.sql` nunca incluye `codigo_ticket` en la lista de columnas (ni en el `INSERT` ni en el `DO UPDATE`), cada ticket legacy recibe su código una sola vez, con el año en que corrió la ingesta que lo creó — no el año real en que el ticket se abrió en SharePoint. Es probablemente el motivo real detrás del comentario de n8n (alguien notó que el año no coincide con la historia real y esbozó una corrección que no llegó a construirse). No es necesariamente un defecto: `legacy_id_req` ya preserva el identificador histórico exacto, y `codigo_ticket` se documenta como identificador operativo nuevo, no como preservación de historia — pero el ejemplo del propio esquema (`HD-2026-000001`) sugiere una lectura de "año real" que hoy no se cumple para ningún ticket migrado. Verificación pendiente contra la base real (comando abajo) para descartar del todo la hipótesis de un trigger vivo no committeado | Baja — sin impacto funcional confirmado, y la hipótesis más probable es documentación obsoleta, no drift de esquema | `n8n/CORAJE - INCREMENTAL COMPLETO...json` (nodo `PG - Transform 06 Tickets Legacy`) vs. `sql/db/02_functions.sql`, `sql/db/06_helpdesk_facts.sql`; historia completa en `git log -p -- sql/db/02_functions.sql` |
+| ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` describía un trigger `next_codigo_ticket(id_area, fecha_creacion)` que no existe en `sql/db/`~~ — **cerrado 10-sep-2026, en dos partes.** (1) Investigación: `git log -p` sobre `sql/db/02_functions.sql` muestra que la función existe desde `ac57875` **siempre con cero argumentos** — nunca hubo, en ningún commit, una versión de dos argumentos. No existe ningún `CREATE TRIGGER` en `sql/`. Es documentación de un diseño que alguien redactó y nunca implementó, no evidencia de una base viva distinta a lo committeado (a diferencia de `codigo_area`, corte 3, §7.1, que sí era una contradicción confirmada por ejecución real). (2) Decisión del usuario, con el diseño alternativo ya evaluado y descartado, no solo pospuesto: el formato simple (`HD-<año actual>-<consecutivo global>`) se queda. La alternativa "elaborada" no solo costaba más — tenía un defecto propio: un código por área dejaría de ser estable si el ticket cambia de área (reasignación) después de creado, y el "año" de hoy ya es decorativo (la secuencia nunca se reinicia por año), así que la alternativa tampoco resolvía eso de raíz sin un rediseño mayor de la secuencia misma. `legacy_id_req` ya preserva el identificador histórico exacto — no se pierde trazabilidad al no reconstruir el año real en `codigo_ticket` | ~~Baja~~ | `n8n/CORAJE - INCREMENTAL COMPLETO...json` (nodo `PG - Transform 06 Tickets Legacy`) vs. `sql/db/02_functions.sql`, `sql/db/06_helpdesk_facts.sql`; historia completa en `git log -p -- sql/db/02_functions.sql` |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
 
-> **F12 — verificación pendiente contra la base real.** La investigación documental
-> (git log, ausencia de `CREATE TRIGGER` en `sql/`) apunta a que el comentario de n8n es
-> documentación obsoleta de un diseño nunca construido, no evidencia de una base viva
-> distinta a lo committeado. Para descartarlo con certeza en vez de por inferencia,
-> correr en la VPS (solo lectura, no modifica nada):
+> **F12 cerrado con decisión de diseño, no solo con investigación.** El formato simple
+> de `codigo_ticket` se queda; la alternativa que describía el comentario de n8n queda
+> descartada, no solo diferida (§5 tiene el razonamiento completo). Queda un residuo
+> **opcional, de prioridad baja**, sin obligación de correrlo: la consulta de solo
+> lectura de abajo terminaría de descartar, contra la base real y no solo por
+> inferencia de `git log`, que exista un trigger vivo no committeado. Como la decisión
+> de diseño ya está tomada independientemente del resultado, correrla ya no es
+> necesaria para cerrar nada — solo confirmaría que no hay nada más que limpiar:
 >
 > ```bash
 > docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
@@ -202,12 +207,6 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 >   AND NOT tgisinternal;
 > "
 > ```
->
-> Si la primera consulta devuelve `argumentos` vacío y la segunda devuelve cero filas,
-> F12 cierra confirmando la hipótesis (comentario obsoleto, sin acción). Si devuelve
-> algo distinto, hay un mecanismo en la base viva que nunca se volcó a `sql/db/` —
-> mismo patrón que `codigo_area`, y esta vez con impacto funcional real en cómo se
-> genera `codigo_ticket`.
 
 ## 6. Riesgos abiertos
 
@@ -248,8 +247,8 @@ dejó habilitado — no es una desviación de la cabeza de la cola. **La acción
 sigue siendo U2 · Construir el baseline de migraciones Prisma** (`plan-ejecucion.md`).
 Antes de empezarlo: leer `plan-ejecucion.md` completo (fija escenarios mínimos y
 condición de cierre) y `contexto-canonico.md` §4 (D1/D1', la decisión que U2 construye).
-F11 queda cerrado (§5); quedan abiertos, sin fecha asignada, F12 y D8, ninguno de los
-dos bloqueante.
+F11 y F12 quedan cerrados (§5); D8 queda diferida, sin fecha asignada, sin bloquear
+nada (`Decisiones tomadas y NO implementadas`).
 
 Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
 efectivamente se corrió contra la base real — no son pasos pendientes.
@@ -568,4 +567,12 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   no vale la pena esa robustez con nada más construido todavía; la mitigación mientras
   tanto es la disciplina de reimport manual ya documentada en §6. D8 se mueve a
   `Decisiones tomadas y NO implementadas` como diferida, con condición explícita de
-  revisión. Cambios sin commit al cierre de esta entrada.
+  revisión. Se publican dos commits (`e14e0c6` fix de F11, `83ecc54` cierre documental
+  de F11/F12/D8) y se hace push a `origin/main`.
+- 10-sep-2026 (corte 4, misma sesión, tras el push) — el usuario ratifica el formato
+  simple de `codigo_ticket` como el correcto. F12 pasa de "investigado, pendiente de
+  verificación" a **cerrado con decisión de diseño**: la alternativa por área queda
+  descartada, no solo diferida, porque tenía un defecto propio (inestabilidad ante
+  reasignación de área) además de no resolver de raíz que la secuencia ya no se
+  reinicia por año. La consulta de solo lectura contra la base real queda como residuo
+  opcional, sin bloquear el cierre. Cambios sin commit al cierre de esta entrada.
