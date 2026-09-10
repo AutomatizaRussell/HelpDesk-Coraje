@@ -79,20 +79,24 @@ el log manda.
 
 ## 4. Vocabulario de estados
 
-> **`ABIERTO`, bloqueado por §2.** Lo que sigue es la propuesta mínima que el dominio
-> exige, no una decisión. Se ratifica contra el levantamiento de PowerApps.
+> **`RATIFICADO` (03-sep-2026), salvo lo que sigue marcado aparte.** El usuario confirmó
+> contra el uso real, sin levantamiento formal de PowerApps: sí falta un estado para
+> cuando se necesita información de quien radicó el ticket, y el término se generaliza
+> — no es solo "cliente" externo, es cualquier **solicitante**, incluido un empleado
+> interno que abrió el caso para sí mismo. De ahí el nombre `ESPERANDO_SOLICITANTE`
+> abajo, coherente con `id_solicitante`/`id_cliente_contai` que ya distingue §7.1.
 
 Los tres estados actuales **no alcanzan** para operar una mesa de ayuda. Con
 `ABIERTO / CERRADO / RECHAZADO` no se puede distinguir un ticket que nadie ha mirado de
-uno que alguien está atendiendo, ni representar la espera de una respuesta del cliente.
-Faltan, como mínimo:
+uno que alguien está atendiendo, ni representar la espera de información de quien lo
+radicó. Faltan, como mínimo:
 
 | Estado propuesto | Significado | Por qué es necesario |
 |---|---|---|
 | `ABIERTO` | Radicado, sin área ni responsable | Ya existe |
 | `ASIGNADO` | Tiene área y responsable; nadie ha empezado | Separa la cola de reparto del trabajo real |
 | `EN_PROCESO` | Alguien lo está atendiendo | Sin él, «abierto» mezcla lo abandonado con lo activo |
-| `ESPERANDO_CLIENTE` | Falta información del cliente | **Es el que detiene el reloj del SLA** (§5) |
+| `ESPERANDO_SOLICITANTE` | Falta información de quien radicó el ticket — cliente externo o empleado interno | **Reinicia el plazo de respuesta al salir** (§5) |
 | `RESUELTO` | Hay respuesta; falta confirmación o plazo | Permite reapertura sin resucitar un cerrado |
 | `CERRADO` | Terminal por confirmación o por plazo | Ya existe |
 | `RECHAZADO` | Terminal sin atención, con motivo | Ya existe |
@@ -118,14 +122,23 @@ Tres defectos del modelo actual, ninguno hipotético:
 
 | # | Defecto | Consecuencia |
 |---|---|---|
-| 1 | El reloj **no se detiene nunca** | Un ticket esperando tres días al cliente incumple el SLA por culpa del cliente. La métrica deja de medir a la firma |
+| 1 | El reloj **no se detiene nunca** | Un ticket esperando tres días al solicitante incumple el SLA por una demora que no es responsabilidad de la firma. La métrica deja de medir lo que debería |
 | 2 | `fecha_limite` **no se recalcula** al cambiar la prioridad | Subir un ticket a prioridad alta no adelanta su vencimiento |
 | 3 | **No existe prioridad `ALTA`** | El catálogo tiene `BAJA` y `MEDIA`. La creación desde el portal fuerza `MEDIA` para todo |
 
-> **`INVARIANTE` propuesto.** El tiempo en `ESPERANDO_CLIENTE` no consume SLA. Eso exige
-> registrar el tiempo acumulado en espera, no solo la fecha límite: un solo campo de
-> vencimiento no puede representar un reloj que se pausa. Es una columna nueva, y hay
-> que decidirla al mismo tiempo que el estado, no después.
+> **`DECISIÓN` (03-sep-2026): reinicio completo, no pausa.** Al salir de
+> `ESPERANDO_SOLICITANTE`, `fecha_limite` se **recalcula igual que al crear** —
+> `fecha_actual + dias_sla` de la prioridad vigente— sin conservar el tiempo ya
+> consumido antes de entrar en espera. Es más simple de construir que una pausa (no
+> exige una columna de tiempo acumulado, solo repetir el mismo cálculo de creación), y
+> es la opción elegida explícitamente por el usuario tras conocer la alternativa.
+>
+> **`RIESGO` aceptado, no accidental.** Un ticket puede entrar y salir de
+> `ESPERANDO_SOLICITANTE` varias veces, y cada salida le da un plazo fresco completo.
+> El tiempo real transcurrido desde que se radicó puede ser mucho mayor que lo que el
+> SLA reporta, y ningún ticket que pase por esta rotación incumple nunca formalmente.
+> Se acepta así, con el riesgo declarado — no es un descuido, es la decisión tomada
+> conociendo la alternativa de pausa-y-reanuda.
 
 **Los escalados y avisos por SLA son consultas contra PostgreSQL disparadas por un
 scheduler.** La ventana se cierra sola y el tiempo no llama a nadie, así que n8n aporta
@@ -157,7 +170,7 @@ duplicar nada.
 > precaución conocida: `ALTER TYPE … ADD VALUE` **debe ir sola en su propio archivo de
 > migración**, porque Prisma envuelve cada archivo en una transacción.
 
-## 7. `RIESGO` Dos restricciones del esquema que hay que revisar antes de construir
+## 7. `RIESGO` Tres restricciones del esquema que hay que revisar antes de construir
 
 **7.1 Origen exclusivo.** `chk_fact_ticket_origen_exclusivo` exige que un ticket tenga
 cliente **o** solicitante interno, nunca ambos. Eso impide representar el caso más común
@@ -170,6 +183,33 @@ al cliente o perder a quien lo radicó.
 `core.dim_personal`. No hay integridad: un nombre mal escrito produce un responsable que
 no existe, y no se puede consultar «qué tiene asignado esta persona» de forma fiable.
 Viene de la forma del dato en SharePoint, y es deuda heredada, no una decisión.
+
+**7.3 `DECISIÓN` (10-sep-2026) Modelo de buzón compartido — dirección tomada, diseño
+sin resolver.** `core.dim_personal.correo_corporativo` no tiene `UNIQUE`, y dos rutas
+de carga distintas (`sql/elt/03_transform_personal.sql`, keyed por `sp_personal_id`, y
+`sql/elt/04_transform_personal_historico.sql`, un `INSERT` de una sola vez guardado por
+`correo NOT IN (...)`) pueden terminar con dos filas para el mismo correo cuando una
+bandeja compartida cambia de ocupante — confirmado con `recepcion.gct@rbcol.co`: una
+fila activa (la ocupante actual) y una fila fantasma "EX-EMPLEADO (RECUPERADO DEL
+HISTORIAL)" a la que **155 tickets reales** apuntan por `id_asignado`/`id_solicitante`.
+Es el único correo duplicado hoy (`GROUP BY correo_corporativo HAVING count(*) > 1`
+no devuelve otro), pero el mecanismo que lo permite es genérico, no un caso aislado.
+
+**Regla dura, no negociable:** esos 155 tickets **no pueden terminar atribuidos a quien
+ocupa el buzón hoy**. Mientras no se recupere el nombre real de quien lo atendía en su
+momento, se marcan con un responsable histórico explícitamente no identificado — nunca
+con el nombre de la persona actual.
+
+**Lo que sigue sin decidir, y no se resuelve por analogía cuando se construya:**
+- Cómo se representa la vigencia en el tiempo de un ocupante sobre un buzón (rango de
+  fechas en `dim_personal`, una tabla puente aparte, u otro diseño).
+- Cómo la transformación de tickets elige **una sola** fila de ocupante para un ticket
+  dado, en vez de encontrar todas las que comparten el correo.
+- La convención exacta del marcador de "responsable histórico no identificado" (texto,
+  o una fila sentinela por buzón, distinta de un empleado real).
+- Si el patrón debe generalizarse a cualquier buzón futuro o basta con resolver el caso
+  conocido — hoy solo hay uno, pero el mecanismo que lo produjo sigue activo para
+  cualquier otro correo que llegue a repetirse.
 
 ## 8. Criterios de aceptación
 
@@ -184,6 +224,10 @@ Viene de la forma del dato en SharePoint, y es deuda heredada, no una decisión.
 - Reintentar la ingesta legacy **no duplica** eventos: `event_hash` lo impide.
 - El tiempo en espera del cliente **no** consume SLA.
 - Un ticket no puede quedar en un estado sin transición de salida.
+- Un observador ve el ticket y su historial visible según `visibilidad` (§6), y **no
+  puede ejecutar ninguna acción del catálogo** — ver §11.
+- Una solicitud de validación registra destinatario y comentario en la historia del
+  ticket, y solo aparece a quien tiene permiso de verla — ver §11.
 
 ## 9. Orden de implementación
 
@@ -194,8 +238,9 @@ Viene de la forma del dato en SharePoint, y es deuda heredada, no una decisión.
 | 3 | Campos que faltan en el evento (§6) y decisión de esquema | 2 |
 | 4 | Escritor único de eventos con proyección transaccional | 3 |
 | 5 | Bandeja interna, asignación y respuesta | 4, `specs/permisos.md` |
-| 6 | Reloj de SLA con pausa y escalado | 4 |
-| 7 | Vista del ticket en el portal del cliente | 4, `specs/acceso-clientes.md` |
+| 6 | Observadores y solicitud de validación (§11) | 4, `specs/permisos.md` |
+| 7 | Reloj de SLA con reinicio al salir de `ESPERANDO_SOLICITANTE`, y escalado | 4 |
+| 8 | Vista del ticket en el portal del cliente | 4, `specs/acceso-clientes.md` |
 
 ---
 
@@ -211,17 +256,103 @@ Viene de la forma del dato en SharePoint, y es deuda heredada, no una decisión.
 | V6 | El `CHECK` de origen exclusivo impide cliente y solicitante juntos | Ídem | **Verificado** 03-sep-2026 |
 | V7 | `encargado_interno` no tiene clave foránea | Ídem y `schema.prisma` | **Verificado** 03-sep-2026 |
 | V8 | El SLA se calcula al crear y no se recalcula ni se pausa | `src/app/portal/tickets/nuevo/actions.ts` | **Verificado** 03-sep-2026 |
-| V9 | Estados reales usados por los 2.313 tickets migrados | Consulta a `helpdesk.fact_ticket` agrupando por estado | **Sin verificar** — requiere base |
-| V10 | Distribución real de prioridades en los datos migrados | Ídem | **Sin verificar** — requiere base |
+| V9 | Estados reales usados por los tickets migrados | Consulta a `helpdesk.fact_ticket` agrupando por estado | **Verificado** 10-sep-2026, contra la VPS real — pero el total ya no es 2.313: son **2.559**. Solo `ABIERTO` y `CERRADO` tienen filas; `RECHAZADO` no se ha usado nunca (`handoff.md` §4) |
+| V10 | Distribución real de prioridades en los datos migrados | Ídem | **Verificado** 10-sep-2026: `BAJA`=645, `MEDIA`=1911, sin prioridad=3 (coincide con `baseline-calidad.md`). Cero `ALTA`, consistente con V2 |
 | V11 | Cuántos eventos legacy quedarían como `INTERNO` al añadir visibilidad | Consulta por `tipo_evento` | **Sin verificar** — decide el valor por defecto de la migración |
 
-> **Lectura del conjunto.** Ocho de once afirmaciones están verificadas contra el árbol,
-> y todas confirman deuda, no capacidades. Las tres que faltan requieren consultar la
-> base y son exactamente las que fijan el alcance de la migración de datos: **el diseño
-> del modelo de eventos no debería cerrarse sin ellas.**
+> **Lectura del conjunto.** Diez de trece afirmaciones están verificadas contra el árbol
+> o contra la base real. V9 y V10 confirman el vocabulario de estados propuesto en §4,
+> pero abren una contradicción sin resolver: el total de tickets (2.559) no coincide con
+> el baseline conciliado (2.313). Ver `handoff.md` §4 — no se resuelve aquí, y el modelo
+> de eventos no debería cerrarse sin saber cuál de los dos números es el real y por qué
+> difieren. V11 sigue requiriendo consulta.
+
+| V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `sql/db` | **Sin verificar** — no construido |
+| V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem | **Sin verificar** — no construido |
+
+## 11. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
+
+```
+FUENTE:  prototipo funcional (`helpdesk_santi/`, HTML/JS estático, sin backend) hecho
+         por la persona encargada de TI — quien más usa la mesa de ayuda actual y más
+         sufre sus límites. No es referencia visual: se toma únicamente el concepto.
+ESTADO:  confirmado por el usuario para la primera versión (03-sep-2026). No es una
+         idea a evaluar — es una decisión tomada, sin diseño técnico completo todavía.
+```
+
+**Observadores.** Un ticket puede tener personas añadidas para que reciban
+seguimiento sin ser responsables de atenderlo — el patrón *watcher/CC* de cualquier
+mesa de ayuda. En el prototipo se seleccionan al crear el caso, de una lista fija
+(`Soporte TI`, `Administrador del sistema`, `Jefe de área`), y se muestran de solo
+lectura en el detalle a ambos lados.
+
+- **Alcance de v1: solo lectura y notificación, sin acciones.** Un observador ve el
+  ticket y su historial visible según `visibilidad` (§6) — lo mismo que vería un
+  agente interno, no una vista recortada — pero no puede ejecutar ninguna acción del
+  catálogo de `specs/permisos.md` §3. No hay evidencia en el prototipo de observador
+  externo (cliente); se declara **fuera de alcance** hasta que se pida explícitamente.
+- **`DECISIÓN` pendiente al construir, no asumida aquí:** el prototipo modela
+  observadores como una lista fija de **etiquetas de rol** (`Jefe de área`,
+  `Administrador del sistema`), no como personas reales de `core.dim_personal`. Eso
+  repetiría el defecto ya señalado en §7.2 (`encargado_interno` como texto libre). La
+  relación debe ser `FK` a `core.dim_personal`, no texto libre — pero **el catálogo de
+  roles/puestos que permitiría ofrecer "Jefe de área" como opción no existe todavía**
+  (`specs/permisos.md` §6, `ABIERTO`). Observadores y solicitud de validación son la
+  segunda y tercera necesidad concreta que empuja a resolver ese vacío, no una razón
+  para resolverlo aquí de forma apurada.
+- Requiere una nueva relación N:M ticket↔persona (p. ej. `helpdesk.ticket_observador`),
+  y un nuevo tipo de evento o campo para registrar quién añadió a quién y cuándo — se
+  decide junto con el resto del modelo de eventos (§6), no antes.
+
+**Solicitud de validación.** Un agente puede dirigir una petición de aprobación a una
+persona específica, con comentario, antes de continuar. En el prototipo esto se
+implementa como un evento más del timeline unificado (mismo mecanismo que "Responder"
+o "Agregar solución"), dirigido a un destinatario — **el prototipo no implementa una
+respuesta de aprobar/rechazar**, solo el registro de la solicitud.
+
+- **No es lo mismo que la autorización excepcional de `specs/permisos.md` §5.** Esa es
+  para actuar *fuera* del alcance ordinario, exige justificación obligatoria y se
+  audita como excepción. Esto es un paso *ordinario* del flujo normal de un ticket:
+  pedirle a alguien más que confirme algo antes de seguir. No confundas ambos
+  mecanismos al construir.
+- **`DECISIÓN` pendiente al construir, no asumida aquí:** si la solicitud debe
+  **bloquear** el avance del ticket hasta que el destinatario responda (una máquina de
+  estados de aprobación real), o si es solo una notificación dirigida que queda en el
+  historial sin efecto sobre el estado — el prototipo, tal como está, es lo segundo.
+  Decidir cuál se construye es trabajo de la unidad que lo implemente, no de este
+  documento.
+- Mismo destinatario dirigido a persona real, misma dependencia del catálogo de
+  personas/roles que Observadores.
+
+**Relación con `specs/permisos.md` §3 (separación de acciones):** ambas son acciones
+propias nuevas del catálogo — "ser observador" no es lo mismo que "Consultar" (que
+tiene su propia frontera de clientes, más amplia), y "solicitar validación" no es lo
+mismo que "Autorización excepcional" (§5). Se añaden al catálogo, no se disuelven en
+uno existente.
 
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
 escritor único (§3); propone el vocabulario mínimo de siete estados contra los tres
 existentes (§4); registra los tres defectos del SLA (§5), los tres campos ausentes del
 evento (§6) y las dos restricciones de esquema a revisar (§7).
+- 03-sep-2026 (mismo día) — añade §11: Observadores y solicitud de validación,
+  confirmados por el usuario para v1 a partir del prototipo `helpdesk_santi/`. Ninguno
+  construido; ambos dependen del catálogo de roles/personas, en ese momento todavía
+  `ABIERTO` en `specs/permisos.md` §6 (ver entrada siguiente: ya no lo está).
+- 03-sep-2026 (mismo día) — §4 ratifica sin levantamiento formal de PowerApps: hace
+  falta un estado nuevo, generalizado a `ESPERANDO_SOLICITANTE` (cliente externo o
+  empleado interno). §5 decide su semántica de SLA: reinicio completo al salir, no
+  pausa — riesgo de uso repetido para nunca incumplir, aceptado explícitamente por el
+  usuario conociendo la alternativa. `specs/permisos.md` §6 pasa de `ABIERTO` a
+  `RATIFICADO (parcial)` en la misma conversación: Alex y Jimena, los dos únicos casos
+  reales conocidos, no cargan ningún rol adicional sobre "responsable de su área".
+- 10-sep-2026 — V9 y V10 se verifican contra la base real de producción (167 personal
+  activo, distribución de estados/prioridades). Se abre una contradicción sin resolver:
+  el total real (2.559 tickets) no coincide con el baseline conciliado de
+  `legacy/baseline-calidad.md` (2.313). Registrada en `estado/handoff.md` §4, no
+  resuelta aquí.
+- 10-sep-2026 (mismo día) — añade §7.3: modelo de buzón compartido, dirección tomada
+  tras encontrar el bug real ejecutando manualmente la transformación de tickets
+  (`core.dim_personal` duplicado por correo, 155 tickets afectados). Regla dura: esos
+  tickets nunca quedan atribuidos a quien ocupa el buzón hoy. Diseño exacto (vigencia
+  en el tiempo, convención del marcador histórico) sigue sin resolver.

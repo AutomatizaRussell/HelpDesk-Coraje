@@ -52,8 +52,8 @@ consultas de U1, lo que se construya será diseño por analogía.
 
 | Fase | Estado | Evidencia o bloqueo |
 |---|---|---|
-| Ingesta SharePoint → PostgreSQL | `EJERCITADO` | 2.313 tickets y 439 eventos conciliados (`legacy/baseline-calidad.md`) |
-| Salida PostgreSQL → SharePoint | `CONSTRUIDO, NUNCA EJERCITADO` | Ningún cliente radicó nunca. El workflow consumidor no está versionado |
+| Ingesta SharePoint → PostgreSQL | `EJERCITADO` | 2.313 tickets conciliados en `legacy/baseline-calidad.md` — **contradicho por consulta real del 10-sep-2026: 2.559 tickets hoy** (§4). No se resuelve en silencio: ver nota |
+| Salida PostgreSQL → SharePoint | `CONSTRUIDO, NUNCA EJERCITADO` | Ningún cliente radicó nunca. El workflow consumidor **existe y su diseño es correcto** (escribe referencia legacy, tiene respaldo cada 12h), pero vive sin commit y mal nombrado (F5) |
 | Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial |
 | Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida, sin identidad de persona |
 | Identidad de empleados | `NO EXISTE` | Contrato escrito, bloqueado por U1 §1 y U2 |
@@ -83,13 +83,33 @@ Ninguna capacidad de producto. Lo entregado es documental:
 | Lectura del árbol de HelpDesk | Qué contiene el código y el SQL hoy | Que funcione, ni qué hace en ejecución |
 | Lectura del árbol de Impulsa | Cómo resolvió el proyecto hermano identidad, permisos y diseño | Que esas piezas funcionen aquí sin adaptación |
 | `git log` y `git status` | Que el árbol estaba limpio y cuál es el HEAD | Nada sobre despliegues |
-| `legacy/baseline-calidad.md` | Que la carga inicial cuadró en su momento | Que siga cuadrando hoy |
+| `legacy/baseline-calidad.md` | Que la carga inicial cuadró **en su momento** (fecha no fijada, anterior al 03-sep-2026) | Que siga cuadrando hoy — **ver contradicción abajo** |
+| 3 consultas SQL en la VPS (U1 §1, §4, §5) + lectura directa de `n8n/` (U1 §2, §3), ambas **10-sep-2026** | Ver tabla siguiente — las cinco preguntas de U1 | Que la instancia viva de n8n tenga hoy exactamente lo que el archivo exportado describe (nota al pie de esta sección) |
 
-**Comprobado en entorno real:** nada en este corte.
+**U1 — resultados reales, contra la base de producción, 10-sep-2026:**
 
-**No conocido:** el estado de cualquier servidor, contenedor o instancia de n8n; el
-contenido actual de la base; si el despliegue en Coolify está activo; el comportamiento
-funcional de PowerApps.
+| # | Pregunta | Resultado | Lectura |
+|---|---|---|---|
+| 1 | Personal con correo corporativo activo | **167** filas | Alcance del alta de directorio (`acceso-empleados.md` §7.1) |
+| 4 | Estados y prioridades reales de `fact_ticket` | `ABIERTO`/`BAJA`=20, `ABIERTO`/`MEDIA`=26, `CERRADO`/`BAJA`=625, `CERRADO`/`MEDIA`=1885, `CERRADO`/sin prioridad=3. **Cero** `RECHAZADO`. **Cero** prioridad `ALTA` (coherente: no existe en el catálogo) | Total: **2.559** tickets — ver contradicción abajo. Los "3 sin prioridad" sí coinciden con `baseline-calidad.md` |
+| 5 | Filas en `ticket_sync_outbox` | **0 filas**, ninguna en ningún estado | Coherente con "Salida PostgreSQL → SharePoint: `CONSTRUIDO, NUNCA EJERCITADO`" (§2) — no hay nada colgado porque nunca corrió nada. Cero filas en el outbox también es evidencia indirecta de que el crecimiento de tickets (ver abajo) no viene del portal: crear desde el portal encolaría salida, y no hay ninguna |
+
+> **`CONTRADICCIÓN`, nombrada y ahora explicada.** `baseline-calidad.md` concilió 2.313
+> tickets. La consulta real de hoy cuenta **2.559** — 246 más. **Confirmado por el
+> usuario:** la ingesta incremental de SharePoint siguió corriendo desde que se tomó el
+> baseline y trajo esos tickets reales adicionales. No es un error de conteo ni un
+> baseline mal tomado. `baseline-calidad.md` no se edita retroactivamente (queda como lo
+> que confirmó en su momento, con su propia fecha); esta tabla es la cifra vigente.
+
+**Comprobado en entorno real:** las tres consultas SQL de U1, 10-sep-2026, contra
+`coraje_postgres`/`coraje` en la VPS de producción. El contenido real de
+`n8n/REVISORIA - Inspeccion SharePoint Vacaciones y Tareas V2.json`, leído esa misma
+fecha: es el consumidor del outbox, mal nombrado.
+
+**No conocido:** si el despliegue en Coolify está activo más allá de que la base
+responda; el comportamiento funcional de PowerApps; si el workflow que el archivo
+describe es efectivamente el que está `active` en la instancia real de n8n hoy — el
+archivo dice que sí, pero un archivo exportado no es la instancia viva.
 
 ## 5. Fallos abiertos
 
@@ -98,8 +118,9 @@ funcional de PowerApps.
 | F1 | El portal permite operar a nombre de cualquier cliente sin credencial | **Alta** | `specs/acceso-clientes.md` §1 |
 | F2 | La redirección usa contraseña compartida; no hay traza de quién redirigió | **Alta** | `specs/acceso-empleados.md` §1 |
 | F3 | El ELT sobrescribe todos los campos con SharePoint y pierde la procedencia del portal | **Alta** | `specs/sincronizacion-sharepoint.md` §4.1 |
-| F4 | Posible duplicado por eco: no consta que el workflow de salida escriba la referencia legacy | **Alta, no confirmada** | Ídem §4.2 |
-| F5 | El workflow de salida no está versionado en `n8n/` | Media | Ídem §2.2 |
+| ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
+| F10 | `core.dim_personal` tiene **al menos dos filas con el mismo `correo_corporativo`** (`recepcion.gct@rbcol.co` — confirmado el único caso hoy, `HAVING count(*) > 1` no devuelve otro). Cualquier ticket legacy asignado a ese correo compartido duplica filas en el `JOIN` de `06_transform_ticket` y aborta con `ON CONFLICT ... cannot affect row a second time`. Afecta a las tres versiones del workflow de ingesta por igual. **155 tickets reales** en `fact_ticket` referencian directamente la fila fantasma (`ef1e69e7...`) por `id_asignado`/`id_solicitante` — no es un `DELETE` trivial | **Alta** — bloquea que la transformación de tickets corra hasta el final, en cualquier versión | `core.dim_personal`; ver decisión de modelo de buzón compartido abajo |
+| F5 | El workflow de salida **existe** en `n8n/`, pero no está commiteado (`git ls-files` no lo lista) y su nombre (`REVISORIA - Inspeccion SharePoint Vacaciones y Tareas V2.json`) no describe lo que hace — riesgo real de que alguien lo borre pensando que es un archivo suelto de otro dominio | **Alta** (subió de Media: antes era "falta versionar", ahora es "existe y puede perderse sin que nadie note la pérdida") | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
@@ -112,8 +133,10 @@ funcional de PowerApps.
 | Construir el ciclo del ticket sin levantar PowerApps | Rechazo de los empleados al migrar | U0, iniciado ya por su latencia |
 | Crear tablas antes de decidir el modelo de esquema | Dos historias de esquema divergentes | U2 bloquea toda unidad que cree tablas |
 | El equipo trabaja en la plataforma y la ingesta le borra el trabajo | Pérdida de trabajo real | U9 antes de que U7 esté en uso |
-| Un cliente radica y el ticket se duplica en SharePoint | Visible para PowerApps y para el cliente | U1 §2 antes de habilitar el portal |
+| Un cliente radica y el ticket se duplica en SharePoint | Visible para PowerApps y para el cliente | Reducido, no eliminado: el diseño del workflow ya no duplica (U1 §2, `sincronizacion-sharepoint.md` §4.2), pero sigue sin ejercitarse con un caso real — probarlo con el primer ticket real del portal antes de anunciarlo cerrado |
 | La autorización destructiva alcanza datos reales | Pérdida irrecuperable | `contexto-canonico.md` §1.3 delimita el alcance |
+| Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza | Entre esta decisión y que U2 construya ese servicio, no hay ninguna forma documentada de verificar comportamiento — ni local, ni por push | Construir U2 (baseline Prisma + servicio `migrate`) antes de apoyarse en "verificar por push" como si ya existiera |
+| `n8n/` tiene tres archivos sin commit: el consumidor real del outbox (mal nombrado, F5) y dos copias inactivas de la ingesta (`V2`, `V2.1`, cada una con `id` de workflow distinto — no son historial secuencial de una misma entidad) | Pérdida silenciosa del consumidor si alguien limpia la carpeta; confusión sobre cuál ingesta es la real si alguien activa la copia equivocada | Renombrar y commitear el consumidor ya; confirmar en la instancia viva de n8n cuál de las tres ingestas está `active` antes de borrar las otras dos — el archivo sin sufijo es el único con commit y el único `active: true` en su export, pero un export no es la instancia viva |
 
 ## 7. Commits relevantes
 
@@ -129,15 +152,27 @@ funcional de PowerApps.
 
 ## ACCIÓN INMEDIATA
 
-**U1 — responder las cinco preguntas de `estado/plan-ejecucion.md`, sin construir nada.**
+**U1 está cerrado.** Las cinco preguntas tienen respuesta y evidencia registrada en §4:
+167 personal activo, 2.559 tickets reales (contradicción con el baseline, explicada),
+outbox en cero filas, el workflow de salida existe y escribe su referencia legacy, hay
+cron de respaldo, no hay workflow de error.
 
-Dos consultas a la base (cobertura del directorio; estados, prioridades y outbox reales)
-y tres comprobaciones en la instancia de n8n (¿el workflow de salida escribe la
-referencia legacy?, ¿hay cron de respaldo?, ¿hay workflow de error?).
+**Antes de U2, una limpieza barata que U1 dejó al descubierto, no construcción de
+producto:**
 
-Se elige esta y no otra porque **es ejecutable hoy, sin depender de nadie, y sus cinco
-respuestas desbloquean cuatro decisiones distintas**. Cualquier construcción que empiece
-antes se apoya en supuestos.
+1. **Publicar este corte.** Sigue sin haber un solo commit desde el 03-sep-2026 —
+   pedido dos veces en esta misma conversación.
+2. **Renombrar y commitear el consumidor del outbox** (`n8n/REVISORIA - Inspeccion
+   SharePoint Vacaciones y Tareas V2.json` → un nombre que diga lo que hace) antes de
+   que alguien lo pierda pensando que es un archivo suelto de otro dominio (F5).
+3. **Confirmar en la instancia viva de n8n** cuál de las tres versiones de
+   `CORAJE - INCREMENTAL COMPLETO` está realmente activa hoy, y borrar las otras dos —
+   el archivo sin sufijo es el único commiteado y el único `active: true` en su
+   export, pero un export no prueba el estado de la instancia real.
+
+Ninguna de las tres construye producto ni compite con "una sola unidad a la vez": es
+higiene sobre lo que U1 ya encontró. **Después de esto, U2** (baseline de migraciones
+Prisma) es la siguiente unidad real de la cola.
 
 > **En paralelo, y no después: U0**, el levantamiento funcional de PowerApps. Su cuello
 > de botella es la disponibilidad de otras personas, no el trabajo, así que empezarlo
@@ -161,12 +196,22 @@ antes se apoya en supuestos.
 | Tipografía Lato, con pesos reales 400/500/600/700 | Ídem §2 | Decidida, no construida |
 | HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | Decidida, no construida |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
+| Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | Decidida, no construida — U2 hace el baseline |
+| Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | Decidida, no construida |
+| Se retira del runbook el ciclo de desarrollo local; la verificación funcional es siempre vía commit + push a lo desplegado | `estado/operacion.md` | Decidida, no construida — falta el servicio `migrate` que la sostenga (ver riesgo nuevo abajo) |
+| Convención de nombres del modelo Prisma: `PascalCase` con `@@map` a `snake_case`, igual que Impulsa (D1') | `contexto-canonico.md` §4 | Decidida, no construida — mapear cada tabla/columna de las tres schemas es trabajo mecánico de U2 |
+| Observadores (watchers de solo lectura) van en v1, a partir del prototipo `helpdesk_santi/` | `specs/tickets.md` §11, `specs/permisos.md` §10 | Decidida, no construida — depende del catálogo de personas/roles todavía `ABIERTO` |
+| Solicitud de validación dirigida a persona va en v1, distinta de la autorización excepcional | Ídem | Decidida, no construida — sin decidir aún si bloquea el avance del ticket |
+| U0 pregunta 1 (¿espera al cliente?): sí hace falta un estado, generalizado a `ESPERANDO_SOLICITANTE`; el SLA se **reinicia completo** al salir, no se pausa — riesgo aceptado explícitamente | `specs/tickets.md` §4, §5 | Decidida, no construida |
+| U0 pregunta 4: la excepción de `alexbolanos@rbcol.co` para `PROYECTOS Y TI` sigue vigente | `legacy/reglas-negocio-powerapps.md` §5, §13.5 | Confirmada por el usuario. Ya decidido normalizarla como fila de tabla, no como código quemado |
+| U0 pregunta 2: Jimena Tejeiro no tiene nada especial en su rol frente a Legal — es exactamente el mismo caso que Alex para Proyectos y TI, la responsable normal del área. Quitando la pantalla fusionada (interfaz, no se replica) y el puente a `TareasLegal` (aplazado), no queda ninguna regla de negocio distinta que conservar | `legacy/reglas-negocio-powerapps.md` §11 | Cerrada. Legal se enruta igual que cualquier otra área en la tabla de enrutamiento, sin comparación de identidad en el código |
+| U0 pregunta 5: no requiere ningún mecanismo de producto. Reportar y cerrar con las acciones realizadas es responsabilidad de quien resuelve o de quien radicó, no algo que la aplicación pueda detectar | — | Cerrada, sin acción de diseño |
+| Modelo de buzón compartido (F10): se construye una dimensión con vigencia en el tiempo, no una fusión hacia el ocupante actual. **Bajo ninguna circunstancia** los 155 tickets históricos quedan a nombre de Eilyn (la ocupante actual) — mientras no se recupere el nombre real de quien atendía el buzón en su momento, usan un marcador explícito de "responsable histórico no identificado" | `specs/tickets.md` §7.3 | Decidida (dirección), no construida — el diseño exacto (rangos de vigencia, convención del marcador) sigue sin resolver, ver §7.3 |
 
 ## Decisiones que faltan y bloquean
 
 | # | Decisión | Bloquea | Quién decide |
 |---|---|---|---|
-| D1 | Modelo de esquema: SQL a mano o migraciones Prisma | Toda tabla nueva | Usuario |
 | D2 | Qué ve un contacto: sus tickets o los de su empresa | El modelo de acceso externo | Usuario |
 | D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
 | D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
@@ -221,6 +266,40 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
 (alguien lo ejecutó contra base o navegador). Las coletillas `SIN EJERCITAR`,
 `SIN DESPLEGAR` y `SIN COMMIT` son parte del estado, no adorno.
 
-**Changelog:** 03-sep-2026 — línea base del handoff. Primer corte: conjunto documental
-completo escrito y evidencia legacy reubicada, sin una línea de código tocada y sin
-publicar.
+**Changelog:**
+- 03-sep-2026 — línea base del handoff. Primer corte: conjunto documental completo
+  escrito y evidencia legacy reubicada, sin una línea de código tocada y sin publicar.
+- 03-sep-2026 (mismo día) — se registran tres decisiones de usuario: D1 (migraciones
+  Prisma completas, se abandona SQL a mano), retiro del ciclo local del runbook, y
+  acotar `Consulta` por permiso. Se abre D1' (convención de nombres del modelo Prisma,
+  sin resolver) y un riesgo nuevo: la retirada del ciclo local antecede a que exista el
+  servicio `migrate` que la sostiene. Sigue sin haber una sola línea de código tocada.
+- 03-sep-2026 (mismo día) — D1' resuelta: `PascalCase` con `@@map` a `snake_case`,
+  igual que Impulsa. Confirmado el orden de implementación (U1+U0 antes que cualquier
+  construcción); prioridad declarada para cuando U2 empiece: el servicio `migrate`.
+- 03-sep-2026 (mismo día) — a partir del prototipo `helpdesk_santi/` (concepto, no
+  visual): se confirman Observadores y Solicitud de validación para v1
+  (`specs/tickets.md` §11, `specs/permisos.md` §10 y §3). U1 sigue bloqueado por falta
+  de acceso a Docker/VPS desde esta sesión; las cinco preguntas de U0 quedan
+  pendientes, sin delegar, respondidas con el tiempo.
+- 03-sep-2026 (mismo día) — se cierran cuatro de cinco preguntas de U0: nuevo estado
+  `ESPERANDO_SOLICITANTE` con SLA de reinicio completo (riesgo aceptado), Alex y Jimena
+  confirmados sin rol adicional, pregunta 5 cerrada sin acción de diseño. `permisos.md`
+  §6 pasa de `ABIERTO` a `RATIFICADO (parcial)`. Pregunta 3 sigue aplazada por decisión
+  previa. U1 sigue sin ejecutarse: sin Docker ni acceso a la VPS desde esta sesión.
+- 10-sep-2026 — las tres consultas SQL de U1 se ejecutan contra la VPS real (root, vía
+  `docker exec`), fuera de esta sesión. Resultados registrados en §4. Se nombra una
+  contradicción sin resolver: el conteo real de tickets (2.559) no coincide con el
+  baseline conciliado (2.313, `legacy/baseline-calidad.md`). Quedan sin responder las
+  dos preguntas de n8n — U1 sigue sin cerrar. Sigue sin publicarse ni un commit de todo
+  lo acumulado desde el 03-sep-2026.
+- 10-sep-2026 (mismo día) — **U1 cierra.** El usuario confirma la causa del conteo
+  (ingesta incremental sigue corriendo). Lectura directa de `n8n/` revuelve que el
+  consumidor del outbox **sí existe**, mal nombrado como
+  `REVISORIA - Inspeccion SharePoint Vacaciones y Tareas V2.json` y sin commit, y que su
+  código **sí escribe la referencia legacy** antes de marcar `SENT` — F4 cerrado en
+  diseño. Confirmado cron de respaldo (12h + requeue) y ausencia de workflow de error.
+  Se descubren dos copias inactivas y sin commit de la ingesta (`V2`, `V2.1`), cada una
+  con `id` de workflow propio. Nueva acción inmediata: publicar el corte, renombrar y
+  commitear el consumidor, y confirmar en n8n cuál ingesta sigue activa antes de U2.
+  Sigue sin publicarse un solo commit desde el 03-sep-2026.

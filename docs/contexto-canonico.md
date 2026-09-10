@@ -169,25 +169,45 @@ Detalle del mecanismo en `specs/sincronizacion-sharepoint.md`.
 - Una notificación, un enlace o una acción excepcional **no amplían la frontera** de
   clientes ni de tickets.
 
-## 4. Esquema y migraciones — **decisión pendiente declarada**
+## 4. Esquema y migraciones — **decisión tomada (03-sep-2026), pendiente de construir**
 
-Hoy el esquema se define en SQL escrito a mano (`sql/db/*.sql`), y
-`prisma/schema.prisma` es el resultado de `prisma db pull` sobre él. Impulsa hace lo
-contrario: el esquema se define en Prisma y las migraciones se versionan y se aplican
-con `migrate deploy` en el despliegue.
+Hasta este corte el esquema se definía en SQL escrito a mano (`sql/db/*.sql`), y
+`prisma/schema.prisma` era el resultado de `prisma db pull` sobre él.
 
-Los dos modelos son defendibles y **son incompatibles entre sí**. Consecuencias reales
-del modelo actual, no hipotéticas:
+**Decisión (D1, `estado/handoff.md`): se adopta el modelo de Impulsa completo.** El
+esquema se gestiona con migraciones Prisma, versionadas en el repositorio y aplicadas
+con `migrate deploy` al desplegar — igual que Impulsa. Se abandona el SQL a mano como
+fuente del esquema, **no solo para tablas nuevas**: adoptarlo a mitad de camino (Prisma
+para lo nuevo, SQL a mano para lo viejo) produciría dos historias de esquema que
+divergen en silencio, y eso queda expresamente descartado.
 
-- No hay historial de cambios de esquema versionado en el repositorio.
-- No hay forma automática de aplicar un cambio de esquema al desplegar.
-- El SQL a mano permite constraints que Prisma no modela bien —`CHECK`,
-  `UNIQUE NULLS NOT DISTINCT`, índices parciales— y el esquema **ya los usa**.
+**Lo que la decisión no resuelve por sí sola — trabajo real de U2, no detalle
+administrativo:**
 
-**Sin decidir.** Lo que no se admite es resolverlo a mitad de camino: adoptar
-migraciones Prisma para las tablas nuevas dejando las viejas en SQL a mano produce dos
-historias de esquema que divergen en silencio. La decisión se toma completa o no se
-toma. Ver `estado/handoff.md`.
+- **Baseline sobre la base viva.** La base ya tiene 2.313 tickets y 439 eventos reales
+  migrados. La primera migración Prisma no puede intentar recrear ese esquema desde
+  cero: se genera como baseline (`prisma migrate resolve --applied` sobre una migración
+  que refleja el estado actual) y a partir de ahí sí versiona cambios reales.
+- **Constraints que la sintaxis de `schema.prisma` no expresa nativamente** —`CHECK`,
+  `UNIQUE NULLS NOT DISTINCT`, índices parciales— y que el esquema **ya usa**. Prisma
+  migrate sigue siendo capaz de aplicarlos porque los archivos de migración son SQL
+  editable a mano, no solo lo generado desde el modelo; lo que hay que fijar es la
+  disciplina para que `prisma migrate dev`/`diff` no intente revertirlos por no
+  reconocerlos en el DSL. Sin esa disciplina escrita, el primer `migrate dev` de alguien
+  sin este contexto los borra.
+- **Separación de credenciales migración/runtime** (`estado/operacion.md`, riesgo
+  `F6`) — Impulsa nunca corre las migraciones con el mismo usuario que sirve tráfico;
+  HelpDesk hoy sí, y adoptar el patrón de despliegue de Impulsa sin corregir esto reduce
+  el beneficio de seguridad del cambio.
+
+**Sub-decisión D1' resuelta (03-sep-2026): `PascalCase` con `@@map` a `snake_case`,
+igual que Impulsa.** `@@map`/`@map` desacoplan el nombre del modelo Prisma del nombre
+físico de tabla/columna — las tres schemas (`staging`, `core`, `helpdesk`) conservan sus
+nombres `snake_case` reales, y `sql/elt/*.sql` no se ve afectado. Razón: consistencia de
+ergonomía TypeScript con Impulsa donde de verdad importa (portar servicios y
+repositorios adaptados de dominio sin fricción de renombrar cada campo). Costo real,
+no administrativo: mapear cada tabla y columna de las tres schemas es trabajo mecánico
+de U2, no un cambio de configuración.
 
 ## 5. Fronteras de herramientas
 

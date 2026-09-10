@@ -7,8 +7,10 @@ ESTADO:      no implementado — no existe autorización de ninguna clase en el 
 CORTE:       03-sep-2026
 EVIDENCIA:   ninguna sobre HelpDesk. El modelo se adopta de `plataforma-impulsa`,
              cuyo catálogo y autorizador sí están publicados y verificados por lectura
-BLOQUEO:     los roles reales dependen del levantamiento de PowerApps
-             (`specs/tickets.md` §2)
+BLOQUEO:     parcialmente levantado (03-sep-2026) — el usuario confirmó directamente,
+             sin levantamiento formal, que no hay rol adicional detrás de las dos
+             únicas excepciones hardcodeadas del legacy (§6). Sigue sin construirse la
+             columna de rol en el directorio (`specs/acceso-empleados.md` §7.1)
 ```
 
 **Autoridad:** este documento es propietario del gobierno de permisos. La identidad
@@ -56,6 +58,8 @@ Aplicado al ticket, y sujeto a §6:
 | Rechazar | Declara que no se atiende, con motivo |
 | Reabrir | Deshace un terminal |
 | Administrar accesos de clientes | Concede acceso externo |
+| Añadir/quitar observador (§10) | Da seguimiento sin dar responsabilidad de atender |
+| Solicitar validación (§10) | Pide confirmación a alguien más antes de seguir; **no** es autorización excepcional (§5) |
 
 > Los **reintentos técnicos son automáticos y durables**: no forman parte del catálogo
 > de acciones manuales. El worker reclama lo elegible y la interfaz informa estado,
@@ -91,7 +95,7 @@ Dos reglas que evitan que la excepción se vuelva rutina:
 - **La interfaz conserva lo escrito** mientras pide la justificación. Perder el trabajo
   por pedir un motivo enseña a evitar el motivo.
 
-## 6. `ABIERTO` Los roles reales
+## 6. `RATIFICADO (parcial)` Los roles reales
 
 Impulsa tiene Staff, Senior, Gerente, Socio y Admin, derivados de la estructura de una
 firma de auditoría. **No se importan.** Una mesa de ayuda tiene otra forma, y el
@@ -103,9 +107,25 @@ esquema actual insinúa —sin definir— al menos tres figuras:
 | `helpdesk.routing_rule.encargado_interno` | Alguien queda como responsable por tipo de requerimiento |
 | El módulo `/redireccion` completo | Alguien reparte lo que entra sin clasificar |
 
-Ninguno de los tres es un rol declarado: son columnas de texto y una ruta. **Los roles
-se derivan del levantamiento de PowerApps, no de estas pistas**, y hasta entonces
-cualquier matriz que se escriba aquí sería inventada.
+Ninguno de los tres es un rol declarado: son columnas de texto y una ruta.
+
+**Confirmado (03-sep-2026), sin levantamiento formal de PowerApps — directamente por el
+usuario.** El legacy solo se apartaba de la tabla de enrutamiento normal en dos casos
+(`legacy/reglas-negocio-powerapps.md` §5, §11): `alexbolanos@rbcol.co` para
+`PROYECTOS Y TI` y Jimena Tejeiro para `LEGAL`. Los dos siguen vigentes, y **ninguno
+tiene ningún poder adicional** sobre el que ya sugiere la segunda fila de la tabla:
+son la persona responsable de su área, nada más. No aprueban lo que otros no aprueban,
+no ven lo que otros no ven. **La segunda figura (`encargado_interno`) es, hasta donde
+hay evidencia, la única real.**
+
+> **Lo que esto confirma y lo que no.** Son los dos únicos casos que el código legacy
+> trataba distinto de las demás siete áreas —si alguna otra área tuviera una figura con
+> más poder, es razonable esperar que también hubiera necesitado su propio caso especial
+> en el código, y no se encontró ninguno más en la lectura completa de las nueve
+> pantallas. Aun así, esto **no descarta** que aparezca un matiz al construir (una
+> aprobación cruzada entre áreas, por ejemplo): confirma la ausencia de evidencia, no
+> una garantía exhaustiva. Si aparece algo así, se nombra explícitamente cuando ocurra,
+> no se asume ahora por analogía.
 
 > `RIESGO` `core.dim_personal` **no tiene columna de rol de aplicación** y se alimenta
 > desde SharePoint por el ELT. Ver `specs/acceso-empleados.md` §7.1: el mismo hueco
@@ -149,8 +169,45 @@ Sin implementación; la tabla queda escrita para la unidad que la construya.
 | V4 | La justificación se exige antes de ejecutar, no después | Orden de validación en el handler excepcional |
 | V5 | La auditoría registra los siete campos de §5 | Modelo y escritura |
 | V6 | La interfaz y el servicio comparten frontera de estados | Comparar condición de la vista con la del servicio |
+| V7 | Un observador no puede ejecutar ninguna acción del catálogo | Guard del servicio + prueba negativa |
+| V8 | Solicitar validación no exige la justificación obligatoria de §5 | Comparar los dos handlers |
+
+## 10. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
+
+```
+FUENTE:  prototipo funcional (`helpdesk_santi/`), confirmado por el usuario para v1
+         (03-sep-2026). Detalle funcional completo en `specs/tickets.md` §11 — este
+         documento solo fija lo que le corresponde: permiso y alcance.
+```
+
+- **Observador: alcance de solo lectura, sin permiso de acción.** Ve el ticket bajo la
+  misma regla de `visibilidad` que un agente interno (`specs/tickets.md` §6), pero el
+  catálogo de acciones (§3) no le concede ninguna entrada. Añadir/quitar observador es
+  una acción propia, sujeta al alcance ordinario de §4 (¿tiene permiso sobre el área o
+  cliente del ticket?), no un efecto secundario de otra acción.
+- **Solicitar validación no es autorización excepcional (§5) y no debe tratarse con su
+  mismo mecanismo.** No exige justificación obligatoria ni auditoría de excepción — es
+  un paso ordinario del catálogo, con su propio permiso. Confundir los dos mecanismos
+  al construir volvería trivial la excepción de §5: cualquier "pedir confirmación"
+  quedaría disfrazado de intervención administrativa.
+- **Ambas acciones comparten el mismo bloqueo que §6 ya declara `ABIERTO`.** Dirigir un
+  evento a "Jefe de área" o a "Administrador del sistema" —como hace el prototipo—
+  exige saber a qué persona real corresponde ese puesto hoy. Sin catálogo de
+  roles/puestos, la única alternativa honesta en v1 es dirigir observadores y
+  solicitudes de validación a personas reales de `core.dim_personal` elegidas una por
+  una, no a una etiqueta de rol. Formalizar el catálogo de puestos queda fuera de esta
+  decisión.
 
 **Changelog:** 03-sep-2026 — línea base. Adopta el modelo de autorizador ejecutable de
 Impulsa y la separación «quien prepara no expone» (§3); declara que los roles reales
 están bloqueados por el levantamiento de PowerApps y que no se importan los de Impulsa
 (§6).
+- 03-sep-2026 (mismo día) — añade dos acciones al catálogo (§3) y §10: Observadores y
+  solicitud de validación, confirmados para v1. Distingue explícitamente solicitud de
+  validación de la autorización excepcional (§5) para que no se construyan como el
+  mismo mecanismo.
+- 03-sep-2026 (mismo día) — §6 pasa de `ABIERTO` a `RATIFICADO (parcial)`: el usuario
+  confirma directamente, sin levantamiento formal de PowerApps, que las dos únicas
+  excepciones del legacy (Alex, Jimena) no cargan ningún rol adicional — son
+  `encargado_interno` de su área, sin más. Queda declarado qué tanto puede sostener esta
+  confirmación y qué no.

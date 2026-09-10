@@ -109,9 +109,9 @@ interna · SharePoint como sistema legacy en convivencia temporal.
 ## Comandos
 
 ```
-pnpm dev · pnpm build · pnpm lint
+pnpm build · pnpm lint
 pnpm exec tsc --noEmit
-pnpm exec prisma generate · pnpm exec prisma db pull · pnpm exec prisma studio
+pnpm exec prisma generate · pnpm exec prisma migrate deploy · pnpm exec prisma studio
 git status --short · git diff --check
 ```
 
@@ -121,9 +121,16 @@ Todos se ejecutan **dentro de `coraje-web/`**, no en la raíz del repositorio.
 > existe ninguna prueba automatizada en el repositorio. El typecheck se invoca por su
 > forma larga. Cuando se añada el primer test, este bloque cambia con él.
 
-A diferencia de Impulsa, aquí **sí hay ciclo local**: `docker-compose.yml` en la raíz
-levanta PostgreSQL y `pnpm dev` corre la aplicación contra él. Ver
-`docs/estado/operacion.md` para entornos, despliegue y el estado real del pipeline.
+**No hay ciclo local, por decisión explícita — verificar en local es pérdida de tiempo
+para esta app.** No se corre `pnpm dev`, no se levanta la aplicación en modo
+desarrollador, no se valida "en la máquina" nada que dependa de comportamiento en
+ejecución. **La verificación funcional es siempre vía commit y push** a lo desplegado —
+amend cuando aplique, nunca un commit nuevo para corregir trabajo aún sin publicar de
+esta misma unidad. `docker compose` de la raíz sigue disponible solo para chequeos
+estáticos (`tsc`, `lint`, `build`) antes de publicar. Ver `docs/estado/operacion.md`
+para el estado real de esta transición: la decisión ya se tomó, pero el servicio
+`migrate` que la sostiene todavía no existe (es objeto de U2 en
+`docs/estado/plan-ejecucion.md`).
 
 ## Fronteras de herramientas
 
@@ -133,8 +140,12 @@ levanta PostgreSQL y `pnpm dev` corre la aplicación contra él. Ver
   Un webhook de n8n que despierta un proceso no sustituye al registro en PostgreSQL que
   lo hizo elegible: si n8n está caído, el trabajo sigue pendiente y un cron de respaldo
   lo recoge.
-- **Prisma** es acceso a datos de la aplicación. Las transformaciones analíticas y de
-  migración van en SQL, en `sql/`.
+- **Prisma** es acceso a datos de la aplicación **y, desde el 03-sep-2026, también
+  dueño del esquema** (§ Nombres en el esquema): sus migraciones versionadas reemplazan
+  al SQL a mano como fuente del DDL. No confundir con las transformaciones **analíticas
+  y de migración de datos** del ELT (staging → core → helpdesk), que siguen viviendo en
+  SQL a mano dentro de `sql/elt/` — es un problema distinto de cómo se versiona el
+  esquema.
 - **SharePoint** es el sistema legacy. Sigue vivo **únicamente** porque la app de
   PowerApps lo consume. No es fuente de verdad para nada nuevo.
 - **Microsoft Entra ID** es el proveedor de identidad de los empleados. La aplicación
@@ -176,17 +187,24 @@ historial del chat.
 
 ### Nombres en el esquema
 
-El esquema vive en dos mundos y hay que saber en cuál se está:
+**Decisión tomada el 03-sep-2026 (`docs/contexto-canonico.md` §4, D1): el esquema se
+gestiona con migraciones Prisma, igual que Impulsa.** Se abandona SQL a mano como fuente
+del DDL. **Estado real: decidido, no construido** — hasta que `docs/estado/plan-ejecucion.md`
+U2 genere el baseline sobre la base viva, el esquema hoy sigue siendo el de siempre:
 
-- `sql/db/*.sql` y `sql/elt/*.sql` son SQL escrito a mano, en `snake_case`, con
-  esquemas `staging`, `core` y `helpdesk`. **Es la fuente del esquema hoy.**
-- `coraje-web/prisma/schema.prisma` es el resultado de `prisma db pull` sobre esa base,
-  así que sus modelos son `snake_case` y no llevan `@@map`.
+- `sql/db/*.sql` sigue siendo, por ahora, la fuente del esquema — en `snake_case`, con
+  esquemas `staging`, `core` y `helpdesk`. `sql/elt/*.sql` queda fuera de esta decisión:
+  son transformaciones de datos del ELT, no definición de esquema.
+- `coraje-web/prisma/schema.prisma` sigue siendo, por ahora, el resultado de
+  `prisma db pull` sobre esa base — modelos `snake_case`, sin `@@map`.
 
-Impulsa hace lo contrario: modelos `PascalCase` con `@@map` a `snake_case` y migraciones
-Prisma versionadas. **La divergencia está declarada como decisión pendiente**, no
-resuelta: ver `docs/contexto-canonico.md` §4 y `docs/estado/handoff.md`. No la resuelvas
-en silencio adoptando una convención a mitad del esquema.
+**D1' resuelta (03-sep-2026): `PascalCase` con `@@map` a `snake_case`, igual que
+Impulsa.** Las tablas físicas de `staging`, `core` y `helpdesk` no cambian de nombre —
+`@@map`/`@map` desacoplan el nombre del modelo Prisma del nombre físico, así que
+`sql/elt/*.sql` sigue leyendo las mismas columnas de siempre. Pendiente de construir en
+U2: mapear cada tabla y columna de las tres schemas. Hasta que U2 cierre, el
+`schema.prisma` real sigue siendo el `snake_case` sin mapear de hoy — no escribas código
+nuevo asumiendo la convención resuelta antes de que exista.
 
 ### Mensajes de commit
 

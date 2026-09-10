@@ -66,18 +66,27 @@ lo demás.
 > **Sin U0, el diseño del ciclo del ticket es diseño por analogía**, y las reglas reales
 > aparecen cuando los empleados se nieguen a migrar.
 
-### U2 · Decidir el modelo de esquema
+### U2 · Construir el baseline de migraciones Prisma
 
-**Objetivo:** resolver `contexto-canonico.md` §4 — SQL a mano frente a migraciones
-Prisma— de forma completa, no parcial.
+**Objetivo:** ya no es decidir — `contexto-canonico.md` §4 registra la decisión tomada
+(migraciones Prisma completas, se abandona SQL a mano). U2 es **construir** sobre esa
+decisión, no volver a discutirla.
 
-**Escenarios mínimos:** cómo se aplica un cambio de esquema al desplegar · cómo se
-representan los `CHECK`, `UNIQUE NULLS NOT DISTINCT` e índices parciales que el esquema
-ya usa · qué pasa con las 2.313 filas existentes · si se adopta baseline de migraciones
-sobre la base viva.
+**Escenarios mínimos:** aplicar D1' ya resuelta (`PascalCase`+`@@map` a `snake_case`,
+igual que Impulsa) mapeando cada tabla y columna de las tres schemas · generar el
+baseline (`prisma migrate resolve --applied`) sobre la base viva sin recrear el esquema
+existente · fijar la disciplina
+para que `CHECK`, `UNIQUE NULLS NOT DISTINCT` e índices parciales sobrevivan a
+`migrate dev`/`diff` sin que alguien sin contexto los borre · separar credenciales de
+migración y de runtime (cierra `F6`) · construir el servicio `migrate` de un disparo en
+el compose, gateando el arranque de `web` como en Impulsa.
 
-**Cierre:** decisión escrita en `contexto-canonico.md` §4, con su consecuencia declarada.
-**Bloquea toda unidad que cree tablas.**
+**Cierre:** baseline aplicado y verificado contra la base real (2.313 tickets, 439
+eventos intactos) · servicio `migrate` funcionando en un despliegue real · credenciales
+separadas · decisión D1' registrada. **Bloquea toda unidad que cree tablas, y bloquea
+además que "commit + push" sea un método de verificación real** (sin el servicio
+`migrate`, no hay ciclo local y tampoco hay gate de despliegue — ver riesgo en
+`estado/handoff.md` §6).
 
 ### U3 · Identidad de empleados
 
@@ -174,6 +183,14 @@ plan: **una sola unidad inmediata a la vez**, con su puerta de salida registrada
 la única excepción declarada, por tener latencia humana en lugar de trabajo. **No
 convertir recomendaciones futuras en una lista implícita de tareas.**
 
-**Changelog:** 03-sep-2026 — línea base. La cola se ordena por bloqueo, no por valor
-percibido: las dos primeras unidades no construyen nada porque casi todo lo demás está
-bloqueado por hechos que no se conocen.
+**Changelog:**
+- 03-sep-2026 — línea base. La cola se ordena por bloqueo, no por valor percibido: las
+  dos primeras unidades no construyen nada porque casi todo lo demás está bloqueado por
+  hechos que no se conocen.
+- 03-sep-2026 (mismo día) — U2 deja de ser "decidir el modelo de esquema" y pasa a ser
+  "construir el baseline de migraciones Prisma": la decisión ya se tomó
+  (`contexto-canonico.md` §4, D1). Añade D1' (convención de nombres) como escenario
+  mínimo nuevo, sin resolver.
+- 03-sep-2026 (mismo día) — D1' resuelta: `PascalCase`+`@@map` a `snake_case`, igual que
+  Impulsa. El escenario mínimo de U2 pasa de "decidir" a "aplicar" ese mapeo sobre las
+  tres schemas.

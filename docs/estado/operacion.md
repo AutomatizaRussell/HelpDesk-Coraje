@@ -25,24 +25,25 @@ Cambia solo cuando cambia la infraestructura.
 | Despliegue | Coolify, red externa `coolify`; la app se une además a `coraje_net` |
 | n8n | **Fuera de este repositorio.** No aparece en ningún compose de aquí |
 
-> A diferencia de Impulsa, **aquí sí existe ciclo local**: `docker compose up -d` levanta
-> PostgreSQL y `pnpm dev` corre la aplicación contra él. Es una diferencia real entre los
-> dos proyectos y conviene no importar por inercia la disciplina de «todo se valida en
-> staging».
-
-## Ciclo de desarrollo local
-
-```bash
-docker compose up -d                      # desde la raíz: solo PostgreSQL
-cd coraje-web
-pnpm install
-pnpm exec prisma generate
-pnpm dev
-```
+> **Se retira el ciclo local (decisión 03-sep-2026).** Hasta este corte existía un ciclo
+> real de `docker compose up -d` + `pnpm dev` contra PostgreSQL local, deliberadamente
+> distinto de Impulsa. Se decidió abandonarlo: verificar en local es pérdida de tiempo
+> para esta app. **La verificación funcional pasa a ser siempre vía commit + push** a lo
+> desplegado (amend cuando aplique). `docker compose` de la raíz puede seguir usándose
+> para chequeos estáticos antes de publicar, pero **ningún comportamiento se da por
+> válido hasta verse desplegado**.
+>
+> **`RIESGO` transición sin cerrar.** Esta decisión presupone el servicio `migrate` de
+> un disparo (ver más abajo) que gatee el arranque de `web` en cada despliegue, igual
+> que en Impulsa. Ese servicio **todavía no existe** — es objeto de U2. Hasta que se
+> construya, no hay ciclo local ni gate de despliegue: no hay ninguna forma documentada
+> de verificar comportamiento real. No tratar "commit + push" como método de
+> verificación ya operativo antes de que U2 cierre.
 
 Verificación estática antes de publicar:
 
 ```bash
+cd coraje-web
 pnpm exec tsc --noEmit
 pnpm lint
 pnpm build
@@ -54,28 +55,31 @@ git diff --check
 
 ## Esquema de la base
 
-El esquema **no se gestiona con migraciones de Prisma**. Se define en SQL a mano y se
-aplica en orden:
+**Decisión 03-sep-2026 (`contexto-canonico.md` §4, D1): el esquema se gestiona con
+migraciones Prisma**, versionadas en el repositorio y aplicadas con `migrate deploy` al
+desplegar — igual que Impulsa. Se abandona SQL a mano como fuente del esquema.
+
+**Estado real de este corte: decidido, no construido.** Hoy el esquema sigue siendo SQL
+a mano, aplicado en orden manual:
 
 ```
 sql/db/00_extensions.sql → 01_schemas → 02_functions → 03_staging
    → 04_core → 05_helpdesk_dimensions → 06_helpdesk_facts → 07_seed → 08_helpers
-sql/elt/*.sql        → transformaciones, se ejecutan por el pipeline
+sql/elt/*.sql        → transformaciones del pipeline SharePoint → PostgreSQL. Quedan
+                        fuera de esta decisión: siguen siendo SQL a mano — es un
+                        problema distinto de cómo se versiona el DDL del esquema
 sql/checks/*.sql     → verificaciones de desarrollo
 ```
 
-Después de cualquier cambio de esquema:
+hasta que U2 (`estado/plan-ejecucion.md`) construya el baseline de migración Prisma
+sobre la base viva (2.313 tickets, 439 eventos reales — no se recrea el esquema desde
+cero) y fije cómo sobreviven a `migrate dev`/`diff` los `CHECK`, `UNIQUE NULLS NOT
+DISTINCT` e índices parciales que el esquema ya usa, sin que alguien sin este contexto
+los borre por no reconocerlos en el DSL de `schema.prisma`.
 
-```bash
-cd coraje-web
-pnpm exec prisma db pull      # reintrospecta
-pnpm exec prisma generate     # regenera el cliente
-```
-
-> **`RIESGO`** No hay historial versionado de cambios de esquema ni aplicación
-> automática al desplegar. Un cambio aplicado a mano en un entorno y no en otro **no
-> deja rastro**. Es la contrapartida del modelo actual, y es parte de la decisión
-> pendiente de `contexto-canonico.md` §4.
+> **`RIESGO` vigente mientras dure la transición.** Hasta que U2 cierre, sigue sin haber
+> historial versionado de cambios de esquema ni aplicación automática al desplegar. Un
+> cambio aplicado a mano en un entorno y no en otro **no deja rastro**.
 
 ## Despliegue
 
@@ -84,13 +88,14 @@ pnpm exec prisma generate     # regenera el cliente
 `coraje_net` para alcanzar PostgreSQL.
 
 Diferencias con Impulsa que conviene conocer antes de copiar cualquier procedimiento
-suyo:
+suyo. Las dos primeras filas dejaron de ser diferencia de fondo — están **decididas
+igual que Impulsa**, solo falta construirlas (U2):
 
 | | Impulsa | HelpDesk |
 |---|---|---|
-| Servicio de migración | `migrate` de un disparo, la app espera a que termine bien | **No existe** |
-| Credenciales de base | Separadas: migración y runtime | **Una sola** |
-| Worker de reintentos | Servicio propio, con `read_only` y `cap_drop: ALL` | **No existe** |
+| Servicio de migración | `migrate` de un disparo, la app espera a que termine bien | **Decidido igual, no construido** — objeto de U2 |
+| Credenciales de base | Separadas: migración y runtime | **Decidido igual, no construido** — cierra `F6` |
+| Worker de reintentos | Servicio propio, con `read_only` y `cap_drop: ALL` | **No existe** — HelpDesk no tiene worker: no hay proceso permanente que lo justifique (`CLAUDE.md`, economía de recursos) |
 | Endurecimiento de contenedores | `read_only`, `no-new-privileges`, `cap_drop` | **No aplicado** |
 
 > **`RIESGO` Una sola credencial de base.** La aplicación se conecta con el mismo
@@ -117,10 +122,26 @@ suyo:
 
 - Los workflows viven en `n8n/`. **No se parchean**: los cambios funcionales se versionan
   por bloques.
-- Hoy `n8n/` contiene **solo el workflow de ingesta**. El que consume el outbox no está
-  versionado (`specs/sincronizacion-sharepoint.md` §2.2).
-- Un workflow sin manejo de error es una falla silenciosa programada. **No consta que
-  exista workflow de error configurado.**
+- `git ls-files n8n/` solo lista **un** archivo commiteado: el workflow de ingesta
+  (`CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`). Los otros tres que
+  hoy están físicamente en la carpeta son `??` — nunca se hizo `git add` de ninguno:
+  - `REVISORIA - Inspeccion SharePoint Vacaciones y Tareas V2.json` **es el consumidor
+    del outbox**, pese a lo que dice su nombre — verificado leyendo sus nodos y sus
+    queries (`specs/sincronizacion-sharepoint.md` §2.2, §4.2). Su nombre no refleja su
+    función en absoluto: probablemente viene de duplicar o reciclar un workflow real de
+    otro dominio (inspección de vacaciones/tareas de Revisoría) sin renombrarlo antes de
+    exportar. **Renombrar y commitear antes de que alguien lo borre creyendo que es
+    basura de otro proyecto.**
+  - `CORAJE - INCREMENTAL COMPLETO V2 - SharePoint to PostgreSQL.json` y
+    `...V2.1...json` son **copias inactivas** de la ingesta (`active: false` en su
+    export, cada una con un `id` de workflow de n8n distinto entre sí y del archivo
+    commiteado — no es historial secuencial de una sola entidad, son duplicados
+    separados). El archivo commiteado es el único `active: true` en su export. Un
+    export no es la instancia viva: **confirmar en n8n cuál está realmente activa antes
+    de borrar las otras dos.**
+- Un workflow sin manejo de error es una falla silenciosa programada. **Confirmado
+  ausente** (10-sep-2026): no hay `errorWorkflow` en la configuración exportada del
+  consumidor, y el usuario lo corroboró directamente.
 
 ## Cuidados sobre infraestructura compartida
 
@@ -140,6 +161,14 @@ reversible y fallar de forma explícita cuando falte una dependencia.
 
 ---
 
-**Changelog:** 03-sep-2026 — línea base. Registra el ciclo local real, el modelo de
-esquema en SQL a mano, las cuatro diferencias de despliegue con Impulsa, la credencial
-única de base y las tres variables de entorno no declaradas en `.env.example`.
+**Changelog:**
+- 03-sep-2026 — línea base. Registra el ciclo local real, el modelo de esquema en SQL a
+  mano, las cuatro diferencias de despliegue con Impulsa, la credencial única de base y
+  las tres variables de entorno no declaradas en `.env.example`.
+- 03-sep-2026 (mismo día, misma unidad) — decisión de usuario: se retira el ciclo local
+  y se adoptan migraciones Prisma completas (`contexto-canonico.md` §4, D1). Ambas
+  decididas, ninguna construida; U2 las ejecuta.
+- 10-sep-2026 — cierre de U1. Se descubre que `n8n/` tiene tres archivos sin commit: el
+  consumidor real del outbox, mal nombrado (`REVISORIA - Inspeccion SharePoint
+  Vacaciones y Tareas V2.json`), y dos copias inactivas de la ingesta (`V2`, `V2.1`).
+  Confirmado: no hay workflow de error en n8n.
