@@ -1,42 +1,50 @@
 # Handoff técnico
 
 ```
-CORTE:   10-sep-2026 (corte 3, CERRADO)
-HEAD:    esta unidad, publicada encima de `e8918e6` en tres commits (`e3b95a1`,
-         `6fb3bd5`, y el que cierra este corte). Ver §7
+CORTE:   10-sep-2026 (corte 4)
+HEAD:    cambios locales sobre `134663a`, sin commit todavía — ver §7 tras publicarlos
 RAMA:    main
-UNIDAD:  EJECUTAR LA INGESTA CORREGIDA CONTRA LA BASE REAL. Construye lo que el corte 2
-         dejó diseñado pero sin construir — el modelo de buzón compartido (F10) — lo
-         aplica contra la VPS real y **lo ejercita de punta a punta con éxito por
-         primera vez**. `codigo_area` resultó ya existir en la base viva (contradicción
-         nombrada, no bloqueante). El primer intento de ejecución en n8n repitió el
-         mismo error porque el usuario había publicado la copia del workflow sin el fix
-         (confusión entre dos archivos llamados "2.1", ver F11); tras reimportar el
-         archivo correcto (commit `e3b95a1`), la ingesta corrió completa: 2.559 → 2.825
-         tickets (+266 nuevos), 155 → 165 tickets del buzón compartido (+10), todos
-         atribuidos al marcador histórico, ninguno a la ocupante actual — la regla dura
-         se cumple también sobre datos nuevos, no solo sobre los 155 ya conocidos.
+UNIDAD:  RECONCILIAR F11. El usuario decide: ante la divergencia de clasificación de
+         `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy entre el archivo del
+         repositorio y la copia embebida en n8n, gana n8n — es la que corre en
+         producción y la que ya clasificó los 2.825 tickets ingeridos hasta hoy.
+         **Hallazgo al reconciliar, más grave que lo que F11 describía:** la versión
+         del repositorio no era "menos completa" que la de n8n — no funcionaba en
+         absoluto. `core.norm_text()` devuelve siempre minúsculas
+         (`sql/db/02_functions.sql`), pero todas las ramas `WHEN` del bloque de
+         reclasificación comparaban contra literales en MAYÚSCULAS
+         (`'ADMINISTRACION'`, `'PROYECTOS Y TI'`, `'AUTOMATIZACION'`...). Ninguna podía
+         coincidir jamás: el bloque entero caía siempre al `ELSE` sin reclasificar, y
+         cualquier ticket legacy de ADMINISTRACIÓN/AUTOMATIZACIÓN-TI o de
+         REVISORÍA/IMPUESTOS habría quedado sin `id_tipo_req` resuelto contra el
+         catálogo si ese archivo —y no la copia de n8n— fuera el que ejecuta. La copia
+         de n8n usa minúsculas y por eso sí funciona.
 CAMBIOS DE ESTA UNIDAD:
-         - `sql/db/04_core.sql`: columna `es_responsable_historico_no_identificado` +
-           índice único parcial en `core.dim_personal`.
-         - `sql/elt/04_transform_personal_historico.sql`: marca la columna en `TRUE`
-           para toda fila que infiere.
-         - `sql/elt/06_transform_ticket.sql`: valida buzones compartidos sin marcador
-           único (aborta si los encuentra) y resuelve `sol`/`asig` con
-           `LEFT JOIN LATERAL` priorizando la fila histórica en vez del `LEFT JOIN`
-           directo que producía el `ON CONFLICT ... cannot affect row a second time`.
-         - `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`: mismo
-           fix aplicado a la copia embebida (el workflow no lee los `.sql` del
-           repositorio, trae su propia copia del texto de cada query) — hallazgo F11.
-         - `docs/specs/tickets.md` §7.3, `docs/estado/operacion.md` (regla dura de no
-           acceso directo a la VPS; valores reales de conexión en vez de placeholders).
-         - **Aplicado y ejercitado contra la VPS real** (10-sep-2026, por el usuario,
-           manualmente): `ALTER TABLE`/`UPDATE`/`CREATE INDEX` sobre `core.dim_personal`,
-           reimportación del workflow a n8n, ejecución completa de la ingesta.
+         - `sql/elt/06_transform_ticket.sql`: el bloque `LEFT JOIN LATERAL ... tipo_legacy`
+           se reemplaza por la lógica de n8n (mismas ramas, mismo orden de precedencia,
+           literales en minúsculas), con el comentario `Casos detectados` ampliado a los
+           dos casos nuevos (tipo ya `PROYECTOS Y TI`, repartido entre AUTOMATIZACIÓN/TI
+           según categoría 2). No se tocó la copia de n8n — ya tenía la lógica correcta,
+           y no hace falta reimportar nada a la instancia viva.
+         - Sin cambios de esquema, sin ejecución contra la VPS: es una reconciliación de
+           código y documentación, no un cambio de comportamiento en producción.
+CAMBIOS SIN CERRAR:
+         - F12 (§5): investigado por lectura de código y `git log` — la hipótesis más
+           probable es que el comentario de n8n sobre `codigo_ticket` describe un diseño
+           nunca construido, no una base viva distinta a lo committeado. Falta la
+           confirmación con la consulta de solo lectura que trae §5 para cerrarlo del
+           todo. Hallazgo colateral real: `codigo_ticket` usa la fecha del servidor al
+           momento del `INSERT`, no `fecha_creacion` del ticket — todo ticket legacy
+           migrado quedó con el año de su corrida de ingesta, no su año histórico real.
+         - D8 (`Decisiones tomadas y NO implementadas`): decidida — diferida
+           deliberadamente. No se construye que n8n lea `sql/elt/` de GitHub mientras no
+           haya nada más construido; la mitigación mientras tanto es disciplina de
+           reimport manual, ya documentada en §6.
 STAGING: no aplica. No hay entorno de pruebas declarado para este proyecto
-LINT:    no ejecutado sobre `coraje-web/`. Se tocó SQL y workflows de n8n, no
-         TypeScript. No hay build ni typecheck que verifique SQL o JSON de n8n — la
-         validación real fue la ejecución contra la VPS y n8n, con evidencia en §4
+LINT:    no ejecutado sobre `coraje-web/`. Se tocó solo SQL, no TypeScript. La
+         validación de esta unidad es lectura y comparación de código
+         (`sql/elt/06_transform_ticket.sql` vs. el nodo de n8n vs. `sql/db/*.sql`), no
+         ejecución — no hace falta, porque nada de lo que corre en producción cambia
 ```
 
 > **Corrección al propio documento:** este es el primer corte. No hay unidades previas
@@ -167,12 +175,39 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | F3 | El ELT sobrescribe todos los campos con SharePoint y pierde la procedencia del portal | **Alta** | `specs/sincronizacion-sharepoint.md` §4.1 |
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
 | ~~F10~~ | ~~`core.dim_personal` tenía dos filas con el mismo `correo_corporativo`~~ — **cerrado 10-sep-2026, con ejecución real.** `recepcion.gct@rbcol.co` tenía `ccb2a1de...` (activa) y `ef1e69e7...` (fantasma). Esquema aplicado (`es_responsable_historico_no_identificado`, índice único parcial) y la ingesta corrió de punta a punta sin error: 2.559 → 2.825 tickets, 155 → 165 atribuidos al marcador histórico, ninguno a la ocupante actual (§4). El primer intento falló porque n8n tenía publicada la copia sin el fix (confusión de nombres, ver F11) — resuelto reimportando el archivo correcto | ~~Alta~~ | `core.dim_personal`; `specs/tickets.md` §7.3 |
-| F11 | `sql/elt/06_transform_ticket.sql` (el archivo del repositorio) y el nodo `PG - Transform 06 Tickets Legacy` del workflow de n8n **tienen lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy** — descubierto al extraer la query embebida del workflow para aplicarle el fix de F10. La versión de n8n resuelve más casos reales (p. ej. tickets que ya traen `PROYECTOS Y TI` como tipo, o que necesitan repartirse entre `AUTOMATIZACION`/`TI` según `categoria_2`); la versión del archivo `.sql` solo cubre el caso simple `AUTOMATIZACION`/`TI` → `PROYECTOS Y TI`. El archivo `.sql` es, en la práctica, **el que se ejecutó manualmente para diagnosticar F10** (según el corte 2) — no el que corre en n8n. No se sabe si la versión de n8n se refinó directamente ahí sin volcarse nunca al repositorio, o si es al revés. **No se resolvió en esta unidad** (fuera de alcance de F10: exige decidir cuál lógica es la correcta y por qué divergieron, no solo copiar una sobre la otra) — ver `operacion.md` para el patrón ya documentado de que n8n trae su propia copia de cada query y no lee `sql/elt/` | Media — no bloquea hoy, pero el archivo `.sql` no es fuente de verdad fiable para esta transformación específica | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
+| ~~F11~~ | ~~`sql/elt/06_transform_ticket.sql` y el nodo `PG - Transform 06 Tickets Legacy` de n8n tenían lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy~~ — **cerrado 10-sep-2026 (corte 4), decisión del usuario: gana n8n.** Reconciliado: el bloque del repositorio se reemplaza por la lógica de n8n. Hallazgo real, más grave que la descripción original: la versión del repositorio no "cubría menos casos" — no cubría ninguno. Comparaba contra literales en MAYÚSCULAS que `core.norm_text()` (siempre minúsculas) nunca podía igualar, así que el bloque completo caía al `ELSE` en cualquier ejecución sobre ese archivo. La copia de n8n, la única que corre en producción, usa minúsculas y es la que clasificó correctamente los 2.825 tickets ingeridos hasta hoy. Sin cambio de comportamiento en producción — n8n ya tenía la versión correcta | ~~Media~~ | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
+| F12 | **Investigado (10-sep-2026), sin cerrar — falta confirmar contra la base real.** El comentario de la copia de n8n sobre `codigo_ticket` dice "el trigger usa `id_area_destino` y el año de `fecha_creacion`" y pide `next_codigo_ticket(id_area, fecha_creacion)` (dos argumentos). `git log -p` sobre `sql/db/02_functions.sql` muestra que la función existe desde `ac57875` (línea base del repositorio) **siempre con cero argumentos** — nunca hubo, en ningún commit, una versión de dos argumentos que luego se haya revertido. No existe ningún `CREATE TRIGGER` en todo `sql/`. Lectura más probable: es documentación de un diseño que alguien redactó y nunca implementó, no evidencia de una base viva distinta a lo committeado — a diferencia de `codigo_area` (corte 3, §7.1), donde sí hubo una contradicción confirmada por ejecución real. **Hallazgo colateral, real y verificado por lectura de código:** `next_codigo_ticket()` usa `EXTRACT(YEAR FROM CURRENT_DATE)` — la fecha del servidor en el momento del `INSERT`, no `fecha_creacion` del ticket. Como el `INSERT` de `06_transform_ticket.sql` nunca incluye `codigo_ticket` en la lista de columnas (ni en el `INSERT` ni en el `DO UPDATE`), cada ticket legacy recibe su código una sola vez, con el año en que corrió la ingesta que lo creó — no el año real en que el ticket se abrió en SharePoint. Es probablemente el motivo real detrás del comentario de n8n (alguien notó que el año no coincide con la historia real y esbozó una corrección que no llegó a construirse). No es necesariamente un defecto: `legacy_id_req` ya preserva el identificador histórico exacto, y `codigo_ticket` se documenta como identificador operativo nuevo, no como preservación de historia — pero el ejemplo del propio esquema (`HD-2026-000001`) sugiere una lectura de "año real" que hoy no se cumple para ningún ticket migrado. Verificación pendiente contra la base real (comando abajo) para descartar del todo la hipótesis de un trigger vivo no committeado | Baja — sin impacto funcional confirmado, y la hipótesis más probable es documentación obsoleta, no drift de esquema | `n8n/CORAJE - INCREMENTAL COMPLETO...json` (nodo `PG - Transform 06 Tickets Legacy`) vs. `sql/db/02_functions.sql`, `sql/db/06_helpdesk_facts.sql`; historia completa en `git log -p -- sql/db/02_functions.sql` |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
+
+> **F12 — verificación pendiente contra la base real.** La investigación documental
+> (git log, ausencia de `CREATE TRIGGER` en `sql/`) apunta a que el comentario de n8n es
+> documentación obsoleta de un diseño nunca construido, no evidencia de una base viva
+> distinta a lo committeado. Para descartarlo con certeza en vez de por inferencia,
+> correr en la VPS (solo lectura, no modifica nada):
+>
+> ```bash
+> docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+> SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS argumentos
+> FROM pg_proc p
+> JOIN pg_namespace n ON n.oid = p.pronamespace
+> WHERE n.nspname = 'helpdesk' AND p.proname = 'next_codigo_ticket';
+>
+> SELECT tgname, tgenabled
+> FROM pg_trigger
+> WHERE tgrelid = 'helpdesk.fact_ticket'::regclass
+>   AND NOT tgisinternal;
+> "
+> ```
+>
+> Si la primera consulta devuelve `argumentos` vacío y la segunda devuelve cero filas,
+> F12 cierra confirmando la hipótesis (comentario obsoleto, sin acción). Si devuelve
+> algo distinto, hay un mecanismo en la base viva que nunca se volcó a `sql/db/` —
+> mismo patrón que `codigo_area`, y esta vez con impacto funcional real en cómo se
+> genera `codigo_ticket`.
 
 ## 6. Riesgos abiertos
 
@@ -205,16 +240,16 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 ---
 
-**Esta unidad está CERRADA (10-sep-2026).** Los cuatro pasos originales y el residuo de
+**El corte 3 quedó CERRADO (10-sep-2026).** Los cuatro pasos originales y el residuo de
 n8n (consumidor del outbox activo, `V2`/`V2.1` borradas) quedaron confirmados por el
-usuario, con evidencia real en cada uno — ver §4 y §5. **La acción inmediata pasa a
-U2 · Construir el baseline de migraciones Prisma** (`plan-ejecucion.md`), declarado
-explícitamente por el usuario para una sesión nueva — no se ejecuta en la que cierra
-esta unidad. Antes de empezar U2: leer `plan-ejecucion.md` completo (fija escenarios
-mínimos y condición de cierre) y `contexto-canonico.md` §4 (D1/D1', la decisión que U2
-construye). F11 (divergencia de `tipo_requerimiento` legacy entre el archivo del
-repositorio y la copia de n8n, ver más abajo) sigue abierto y no bloquea U2 — es
-independiente, y su propia unidad puede ir después o en paralelo si el usuario lo pide.
+usuario, con evidencia real en cada uno — ver §4 y §5. **El corte 4 (esta unidad)
+reconcilia F11** a pedido explícito del usuario, en paralelo a U2 tal como el corte 3 lo
+dejó habilitado — no es una desviación de la cabeza de la cola. **La acción inmediata
+sigue siendo U2 · Construir el baseline de migraciones Prisma** (`plan-ejecucion.md`).
+Antes de empezarlo: leer `plan-ejecucion.md` completo (fija escenarios mínimos y
+condición de cierre) y `contexto-canonico.md` §4 (D1/D1', la decisión que U2 construye).
+F11 queda cerrado (§5); quedan abiertos, sin fecha asignada, F12 y D8, ninguno de los
+dos bloqueante.
 
 Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
 efectivamente se corrió contra la base real — no son pasos pendientes.
@@ -325,12 +360,11 @@ WHERE id_asignado IN (
 "
 ```
 
-> **F11, nuevo en esta unidad, deliberadamente sin resolver aquí:** la lógica de
-> clasificación de `tipo_requerimiento` legacy diverge entre `sql/elt/06_transform_
-> ticket.sql` y la copia embebida en n8n — la de n8n cubre más casos reales. No se
-> reconcilió porque es un problema distinto de F10 y merece su propia unidad: decidir
-> cuál versión es la correcta y por qué divergieron, no copiar una sobre la otra a
-> ciegas.
+> **F11 (descubierto en el corte 3): cerrado en el corte 4.** La lógica de clasificación
+> de `tipo_requerimiento` legacy divergía entre `sql/elt/06_transform_ticket.sql` y la
+> copia embebida en n8n. Reconciliado con la lógica de n8n, por decisión del usuario —
+> ver §5 para el detalle completo, incluido el hallazgo de que la versión del
+> repositorio no funcionaba en absoluto (bug de mayúsculas contra `core.norm_text()`).
 
 > **En paralelo, y no después: U0**, el levantamiento funcional de PowerApps. Su cuello
 > de botella es la disponibilidad de otras personas, no el trabajo, así que empezarlo
@@ -357,6 +391,7 @@ WHERE id_asignado IN (
 | Convención de nombres del modelo Prisma: `PascalCase` con `@@map` a `snake_case`, igual que Impulsa (D1') | `contexto-canonico.md` §4 | Decidida, no construida — mapear cada tabla/columna de las tres schemas es trabajo mecánico de U2 |
 | Observadores (watchers de solo lectura) van en v1, a partir del prototipo `helpdesk_santi/` | `specs/tickets.md` §11, `specs/permisos.md` §10 | Decidida, no construida — depende del catálogo de personas/roles todavía `ABIERTO` |
 | Solicitud de validación dirigida a persona va en v1, distinta de la autorización excepcional | Ídem | Decidida, no construida — sin decidir aún si bloquea el avance del ticket |
+| D8: `sql/elt/*.sql` sigue existiendo como texto de referencia legible, sin que n8n lo lea — no se construye ahora un mecanismo para que n8n consuma el archivo del repositorio (p. ej. leerlo de GitHub) en vez de su copia embebida | `docs/estado/handoff.md` §5 (F11, F12), §6 (riesgo de divergencia) | **Diferida deliberadamente (10-sep-2026):** no vale la pena esa robustez con nada más construido todavía (sin auth, sin ciclo de vida del ticket). Mitigación mientras tanto: disciplina de proceso, no de infraestructura — confirmar explícitamente el reimport a n8n en cada cambio a un archivo que un nodo embeba (regla ya en §6). Condición de revisión: si la divergencia entre `sql/elt/` y n8n se repite una tercera vez, o al llegar al final de la cola de `plan-ejecucion.md` |
 | U0 pregunta 1 (¿espera al cliente?): sí hace falta un estado, generalizado a `ESPERANDO_SOLICITANTE`; el SLA se **reinicia completo** al salir, no se pausa — riesgo aceptado explícitamente | `specs/tickets.md` §4, §5 | Decidida, no construida |
 | U0 pregunta 4: la excepción de `alexbolanos@rbcol.co` para `PROYECTOS Y TI` sigue vigente | `legacy/reglas-negocio-powerapps.md` §5, §13.5 | Confirmada por el usuario. Ya decidido normalizarla como fila de tabla, no como código quemado |
 | U0 pregunta 2: Jimena Tejeiro no tiene nada especial en su rol frente a Legal — es exactamente el mismo caso que Alex para Proyectos y TI, la responsable normal del área. Quitando la pantalla fusionada (interfaz, no se replica) y el puente a `TareasLegal` (aplazado), no queda ninguna regla de negocio distinta que conservar | `legacy/reglas-negocio-powerapps.md` §11 | Cerrada. Legal se enruta igual que cualquier otra área en la tabla de enrutamiento, sin comparación de identidad en el código |
@@ -507,3 +542,30 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   servidor y de n8n. **Unidad cerrada.** Declara explícitamente que U2 (baseline de
   migraciones Prisma) es la siguiente, en una sesión nueva — no una continuación
   inmediata. F11 queda registrado, abierto, sin fecha asignada.
+- 10-sep-2026 (corte 4, sesión nueva) — el usuario abre la sesión declarando ir con U2
+  pero resuelve primero F11, en paralelo, tal como el corte 3 lo dejó habilitado:
+  decide que gana la lógica de n8n. Al reconciliar aparece que la versión del
+  repositorio no era una cobertura parcial del mismo problema — era código muerto por
+  un bug de mayúsculas contra `core.norm_text()` (siempre minúsculas), así que nunca
+  reclasificó un solo ticket legacy si alguna vez se hubiera ejecutado en vez de la
+  copia de n8n. Se reconcilia `sql/elt/06_transform_ticket.sql` con la lógica de n8n,
+  sin tocar la copia de n8n (ya correcta) ni la base real. Aparece un segundo hallazgo,
+  sin resolver (F12): el comentario de n8n sobre generación de `codigo_ticket` describe
+  un trigger y una función de dos argumentos que no existen en `sql/db/`. El usuario
+  también pregunta si vale la pena seguir manteniendo `sql/elt/*.sql` dado que n8n no
+  lo lee — queda registrado como D8, sin resolver. Cambios sin commit al cierre de esta
+  entrada.
+- 10-sep-2026 (corte 4, misma sesión) — se investiga F12 por lectura de código:
+  `git log -p` sobre `sql/db/02_functions.sql` muestra que `next_codigo_ticket()` nunca
+  tuvo, en ningún commit, una versión de dos argumentos, y no existe ningún
+  `CREATE TRIGGER` en `sql/`. La hipótesis más probable pasa a ser documentación
+  obsoleta de n8n, no drift de esquema — pendiente de confirmar con una consulta de
+  solo lectura contra la base real (comando en §5). Aparece un hallazgo colateral real:
+  `next_codigo_ticket()` usa la fecha del servidor, no `fecha_creacion` del ticket, así
+  que todo ticket legacy migrado quedó con el año de su corrida de ingesta en vez de su
+  año histórico — probablemente el motivo real detrás del comentario de n8n. El usuario
+  decide diferir D8 (que n8n lea `sql/elt/` de GitHub en vez de embeber su copia):
+  no vale la pena esa robustez con nada más construido todavía; la mitigación mientras
+  tanto es la disciplina de reimport manual ya documentada en §6. D8 se mueve a
+  `Decisiones tomadas y NO implementadas` como diferida, con condición explícita de
+  revisión. Cambios sin commit al cierre de esta entrada.
