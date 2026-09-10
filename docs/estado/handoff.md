@@ -1,9 +1,9 @@
 # Handoff técnico
 
 ```
-CORTE:   10-sep-2026 (corte 3)
-HEAD:    esta unidad, publicada encima de `e8918e6` en dos commits (`e3b95a1`,
-         `6fb3bd5`). Ver §7
+CORTE:   10-sep-2026 (corte 3, CERRADO)
+HEAD:    esta unidad, publicada encima de `e8918e6` en tres commits (`e3b95a1`,
+         `6fb3bd5`, y el que cierra este corte). Ver §7
 RAMA:    main
 UNIDAD:  EJECUTAR LA INGESTA CORREGIDA CONTRA LA BASE REAL. Construye lo que el corte 2
          dejó diseñado pero sin construir — el modelo de buzón compartido (F10) — lo
@@ -72,7 +72,7 @@ consultas de U1, lo que se construya será diseño por analogía.
 | Fase | Estado | Evidencia o bloqueo |
 |---|---|---|
 | Ingesta SharePoint → PostgreSQL | `EJERCITADO, con el código corregido de esta unidad` | 2.313 tickets conciliados en `legacy/baseline-calidad.md` (baseline histórico, no se edita) → 2.559 el 10-sep-2026 antes de esta unidad → **2.825 el 10-sep-2026 tras ejecutar la ingesta con el fix de F10** (§4). El crecimiento es la ingesta incremental real, confirmado por el usuario — no es un error de conteo |
-| Salida PostgreSQL → SharePoint | `CONSTRUIDO, NUNCA EJERCITADO` | Ningún cliente radicó nunca. El workflow consumidor **existe y su diseño es correcto** (escribe referencia legacy, tiene respaldo cada 12h), pero vive sin commit y mal nombrado (F5) |
+| Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
 | Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial |
 | Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida, sin identidad de persona |
 | Identidad de empleados | `NO EXISTE` | Contrato escrito, bloqueado por U1 §1 y U2 |
@@ -168,7 +168,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
 | ~~F10~~ | ~~`core.dim_personal` tenía dos filas con el mismo `correo_corporativo`~~ — **cerrado 10-sep-2026, con ejecución real.** `recepcion.gct@rbcol.co` tenía `ccb2a1de...` (activa) y `ef1e69e7...` (fantasma). Esquema aplicado (`es_responsable_historico_no_identificado`, índice único parcial) y la ingesta corrió de punta a punta sin error: 2.559 → 2.825 tickets, 155 → 165 atribuidos al marcador histórico, ninguno a la ocupante actual (§4). El primer intento falló porque n8n tenía publicada la copia sin el fix (confusión de nombres, ver F11) — resuelto reimportando el archivo correcto | ~~Alta~~ | `core.dim_personal`; `specs/tickets.md` §7.3 |
 | F11 | `sql/elt/06_transform_ticket.sql` (el archivo del repositorio) y el nodo `PG - Transform 06 Tickets Legacy` del workflow de n8n **tienen lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy** — descubierto al extraer la query embebida del workflow para aplicarle el fix de F10. La versión de n8n resuelve más casos reales (p. ej. tickets que ya traen `PROYECTOS Y TI` como tipo, o que necesitan repartirse entre `AUTOMATIZACION`/`TI` según `categoria_2`); la versión del archivo `.sql` solo cubre el caso simple `AUTOMATIZACION`/`TI` → `PROYECTOS Y TI`. El archivo `.sql` es, en la práctica, **el que se ejecutó manualmente para diagnosticar F10** (según el corte 2) — no el que corre en n8n. No se sabe si la versión de n8n se refinó directamente ahí sin volcarse nunca al repositorio, o si es al revés. **No se resolvió en esta unidad** (fuera de alcance de F10: exige decidir cuál lógica es la correcta y por qué divergieron, no solo copiar una sobre la otra) — ver `operacion.md` para el patrón ya documentado de que n8n trae su propia copia de cada query y no lee `sql/elt/` | Media — no bloquea hoy, pero el archivo `.sql` no es fuente de verdad fiable para esta transformación específica | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
-| ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`). Pendiente real: activarlo en la instancia viva de n8n, que sigue sin confirmarse | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
+| ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
@@ -184,14 +184,17 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | Un cliente radica y el ticket se duplica en SharePoint | Visible para PowerApps y para el cliente | Reducido, no eliminado: el diseño del workflow ya no duplica (U1 §2, `sincronizacion-sharepoint.md` §4.2), pero sigue sin ejercitarse con un caso real — probarlo con el primer ticket real del portal antes de anunciarlo cerrado |
 | La autorización destructiva alcanza datos reales | Pérdida irrecuperable | `contexto-canonico.md` §1.3 delimita el alcance |
 | Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza | Entre esta decisión y que U2 construya ese servicio, no hay ninguna forma documentada de verificar comportamiento — ni local, ni por push | Construir U2 (baseline Prisma + servicio `migrate`) antes de apoyarse en "verificar por push" como si ya existiera |
-| ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado 10-sep-2026**: el consumidor del outbox quedó renombrado y commiteado (`1de8641`); cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix). **Abre uno nuevo, más acotado:** las copias `V2` y `V2.1` siguen en disco en la VPS y en n8n, sin commit — limpiarlas | Confusión futura si alguien las reactiva por error, ahora que ya se confirmó cuál es la real | Borrar `V2`/`V2.1` del disco de la VPS y de n8n — pendiente, ver Acción inmediata |
+| ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `e8918e6` | **Corte vigente antes de esta unidad.** Actualiza cabecera, commits y acción inmediata del handoff al estado real tras el hallazgo de F10 |
+| `134663a` | **Corte vigente.** Cierra F10 en la documentación con evidencia de ejecución real |
+| `6fb3bd5` | Reemplaza placeholders de conexión por valores reales en los comandos entregados |
+| `e3b95a1` | Construye el modelo de buzón compartido para `dim_personal` (F10) |
+| `e8918e6` | Actualiza cabecera, commits y acción inmediata del handoff al estado real tras el hallazgo de F10 |
 | `e2ffb24` | Retira `create-copilot-export.sh`, sin relación con HelpDesk |
 | `d5efa5a` | Documenta consultas SQL directas contra la VPS y el gate de `migrate` |
 | `52aed2a` | Versiona `.claude/skills/` |
@@ -202,16 +205,19 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 ---
 
-## ACCIÓN INMEDIATA
+**Esta unidad está CERRADA (10-sep-2026).** Los cuatro pasos originales y el residuo de
+n8n (consumidor del outbox activo, `V2`/`V2.1` borradas) quedaron confirmados por el
+usuario, con evidencia real en cada uno — ver §4 y §5. **La acción inmediata pasa a
+U2 · Construir el baseline de migraciones Prisma** (`plan-ejecucion.md`), declarado
+explícitamente por el usuario para una sesión nueva — no se ejecuta en la que cierra
+esta unidad. Antes de empezar U2: leer `plan-ejecucion.md` completo (fija escenarios
+mínimos y condición de cierre) y `contexto-canonico.md` §4 (D1/D1', la decisión que U2
+construye). F11 (divergencia de `tipo_requerimiento` legacy entre el archivo del
+repositorio y la copia de n8n, ver más abajo) sigue abierto y no bloquea U2 — es
+independiente, y su propia unidad puede ir después o en paralelo si el usuario lo pide.
 
-**Confirmar si el consumidor del outbox está activo en n8n, y borrar `V2`/`V2.1` del
-servidor y de n8n.** Es lo único que queda abierto de esta unidad — ver paso 3. Todo lo
-demás (1, 2 y 4 abajo) está cerrado con evidencia real del 10-sep-2026: la ingesta
-corrió de punta a punta y F10 quedó resuelto (§4, §5). Cerrado ese residuo, esta unidad
-termina y U2 es la cabeza natural de la cola (`plan-ejecucion.md`) — salvo que el
-usuario prefiera atender F11 primero, nuevo hallazgo sin resolver, ver más abajo. Los
-bloques de comando de 1, 2 y 4 se dejan como referencia de lo que se corrió, no como
-pendientes — no hace falta repetirlos.
+Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
+efectivamente se corrió contra la base real — no son pasos pendientes.
 
 **1. `codigo_area` en `core.dim_area` — CERRADO, con una contradicción nombrada.**
 Al correr el comando de abajo, la VPS respondió `ERROR: column "codigo_area" of
@@ -287,16 +293,15 @@ HAVING COUNT(*) > 1 AND COUNT(*) FILTER (WHERE es_responsable_historico_no_ident
 "
 ```
 
-**3. n8n — CERRADO en lo esencial, un residuo pendiente.** Incidencia real y resuelta:
-el primer intento de ejecutar la ingesta se hizo con la copia **sin** el fix
+**3. n8n — CERRADO por completo (10-sep-2026).** Incidencia real y resuelta: el primer
+intento de ejecutar la ingesta se hizo con la copia **sin** el fix
 (`CORAJE - INCREMENTAL COMPLETO V2.1 - SharePoint to PostgreSQL.json`, suelta en el
 servidor, sin commit) publicada por confusión de nombre con el archivo commiteado que
 sí lo trae. Al reimportar `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to
-PostgreSQL.json` (commit `e3b95a1`), la ingesta corrió sin error. **Pendiente, acotado:**
-- Confirmar si el consumidor del outbox (`CORAJE - SALIDA - PostgreSQL to
-  SharePoint.json`, commiteado en `1de8641`) está activo — sigue sin confirmarse.
-- Borrar del servidor y de n8n las copias que ya no hacen falta: `V2` y la `V2.1` sin
-  commit que causó la confusión.
+PostgreSQL.json` (commit `e3b95a1`), la ingesta corrió sin error. El consumidor del
+outbox (`CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commiteado en `1de8641`)
+quedó confirmado activo, y `V2`/`V2.1` quedaron borradas del servidor y de n8n —
+ambas confirmadas por el usuario.
 
 **4. Ejecución real — CERRADA, con evidencia inequívoca (10-sep-2026).** Tras
 reimportar el workflow correcto: `total_tickets` **2.559 → 2.825** (+266, prueba de que
@@ -497,3 +502,8 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   la regla dura se sostiene sobre datos nuevos, no solo sobre el caso ya conocido.
   Queda un residuo acotado (confirmar consumidor del outbox, borrar `V2`/`V2.1`) y F11
   sigue abierto, deliberadamente sin resolver en esta unidad.
+- 10-sep-2026 (mismo día, cierre de la unidad) — el usuario confirma el residuo: el
+  consumidor del outbox está activo en n8n, y `V2`/`V2.1` quedaron borradas del
+  servidor y de n8n. **Unidad cerrada.** Declara explícitamente que U2 (baseline de
+  migraciones Prisma) es la siguiente, en una sesión nueva — no una continuación
+  inmediata. F11 queda registrado, abierto, sin fecha asignada.

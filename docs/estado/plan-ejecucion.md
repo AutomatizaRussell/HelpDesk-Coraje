@@ -31,7 +31,13 @@ capa de aplicación, **sin romper la convivencia con PowerApps** mientras dure.
 
 ## Cola de unidades
 
-### U1 · Mediciones y verificaciones — **cabeza de la cola**
+### ~~U1 · Mediciones y verificaciones~~ — cerrada 10-sep-2026, ya no es cabeza de la cola
+
+Las cinco preguntas quedaron respondidas y registradas en `estado/handoff.md` §4, con
+evidencia real contra la VPS y contra `n8n/`. Al cerrarla apareció F10 (buzón
+compartido, `core.dim_personal`), resuelto y ejercitado contra la base real como
+trabajo previo a U2 — documentado como "acción inmediata" en el handoff, no como
+entrada nueva de esta cola. **U2 pasa a ser la cabeza.**
 
 **Objetivo:** convertir en hechos las cinco incógnitas que hoy bloquean decisiones. No
 se construye nada; se consulta y se registra.
@@ -66,7 +72,7 @@ lo demás.
 > **Sin U0, el diseño del ciclo del ticket es diseño por analogía**, y las reglas reales
 > aparecen cuando los empleados se nieguen a migrar.
 
-### U2 · Construir el baseline de migraciones Prisma
+### U2 · Construir el baseline de migraciones Prisma — **cabeza de la cola**
 
 **Objetivo:** ya no es decidir — `contexto-canonico.md` §4 registra la decisión tomada
 (migraciones Prisma completas, se abandona SQL a mano). U2 es **construir** sobre esa
@@ -194,3 +200,7 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
 - 03-sep-2026 (mismo día) — D1' resuelta: `PascalCase`+`@@map` a `snake_case`, igual que
   Impulsa. El escenario mínimo de U2 pasa de "decidir" a "aplicar" ese mapeo sobre las
   tres schemas.
+- 10-sep-2026 — U1 cierra (evidencia completa en `estado/handoff.md` §4). El hallazgo
+  de F10 que dejó (`core.dim_personal` con buzón compartido duplicado) se resuelve y se
+  ejercita contra la base real como trabajo previo a U2, fuera de esta cola —
+  documentado en el handoff, no aquí. **U2 pasa a ser la cabeza de la cola.**
