@@ -184,22 +184,26 @@ al cliente o perder a quien lo radicó.
 no existe, y no se puede consultar «qué tiene asignado esta persona» de forma fiable.
 Viene de la forma del dato en SharePoint, y es deuda heredada, no una decisión.
 
-**7.3 `DECISIÓN` (10-sep-2026) Modelo de buzón compartido — diseño construido, sin
-ejecutar todavía contra la base real.** `core.dim_personal.correo_corporativo` no tiene
+**7.3 `DECISIÓN` (10-sep-2026) Modelo de buzón compartido — construido y ejercitado
+contra la base real.** `core.dim_personal.correo_corporativo` no tiene
 `UNIQUE`, y dos rutas
 de carga distintas (`sql/elt/03_transform_personal.sql`, keyed por `sp_personal_id`, y
 `sql/elt/04_transform_personal_historico.sql`, un `INSERT` de una sola vez guardado por
 `correo NOT IN (...)`) pueden terminar con dos filas para el mismo correo cuando una
 bandeja compartida cambia de ocupante — confirmado con `recepcion.gct@rbcol.co`: una
 fila activa (la ocupante actual) y una fila fantasma "EX-EMPLEADO (RECUPERADO DEL
-HISTORIAL)" a la que **155 tickets reales** apuntan por `id_asignado`/`id_solicitante`.
+HISTORIAL)" a la que **155 tickets reales** (hoy **165**, tras la primera ejecución con
+el fix — `docs/estado/handoff.md` §4) apuntan por `id_asignado`/`id_solicitante`.
 Es el único correo duplicado hoy (`GROUP BY correo_corporativo HAVING count(*) > 1`
 no devuelve otro), pero el mecanismo que lo permite es genérico, no un caso aislado.
 
-**Regla dura, no negociable:** esos 155 tickets **no pueden terminar atribuidos a quien
+**Regla dura, no negociable:** esos tickets **no pueden terminar atribuidos a quien
 ocupa el buzón hoy**. Mientras no se recupere el nombre real de quien lo atendía en su
 momento, se marcan con un responsable histórico explícitamente no identificado — nunca
-con el nombre de la persona actual.
+con el nombre de la persona actual. **Verificado con datos reales:** los 10 tickets
+nuevos que llegaron en la primera ejecución del fix quedaron en el marcador histórico,
+no en la ocupante actual — la regla se sostiene sobre casos que no existían cuando se
+diseñó, no solo sobre los 155 ya conocidos.
 
 **Diseño construido (10-sep-2026), las cuatro preguntas abiertas resueltas así:**
 
@@ -233,15 +237,12 @@ con el nombre de la persona actual.
   un marcador — mismo criterio de "fallar fuerte antes que adivinar en silencio" que ya
   usa `01_transform_area.sql` para áreas desconocidas.
 
-**Lo que sigue pendiente, y no es diseño sino ejecución:**
-- Aplicar el `ALTER TABLE` contra la base real de la VPS (`docs/estado/handoff.md`,
-  acción inmediata).
-- Marcar la fila fantasma conocida (`recepcion.gct@rbcol.co`) con la nueva columna —
-  backfill de una sola fila, comando entregado en el mismo lugar.
-- Propagar el mismo cambio al workflow de ingesta de n8n, que embebe su propia copia de
-  este SQL y no la lee del repositorio — hecho en esta unidad
-  (`n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`), pendiente de
-  reimportarse a la instancia viva.
+**Ejecución real, cerrada (10-sep-2026):** `ALTER TABLE` aplicado contra la VPS, fila
+fantasma marcada (`UPDATE 1` exacto), índice único parcial creado, workflow de n8n
+reimportado con el fix, ingesta corrida de punta a punta sin error. Detalle completo,
+incluida una incidencia real (se publicó primero la copia del workflow sin el fix, por
+confusión de nombre) y su resolución, en `docs/estado/handoff.md` §4 y Acción
+inmediata.
 
 ## 8. Criterios de aceptación
 
@@ -396,3 +397,8 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   en el repositorio y en la copia embebida del workflow de n8n; **sin aplicar todavía
   contra la base real ni reimportado a la instancia viva de n8n** —
   `docs/estado/handoff.md` trae los comandos exactos.
+- 10-sep-2026 (mismo día, misma unidad) — **§7.3 ejercitado con éxito contra la base
+  real.** El usuario aplica el esquema, reimporta el workflow (tras una confusión real
+  con una copia sin el fix) y ejecuta la ingesta de punta a punta: 155 → 165 tickets del
+  buzón compartido, todos en el marcador histórico. Detalle completo en
+  `docs/estado/handoff.md` §4.
