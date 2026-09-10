@@ -106,13 +106,20 @@ root, contra el contenedor real. Patrón que funcionó, con las dos trampas que 
 descubrir:
 
 ```bash
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 <consulta o consultas separadas por ;>
 "
 ```
 
-- `$POSTGRES_USER`/`$POSTGRES_DB` salen del `.env` real de la VPS — no se adivinan ni se
-  documentan aquí (son el mismo secreto de siempre, ver `F6`).
+- Usuario `coraje_app`, base `coraje`, contenedor `coraje_postgres` — son los valores
+  reales de la VPS de producción, confirmados por el usuario el 10-sep-2026. Hasta este
+  corte se documentaban como `$POSTGRES_USER`/`$POSTGRES_DB` (placeholder deliberado,
+  para no escribir el nombre de usuario junto al riesgo de credencial única de `F6`); el
+  usuario decidió explícitamente que el comando debe quedar copiable tal cual, sin que
+  quien lo corra tenga que resolver una variable de entorno primero. La contraseña
+  **no** se documenta aquí bajo ningún concepto — eso sigue siendo secreto real y
+  `psql`/Docker ya la resuelven desde el entorno del contenedor sin que el comando la
+  necesite explícita.
 - **Cada invocación de `docker exec ... psql -c "..."` abre una conexión nueva.** Una
   tabla `TEMP` creada en una invocación **no existe** en la siguiente — hay que crear y
   consultar la tabla temporal **dentro del mismo `-c "..."`**, con todos los `;` que
@@ -222,3 +229,9 @@ reversible y fallar de forma explícita cuando falte una dependencia.
   usuario: ninguna sesión se conecta nunca a la VPS por `ssh` ni `docker exec`, así
   tenga material de llave disponible localmente. Todo comando contra producción se
   entrega como texto para que el usuario lo corra manualmente.
+- 10-sep-2026 (mismo día, unidad siguiente) — el usuario decide reemplazar los
+  placeholders `$POSTGRES_USER`/`$POSTGRES_DB` del patrón de consulta directa por los
+  valores reales (`coraje_app`, `coraje`): un comando entregado como texto para copiar
+  y pegar no debe obligar a quien lo corre a resolver una variable de entorno primero.
+  La contraseña sigue sin documentarse — sigue siendo secreto real, y el comando nunca
+  la necesitó explícita.

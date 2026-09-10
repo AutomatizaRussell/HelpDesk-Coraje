@@ -182,7 +182,7 @@ SQL directas").
 **1. `codigo_area` en `core.dim_area`:**
 
 ```bash
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 ALTER TABLE core.dim_area ADD COLUMN codigo_area VARCHAR(10) UNIQUE;
 "
 ```
@@ -192,7 +192,7 @@ ALTER TABLE core.dim_area ADD COLUMN codigo_area VARCHAR(10) UNIQUE;
 ```bash
 # 2a. Verificación previa (solo lectura): confirmar que sigue habiendo exactamente
 # dos filas para el correo compartido conocido, antes de tocar nada.
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 SELECT id_personal, sp_personal_id, correo_corporativo, cargo, estado_activo
 FROM core.dim_personal
 WHERE correo_corporativo = 'recepcion.gct@rbcol.co';
@@ -204,14 +204,14 @@ Si esa consulta **no** devuelve exactamente dos filas (una con `cargo = 'EX-EMPL
 
 ```bash
 # 2b. Columna nueva, aditiva y reversible.
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 ALTER TABLE core.dim_personal
     ADD COLUMN es_responsable_historico_no_identificado BOOLEAN NOT NULL DEFAULT FALSE;
 "
 
 # 2c. Backfill de la única fila fantasma conocida. Debe reportar 'UPDATE 1' — si
 # reporta un número distinto de 1, detenerse y no seguir a 2d.
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 UPDATE core.dim_personal
 SET es_responsable_historico_no_identificado = TRUE
 WHERE correo_corporativo = 'recepcion.gct@rbcol.co'
@@ -220,7 +220,7 @@ WHERE correo_corporativo = 'recepcion.gct@rbcol.co'
 "
 
 # 2d. Índice único parcial: a lo sumo un marcador histórico por correo.
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 CREATE UNIQUE INDEX ux_dim_personal_correo_historico
 ON core.dim_personal (correo_corporativo)
 WHERE es_responsable_historico_no_identificado;
@@ -229,7 +229,7 @@ WHERE es_responsable_historico_no_identificado;
 # 2e. Verificación final: debe devolver CERO filas. Si devuelve alguna, la
 # transformación de tickets (paso 4) abortará con la misma condición — mejor
 # encontrarlo aquí que a mitad de la ingesta.
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 SELECT correo_corporativo, COUNT(*) AS filas,
        COUNT(*) FILTER (WHERE es_responsable_historico_no_identificado) AS marcadas
 FROM core.dim_personal
@@ -260,7 +260,7 @@ sesión, ningún acceso automatizado):**
 workflow o esperar el fallback programado) y verificar:
 
 ```bash
-docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 SELECT COUNT(*) AS total_tickets FROM helpdesk.fact_ticket;
 SELECT COUNT(*) AS tickets_del_buzon_compartido
 FROM helpdesk.fact_ticket
