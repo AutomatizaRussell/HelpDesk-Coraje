@@ -231,11 +231,22 @@ LEFT JOIN helpdesk.dim_estado est_default
     ON est_default.nombre_estado = 'ABIERTO'
 
 -- Normalización específica para resolver valores legacy de HelpDeskBd
--- contra el catálogo actual de TipoReqHD.
+-- contra el catálogo actual de TipoReqHD. Toda comparación es contra el
+-- resultado de core.norm_text() (minúsculas, sin tildes) — un literal en
+-- mayúsculas aquí nunca coincide y la rama cae en silencio al ELSE.
+--
+-- Reconciliado desde la copia embebida en n8n (nodo "PG - Transform 06
+-- Tickets Legacy", n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to
+-- PostgreSQL.json) — hallazgo F11, docs/estado/handoff.md. La versión
+-- anterior de este bloque comparaba contra literales en MAYÚSCULAS
+-- ('ADMINISTRACION', 'PROYECTOS Y TI'...) que jamás coincidían con la salida
+-- de norm_text(): todo ticket legacy de AUTOMATIZACIÓN/TI/IMPUESTOS caía sin
+-- reclasificar y quedaba sin id_tipo_req resuelto contra el catálogo. No era
+-- una versión "menos completa" que la de n8n — era una versión inerte.
 --
 -- Casos detectados:
 --
--- 1. ADMINISTRACIÓN:
+-- 1. ADMINISTRACIÓN, tipo AUTOMATIZACIÓN o TI:
 --    Tickets antiguos traen:
 --      Tipo_Requerimiento = AUTOMATIZACIÓN / TI
 --      Categoría1         = APLICACIÓN / SOPORTE / HARDWARE / SOFTWARE / REDES
@@ -245,61 +256,95 @@ LEFT JOIN helpdesk.dim_estado est_default
 --      Categoría1         = AUTOMATIZACIÓN / TI
 --      Categoría2         = APLICACIÓN / SOPORTE / HARDWARE / SOFTWARE / REDES
 --
--- 2. REVISORÍA:
+-- 2. ADMINISTRACIÓN, tipo ya PROYECTOS Y TI:
+--    Algunos tickets ya traen el tipo correcto pero con categoría 1/2
+--    mezcladas de forma inconsistente. Se reparten entre AUTOMATIZACIÓN y TI
+--    según categoría 2 (o, si categoría 1 ya quedó en TI, según si
+--    categoría 2 pertenece al catálogo antiguo de AUTOMATIZACIÓN):
+--      Categoría2 APLICACIÓN/SOPORTE/MEJORAS                  -> categoría 1 AUTOMATIZACIÓN
+--      Categoría2 HARDWARE/SOFTWARE/REDES                     -> categoría 1 TI
+--      Categoría1 TI y Categoría2 APLICACIÓN/SOPORTE/MEJORAS  -> categoría 1 AUTOMATIZACIÓN
+--
+-- 3. REVISORÍA:
 --    Tickets antiguos traen:
 --      Tipo_Requerimiento = IMPUESTOS CONSULTA / IMPUESTOS
 --
 --    Pero el catálogo actual espera:
 --      Tipo_Requerimiento = IMPUESTOS ASESORATE
 --
--- 3. ADMINISTRACIÓN-RECEPCIÓN / OTROS:
+-- 4. ADMINISTRACIÓN-RECEPCIÓN / OTROS:
 --    Ticket trae categoría OTROS, pero catálogo tiene categoría NULL.
 --
--- 4. REVISORÍA / OTROS:
+-- 5. REVISORÍA / OTROS:
 --    Ticket puede venir sin categoría, pero catálogo tiene categoría OTROS.
 LEFT JOIN LATERAL (
     SELECT
         CASE
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'ADMINISTRACION'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('AUTOMATIZACION', 'TI')
-            THEN 'PROYECTOS Y TI'
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('automatizacion', 'ti')
+            THEN 'proyectos y ti'
 
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'REVISORIA'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('IMPUESTOS CONSULTA', 'IMPUESTOS')
-            THEN 'IMPUESTOS ASESORATE'
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'
+            THEN 'proyectos y ti'
+
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('impuestos consulta', 'impuestos')
+            THEN 'impuestos asesorate'
 
             ELSE core.norm_text(s.payload->>'Tipo_Requerimiento')
         END AS tipo_requerimiento_match,
 
         CASE
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'ADMINISTRACION'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('AUTOMATIZACION', 'TI')
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('automatizacion', 'ti')
             THEN core.norm_text(s.payload->>'Tipo_Requerimiento')
 
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'ADMINISTRACION-RECEPCION'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'OTROS'
-             AND core.norm_text(s.payload->>'Categor_x00ed_a1') = 'OTROS'
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'
+             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IN ('aplicacion', 'soporte', 'mejoras')
+            THEN 'automatizacion'
+
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'
+             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IN ('hardware', 'software', 'redes')
+            THEN 'ti'
+
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'
+             AND core.norm_text(s.payload->>'Categor_x00ed_a1') = 'ti'
+             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IN ('aplicacion', 'soporte', 'mejoras')
+            THEN 'automatizacion'
+
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion-recepcion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'otros'
+             AND core.norm_text(s.payload->>'Categor_x00ed_a1') = 'otros'
             THEN NULL
 
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'REVISORIA'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('IMPUESTOS CONSULTA', 'IMPUESTOS')
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('impuestos consulta', 'impuestos')
             THEN core.norm_text(s.payload->>'Categor_x00ed_a1')
 
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'REVISORIA'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'OTROS'
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'otros'
              AND core.norm_text(s.payload->>'Categor_x00ed_a1') IS NULL
-            THEN 'OTROS'
+            THEN 'otros'
 
             ELSE core.norm_text(s.payload->>'Categor_x00ed_a1')
         END AS categoria_1_match,
 
         CASE
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'ADMINISTRACION'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('AUTOMATIZACION', 'TI')
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('automatizacion', 'ti')
             THEN core.norm_text(s.payload->>'Categor_x00ed_a1')
 
-            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'REVISORIA'
-             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('IMPUESTOS CONSULTA', 'IMPUESTOS')
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'administracion'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') = 'proyectos y ti'
+             AND core.norm_text(s.payload->>'Categor_x00ed_a2') IS NOT NULL
+            THEN core.norm_text(s.payload->>'Categor_x00ed_a2')
+
+            WHEN core.norm_text(s.payload->>'OData__x00c1_rea_Destino') = 'revisoria'
+             AND core.norm_text(s.payload->>'Tipo_Requerimiento') IN ('impuestos consulta', 'impuestos')
             THEN NULL
 
             ELSE core.norm_text(s.payload->>'Categor_x00ed_a2')
