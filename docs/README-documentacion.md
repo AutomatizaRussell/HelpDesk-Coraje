@@ -24,7 +24,8 @@ docs/
     ├── hallazgos-migracion.md
     ├── reglas-clasificacion.md
     ├── baseline-calidad.md
-    └── recapitulacion-sprint-inicial.md
+    ├── recapitulacion-sprint-inicial.md
+    └── identidad-correo-2026-07.md
 ```
 
 ## Qué contiene cada documento
@@ -44,11 +45,14 @@ docs/
 | `estado/backlog-diseno.md` | **Propuestas sin ratificar** | Alta | no es contrato |
 | `legacy/*.md` | Evidencia empírica del SharePoint anterior y del arranque | Nula | histórico verificado |
 
-> Los cuatro documentos de `legacy/` estaban antes sueltos en `docs/`. Se conservan sin
-> alterar su contenido porque son **medición, no intención**: nombres internos
-> codificados de SharePoint, reglas de reclasificación derivadas de datos reales y
-> conteos conciliados de la carga. Reescribirlos por estilo destruiría evidencia que
-> costó obtener y que nadie va a volver a obtener.
+> Los primeros cuatro documentos de `legacy/` estaban antes sueltos en `docs/`; el
+> quinto (`identidad-correo-2026-07.md`) se sumó el 10-sep-2026 al retirar un
+> subsistema de la base real que nunca quedó commiteado. Se conservan sin alterar su
+> contenido porque son **medición, no intención**: nombres internos codificados de
+> SharePoint, reglas de reclasificación derivadas de datos reales, conteos conciliados
+> de la carga y clasificaciones humanas de buzones compartidos que costó trabajo
+> producir. Reescribirlos por estilo destruiría evidencia que costó obtener y que nadie
+> va a volver a obtener.
 >
 > Los documentos retirados en el mismo movimiento — `arquitectura_actual.md`,
 > `estructura.md`, `decisiones_tecnicas.md` y `estrategia_transicion.md` — eran
