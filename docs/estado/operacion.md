@@ -81,6 +81,36 @@ los borre por no reconocerlos en el DSL de `schema.prisma`.
 > historial versionado de cambios de esquema ni aplicación automática al desplegar. Un
 > cambio aplicado a mano en un entorno y no en otro **no deja rastro**.
 
+> **Cuando U2 construya el servicio `migrate`:** el disparador es siempre commit + push
+> a `main`. Push → Coolify redespliega → el servicio `migrate` de un disparo corre
+> `prisma migrate deploy` y **bloquea el arranque de `web`** hasta terminar bien (`depends_on:
+> condition: service_completed_successfully`, igual que Impulsa) → si termina bien, `web`
+> arranca con el esquema ya al día. No hay un paso manual intermedio: nadie corre
+> `migrate deploy` a mano en ningún entorno.
+
+## Consultas SQL directas contra la base (diagnóstico, no despliegue)
+
+**Esta sesión no tiene Docker instalado**, así que toda consulta SQL de diagnóstico se
+ejecutó pidiéndole al usuario que la corriera en la VPS, como root, contra el contenedor
+real. Patrón que funcionó, con las dos trampas que ya costó descubrir:
+
+```bash
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+<consulta o consultas separadas por ;>
+"
+```
+
+- `$POSTGRES_USER`/`$POSTGRES_DB` salen del `.env` real de la VPS — no se adivinan ni se
+  documentan aquí (son el mismo secreto de siempre, ver `F6`).
+- **Cada invocación de `docker exec ... psql -c "..."` abre una conexión nueva.** Una
+  tabla `TEMP` creada en una invocación **no existe** en la siguiente — hay que crear y
+  consultar la tabla temporal **dentro del mismo `-c "..."`**, con todos los `;` que
+  hagan falta, no en pasos separados.
+- Para diagnósticos que requieren "encontrar el valor real y luego consultarlo con ese
+  valor", preferir una sola consulta autocontenida (CTE + subconsultas correlacionadas)
+  en vez de pedir que se copie un resultado a mano a una segunda consulta — evita el
+  error de pegar un marcador de posición sin reemplazar.
+
 ## Despliegue
 
 `coraje-web/docker-compose.yaml` define **un solo servicio**, `web`, construido desde el
@@ -172,3 +202,8 @@ reversible y fallar de forma explícita cuando falte una dependencia.
   consumidor real del outbox, mal nombrado (`REVISORIA - Inspeccion SharePoint
   Vacaciones y Tareas V2.json`), y dos copias inactivas de la ingesta (`V2`, `V2.1`).
   Confirmado: no hay workflow de error en n8n.
+- 10-sep-2026 (mismo día) — se documenta el patrón de consulta SQL directa contra la
+  VPS (`docker exec ... psql -c`) usado para cerrar U1, con sus dos trampas reales:
+  las tablas `TEMP` no sobreviven entre invocaciones, y los diagnósticos deben ser
+  autocontenidos. Se aclara explícitamente que el disparador del futuro servicio
+  `migrate` es commit + push, sin paso manual intermedio.
