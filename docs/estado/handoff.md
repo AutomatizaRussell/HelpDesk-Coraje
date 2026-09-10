@@ -1,10 +1,24 @@
 # Handoff técnico
 
 ```
-CORTE:   10-sep-2026 (corte 4)
-HEAD:    cambios locales sobre `134663a`, sin commit todavía — ver §7 tras publicarlos
+CORTE:   10-sep-2026 (corte 5)
+HEAD:    cambios locales sobre `4f0abac`, sin commit todavía — ver §7 tras publicarlos
 RAMA:    main
-UNIDAD:  RECONCILIAR F11. El usuario decide: ante la divergencia de clasificación de
+UNIDAD:  U2 BLOQUEADO ANTES DE EMPEZAR. Al pedir a la base real la consulta de solo
+         lectura que F12 había dejado como "residuo opcional", aparece que la base
+         viva tiene un mecanismo de `codigo_ticket` (trigger + función de dos
+         argumentos) y un subsistema completo de resolución de identidad
+         (`core.identidad_correo`, columnas nuevas en `fact_ticket`, un CHECK
+         reescrito) que no existen en ningún lugar de este repositorio — ni en `sql/`,
+         ni en `n8n/`, ni en `docs/`. F12 se reabre: el cierre anterior (corte 4) se
+         apoyó solo en `git log`, nunca en la base real, y la decisión de diseño que
+         se tomó sobre esa base quedó retractada. **U2 no puede generar un baseline
+         "sobre la base viva" sin saber qué es esto y de dónde salió** — pregunta
+         hecha al usuario, sin responder al cierre de esta entrada. Detalle completo
+         en §5, fila F12.
+
+CORTE ANTERIOR (10-sep-2026, corte 4, publicado en `e14e0c6`/`83ecc54`/`4f0abac`):
+         RECONCILIAR F11. El usuario decide: ante la divergencia de clasificación de
          `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy entre el archivo del
          repositorio y la copia embebida en n8n, gana n8n — es la que corre en
          producción y la que ya clasificó los 2.825 tickets ingeridos hasta hoy.
@@ -28,16 +42,12 @@ CAMBIOS DE ESTA UNIDAD:
            y no hace falta reimportar nada a la instancia viva.
          - Sin cambios de esquema, sin ejecución contra la VPS: es una reconciliación de
            código y documentación, no un cambio de comportamiento en producción.
-CAMBIOS DE ESTA UNIDAD (continuación):
-         - F12 (§5) **cerrado**: `git log -p` sobre `sql/db/02_functions.sql` descarta
-           que el trigger de dos argumentos que describe el comentario de n8n haya
-           existido alguna vez en el repositorio. El usuario, con el diseño alternativo
-           ya expuesto, decide quedarse con el formato simple — no por costo, sino
-           porque la alternativa tenía un defecto propio (código por área que dejaría
-           de ser estable ante una reasignación). Queda un residuo opcional, de
-           prioridad baja, sin obligación de correrlo: la consulta de solo lectura de
-           §5 para descartar contra la base real (no solo por inferencia) que exista un
-           trigger vivo no committeado.
+CAMBIOS DE CORTE 4 (retractados donde corresponda — ver corte 5 arriba):
+         - ~~F12 (§5) cerrado~~ — **retractado en corte 5**: el cierre se apoyó solo en
+           `git log`, nunca se corrió la consulta contra la base real antes de decidir.
+           La consulta sí se corrió al empezar U2 y muestra lo contrario: el mecanismo
+           de dos argumentos existe y está activo en producción, más un subsistema de
+           identidad no documentado en ningún lugar del repositorio. Ver §5.
          - D8 (`Decisiones tomadas y NO implementadas`): decidida — diferida
            deliberadamente. No se construye que n8n lea `sql/elt/` de GitHub mientras no
            haya nada más construido; la mitigación mientras tanto es disciplina de
@@ -178,35 +188,21 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
 | ~~F10~~ | ~~`core.dim_personal` tenía dos filas con el mismo `correo_corporativo`~~ — **cerrado 10-sep-2026, con ejecución real.** `recepcion.gct@rbcol.co` tenía `ccb2a1de...` (activa) y `ef1e69e7...` (fantasma). Esquema aplicado (`es_responsable_historico_no_identificado`, índice único parcial) y la ingesta corrió de punta a punta sin error: 2.559 → 2.825 tickets, 155 → 165 atribuidos al marcador histórico, ninguno a la ocupante actual (§4). El primer intento falló porque n8n tenía publicada la copia sin el fix (confusión de nombres, ver F11) — resuelto reimportando el archivo correcto | ~~Alta~~ | `core.dim_personal`; `specs/tickets.md` §7.3 |
 | ~~F11~~ | ~~`sql/elt/06_transform_ticket.sql` y el nodo `PG - Transform 06 Tickets Legacy` de n8n tenían lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy~~ — **cerrado 10-sep-2026 (corte 4), decisión del usuario: gana n8n.** Reconciliado: el bloque del repositorio se reemplaza por la lógica de n8n. Hallazgo real, más grave que la descripción original: la versión del repositorio no "cubría menos casos" — no cubría ninguno. Comparaba contra literales en MAYÚSCULAS que `core.norm_text()` (siempre minúsculas) nunca podía igualar, así que el bloque completo caía al `ELSE` en cualquier ejecución sobre ese archivo. La copia de n8n, la única que corre en producción, usa minúsculas y es la que clasificó correctamente los 2.825 tickets ingeridos hasta hoy. Sin cambio de comportamiento en producción — n8n ya tenía la versión correcta | ~~Media~~ | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
-| ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` describía un trigger `next_codigo_ticket(id_area, fecha_creacion)` que no existe en `sql/db/`~~ — **cerrado 10-sep-2026, en dos partes.** (1) Investigación: `git log -p` sobre `sql/db/02_functions.sql` muestra que la función existe desde `ac57875` **siempre con cero argumentos** — nunca hubo, en ningún commit, una versión de dos argumentos. No existe ningún `CREATE TRIGGER` en `sql/`. Es documentación de un diseño que alguien redactó y nunca implementó, no evidencia de una base viva distinta a lo committeado (a diferencia de `codigo_area`, corte 3, §7.1, que sí era una contradicción confirmada por ejecución real). (2) Decisión del usuario, con el diseño alternativo ya evaluado y descartado, no solo pospuesto: el formato simple (`HD-<año actual>-<consecutivo global>`) se queda. La alternativa "elaborada" no solo costaba más — tenía un defecto propio: un código por área dejaría de ser estable si el ticket cambia de área (reasignación) después de creado, y el "año" de hoy ya es decorativo (la secuencia nunca se reinicia por año), así que la alternativa tampoco resolvía eso de raíz sin un rediseño mayor de la secuencia misma. `legacy_id_req` ya preserva el identificador histórico exacto — no se pierde trazabilidad al no reconstruir el año real en `codigo_ticket` | ~~Baja~~ | `n8n/CORAJE - INCREMENTAL COMPLETO...json` (nodo `PG - Transform 06 Tickets Legacy`) vs. `sql/db/02_functions.sql`, `sql/db/06_helpdesk_facts.sql`; historia completa en `git log -p -- sql/db/02_functions.sql` |
+| F12 | **REABIERTO 10-sep-2026 — el cierre de corte 4 estaba equivocado, con evidencia real esta vez.** La consulta de solo lectura contra la base viva (que en su momento se marcó opcional y de baja prioridad) muestra `next_codigo_ticket(p_id_area uuid, p_fecha_creacion timestamptz)` — dos argumentos — más un trigger `trg_set_codigo_ticket` **activo** (`tgenabled = 'O'`) en `fact_ticket` y una tabla `helpdesk.ticket_codigo_counter (id_area, anio) -> last_number`. El diseño que se declaró "nunca construido, documentación obsoleta de n8n" **está corriendo en producción**. Causa del error: la investigación anterior se apoyó solo en `git log` (que únicamente ve lo committeado) y la consulta contra la base real, aunque ya escrita, se degradó a "residuo opcional" y nunca se corrió antes de cerrar el hallazgo con una decisión de diseño. Retractado: no se puede saber si el formato de `codigo_ticket` es correcto sin saber primero cuál de los dos mecanismos es el que realmente compite hoy — pendiente tras resolver el hallazgo mayor de abajo, del cual esto es solo un síntoma. **Hallazgo mayor, mismo origen:** la misma consulta muestra que la base viva tiene una tabla y columnas completas sin rastro en `sql/`, en `n8n/` ni en `docs/`: `core.identidad_correo` (dimensión nueva: `correo_normalizado`, `tipo_identidad` `PERSONAL`/`FUNCIONAL`/`NO_CLASIFICADA`), `fact_ticket.id_identidad_correo_asignado`/`id_identidad_correo_solicitante`, `fact_ticket.resolucion_asignado`/`resolucion_solicitante` (`SOURCE_PERSON_ID`/`UNIQUE_PERSONAL_EMAIL`/`LEGACY_INFERRED_PERSON`/`FUNCTIONAL_IDENTITY`/`UNRESOLVED`), un `chk_fact_ticket_origen_exclusivo` reescrito para aceptar `id_identidad_correo_solicitante`, un `chk_fact_ticket_evento_tipo` más angosto que el committeado (sin `CREACION` ni `CANCELACION_CLIENTE`), ninguno de los 10 índices de `fact_ticket` que declara `sql/db/06_helpdesk_facts.sql` (reemplazados por dos índices sobre las columnas de `identidad_correo`), y `staging.sp_incremental_sync_cursor` (esta sí aparece en el JSON de n8n, con una query de watermark — el resto no aparece ni ahí). **Bloquea U2 por completo**: no se puede generar un baseline "sobre la base viva" sin saber si este estado es el final a congelar, tiene piezas sin terminar de conectar, o proviene de un tercer lugar (script, sesión, repo) que este conjunto documental nunca vio. Procedencia preguntada al usuario, respuesta pendiente | Alta — el repositorio ya no describe con certeza ni el mecanismo de `codigo_ticket` ni el modelo de identidad de `fact_ticket` que corre en producción | Consulta de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026 (columnas de `dim_area`/`dim_personal`, `pg_indexes`, `pg_constraint`, `pg_trigger`, `pg_proc`, `pg_tables` de `core`+`helpdesk`+`staging`) vs. `sql/db/*.sql`, `schema.prisma`, `n8n/*.json` |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
 
-> **F12 cerrado con decisión de diseño, no solo con investigación.** El formato simple
-> de `codigo_ticket` se queda; la alternativa que describía el comentario de n8n queda
-> descartada, no solo diferida (§5 tiene el razonamiento completo). Queda un residuo
-> **opcional, de prioridad baja**, sin obligación de correrlo: la consulta de solo
-> lectura de abajo terminaría de descartar, contra la base real y no solo por
-> inferencia de `git log`, que exista un trigger vivo no committeado. Como la decisión
-> de diseño ya está tomada independientemente del resultado, correrla ya no es
-> necesaria para cerrar nada — solo confirmaría que no hay nada más que limpiar:
->
-> ```bash
-> docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-> SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS argumentos
-> FROM pg_proc p
-> JOIN pg_namespace n ON n.oid = p.pronamespace
-> WHERE n.nspname = 'helpdesk' AND p.proname = 'next_codigo_ticket';
->
-> SELECT tgname, tgenabled
-> FROM pg_trigger
-> WHERE tgrelid = 'helpdesk.fact_ticket'::regclass
->   AND NOT tgisinternal;
-> "
-> ```
+> **F12 reabierto — la consulta que se marcó "opcional, de prioridad baja" en corte 4
+> era la que hacía falta correr antes de decidir, no después.** Ya se corrió, contra la
+> base real, como parte del arranque de U2 (corte 5). Resultado: el mecanismo de dos
+> argumentos existe y está activo, y aparece además un subsistema de identidad
+> (`core.identidad_correo` y columnas asociadas de `fact_ticket`) sin rastro en todo el
+> repositorio. La decisión de diseño sobre `codigo_ticket` queda sin efecto hasta
+> entender ese hallazgo mayor — ver §5, fila F12, y la pregunta de procedencia hecha al
+> usuario al cierre de esta entrada.
 
 ## 6. Riesgos abiertos
 
@@ -243,12 +239,12 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 n8n (consumidor del outbox activo, `V2`/`V2.1` borradas) quedaron confirmados por el
 usuario, con evidencia real en cada uno — ver §4 y §5. **El corte 4 (esta unidad)
 reconcilia F11** a pedido explícito del usuario, en paralelo a U2 tal como el corte 3 lo
-dejó habilitado — no es una desviación de la cabeza de la cola. **La acción inmediata
-sigue siendo U2 · Construir el baseline de migraciones Prisma** (`plan-ejecucion.md`).
-Antes de empezarlo: leer `plan-ejecucion.md` completo (fija escenarios mínimos y
-condición de cierre) y `contexto-canonico.md` §4 (D1/D1', la decisión que U2 construye).
-F11 y F12 quedan cerrados (§5); D8 queda diferida, sin fecha asignada, sin bloquear
-nada (`Decisiones tomadas y NO implementadas`).
+dejó habilitado — no es una desviación de la cabeza de la cola. **La acción inmediata ya
+NO es construir el baseline de U2.** Al arrancarlo (corte 5) apareció F12 reabierto y un
+hallazgo mayor que lo bloquea por completo — ver cabecera y §5. La acción inmediata pasa
+a ser: **obtener del usuario la procedencia del subsistema de identidad no documentado
+antes de escribir una sola línea de `schema.prisma` o de migración.** F11 sigue cerrado
+(§5); D8 sigue diferida, sin fecha asignada (`Decisiones tomadas y NO implementadas`).
 
 Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
 efectivamente se corrió contra la base real — no son pasos pendientes.
@@ -576,3 +572,17 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   reasignación de área) además de no resolver de raíz que la secuencia ya no se
   reinicia por año. La consulta de solo lectura contra la base real queda como residuo
   opcional, sin bloquear el cierre. Cambios sin commit al cierre de esta entrada.
+- 10-sep-2026 (corte 5, sesión nueva) — el usuario pide arrancar U2 sin más demora. Antes
+  de escribir el baseline, se pide la consulta de solo lectura contra la base real que
+  corte 4 había dejado como "residuo opcional" (columnas de `dim_area`/`dim_personal`,
+  todos los índices, todos los CHECK, todos los triggers y todas las tablas de `core`,
+  `helpdesk` y `staging`). El resultado retracta el cierre de F12: `next_codigo_ticket`
+  sí tiene dos argumentos y hay un trigger activo (`trg_set_codigo_ticket`) — el
+  mecanismo que se declaró "nunca construido" corre en producción. Peor: la misma
+  consulta revela `core.identidad_correo`, columnas nuevas en `fact_ticket`
+  (`id_identidad_correo_asignado/solicitante`, `resolucion_asignado/solicitante`), un
+  `chk_fact_ticket_origen_exclusivo` reescrito, un `chk_fact_ticket_evento_tipo` más
+  angosto y ninguno de los índices de `fact_ticket` que declara el repositorio —
+  reemplazados por otros dos. Se busca en todo el repositorio, incluido `n8n/`: no hay
+  ni un rastro. U2 se bloquea por completo hasta que el usuario explique la procedencia
+  de ese subsistema. Cambios sin commit al cierre de esta entrada.
