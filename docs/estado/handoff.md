@@ -1,23 +1,24 @@
 # Handoff técnico
 
 ```
-CORTE:   03-sep-2026 (corte 1)
-HEAD:    a5d8347. SIN COMMIT — todo el trabajo de este corte está en el árbol de
-         trabajo, sin publicar
+CORTE:   10-sep-2026 (corte 2)
+HEAD:    e2ffb24. Publicado en origin/main
 RAMA:    main
-UNIDAD:  LÍNEA BASE DOCUMENTAL. No existía contrato documental adaptado a lo que el
-         proyecto va a ser: había ocho documentos sueltos que describían una migración
-         one-way desde SharePoint, escritos antes de que el HelpDesk completo entrara
-         en alcance y antes de que existieran las referencias de `plataforma-impulsa`.
-         Se escribe el conjunto completo —`CLAUDE.md`, índice, contexto canónico, cinco
-         specs, sistema de diseño y tres documentos de estado— adaptando estructura,
-         precedencia y convenciones del proyecto hermano. Se preserva la evidencia
-         empírica del legacy en `docs/legacy/` y se retiran cuatro documentos de
-         intención superados. CONSECUENCIA DECLARADA: casi todo el conjunto es
-         contrato acordado, NO comportamiento observado. Verificado por lectura directa
-         del árbol; SIN EJERCITAR, SIN DESPLEGAR, SIN COMMIT.
+UNIDAD:  CIERRE DE U0/U1 + INVESTIGACIÓN DE INGESTA. Se resolvieron cuatro de cinco
+         preguntas de U0 por confirmación directa del usuario (sin levantamiento
+         formal de PowerApps) y las cinco de U1 con evidencia real contra la VPS y
+         contra el contenido de n8n/. Se decidió el modelo de esquema (Prisma
+         completo, D1/D1'). Ejecutando manualmente la ingesta corregida (V2.1) se
+         encontró y se corrigió un bug real (Proyectos y TI tratada como área propia)
+         y se descubrió un bloqueo nuevo, no resuelto: `core.dim_personal` tiene una
+         fila duplicada por correo (buzón compartido), con 155 tickets reales
+         dependiendo de ella. CONSECUENCIA DECLARADA: el código de ingesta ya está
+         corregido y publicado, pero **no se ha ejecutado con éxito contra la base
+         real todavía** — ni la columna `codigo_area` ni el modelo de buzón
+         compartido existen en la base viva, solo en el código.
 STAGING: no aplica. No hay entorno de pruebas declarado para este proyecto
-LINT:    no ejecutado. La unidad no tocó una sola línea de código
+LINT:    no ejecutado sobre `coraje-web/`. Se tocó SQL y workflows de n8n, no
+         TypeScript
 ```
 
 > **Corrección al propio documento:** este es el primer corte. No hay unidades previas
@@ -119,8 +120,8 @@ archivo dice que sí, pero un archivo exportado no es la instancia viva.
 | F2 | La redirección usa contraseña compartida; no hay traza de quién redirigió | **Alta** | `specs/acceso-empleados.md` §1 |
 | F3 | El ELT sobrescribe todos los campos con SharePoint y pierde la procedencia del portal | **Alta** | `specs/sincronizacion-sharepoint.md` §4.1 |
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
-| F10 | `core.dim_personal` tiene **al menos dos filas con el mismo `correo_corporativo`** (`recepcion.gct@rbcol.co` — confirmado el único caso hoy, `HAVING count(*) > 1` no devuelve otro). Cualquier ticket legacy asignado a ese correo compartido duplica filas en el `JOIN` de `06_transform_ticket` y aborta con `ON CONFLICT ... cannot affect row a second time`. Afecta a las tres versiones del workflow de ingesta por igual. **155 tickets reales** en `fact_ticket` referencian directamente la fila fantasma (`ef1e69e7...`) por `id_asignado`/`id_solicitante` — no es un `DELETE` trivial | **Alta** — bloquea que la transformación de tickets corra hasta el final, en cualquier versión | `core.dim_personal`; ver decisión de modelo de buzón compartido abajo |
-| F5 | El workflow de salida **existe** en `n8n/`, pero no está commiteado (`git ls-files` no lo lista) y su nombre (`REVISORIA - Inspeccion SharePoint Vacaciones y Tareas V2.json`) no describe lo que hace — riesgo real de que alguien lo borre pensando que es un archivo suelto de otro dominio | **Alta** (subió de Media: antes era "falta versionar", ahora es "existe y puede perderse sin que nadie note la pérdida") | `specs/sincronizacion-sharepoint.md` §2.2 |
+| F10 | `core.dim_personal` tiene **al menos dos filas con el mismo `correo_corporativo`** (`recepcion.gct@rbcol.co` — confirmado el único caso hoy, `HAVING count(*) > 1` no devuelve otro). Cualquier ticket legacy asignado a ese correo compartido duplica filas en el `JOIN` de `06_transform_ticket` y aborta con `ON CONFLICT ... cannot affect row a second time`. **155 tickets reales** en `fact_ticket` referencian directamente la fila fantasma (`ef1e69e7...`). Dirección de solución decidida (modelo de buzón compartido, `specs/tickets.md` §7.3) — **diseño exacto sin construir todavía. Sigue bloqueando cualquier ejecución real de la ingesta** | **Alta — bloqueante hoy** | `core.dim_personal`; `specs/tickets.md` §7.3 |
+| ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`). Pendiente real: activarlo en la instancia viva de n8n, que sigue sin confirmarse | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
@@ -142,37 +143,40 @@ archivo dice que sí, pero un archivo exportado no es la instancia viva.
 
 | Commit | Cambio |
 |---|---|
-| `a5d8347` | **Corte vigente.** Estabiliza el ETL incremental SharePoint → PostgreSQL |
-| `139f24b` | Prepara Coraje Web con Docker Compose y red dedicada |
-| `bd801e1` | Portal cliente, redirección interna y outbox a SharePoint |
-
-**Esta unidad no tiene commit todavía.**
+| `e2ffb24` | **Corte vigente.** Retira `create-copilot-export.sh`, sin relación con HelpDesk |
+| `d5efa5a` | Documenta consultas SQL directas contra la VPS y el gate de `migrate` |
+| `52aed2a` | Versiona `.claude/skills/` |
+| `1de8641` | Corrige Proyectos y TI como tipo, no área; añade `codigo_area`; commitea el consumidor del outbox |
+| `6a54bde` | Cierre de U0/U1: decisiones de esquema, SLA, permisos ratificados, F10 descubierto |
+| `6ae29e1` | Línea base documental completa |
+| `a5d8347` | Estabiliza el ETL incremental SharePoint → PostgreSQL |
 
 ---
 
 ## ACCIÓN INMEDIATA
 
-**U1 está cerrado.** Las cinco preguntas tienen respuesta y evidencia registrada en §4:
-167 personal activo, 2.559 tickets reales (contradicción con el baseline, explicada),
-outbox en cero filas, el workflow de salida existe y escribe su referencia legacy, hay
-cron de respaldo, no hay workflow de error.
+**U1 y la publicación están cerrados.** Lo que sigue no es U2 todavía — es hacer que el
+código ya corregido y publicado (commit `1de8641`) funcione contra la base real, algo
+que hoy **no se ha probado ni una vez**:
 
-**Antes de U2, una limpieza barata que U1 dejó al descubierto, no construcción de
-producto:**
+1. **Aplicar `codigo_area` a la base real de la VPS.** `sql/db/04_core.sql` ya declara
+   la columna; nadie ha corrido el `ALTER TABLE` contra `core.dim_area` en producción
+   — el esquema sigue siendo SQL a mano, aplicado a mano (`contexto-canonico.md` §4).
+   Sin esto, el primer paso de la ingesta corregida falla igual que fallaba antes.
+2. **Diseñar y construir el modelo de buzón compartido (F10, `specs/tickets.md`
+   §7.3).** Ya no es un hallazgo aparte: es lo que bloquea que la transformación de
+   tickets corra hasta el final. Regla dura ya decidida: los 155 tickets afectados
+   **nunca** quedan a nombre de quien ocupa el buzón hoy.
+3. **Confirmar en la instancia viva de n8n** cuál workflow queda activo — de las tres
+   versiones de `CORAJE - INCREMENTAL COMPLETO` que existieron, solo una debe seguir
+   viva, y debe ser la que corresponde al código ya corregido — y activar el consumidor
+   del outbox (`CORAJE - SALIDA...`, commiteado, nunca activado).
+4. **Solo entonces**, ejecutar la ingesta real de punta a punta y confirmar si el
+   conteo de tickets cambia.
 
-1. **Publicar este corte.** Sigue sin haber un solo commit desde el 03-sep-2026 —
-   pedido dos veces en esta misma conversación.
-2. **Renombrar y commitear el consumidor del outbox** (`n8n/REVISORIA - Inspeccion
-   SharePoint Vacaciones y Tareas V2.json` → un nombre que diga lo que hace) antes de
-   que alguien lo pierda pensando que es un archivo suelto de otro dominio (F5).
-3. **Confirmar en la instancia viva de n8n** cuál de las tres versiones de
-   `CORAJE - INCREMENTAL COMPLETO` está realmente activa hoy, y borrar las otras dos —
-   el archivo sin sufijo es el único commiteado y el único `active: true` en su
-   export, pero un export no prueba el estado de la instancia real.
-
-Ninguna de las tres construye producto ni compite con "una sola unidad a la vez": es
-higiene sobre lo que U1 ya encontró. **Después de esto, U2** (baseline de migraciones
-Prisma) es la siguiente unidad real de la cola.
+`core.dim_personal` y `core.dim_area` son exactamente las tablas que U2 va a migrar a
+Prisma — conviene resolver 1–4 primero y no en paralelo con el baseline de U2, para no
+construir dos veces el mismo tramo de esquema.
 
 > **En paralelo, y no después: U0**, el levantamiento funcional de PowerApps. Su cuello
 > de botella es la disponibilidad de otras personas, no el trabajo, así que empezarlo
@@ -303,3 +307,14 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   con `id` de workflow propio. Nueva acción inmediata: publicar el corte, renombrar y
   commitear el consumidor, y confirmar en n8n cuál ingesta sigue activa antes de U2.
   Sigue sin publicarse un solo commit desde el 03-sep-2026.
+- 10-sep-2026 (mismo día) — **corte 2, publicado (`e2ffb24`).** Ejecutando V2.1
+  manualmente aparece `ON CONFLICT ... cannot affect row a second time`: diagnosticado
+  hasta la causa exacta, `core.dim_personal` duplicado por correo compartido
+  (`recepcion.gct@rbcol.co`), 155 tickets reales afectados. El usuario decide la
+  dirección (modelo de buzón compartido, nunca atribuir a la ocupante actual) y elige
+  V2.1 como versión a mantener — que corrige Proyectos y TI como tipo, no área, y exige
+  `codigo_area` nueva en `core.dim_area`. Se commitea y publica todo: la corrección de
+  ingesta, el consumidor del outbox renombrado, `.claude/skills/`, la documentación del
+  patrón de consulta SQL directa, y el retiro de `create-copilot-export.sh`. **Ninguna
+  de las dos correcciones (`codigo_area`, buzón compartido) se aplicó todavía contra la
+  base real** — siguen solo en el código. Nueva acción inmediata en consecuencia.
