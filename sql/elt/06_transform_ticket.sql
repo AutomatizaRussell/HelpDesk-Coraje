@@ -31,6 +31,40 @@
 
 
 -- =================================================================
+-- -1. VALIDACIÓN: BUZONES COMPARTIDOS SIN MARCADOR RESUELTO
+-- =================================================================
+-- core.dim_personal.correo_corporativo no tiene UNIQUE (docs/specs/tickets.md
+-- §7.3): un mismo correo puede tener más de una fila cuando un buzón
+-- compartido cambió de ocupante entre cargas. La resolución de más abajo
+-- (sección 1, sol/asig) da por hecho que, para cualquier correo duplicado,
+-- exactamente una fila está marcada es_responsable_historico_no_identificado
+-- y el resto son personas reales identificadas. Si aparece un correo
+-- duplicado sin esa marca -o con más de una-, la ambigüedad no tiene una
+-- resolución segura definida todavía: aborta en vez de elegir en silencio,
+-- mismo criterio que la validación de áreas desconocidas en
+-- 01_transform_area.sql.
+DO $validate_shared_mailboxes$
+DECLARE
+    v_unresolved TEXT;
+BEGIN
+    SELECT string_agg(correo_corporativo, ', ' ORDER BY correo_corporativo)
+    INTO v_unresolved
+    FROM core.dim_personal
+    WHERE correo_corporativo IS NOT NULL
+    GROUP BY correo_corporativo
+    HAVING COUNT(*) > 1
+       AND COUNT(*) FILTER (WHERE es_responsable_historico_no_identificado) <> 1;
+
+    IF v_unresolved IS NOT NULL THEN
+        RAISE EXCEPTION
+            'core.dim_personal tiene correos compartidos sin marcador histórico único (docs/specs/tickets.md §7.3): %',
+            v_unresolved;
+    END IF;
+END;
+$validate_shared_mailboxes$;
+
+
+-- =================================================================
 -- 0. MAPEO TEMPORAL SHAREPOINT -> TICKET
 -- =================================================================
 -- Este mapa temporal resuelve la identidad canónica del ticket.
@@ -158,11 +192,27 @@ INNER JOIN tmp_ticket_legacy_map ref
 LEFT JOIN core.dim_cliente_contai c
     ON c.identificacion_fiscal = TRIM(s.payload->>'Nit')
 
-LEFT JOIN core.dim_personal sol
-    ON sol.correo_corporativo = TRIM(LOWER(s.payload->>'Title'))
+-- Resuelve a una sola fila por correo, incluso cuando el correo es un buzón
+-- compartido con más de una fila en dim_personal (docs/specs/tickets.md
+-- §7.3). Si hay ambigüedad, el ORDER BY prioriza la fila marcada como
+-- responsable histórico no identificado sobre cualquier persona real: la
+-- validación de la sección -1 ya garantizó que existe como máximo una. Un
+-- correo sin duplicados resuelve a su única fila sin que la marca importe.
+LEFT JOIN LATERAL (
+    SELECT p.id_personal
+    FROM core.dim_personal p
+    WHERE p.correo_corporativo = TRIM(LOWER(s.payload->>'Title'))
+    ORDER BY p.es_responsable_historico_no_identificado DESC
+    LIMIT 1
+) sol ON TRUE
 
-LEFT JOIN core.dim_personal asig
-    ON asig.correo_corporativo = TRIM(LOWER(s.payload->>'AsignadoA'))
+LEFT JOIN LATERAL (
+    SELECT p.id_personal
+    FROM core.dim_personal p
+    WHERE p.correo_corporativo = TRIM(LOWER(s.payload->>'AsignadoA'))
+    ORDER BY p.es_responsable_historico_no_identificado DESC
+    LIMIT 1
+) asig ON TRUE
 
 -- PROYECTOS Y TI no es un área canónica (sql/elt/01_transform_area.sql): sus
 -- tickets se resuelven contra ADMINISTRACIÓN, que es donde vive su catálogo de

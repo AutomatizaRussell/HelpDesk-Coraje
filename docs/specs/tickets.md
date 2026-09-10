@@ -184,8 +184,9 @@ al cliente o perder a quien lo radicó.
 no existe, y no se puede consultar «qué tiene asignado esta persona» de forma fiable.
 Viene de la forma del dato en SharePoint, y es deuda heredada, no una decisión.
 
-**7.3 `DECISIÓN` (10-sep-2026) Modelo de buzón compartido — dirección tomada, diseño
-sin resolver.** `core.dim_personal.correo_corporativo` no tiene `UNIQUE`, y dos rutas
+**7.3 `DECISIÓN` (10-sep-2026) Modelo de buzón compartido — diseño construido, sin
+ejecutar todavía contra la base real.** `core.dim_personal.correo_corporativo` no tiene
+`UNIQUE`, y dos rutas
 de carga distintas (`sql/elt/03_transform_personal.sql`, keyed por `sp_personal_id`, y
 `sql/elt/04_transform_personal_historico.sql`, un `INSERT` de una sola vez guardado por
 `correo NOT IN (...)`) pueden terminar con dos filas para el mismo correo cuando una
@@ -200,16 +201,47 @@ ocupa el buzón hoy**. Mientras no se recupere el nombre real de quien lo atend�
 momento, se marcan con un responsable histórico explícitamente no identificado — nunca
 con el nombre de la persona actual.
 
-**Lo que sigue sin decidir, y no se resuelve por analogía cuando se construya:**
-- Cómo se representa la vigencia en el tiempo de un ocupante sobre un buzón (rango de
-  fechas en `dim_personal`, una tabla puente aparte, u otro diseño).
-- Cómo la transformación de tickets elige **una sola** fila de ocupante para un ticket
-  dado, en vez de encontrar todas las que comparten el correo.
-- La convención exacta del marcador de "responsable histórico no identificado" (texto,
-  o una fila sentinela por buzón, distinta de un empleado real).
-- Si el patrón debe generalizarse a cualquier buzón futuro o basta con resolver el caso
-  conocido — hoy solo hay uno, pero el mecanismo que lo produjo sigue activo para
-  cualquier otro correo que llegue a repetirse.
+**Diseño construido (10-sep-2026), las cuatro preguntas abiertas resueltas así:**
+
+- **Vigencia en el tiempo:** se descartó el rango de fechas (`vigente_desde`/
+  `vigente_hasta`). No hay evidencia de cuándo cambió de manos el buzón conocido —
+  inventar una fecha de corte violaría la disciplina de no afirmar lo que no se puede
+  demostrar. En su lugar, `core.dim_personal` gana una columna booleana,
+  `es_responsable_historico_no_identificado`, que **no representa un rango temporal**
+  sino un marcador explícito: "esta fila absorbe la ambigüedad de un buzón compartido
+  cuando no se puede saber cuál ocupante corresponde a cuál ticket". Es una
+  simplificación deliberada, no una vigencia real — si algún día se recupera el dato de
+  fechas, migrar a un modelo temporal es un cambio aditivo, no una reescritura.
+- **Cómo la transformación elige una sola fila:** `sql/elt/06_transform_ticket.sql`
+  reemplaza el `LEFT JOIN` directo contra `dim_personal` por un `LEFT JOIN LATERAL` que
+  ordena por `es_responsable_historico_no_identificado DESC LIMIT 1` — si el correo
+  tiene una sola fila, la resuelve sin que la marca importe; si tiene varias, prioriza
+  siempre la marcada como histórica sobre cualquier persona real, nunca al revés. Así se
+  cumple la regla dura sin necesitar la fecha del ticket.
+- **Convención del marcador:** columna booleana en la fila misma
+  (`es_responsable_historico_no_identificado`), no una fila sentinela aparte ni una
+  convención de texto en `cargo` (el texto `'EX-EMPLEADO (RECUPERADO DEL HISTORIAL)'`
+  sigue existiendo para lectura humana, pero ya no es la señal que el código interpreta).
+  `sql/elt/04_transform_personal_historico.sql` marca la columna en `TRUE` para toda fila
+  que inserta, porque por definición esas filas son inferidas de tickets legacy sin
+  identidad recuperable.
+- **Generalización:** el patrón cubre cualquier buzón futuro, no solo el caso conocido.
+  Un índice único parcial (`ux_dim_personal_correo_historico`, solo sobre filas
+  marcadas) impide que un mismo correo tenga dos marcadores históricos. Una validación
+  al inicio de `06_transform_ticket.sql` (`DO $validate_shared_mailboxes$`) aborta la
+  transformación completa si aparece un correo con más de una fila y **sin** exactamente
+  un marcador — mismo criterio de "fallar fuerte antes que adivinar en silencio" que ya
+  usa `01_transform_area.sql` para áreas desconocidas.
+
+**Lo que sigue pendiente, y no es diseño sino ejecución:**
+- Aplicar el `ALTER TABLE` contra la base real de la VPS (`docs/estado/handoff.md`,
+  acción inmediata).
+- Marcar la fila fantasma conocida (`recepcion.gct@rbcol.co`) con la nueva columna —
+  backfill de una sola fila, comando entregado en el mismo lugar.
+- Propagar el mismo cambio al workflow de ingesta de n8n, que embebe su propia copia de
+  este SQL y no la lee del repositorio — hecho en esta unidad
+  (`n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`), pendiente de
+  reimportarse a la instancia viva.
 
 ## 8. Criterios de aceptación
 
@@ -356,3 +388,11 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   (`core.dim_personal` duplicado por correo, 155 tickets afectados). Regla dura: esos
   tickets nunca quedan atribuidos a quien ocupa el buzón hoy. Diseño exacto (vigencia
   en el tiempo, convención del marcador histórico) sigue sin resolver.
+- 10-sep-2026 (mismo día, unidad siguiente) — §7.3 cierra su diseño: columna
+  `es_responsable_historico_no_identificado` en `core.dim_personal` en vez de rango de
+  fechas (sin evidencia de cuándo cambió de manos el buzón), resolución por
+  `LEFT JOIN LATERAL` con prioridad a la fila histórica en `06_transform_ticket.sql`,
+  índice único parcial y validación que aborta ante ambigüedad sin marcador. Construido
+  en el repositorio y en la copia embebida del workflow de n8n; **sin aplicar todavía
+  contra la base real ni reimportado a la instancia viva de n8n** —
+  `docs/estado/handoff.md` trae los comandos exactos.

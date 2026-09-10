@@ -69,6 +69,26 @@ CREATE TABLE core.dim_personal (
     cargo VARCHAR(100),
     estado_activo BOOLEAN NOT NULL DEFAULT TRUE,
 
+    -- Modelo de buzón compartido (docs/specs/tickets.md §7.3). Marca una fila
+    -- como el "responsable histórico no identificado" de un correo
+    -- corporativo compartido por más de una persona a lo largo del tiempo —
+    -- nunca una persona real, siempre el marcador que absorbe la ambigüedad
+    -- cuando sql/elt/04_transform_personal_historico.sql infiere un correo
+    -- de tickets legacy que ya tiene una fila activa con el mismo correo.
+    -- La transformación de tickets (sql/elt/06_transform_ticket.sql) resuelve
+    -- a esta fila en caso de ambigüedad, nunca al ocupante actual: es la
+    -- regla dura decidida el 10-sep-2026 (nunca atribuir historial a quien
+    -- ocupa el buzón hoy).
+    es_responsable_historico_no_identificado BOOLEAN NOT NULL DEFAULT FALSE,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Como máximo un marcador histórico por correo compartido: si
+-- 04_transform_personal_historico.sql alguna vez infiere dos marcadores para
+-- el mismo buzón, es un defecto que debe fallar aquí, no propagarse en
+-- silencio a la transformación de tickets.
+CREATE UNIQUE INDEX ux_dim_personal_correo_historico
+ON core.dim_personal (correo_corporativo)
+WHERE es_responsable_historico_no_identificado;

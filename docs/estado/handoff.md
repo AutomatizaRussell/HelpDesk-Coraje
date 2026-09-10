@@ -1,24 +1,39 @@
 # Handoff técnico
 
 ```
-CORTE:   10-sep-2026 (corte 2)
-HEAD:    e2ffb24. Publicado en origin/main
+CORTE:   10-sep-2026 (corte 3)
+HEAD:    esta unidad, publicada encima de `e8918e6`. Ver §7 para el hash exacto una vez
+         commiteada
 RAMA:    main
-UNIDAD:  CIERRE DE U0/U1 + INVESTIGACIÓN DE INGESTA. Se resolvieron cuatro de cinco
-         preguntas de U0 por confirmación directa del usuario (sin levantamiento
-         formal de PowerApps) y las cinco de U1 con evidencia real contra la VPS y
-         contra el contenido de n8n/. Se decidió el modelo de esquema (Prisma
-         completo, D1/D1'). Ejecutando manualmente la ingesta corregida (V2.1) se
-         encontró y se corrigió un bug real (Proyectos y TI tratada como área propia)
-         y se descubrió un bloqueo nuevo, no resuelto: `core.dim_personal` tiene una
-         fila duplicada por correo (buzón compartido), con 155 tickets reales
-         dependiendo de ella. CONSECUENCIA DECLARADA: el código de ingesta ya está
-         corregido y publicado, pero **no se ha ejecutado con éxito contra la base
-         real todavía** — ni la columna `codigo_area` ni el modelo de buzón
-         compartido existen en la base viva, solo en el código.
+UNIDAD:  EJECUTAR LA INGESTA CORREGIDA CONTRA LA BASE REAL. Continuación directa del
+         corte 2: construye lo que el corte 2 dejó diseñado pero sin construir — el
+         modelo de buzón compartido (F10) — y prepara los comandos exactos para
+         aplicar ambos cambios de esquema contra la VPS. NINGÚN comando se ejecutó
+         contra la base real ni contra la instancia viva de n8n en esta sesión: se
+         confirmó explícitamente con el usuario que ninguna sesión de Claude Code se
+         conecta nunca por `ssh`/`docker exec` a la VPS (ver `estado/operacion.md`,
+         nueva regla dura), así que todo lo ejecutable en esta unidad queda entregado
+         como comandos listos para que el usuario los corra manualmente.
+CAMBIOS DE ESTA UNIDAD (publicados en este corte, sin ejecutar contra la VPS ni n8n):
+         - `sql/db/04_core.sql`: columna `es_responsable_historico_no_identificado` +
+           índice único parcial en `core.dim_personal`.
+         - `sql/elt/04_transform_personal_historico.sql`: marca la columna en `TRUE`
+           para toda fila que infiere.
+         - `sql/elt/06_transform_ticket.sql`: valida buzones compartidos sin marcador
+           único (aborta si los encuentra) y resuelve `sol`/`asig` con
+           `LEFT JOIN LATERAL` priorizando la fila histórica en vez del `LEFT JOIN`
+           directo que producía el `ON CONFLICT ... cannot affect row a second time`.
+         - `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`: mismo
+           fix aplicado a la copia embebida (el workflow no lee los `.sql` del
+           repositorio, trae su propia copia del texto de cada query) — ver hallazgo
+           nuevo F11 más abajo.
+         - `docs/specs/tickets.md` §7.3, `docs/estado/operacion.md` (regla dura de no
+           acceso directo a la VPS).
 STAGING: no aplica. No hay entorno de pruebas declarado para este proyecto
 LINT:    no ejecutado sobre `coraje-web/`. Se tocó SQL y workflows de n8n, no
-         TypeScript
+         TypeScript. No hay build ni typecheck que verifique SQL o JSON de n8n — la
+         única validación disponible es lectura cuidadosa más ejecución real contra la
+         VPS, que queda pendiente del usuario
 ```
 
 > **Corrección al propio documento:** este es el primer corte. No hay unidades previas
@@ -120,7 +135,8 @@ archivo dice que sí, pero un archivo exportado no es la instancia viva.
 | F2 | La redirección usa contraseña compartida; no hay traza de quién redirigió | **Alta** | `specs/acceso-empleados.md` §1 |
 | F3 | El ELT sobrescribe todos los campos con SharePoint y pierde la procedencia del portal | **Alta** | `specs/sincronizacion-sharepoint.md` §4.1 |
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
-| F10 | `core.dim_personal` tiene **al menos dos filas con el mismo `correo_corporativo`** (`recepcion.gct@rbcol.co` — confirmado el único caso hoy, `HAVING count(*) > 1` no devuelve otro). Cualquier ticket legacy asignado a ese correo compartido duplica filas en el `JOIN` de `06_transform_ticket` y aborta con `ON CONFLICT ... cannot affect row a second time`. **155 tickets reales** en `fact_ticket` referencian directamente la fila fantasma (`ef1e69e7...`). Dirección de solución decidida (modelo de buzón compartido, `specs/tickets.md` §7.3) — **diseño exacto sin construir todavía. Sigue bloqueando cualquier ejecución real de la ingesta** | **Alta — bloqueante hoy** | `core.dim_personal`; `specs/tickets.md` §7.3 |
+| F10 | `core.dim_personal` tiene **al menos dos filas con el mismo `correo_corporativo`** (`recepcion.gct@rbcol.co` — confirmado el único caso hoy, `HAVING count(*) > 1` no devuelve otro). Cualquier ticket legacy asignado a ese correo compartido duplica filas en el `JOIN` de `06_transform_ticket` y aborta con `ON CONFLICT ... cannot affect row a second time`. **155 tickets reales** en `fact_ticket` referencian directamente la fila fantasma (`ef1e69e7...`). **Diseño construido en esta unidad** (`specs/tickets.md` §7.3: columna `es_responsable_historico_no_identificado`, `LEFT JOIN LATERAL` con prioridad a la fila histórica, índice único parcial, validación que aborta ante ambigüedad sin marcador), aplicado tanto en `sql/elt/` como en la copia embebida del workflow de n8n — **sin aplicar contra la base real ni reimportar a n8n todavía. Sigue bloqueando cualquier ejecución real de la ingesta hasta que eso pase** | **Alta — bloqueante hoy** | `core.dim_personal`; `specs/tickets.md` §7.3 |
+| F11 | `sql/elt/06_transform_ticket.sql` (el archivo del repositorio) y el nodo `PG - Transform 06 Tickets Legacy` del workflow de n8n **tienen lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy** — descubierto al extraer la query embebida del workflow para aplicarle el fix de F10. La versión de n8n resuelve más casos reales (p. ej. tickets que ya traen `PROYECTOS Y TI` como tipo, o que necesitan repartirse entre `AUTOMATIZACION`/`TI` según `categoria_2`); la versión del archivo `.sql` solo cubre el caso simple `AUTOMATIZACION`/`TI` → `PROYECTOS Y TI`. El archivo `.sql` es, en la práctica, **el que se ejecutó manualmente para diagnosticar F10** (según el corte 2) — no el que corre en n8n. No se sabe si la versión de n8n se refinó directamente ahí sin volcarse nunca al repositorio, o si es al revés. **No se resolvió en esta unidad** (fuera de alcance de F10: exige decidir cuál lógica es la correcta y por qué divergieron, no solo copiar una sobre la otra) — ver `operacion.md` para el patrón ya documentado de que n8n trae su propia copia de cada query y no lee `sql/elt/` | Media — no bloquea hoy, pero el archivo `.sql` no es fuente de verdad fiable para esta transformación específica | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`). Pendiente real: activarlo en la instancia viva de n8n, que sigue sin confirmarse | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
@@ -137,13 +153,15 @@ archivo dice que sí, pero un archivo exportado no es la instancia viva.
 | Un cliente radica y el ticket se duplica en SharePoint | Visible para PowerApps y para el cliente | Reducido, no eliminado: el diseño del workflow ya no duplica (U1 §2, `sincronizacion-sharepoint.md` §4.2), pero sigue sin ejercitarse con un caso real — probarlo con el primer ticket real del portal antes de anunciarlo cerrado |
 | La autorización destructiva alcanza datos reales | Pérdida irrecuperable | `contexto-canonico.md` §1.3 delimita el alcance |
 | Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza | Entre esta decisión y que U2 construya ese servicio, no hay ninguna forma documentada de verificar comportamiento — ni local, ni por push | Construir U2 (baseline Prisma + servicio `migrate`) antes de apoyarse en "verificar por push" como si ya existiera |
-| `n8n/` tiene tres archivos sin commit: el consumidor real del outbox (mal nombrado, F5) y dos copias inactivas de la ingesta (`V2`, `V2.1`, cada una con `id` de workflow distinto — no son historial secuencial de una misma entidad) | Pérdida silenciosa del consumidor si alguien limpia la carpeta; confusión sobre cuál ingesta es la real si alguien activa la copia equivocada | Renombrar y commitear el consumidor ya; confirmar en la instancia viva de n8n cuál de las tres ingestas está `active` antes de borrar las otras dos — el archivo sin sufijo es el único con commit y el único `active: true` en su export, pero un export no es la instancia viva |
+| ~~`n8n/` tiene tres archivos sin commit~~ — **parcialmente cerrado 10-sep-2026 (`1de8641`)**: el consumidor del outbox quedó renombrado y commiteado. **Sigue abierto**: confirmar en la instancia viva de n8n cuál de las tres copias de la ingesta está `active` de verdad — un export no es la instancia viva, y las dos copias inactivas (`V2`, `V2.1`) no tienen commit todavía | Confusión sobre cuál ingesta es la real si alguien activa la copia equivocada; pérdida silenciosa de `V2`/`V2.1` si alguien limpia la carpeta sin confirmar antes | Confirmar cuál está `active` antes de borrar las otras dos |
+| El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`** (confirmado en esta unidad al extraer y comparar el texto real). Un fix aplicado solo al archivo `.sql` del repositorio queda inerte si nadie reimporta el workflow actualizado a la instancia viva | El fix de F10 (esta unidad) está aplicado en ambos lugares, pero **la instancia viva de n8n sigue corriendo lo que tenía antes** — ningún commit, por sí solo, cambia lo que n8n ejecuta | Reimportar manualmente `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` a la instancia viva antes de activar o disparar la ingesta; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que este reimport no corrige |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `e2ffb24` | **Corte vigente.** Retira `create-copilot-export.sh`, sin relación con HelpDesk |
+| `e8918e6` | **Corte vigente antes de esta unidad.** Actualiza cabecera, commits y acción inmediata del handoff al estado real tras el hallazgo de F10 |
+| `e2ffb24` | Retira `create-copilot-export.sh`, sin relación con HelpDesk |
 | `d5efa5a` | Documenta consultas SQL directas contra la VPS y el gate de `migrate` |
 | `52aed2a` | Versiona `.claude/skills/` |
 | `1de8641` | Corrige Proyectos y TI como tipo, no área; añade `codigo_area`; commitea el consumidor del outbox |
@@ -155,36 +173,126 @@ archivo dice que sí, pero un archivo exportado no es la instancia viva.
 
 ## ACCIÓN INMEDIATA
 
-**U1 y la publicación están cerrados.** Lo que sigue no es U2 todavía — es hacer que el
-código ya corregido y publicado (commit `1de8641`) funcione contra la base real, algo
-que hoy **no se ha probado ni una vez**:
+**El diseño de F10 (buzón compartido) está construido; nada de esta unidad se ejecutó
+contra la VPS ni contra n8n — regla dura, ver cabecera.** El usuario corre los
+siguientes comandos manualmente, en orden, y reporta el resultado antes de seguir al
+siguiente paso. Cada bloque `docker exec` es autocontenido (`operacion.md` §"Consultas
+SQL directas").
 
-1. **Aplicar `codigo_area` a la base real de la VPS.** `sql/db/04_core.sql` ya declara
-   la columna; nadie ha corrido el `ALTER TABLE` contra `core.dim_area` en producción
-   — el esquema sigue siendo SQL a mano, aplicado a mano (`contexto-canonico.md` §4).
-   Sin esto, el primer paso de la ingesta corregida falla igual que fallaba antes.
-2. **Diseñar y construir el modelo de buzón compartido (F10, `specs/tickets.md`
-   §7.3).** Ya no es un hallazgo aparte: es lo que bloquea que la transformación de
-   tickets corra hasta el final. Regla dura ya decidida: los 155 tickets afectados
-   **nunca** quedan a nombre de quien ocupa el buzón hoy.
-3. **Confirmar en la instancia viva de n8n** cuál workflow queda activo — de las tres
-   versiones de `CORAJE - INCREMENTAL COMPLETO` que existieron, solo una debe seguir
-   viva, y debe ser la que corresponde al código ya corregido — y activar el consumidor
-   del outbox (`CORAJE - SALIDA...`, commiteado, nunca activado).
-4. **Solo entonces**, ejecutar la ingesta real de punta a punta y confirmar si el
-   conteo de tickets cambia.
+**1. `codigo_area` en `core.dim_area`:**
+
+```bash
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+ALTER TABLE core.dim_area ADD COLUMN codigo_area VARCHAR(10) UNIQUE;
+"
+```
+
+**2. Modelo de buzón compartido en `core.dim_personal` (F10) — cuatro pasos, en orden:**
+
+```bash
+# 2a. Verificación previa (solo lectura): confirmar que sigue habiendo exactamente
+# dos filas para el correo compartido conocido, antes de tocar nada.
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+SELECT id_personal, sp_personal_id, correo_corporativo, cargo, estado_activo
+FROM core.dim_personal
+WHERE correo_corporativo = 'recepcion.gct@rbcol.co';
+"
+```
+
+Si esa consulta **no** devuelve exactamente dos filas (una con `cargo = 'EX-EMPLEADO
+(RECUPERADO DEL HISTORIAL)'`), detenerse — el resto de los comandos asume ese estado.
+
+```bash
+# 2b. Columna nueva, aditiva y reversible.
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+ALTER TABLE core.dim_personal
+    ADD COLUMN es_responsable_historico_no_identificado BOOLEAN NOT NULL DEFAULT FALSE;
+"
+
+# 2c. Backfill de la única fila fantasma conocida. Debe reportar 'UPDATE 1' — si
+# reporta un número distinto de 1, detenerse y no seguir a 2d.
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+UPDATE core.dim_personal
+SET es_responsable_historico_no_identificado = TRUE
+WHERE correo_corporativo = 'recepcion.gct@rbcol.co'
+  AND cargo = 'EX-EMPLEADO (RECUPERADO DEL HISTORIAL)'
+  AND estado_activo = FALSE;
+"
+
+# 2d. Índice único parcial: a lo sumo un marcador histórico por correo.
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+CREATE UNIQUE INDEX ux_dim_personal_correo_historico
+ON core.dim_personal (correo_corporativo)
+WHERE es_responsable_historico_no_identificado;
+"
+
+# 2e. Verificación final: debe devolver CERO filas. Si devuelve alguna, la
+# transformación de tickets (paso 4) abortará con la misma condición — mejor
+# encontrarlo aquí que a mitad de la ingesta.
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+SELECT correo_corporativo, COUNT(*) AS filas,
+       COUNT(*) FILTER (WHERE es_responsable_historico_no_identificado) AS marcadas
+FROM core.dim_personal
+WHERE correo_corporativo IS NOT NULL
+GROUP BY correo_corporativo
+HAVING COUNT(*) > 1 AND COUNT(*) FILTER (WHERE es_responsable_historico_no_identificado) <> 1;
+"
+```
+
+**3. n8n — confirmar y reimportar, en la instancia viva (fuera del alcance de esta
+sesión, ningún acceso automatizado):**
+
+- Confirmar cuál de las tres copias de `CORAJE - INCREMENTAL COMPLETO...` está
+  realmente `active` hoy — un export no es la instancia viva.
+- **Reimportar `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`**
+  sobre esa copia activa: esta unidad le aplicó el mismo fix de F10 al texto embebido
+  del nodo `PG - Transform 06 Tickets Legacy` y `PG - Transform 04 Personal
+  Historico` (el workflow trae su propia copia de cada query, no lee `sql/elt/` —
+  hallazgo F11), así que sin este paso la instancia viva sigue corriendo la versión
+  vieja, sin el fix, y volverá a fallar con `ON CONFLICT ... cannot affect row a
+  second time`.
+- Una vez confirmada cuál copia es la activa, borrar las otras dos (`V2`, `V2.1`) del
+  disco de la VPS si siguen ahí — no tienen commit y no son historial de nada.
+- Activar el consumidor del outbox (`CORAJE - SALIDA - PostgreSQL to SharePoint.json`,
+  commiteado en `1de8641`, nunca activado).
+
+**4. Solo entonces, ejecutar la ingesta real de punta a punta** (disparo manual del
+workflow o esperar el fallback programado) y verificar:
+
+```bash
+docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+SELECT COUNT(*) AS total_tickets FROM helpdesk.fact_ticket;
+SELECT COUNT(*) AS tickets_del_buzon_compartido
+FROM helpdesk.fact_ticket
+WHERE id_asignado IN (
+    SELECT id_personal FROM core.dim_personal
+    WHERE es_responsable_historico_no_identificado
+) OR id_solicitante IN (
+    SELECT id_personal FROM core.dim_personal
+    WHERE es_responsable_historico_no_identificado
+);
+"
+```
+
+La segunda consulta debe acercarse a los 155 tickets ya conocidos — es la prueba de que
+la regla dura se cumplió (atribuidos al marcador histórico, no a quien ocupa el buzón
+hoy).
 
 `core.dim_personal` y `core.dim_area` son exactamente las tablas que U2 va a migrar a
 Prisma — conviene resolver 1–4 primero y no en paralelo con el baseline de U2, para no
 construir dos veces el mismo tramo de esquema.
 
+> **F11, nuevo en esta unidad, deliberadamente sin resolver aquí:** la lógica de
+> clasificación de `tipo_requerimiento` legacy diverge entre `sql/elt/06_transform_
+> ticket.sql` y la copia embebida en n8n — la de n8n cubre más casos reales. No se
+> reconcilió porque es un problema distinto de F10 y merece su propia unidad: decidir
+> cuál versión es la correcta y por qué divergieron, no copiar una sobre la otra a
+> ciegas.
+
 > **En paralelo, y no después: U0**, el levantamiento funcional de PowerApps. Su cuello
 > de botella es la disponibilidad de otras personas, no el trabajo, así que empezarlo
 > tarde retrasa todo lo demás. Es la única excepción declarada a la regla de una sola
 > unidad a la vez.
-
-> **Antes de cualquier otra cosa, publicar este corte.** El trabajo está sin commit y un
-> conjunto documental sin publicar no es la fuente de verdad de nadie.
 
 ---
 
@@ -210,7 +318,7 @@ construir dos veces el mismo tramo de esquema.
 | U0 pregunta 4: la excepción de `alexbolanos@rbcol.co` para `PROYECTOS Y TI` sigue vigente | `legacy/reglas-negocio-powerapps.md` §5, §13.5 | Confirmada por el usuario. Ya decidido normalizarla como fila de tabla, no como código quemado |
 | U0 pregunta 2: Jimena Tejeiro no tiene nada especial en su rol frente a Legal — es exactamente el mismo caso que Alex para Proyectos y TI, la responsable normal del área. Quitando la pantalla fusionada (interfaz, no se replica) y el puente a `TareasLegal` (aplazado), no queda ninguna regla de negocio distinta que conservar | `legacy/reglas-negocio-powerapps.md` §11 | Cerrada. Legal se enruta igual que cualquier otra área en la tabla de enrutamiento, sin comparación de identidad en el código |
 | U0 pregunta 5: no requiere ningún mecanismo de producto. Reportar y cerrar con las acciones realizadas es responsabilidad de quien resuelve o de quien radicó, no algo que la aplicación pueda detectar | — | Cerrada, sin acción de diseño |
-| Modelo de buzón compartido (F10): se construye una dimensión con vigencia en el tiempo, no una fusión hacia el ocupante actual. **Bajo ninguna circunstancia** los 155 tickets históricos quedan a nombre de Eilyn (la ocupante actual) — mientras no se recupere el nombre real de quien atendía el buzón en su momento, usan un marcador explícito de "responsable histórico no identificado" | `specs/tickets.md` §7.3 | Decidida (dirección), no construida — el diseño exacto (rangos de vigencia, convención del marcador) sigue sin resolver, ver §7.3 |
+| Modelo de buzón compartido (F10): columna `es_responsable_historico_no_identificado` en `core.dim_personal` (no rango de fechas — sin evidencia de cuándo cambió de manos el buzón), resuelto por `LEFT JOIN LATERAL` con prioridad a la fila histórica. **Bajo ninguna circunstancia** los 155 tickets históricos quedan a nombre de Eilyn (la ocupante actual) | `specs/tickets.md` §7.3 | **Diseño construido** (código en `sql/db/`, `sql/elt/` y n8n) — no aplicado contra la base real ni reimportado a n8n, ver Acción inmediata |
 
 ## Decisiones que faltan y bloquean
 
@@ -318,3 +426,18 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   patrón de consulta SQL directa, y el retiro de `create-copilot-export.sh`. **Ninguna
   de las dos correcciones (`codigo_area`, buzón compartido) se aplicó todavía contra la
   base real** — siguen solo en el código. Nueva acción inmediata en consecuencia.
+- 10-sep-2026 (mismo día, corte 3) — se construye el diseño de F10: columna
+  `es_responsable_historico_no_identificado` en `core.dim_personal`, `LEFT JOIN LATERAL`
+  con prioridad a la fila histórica en `06_transform_ticket.sql`, índice único parcial,
+  validación que aborta ante ambigüedad sin marcador (`specs/tickets.md` §7.3, detalle
+  del diseño). Durante la sesión se intentó `ssh`/`docker exec` directo a la VPS para
+  verificar conectividad; el usuario lo detuvo y pidió que quedara como regla dura
+  documentada (`operacion.md`) — ninguna sesión vuelve a intentarlo, todo comando de
+  producción se entrega como texto. Se descubre F11: la copia de `06_transform_ticket`
+  embebida en el workflow de n8n tiene una lógica de clasificación de tipo_requerimiento
+  distinta (más completa) que el archivo `sql/elt/` del repositorio — el workflow no lee
+  los `.sql` del repositorio, trae su propia copia de cada query. El fix de F10 se aplicó
+  a ambas copias (repositorio y JSON de n8n) preservando la lógica más completa de n8n,
+  sin reconciliar F11 (fuera de alcance de esta unidad). **Nada de esto se ejecutó contra
+  la VPS ni se reimportó a la instancia viva de n8n** — la acción inmediata trae los
+  comandos exactos, listos para que el usuario los corra manualmente.

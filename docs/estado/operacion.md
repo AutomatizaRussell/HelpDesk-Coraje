@@ -90,9 +90,20 @@ los borre por no reconocerlos en el DSL de `schema.prisma`.
 
 ## Consultas SQL directas contra la base (diagnóstico, no despliegue)
 
-**Esta sesión no tiene Docker instalado**, así que toda consulta SQL de diagnóstico se
-ejecutó pidiéndole al usuario que la corriera en la VPS, como root, contra el contenedor
-real. Patrón que funcionó, con las dos trampas que ya costó descubrir:
+**Regla dura: ninguna sesión de Claude Code se conecta nunca directamente a la VPS —
+ni por `ssh`, ni por `docker exec`, ni por ningún otro canal —, incluso si encuentra
+material de llave localmente (`~/.ssh/`) que en teoría lo permitiría.** Confirmado el
+10-sep-2026: existen entradas de `ssh` para la VPS en el equipo local y una sesión
+intentó usarlas; el usuario la detuvo explícitamente y pidió que quedara escrito para
+que no se repita. La razón no es solo la ausencia técnica de Docker en el entorno de la
+sesión (eso cambia con el tiempo; la regla no) — es que **toda operación contra la base
+de producción con datos reales pasa siempre por revisión humana antes de ejecutarse**,
+sin excepción por conveniencia o por tener credenciales disponibles.
+
+Toda consulta o comando SQL de diagnóstico o de cambio de esquema se **entrega como
+texto exacto, listo para copiar**, y lo corre el usuario manualmente en la VPS, como
+root, contra el contenedor real. Patrón que funcionó, con las dos trampas que ya costó
+descubrir:
 
 ```bash
 docker exec -it coraje_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
@@ -207,3 +218,7 @@ reversible y fallar de forma explícita cuando falte una dependencia.
   las tablas `TEMP` no sobreviven entre invocaciones, y los diagnósticos deben ser
   autocontenidos. Se aclara explícitamente que el disparador del futuro servicio
   `migrate` es commit + push, sin paso manual intermedio.
+- 10-sep-2026 (mismo día) — se convierte en regla dura, tras corrección directa del
+  usuario: ninguna sesión se conecta nunca a la VPS por `ssh` ni `docker exec`, así
+  tenga material de llave disponible localmente. Todo comando contra producción se
+  entrega como texto para que el usuario lo corra manualmente.
