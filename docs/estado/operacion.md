@@ -112,7 +112,7 @@ docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 ```
 
 - Usuario `coraje_app`, base `coraje`, contenedor `coraje_postgres` — son los valores
-  reales de la VPS de producción, confirmados por el usuario el 10-sep-2026. Hasta este
+  reales de la VPS de producción, confirmados por el usuario el 10-sep-2026. Hasta ese
   corte se documentaban como `$POSTGRES_USER`/`$POSTGRES_DB` (placeholder deliberado,
   para no escribir el nombre de usuario junto al riesgo de credencial única de `F6`); el
   usuario decidió explícitamente que el comando debe quedar copiable tal cual, sin que
@@ -120,6 +120,14 @@ docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
   **no** se documenta aquí bajo ningún concepto — eso sigue siendo secreto real y
   `psql`/Docker ya la resuelven desde el entorno del contenedor sin que el comando la
   necesite explícita.
+- **Desde el cierre de F6 (11-sep-2026), `coraje_app` es exclusivamente para esto:
+  diagnóstico y administración humana de emergencia.** Ningún sistema automático se
+  conecta con ella — `web` usa `coraje_runtime`, n8n usa `coraje_etl`, y el futuro
+  servicio `migrate` usará `coraje_migrator`. Su contraseña fue rotada ese mismo día,
+  después de que quedara expuesta en texto plano en una sesión de Claude Code al pegar
+  la salida de un comando `docker run` (ver changelog). El patrón de este documento
+  sigue siendo válido para diagnóstico de solo lectura o cambios de esquema puntuales;
+  ya no lo usa nada que corra sin supervisión humana directa.
 - **Cada invocación de `docker exec ... psql -c "..."` abre una conexión nueva.** Una
   tabla `TEMP` creada en una invocación **no existe** en la siguiente — hay que crear y
   consultar la tabla temporal **dentro del mismo `-c "..."`**, con todos los `;` que
@@ -142,14 +150,34 @@ igual que Impulsa**, solo falta construirlas (U2):
 | | Impulsa | HelpDesk |
 |---|---|---|
 | Servicio de migración | `migrate` de un disparo, la app espera a que termine bien | **Decidido igual, no construido** — objeto de U2 |
-| Credenciales de base | Separadas: migración y runtime | **Decidido igual, no construido** — cierra `F6` |
+| Credenciales de base | Separadas: migración y runtime | **Construido y cerrado (F6, 11-sep-2026)** — ver detalle abajo |
 | Worker de reintentos | Servicio propio, con `read_only` y `cap_drop: ALL` | **No existe** — HelpDesk no tiene worker: no hay proceso permanente que lo justifique (`CLAUDE.md`, economía de recursos) |
 | Endurecimiento de contenedores | `read_only`, `no-new-privileges`, `cap_drop` | **No aplicado** |
 
-> **`RIESGO` Una sola credencial de base.** La aplicación se conecta con el mismo
-> usuario que crea y altera el esquema. Un fallo de inyección o una dependencia
-> comprometida alcanzan `DROP`, no solo `SELECT`. La skill de arquitectura exige mínimo
-> privilegio y esto no lo cumple. Registrado, no corregido.
+> **`F6` cerrado (11-sep-2026): cuatro roles en vez de una credencial única, y ya no es
+> superusuario compartido.** `coraje_migrator` es dueño de todos los objetos de `core` y
+> `helpdesk` (14 tablas, 8 funciones) — lo usará el futuro servicio `migrate`.
+> `coraje_runtime` tiene solo DML (`SELECT`/`INSERT`/`UPDATE`/`DELETE`) sobre `core` y
+> `helpdesk`, sin `staging` — es lo que usa `web` hoy. `coraje_etl` tiene DML sobre
+> `staging`+`core`+`helpdesk` — es lo que usa n8n hoy. `coraje_app` sigue existiendo
+> (sigue siendo el único superusuario del clúster — no había otro, y retirárselo del
+> todo sin un admin de respaldo era un cambio sin vuelta atrás), pero **ya no lo usa
+> ningún sistema automático**: queda reservado para administración humana de
+> emergencia, con su contraseña rotada. `ALTER DEFAULT PRIVILEGES` asegura que las
+> tablas/funciones que `coraje_migrator` cree en migraciones futuras ya lleguen
+> concedidas a `coraje_runtime`/`coraje_etl`/`coraje_app` sin repetir el `GRANT` cada
+> vez. Verificado por consulta a `pg_class`/`pg_roles` contra la base real — **la ruta
+> de escritura (crear/redirigir un ticket, o una corrida de n8n con `coraje_etl`) no se
+> ha ejercitado todavía**, queda como verificación pendiente, no como bloqueo.
+>
+> **Incidencia real durante esta rotación:** el primer intento de crear los tres roles
+> nuevos se corrió con los placeholders de contraseña sin sustituir — quedaron con
+> contraseñas literales y adivinables por unos minutos, sin que nada dependiera todavía
+> de ellas. Se corrigió de inmediato con `\password <rol>` en una sesión interactiva de
+> `psql`, no con `-c "ALTER ROLE ... PASSWORD '...'"` — ese patrón deja la contraseña en
+> el historial de la shell y, en este flujo de trabajo, en el propio chat si se pega la
+> terminal de vuelta. **Regla en adelante: todo cambio de contraseña real usa `\password`
+> interactivo, nunca `-c` con el valor inline.**
 
 ## Variables de entorno
 
@@ -235,3 +263,19 @@ reversible y fallar de forma explícita cuando falte una dependencia.
   y pegar no debe obligar a quien lo corre a resolver una variable de entorno primero.
   La contraseña sigue sin documentarse — sigue siendo secreto real, y el comando nunca
   la necesitó explícita.
+- 11-sep-2026 — **`F6` cerrado.** Al adoptar el baseline Prisma (U2) se confirma que
+  `coraje_app` era además superusuario (`rolsuper`, `rolcreatedb`, `rolcreaterole`) y el
+  único rol de aplicación existente en el clúster — más grave que "una credencial para
+  dos propósitos". Se crean `coraje_migrator` (dueño de `core`+`helpdesk`),
+  `coraje_runtime` (DML, para `web`) y `coraje_etl` (DML sobre `staging`+`core`+
+  `helpdesk`, para n8n); `coraje_app` se retira de todo uso automático y queda solo
+  para emergencias humanas. Dos incidencias reales durante la ejecución: (1) la
+  contraseña de `coraje_app` quedó expuesta en texto plano en el chat al pegar la
+  salida de un comando `docker run` (motivó escalar el alcance de F6 a los tres roles
+  en vez de solo migración/runtime); (2) los tres roles nuevos se crearon con los
+  placeholders de contraseña sin sustituir por error de comunicación, corregido de
+  inmediato con `\password` interactivo antes de que nada dependiera de ellos. Se
+  adopta `\password` como el único método aceptable para fijar contraseñas reales en
+  este flujo de trabajo, en vez de `-c "ALTER ROLE ... PASSWORD"`. Pendiente de
+  ejercitar (no bloqueante): una escritura real contra `core`/`helpdesk` con
+  `coraje_runtime`, y una corrida de n8n con `coraje_etl`.
