@@ -6,6 +6,15 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
+# Etapa del servicio migrate: solo lo necesario para `prisma migrate deploy`
+# (CLI + prisma.config.ts + prisma/), sin el código de la app ni el build de
+# Next — no genera el cliente, `migrate deploy` no lo necesita.
+FROM base AS migrator
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
+COPY prisma ./prisma
+CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
+
 FROM base AS builder
 WORKDIR /app
 
