@@ -38,11 +38,27 @@ UNIDAD:  U2 · F6 CERRADO — CREDENCIALES SEPARADAS Y `coraje_app` RETIRADO DE 
          real se fija con `\password` interactivo, nunca con `-c "ALTER ROLE ...
          PASSWORD"` inline.**
 
+         **La corrida real de n8n con `coraje_etl` reveló dos huecos que el `GRANT`
+         original no cubría — ambos corregidos, no solo con más permisos:**
+         (1) `staging` seguía siendo propiedad de `coraje_app`; el nodo `PG - Ensure
+         Incremental Infrastructure` hace `CREATE SCHEMA`/`CREATE TABLE IF NOT
+         EXISTS` sobre `staging` como parte normal de su ejecución, no como
+         excepción — se transfiere el dueño de `staging` y sus 10 tablas a
+         `coraje_etl`, igual que `core`/`helpdesk` con `coraje_migrator`.
+         (2) el nodo `PG - Transform 02 Clientes` traía un `CREATE UNIQUE INDEX IF
+         NOT EXISTS` contra `core.dim_cliente_contai` — ese índice específico
+         (`uq_dim_cliente_contai_identificacion_fiscal_not_null`) ya lo garantiza el
+         baseline de Prisma; n8n intentando "asegurarlo" por su cuenta es
+         exactamente el patrón que D1 decidió abandonar (SQL a mano gestionando el
+         esquema de `core`/`helpdesk`). Se retira del workflow (vivo y export
+         committeado), sin tocar la transformación real que sigue en la misma
+         consulta. Confirmado por el usuario: el flujo de ingesta corrió completo
+         con `coraje_etl` después de ambas correcciones.
+
          **Pendiente de ejercitar, no bloqueante:** ninguna escritura real (crear o
-         redirigir un ticket con `coraje_runtime`; una corrida de n8n con
-         `coraje_etl`) se ha confirmado todavía — la verificación disponible es de
-         propietarios y `GRANT`, no de comportamiento en producción. F6 cierra con
-         esa salvedad explícita, no en silencio.
+         redirigir un ticket) con `coraje_runtime` se ha confirmado todavía — la
+         verificación disponible ahí sigue siendo de propietarios y `GRANT`, no de
+         comportamiento en producción.
 
 CORTE ANTERIOR (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
@@ -182,7 +198,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F11~~ | ~~`sql/elt/06_transform_ticket.sql` y el nodo `PG - Transform 06 Tickets Legacy` de n8n tenían lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy~~ — **cerrado 10-sep-2026 (corte 4), decisión del usuario: gana n8n.** Reconciliado: el bloque del repositorio se reemplaza por la lógica de n8n. Hallazgo real, más grave que la descripción original: la versión del repositorio no "cubría menos casos" — no cubría ninguno. Comparaba contra literales en MAYÚSCULAS que `core.norm_text()` (siempre minúsculas) nunca podía igualar, así que el bloque completo caía al `ELSE` en cualquier ejecución sobre ese archivo. La copia de n8n, la única que corre en producción, usa minúsculas y es la que clasificó correctamente los 2.825 tickets ingeridos hasta hoy. Sin cambio de comportamiento en producción — n8n ya tenía la versión correcta | ~~Media~~ | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
 | ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` y un subsistema de identidad sin rastro en el repositorio~~ — **cerrado de verdad, 10-sep-2026 (corte 5).** El primer cierre (corte 4) estaba mal: se apoyó solo en `git log`, nunca en la base real. Investigado a fondo: `codigo_ticket` confirmado como el mecanismo real y correcto (trigger + contador por área/año, con guarda idempotente) — el baseline lo captura tal cual. `identidad_correo`/`resolucion_*` (y, descubierto después, cuatro columnas `*_snapshot` más en `fact_ticket` con la misma data) confirmados como el mismo problema que ya resuelve `sql/elt/04_transform_personal_historico.sql`, abandonados desde jul-2026, sin nada que dim_personal no tuviera ya — retirados de la base real, con lo rescatable en `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral: el backfill de F10 estaba incompleto (solo un correo de varios) — cerrado con un `UPDATE` de 72 filas. `fact_ticket` verificado con exactamente las 18 columnas de `sql/db/06_helpdesk_facts.sql` | ~~Alta~~ | `docs/legacy/identidad-correo-2026-07.md`; consultas de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026, columnas/índices/CHECK/triggers/funciones de `core`+`helpdesk`+`staging` completas |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
-| ~~F6~~ | ~~Una sola credencial de base para migrar y para servir~~ — **cerrado 11-sep-2026, más grave de lo descrito: `coraje_app` resultó ser además superusuario y el único rol de aplicación del clúster.** Creados `coraje_migrator` (dueño de `core`+`helpdesk`), `coraje_runtime` (DML, usa `web`) y `coraje_etl` (DML sobre `staging`+`core`+`helpdesk`, usa n8n); `coraje_app` retirado de todo uso automático, contraseña rotada, queda solo para emergencias humanas. Verificado por consulta a `pg_class`/`pg_roles` contra la base real. **Pendiente de ejercitar, no bloqueante:** una escritura real (crear/redirigir un ticket) con `coraje_runtime`, y una corrida de n8n con `coraje_etl` | ~~Media~~ | `estado/operacion.md` |
+| ~~F6~~ | ~~Una sola credencial de base para migrar y para servir~~ — **cerrado 11-sep-2026, más grave de lo descrito: `coraje_app` resultó ser además superusuario y el único rol de aplicación del clúster.** Creados `coraje_migrator` (dueño de `core`+`helpdesk`), `coraje_runtime` (DML, usa `web`) y `coraje_etl` (dueño de `staging`, DML sobre `core`+`helpdesk`, usa n8n); `coraje_app` retirado de todo uso automático, contraseña rotada, queda solo para emergencias humanas. **Corrida real de n8n con `coraje_etl` confirmada de punta a punta** tras corregir dos huecos que el `GRANT` inicial no cubría: `staging` sin transferir a `coraje_etl`, y un `CREATE UNIQUE INDEX` que n8n traía embebido contra `core.dim_cliente_contai` — ya redundante y contrario a D1, retirado del workflow (vivo y committeado). **Pendiente de ejercitar, no bloqueante:** una escritura real (crear/redirigir un ticket) con `coraje_runtime` | ~~Media~~ | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
@@ -650,3 +666,20 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   escritura real con `coraje_runtime` y una corrida de n8n con `coraje_etl`. Nueva
   acción inmediata: construir el servicio `migrate` — único escenario mínimo de U2
   que sigue sin cerrar.
+- 11-sep-2026 (corte 7, mismo día) — el usuario corre n8n de verdad con `coraje_etl`
+  y aparecen dos huecos reales que el `GRANT` de F6 no cubría, ninguno arreglable
+  con más permisos sueltos: `staging` seguía siendo de `coraje_app` (el nodo `PG -
+  Ensure Incremental Infrastructure` hace `CREATE SCHEMA`/`CREATE TABLE IF NOT
+  EXISTS` ahí como parte normal de su ejecución), y el nodo `PG - Transform 02
+  Clientes` traía un `CREATE UNIQUE INDEX IF NOT EXISTS` embebido contra
+  `core.dim_cliente_contai` — que exige ser dueño de la tabla, a diferencia de
+  `CREATE TABLE`. Búsqueda exhaustiva en los tres workflows de `n8n/` confirma que
+  es la única aparición contra `core`/`helpdesk`; el resto son tablas de `staging`.
+  Se transfiere `staging` completo (schema + 10 tablas) a `coraje_etl`, y se retira
+  del workflow el índice de `core` — ya lo garantiza el baseline de Prisma, y
+  mantenerlo en n8n contradice D1. Confirmado por el usuario: el flujo de ingesta
+  corrió completo después de ambas correcciones. Publicado el recorte en
+  `n8n/CORAJE - INCREMENTAL COMPLETO...json` solo después de confirmar que la
+  instancia viva ya corría igual — nunca antes, para no repetir el error de F11.
+  Con esto, la única salvedad de F6 que sigue sin ejercitarse es una escritura real
+  con `coraje_runtime` (crear o redirigir un ticket).
