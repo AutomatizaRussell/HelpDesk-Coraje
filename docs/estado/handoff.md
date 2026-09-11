@@ -1,100 +1,63 @@
 # Handoff técnico
 
 ```
-CORTE:   10-sep-2026 (corte 5)
-HEAD:    cambios locales sobre `4f0abac`, sin commit todavía — ver §7 tras publicarlos
+CORTE:   11-sep-2026 (corte 6)
+HEAD:    `1e4a6a8`, publicado en `origin/main`
 RAMA:    main
-UNIDAD:  U2 BLOQUEADO Y RESUELTO ANTES DE EMPEZAR EL BASELINE. Al pedir a la base real
-         la consulta de solo lectura que F12 había dejado como "residuo opcional",
-         aparece que la base viva tiene un mecanismo de `codigo_ticket` (trigger +
-         función de dos argumentos) y un subsistema completo de resolución de
-         identidad (`core.identidad_correo`, columnas nuevas en `fact_ticket`, un
-         `CHECK` reescrito) que no existían en ningún lugar de este repositorio.
-         F12 se reabre (el cierre de corte 4 se apoyó solo en `git log`, nunca en la
-         base real) y se investiga hasta el fondo, sin dejarlo diferido:
+UNIDAD:  U2 · BASELINE CONSTRUIDO Y ADOPTADO CONTRA PRODUCCIÓN. Con el subsistema de
+         identidad ya resuelto (corte 5), se escribe `schema.prisma` (14 modelos,
+         `PascalCase`+`@@map`, contra el estado real de la base — no contra lo que
+         declaran los `.sql` committeados) y la migración a mano
+         `prisma/migrations/20260910000000_baseline/migration.sql` (~570 líneas:
+         tablas, índices, FKs, `CHECK`, funciones SLA y el trigger
+         `set_codigo_ticket`, copiados verbatim de la base real). Los 20 archivos de
+         aplicación que llamaban a Prisma con nombres `snake_case` se migran a
+         `camelCase` (el SQL crudo con `$queryRaw`/`$executeRaw` se deja intacto,
+         sigue usando los nombres físicos reales). Validado en local por primera vez
+         en esta unidad: FNM ya tenía Node 24.16.0 instalado, solo faltaba
+         activarlo; `corepack` fija pnpm 11.2.2 exacto. `prisma generate`, `tsc
+         --noEmit`, `eslint .`, `pnpm build` y `git diff --check` limpios. Publicado
+         en `1e4a6a8`.
 
-         - **`codigo_ticket`**: confirmado como el mecanismo real y correcto —
-           trigger `trg_set_codigo_ticket` con guarda idempotente, contador por
-           área+año, usa la fecha real de creación. El baseline lo captura tal cual.
-           Se descarta un contador inflado 2x en 2024/2025 como corrupción activa
-           (la guarda lo impide); es un evento histórico único de doble asignación
-           alrededor del 14-jul-2026, cosmético, sin remedio necesario.
-         - **`identidad_correo`/`resolucion_*`**: investigado a fondo — resulta ser
-           un derivado 100% redundante de `dim_personal` (cero correos propios) y
-           `LEGACY_INFERRED_PERSON` resulta ser el mismo problema que resuelve
-           `sql/elt/04_transform_personal_historico.sql` (buzón/empleado histórico),
-           solo que como categoría de auditoría en vez de columna. Decisión del
-           usuario: se retira, no se retoma. Efecto colateral real descubierto: el
-           backfill de F10 (corte 3) solo había marcado un correo
-           (`recepcion.gct@rbcol.co`) de varios con el mismo patrón — cerrado con un
-           `UPDATE` de 72 filas adicionales. **F10 queda cerrado de verdad ahora.**
-           Lo rescatable (9 buzones funcionales clasificados a mano, y tres ideas
-           para una unidad futura) queda en
-           `docs/legacy/identidad-correo-2026-07.md`, sin comprometer construcción.
-         - **Retiro de la base real, ejecutado y verificado, en dos pasadas.** Primera:
-           `core.identidad_correo`, `id_identidad_correo_asignado/solicitante`,
-           `resolucion_asignado/solicitante`, reversión de `chk_fact_ticket_origen_exclusivo`
-           a su forma simple. Segunda, descubierta solo al pedir el listado *completo*
-           de columnas de `fact_ticket` (no antes): `correo_solicitante_snapshot`,
-           `nombre_solicitante_snapshot`, `correo_asignado_snapshot`,
-           `nombre_asignado_snapshot` (mismo backfill de julio, misma cifra exacta de
-           población, confirmado) y `fecha_redireccion` (cero filas, sin relación con
-           identidad, de la función de redirección pero nunca usada por el código
-           committeado). Verificado: `fact_ticket` quedó con exactamente las 18
-           columnas que declara `sql/db/06_helpdesk_facts.sql`.
-         - **Dato nuevo para el baseline:** `codigo_ticket` es `NULLABLE` en la base
-           real (`sql/db/` lo declara `NOT NULL`) — coherente con el diseño: el
-           trigger no genera código hasta que el ticket tiene `id_area_destino`, y un
-           ticket de portal empieza sin área hasta que se redirige.
-         - **Inventario completo de las tres schemas obtenido y verificado** (167
-           columnas, 24 tablas tras el retiro) — no debería quedar drift sin descubrir
-           antes de escribir el baseline.
+         **La migración se adopta contra producción — ejecución real confirmada
+         (11-sep-2026).** `prisma migrate resolve --applied` no se pudo correr desde
+         ninguna sesión de Claude Code (regla dura de `operacion.md`: no conexión
+         directa a la VPS) ni dentro del propio contenedor `web` desplegado (su
+         imagen final es deliberadamente mínima — sin CLI de Prisma, sin
+         `schema.prisma`, sin `pnpm`, per `Dockerfile`). Se construyó solo la etapa
+         intermedia `builder` del mismo `Dockerfile` (`docker build --target
+         builder`, la misma etapa que ya usa Coolify en cada deploy) en una carpeta
+         de trabajo aparte en la VPS, sin tocar el despliegue vivo, y se corrió
+         `prisma migrate resolve --applied 20260910000000_baseline` en un
+         contenedor efímero de esa imagen, unido a `coraje_net`, contra
+         `coraje_postgres` real. Confirmado por consulta directa a
+         `_prisma_migrations`: `finished_at` con marca de tiempo real,
+         `applied_steps_count = 0` (no ejecutó un solo `CREATE TABLE` — el
+         comportamiento exacto que se espera de una adopción de baseline, no de una
+         migración normal), `rolled_back_at` nulo. **U2 ya no está bloqueado por
+         falta de baseline: lo que queda es separar credenciales (F6) y construir el
+         servicio `migrate` — ver acción inmediata.**
 
-CORTE ANTERIOR (10-sep-2026, corte 4, publicado en `e14e0c6`/`83ecc54`/`4f0abac`):
-         RECONCILIAR F11. El usuario decide: ante la divergencia de clasificación de
-         `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy entre el archivo del
-         repositorio y la copia embebida en n8n, gana n8n — es la que corre en
-         producción y la que ya clasificó los 2.825 tickets ingeridos hasta hoy.
-         **Hallazgo al reconciliar, más grave que lo que F11 describía:** la versión
-         del repositorio no era "menos completa" que la de n8n — no funcionaba en
-         absoluto. `core.norm_text()` devuelve siempre minúsculas
-         (`sql/db/02_functions.sql`), pero todas las ramas `WHEN` del bloque de
-         reclasificación comparaban contra literales en MAYÚSCULAS
-         (`'ADMINISTRACION'`, `'PROYECTOS Y TI'`, `'AUTOMATIZACION'`...). Ninguna podía
-         coincidir jamás: el bloque entero caía siempre al `ELSE` sin reclasificar, y
-         cualquier ticket legacy de ADMINISTRACIÓN/AUTOMATIZACIÓN-TI o de
-         REVISORÍA/IMPUESTOS habría quedado sin `id_tipo_req` resuelto contra el
-         catálogo si ese archivo —y no la copia de n8n— fuera el que ejecuta. La copia
-         de n8n usa minúsculas y por eso sí funciona.
-CAMBIOS DE ESTA UNIDAD:
-         - `sql/elt/06_transform_ticket.sql`: el bloque `LEFT JOIN LATERAL ... tipo_legacy`
-           se reemplaza por la lógica de n8n (mismas ramas, mismo orden de precedencia,
-           literales en minúsculas), con el comentario `Casos detectados` ampliado a los
-           dos casos nuevos (tipo ya `PROYECTOS Y TI`, repartido entre AUTOMATIZACIÓN/TI
-           según categoría 2). No se tocó la copia de n8n — ya tenía la lógica correcta,
-           y no hace falta reimportar nada a la instancia viva.
-         - Sin cambios de esquema, sin ejecución contra la VPS: es una reconciliación de
-           código y documentación, no un cambio de comportamiento en producción.
-CAMBIOS DE CORTE 4 (retractados donde corresponda — ver corte 5 arriba):
-         - ~~F12 (§5) cerrado~~ — **retractado en corte 5**: el cierre se apoyó solo en
-           `git log`, nunca se corrió la consulta contra la base real antes de decidir.
-           La consulta sí se corrió al empezar U2 y muestra lo contrario: el mecanismo
-           de dos argumentos existe y está activo en producción, más un subsistema de
-           identidad no documentado en ningún lugar del repositorio. Ver §5.
-         - D8 (`Decisiones tomadas y NO implementadas`): decidida — diferida
-           deliberadamente. No se construye que n8n lea `sql/elt/` de GitHub mientras no
-           haya nada más construido; la mitigación mientras tanto es disciplina de
-           reimport manual, ya documentada en §6.
+         **`RIESGO` nuevo, real, sin resolver: la contraseña de `coraje_app` quedó
+         expuesta en texto plano en el historial de esta conversación**, pegada por
+         el usuario al copiar el comando `docker run` desde la terminal SSH. Ver §6.
+
+CORTE ANTERIOR (10-sep-2026, corte 5): investigación completa del subsistema de
+         identidad no documentado, hallado al reabrir F12 contra la base real.
+         `codigo_ticket` confirmado como mecanismo correcto (trigger + contador por
+         área/año, guarda idempotente) — el baseline de corte 6 lo captura tal cual.
+         `identidad_correo`/`resolucion_*` y cuatro columnas `*_snapshot` de
+         `fact_ticket` confirmados como derivado 100% redundante de `dim_personal` —
+         retirados de la base real, con lo rescatable en
+         `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral descubierto: el
+         backfill de F10 estaba incompleto (72 filas adicionales cerradas). Verificado:
+         `fact_ticket` quedó con exactamente las 18 columnas de
+         `sql/db/06_helpdesk_facts.sql`. Detalle completo en §5 (F10, F12) y en el
+         changelog.
 STAGING: no aplica. No hay entorno de pruebas declarado para este proyecto
-LINT:    no ejecutado sobre `coraje-web/`. Se tocó solo SQL, no TypeScript. La
-         validación de esta unidad es lectura y comparación de código
-         (`sql/elt/06_transform_ticket.sql` vs. el nodo de n8n vs. `sql/db/*.sql`), no
-         ejecución — no hace falta, porque nada de lo que corre en producción cambia
+LINT:    ejecutado por primera vez sobre `coraje-web/` en esta unidad — ver UNIDAD
+         arriba (`tsc --noEmit`, `eslint .`, `pnpm build`, todos limpios)
 ```
-
-> **Corrección al propio documento:** este es el primer corte. No hay unidades previas
-> que conservar, y las secciones que en el proyecto hermano acumulan histórico nacen
-> aquí vacías a propósito, no por omisión.
 
 **Qué es este documento:** el estado observado, la evidencia disponible, las
 incertidumbres y **una sola acción inmediata**, con fecha de corte explícita. No
@@ -224,6 +187,14 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` y un subsistema de identidad sin rastro en el repositorio~~ — **cerrado de verdad, 10-sep-2026 (corte 5).** El primer cierre (corte 4) estaba mal: se apoyó solo en `git log`, nunca en la base real. Investigado a fondo: `codigo_ticket` confirmado como el mecanismo real y correcto (trigger + contador por área/año, con guarda idempotente) — el baseline lo captura tal cual. `identidad_correo`/`resolucion_*` (y, descubierto después, cuatro columnas `*_snapshot` más en `fact_ticket` con la misma data) confirmados como el mismo problema que ya resuelve `sql/elt/04_transform_personal_historico.sql`, abandonados desde jul-2026, sin nada que dim_personal no tuviera ya — retirados de la base real, con lo rescatable en `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral: el backfill de F10 estaba incompleto (solo un correo de varios) — cerrado con un `UPDATE` de 72 filas. `fact_ticket` verificado con exactamente las 18 columnas de `sql/db/06_helpdesk_facts.sql` | ~~Alta~~ | `docs/legacy/identidad-correo-2026-07.md`; consultas de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026, columnas/índices/CHECK/triggers/funciones de `core`+`helpdesk`+`staging` completas |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | F6 | Una sola credencial de base para migrar y para servir | Media | `estado/operacion.md` |
+
+> **Hecho nuevo para F6: la contraseña real de `coraje_app` quedó expuesta en texto
+> plano en el historial de esta conversación (11-sep-2026)**, pegada al copiar un
+> comando desde la terminal SSH. No es una vulnerabilidad de código — es una
+> exposición operativa real de una credencial de producción. No rotarla aparte:
+> hacerlo como parte del propio F6 (que de todas formas reemplaza `coraje_app` por
+> `coraje_migrator`/`coraje_runtime` y toca n8n, Coolify y el `.env` de la VPS a la
+> vez) evita rotarla dos veces.
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
@@ -246,7 +217,8 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | El equipo trabaja en la plataforma y la ingesta le borra el trabajo | Pérdida de trabajo real | U9 antes de que U7 esté en uso |
 | Un cliente radica y el ticket se duplica en SharePoint | Visible para PowerApps y para el cliente | Reducido, no eliminado: el diseño del workflow ya no duplica (U1 §2, `sincronizacion-sharepoint.md` §4.2), pero sigue sin ejercitarse con un caso real — probarlo con el primer ticket real del portal antes de anunciarlo cerrado |
 | La autorización destructiva alcanza datos reales | Pérdida irrecuperable | `contexto-canonico.md` §1.3 delimita el alcance |
-| Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza | Entre esta decisión y que U2 construya ese servicio, no hay ninguna forma documentada de verificar comportamiento — ni local, ni por push | Construir U2 (baseline Prisma + servicio `migrate`) antes de apoyarse en "verificar por push" como si ya existiera |
+| Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza | Entre esta decisión y que U2 construya ese servicio, no hay ninguna forma documentada de verificar comportamiento — ni local, ni por push | **Prerrequisito cumplido (corte 6):** el baseline ya está construido y adoptado contra producción. Falta construir el servicio `migrate` en sí — sin él, sigue sin haber gate de despliegue |
+| La contraseña real de `coraje_app` se pegó en texto plano en esta conversación (11-sep-2026) | Si el historial de esta sesión queda expuesto, expone con él la credencial de base de producción | Rotar al construir F6 (separación de credenciales), actualizando n8n, `DATABASE_URL` de Coolify y el `.env` de la VPS en el mismo cambio — no rotarla dos veces |
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 
@@ -254,7 +226,8 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
-| `134663a` | **Corte vigente.** Cierra F10 en la documentación con evidencia de ejecución real |
+| `1e4a6a8` | **Corte vigente.** Construye el baseline Prisma: `schema.prisma` (14 modelos `PascalCase`+`@@map`), migración a mano `20260910000000_baseline`, 20 archivos de aplicación migrados a `camelCase` |
+| `134663a` | Cierra F10 en la documentación con evidencia de ejecución real |
 | `6fb3bd5` | Reemplaza placeholders de conexión por valores reales en los comandos entregados |
 | `e3b95a1` | Construye el modelo de buzón compartido para `dim_personal` (F10) |
 | `e8918e6` | Actualiza cabecera, commits y acción inmediata del handoff al estado real tras el hallazgo de F10 |
@@ -276,11 +249,19 @@ dejó habilitado — no es una desviación de la cabeza de la cola. Al arrancar 
 apareció F12 reabierto y un hallazgo mayor (subsistema de identidad no documentado,
 detalle en §5) que bloqueó el baseline hasta investigarlo a fondo. **Ya resuelto:** F12
 cerrado de verdad, F10 cerrado de verdad, la base real retirada de todo lo huérfano y
-verificada contra `sql/db/06_helpdesk_facts.sql` columna por columna. **La acción
-inmediata vuelve a ser U2 · escribir `schema.prisma` (con el mapeo `PascalCase`+`@@map`)
-y la migración baseline**, ahora sobre un esquema real ya inventariado por completo.
-F11 sigue cerrado (§5); D8 sigue diferida, sin fecha asignada (`Decisiones tomadas y
-NO implementadas`).
+verificada contra `sql/db/06_helpdesk_facts.sql` columna por columna. F11 sigue cerrado
+(§5); D8 sigue diferida, sin fecha asignada (`Decisiones tomadas y NO implementadas`).
+
+**El corte 6 construye el baseline y lo adopta contra producción** (`1e4a6a8` +
+`prisma migrate resolve --applied` ejecutado el 11-sep-2026, ver UNIDAD arriba). Con
+esto, según `plan-ejecucion.md` U2, quedan exactamente dos escenarios mínimos sin
+cerrar: **separar credenciales de migración y runtime (F6)** y **construir el
+servicio `migrate` de un disparo que gatee el arranque de `web`**, igual que Impulsa.
+Ninguno de los dos está construido todavía. **La acción inmediata es F6 primero**:
+diseñar `coraje_migrator`/`coraje_runtime`, entregar el SQL de creación de roles
+(nunca ejecutarlo directo), y de paso rotar la contraseña de `coraje_app` expuesta en
+esta conversación (§6) — y solo después construir el servicio `migrate`, porque su
+`Dockerfile`/compose va a depender de qué credenciales existan.
 
 Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
 efectivamente se corrió contra la base real — no son pasos pendientes.
@@ -416,10 +397,10 @@ WHERE id_asignado IN (
 | Tipografía Lato, con pesos reales 400/500/600/700 | Ídem §2 | Decidida, no construida |
 | HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | Decidida, no construida |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
-| Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | Decidida, no construida — U2 hace el baseline |
+| Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Baseline construido y adoptado contra producción (corte 6)** — falta el servicio `migrate` que automatice futuras migraciones en cada deploy |
 | Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | Decidida, no construida |
 | Se retira del runbook el ciclo de desarrollo local; la verificación funcional es siempre vía commit + push a lo desplegado | `estado/operacion.md` | Decidida, no construida — falta el servicio `migrate` que la sostenga (ver riesgo nuevo abajo) |
-| Convención de nombres del modelo Prisma: `PascalCase` con `@@map` a `snake_case`, igual que Impulsa (D1') | `contexto-canonico.md` §4 | Decidida, no construida — mapear cada tabla/columna de las tres schemas es trabajo mecánico de U2 |
+| Convención de nombres del modelo Prisma: `PascalCase` con `@@map` a `snake_case`, igual que Impulsa (D1') | `contexto-canonico.md` §4 | **Construida (corte 6):** las 14 tablas de `core`+`helpdesk` mapeadas en `schema.prisma`; `staging` queda deliberadamente fuera de Prisma (es dominio del ELT) |
 | Observadores (watchers de solo lectura) van en v1, a partir del prototipo `helpdesk_santi/` | `specs/tickets.md` §11, `specs/permisos.md` §10 | Decidida, no construida — depende del catálogo de personas/roles todavía `ABIERTO` |
 | Solicitud de validación dirigida a persona va en v1, distinta de la autorización excepcional | Ídem | Decidida, no construida — sin decidir aún si bloquea el avance del ticket |
 | D8: `sql/elt/*.sql` sigue existiendo como texto de referencia legible, sin que n8n lo lea — no se construye ahora un mecanismo para que n8n consuma el archivo del repositorio (p. ej. leerlo de GitHub) en vez de su copia embebida | `docs/estado/handoff.md` §5 (F11, F12), §6 (riesgo de divergencia) | **Diferida deliberadamente (10-sep-2026):** no vale la pena esa robustez con nada más construido todavía (sin auth, sin ciclo de vida del ticket). Mitigación mientras tanto: disciplina de proceso, no de infraestructura — confirmar explícitamente el reimport a n8n en cada cambio a un archivo que un nodo embeba (regla ya en §6). Condición de revisión: si la divergencia entre `sql/elt/` y n8n se repite una tercera vez, o al llegar al final de la cola de `plan-ejecucion.md` |
@@ -638,3 +619,27 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   inmediata vuelve a ser U2: escribir `schema.prisma` y la migración baseline**, ahora
   sobre un esquema completamente inventariado. Cambios de esta entrada sin commit al
   cierre.
+- 11-sep-2026 (corte 6) — se escribe `schema.prisma` (14 modelos) y la migración a mano
+  `20260910000000_baseline/migration.sql` sobre el esquema ya inventariado; se
+  descubre y corrige la cascada de 20 archivos de aplicación que llamaban a Prisma en
+  `snake_case`. Verificado en local por primera vez en el proyecto: FNM ya tenía Node
+  24.16.0 instalado (solo faltaba activarlo), `corepack` fija pnpm 11.2.2, y
+  `prisma generate`/`tsc --noEmit`/`eslint .`/`pnpm build`/`git diff --check` quedan
+  limpios. Publicado en `1e4a6a8`. El usuario corrige una suposición de secuencia:
+  construir el servicio `migrate` **antes** de adoptar la baseline habría roto el
+  siguiente deploy — `migrate deploy` habría intentado ejecutar el DDL de la baseline
+  contra tablas que ya existen (`CREATE TABLE` sin `IF NOT EXISTS`, fallo inmediato,
+  `web` nunca arranca por el `depends_on: service_completed_successfully`). Se
+  ejecuta primero, manualmente, el flujo oficial de Prisma para adoptar una base
+  preexistente: el usuario construye solo la etapa `builder` del `Dockerfile` de
+  producción en una carpeta aparte en la VPS (`docker build --target builder`) y
+  corre `prisma migrate resolve --applied 20260910000000_baseline` en un contenedor
+  efímero de esa imagen, unido a `coraje_net`, contra `coraje_postgres` real —
+  confirmado en `_prisma_migrations` con `applied_steps_count = 0` (no ejecutó DDL,
+  exactamente lo esperado de una adopción de baseline). **Incidencia real: la
+  contraseña de `coraje_app` quedó pegada en texto plano en el chat** al copiar el
+  comando `docker run` desde la terminal SSH — registrada como riesgo nuevo en §6,
+  con recomendación de rotarla junto con F6 en vez de aparte. U2 queda con dos
+  escenarios mínimos pendientes: separar credenciales (F6) y construir el servicio
+  `migrate`. Nueva acción inmediata: F6 primero (bloquea el diseño del servicio
+  `migrate`, que depende de qué credenciales existan).
