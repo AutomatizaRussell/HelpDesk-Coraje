@@ -72,7 +72,18 @@ lo demás.
 > **Sin U0, el diseño del ciclo del ticket es diseño por analogía**, y las reglas reales
 > aparecen cuando los empleados se nieguen a migrar.
 
-### U2 · Construir el baseline de migraciones Prisma — **cabeza de la cola**
+### ~~U2 · Construir el baseline de migraciones Prisma~~ — cerrada 11-sep-2026, ya no es cabeza de la cola
+
+Los cuatro escenarios mínimos quedaron construidos y **ejercitados contra producción**,
+no solo declarados: baseline adoptado (`prisma migrate resolve --applied`,
+`applied_steps_count = 0`) · credenciales separadas en `coraje_migrator`/
+`coraje_runtime`/`coraje_etl`, con `coraje_app` retirado de todo uso automático ·
+servicio `migrate` desplegado de verdad en Coolify, gate `depends_on:
+service_completed_successfully` confirmado en logs reales (`No pending migrations to
+apply.` antes de que `web` arrancara) · una escritura real desde el portal
+(creación de ticket) confirmó `coraje_runtime` en producción, no solo por `GRANT`
+verificado. Detalle completo y evidencia en `estado/handoff.md` (cortes 6-8). **U3
+pasa a ser la cabeza.**
 
 **Objetivo:** ya no es decidir — `contexto-canonico.md` §4 registra la decisión tomada
 (migraciones Prisma completas, se abandona SQL a mano). U2 es **construir** sobre esa
@@ -94,7 +105,7 @@ además que "commit + push" sea un método de verificación real** (sin el servi
 `migrate`, no hay ciclo local y tampoco hay gate de despliegue — ver riesgo en
 `estado/handoff.md` §6).
 
-### U3 · Identidad de empleados
+### U3 · Identidad de empleados — **cabeza de la cola**
 
 **Objetivo:** implementar `specs/acceso-empleados.md` completo: OIDC con PKCE, validación
 del `id_token`, admisión contra directorio, sesión propia opaca y revocable.
@@ -204,3 +215,9 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   de F10 que dejó (`core.dim_personal` con buzón compartido duplicado) se resuelve y se
   ejercita contra la base real como trabajo previo a U2, fuera de esta cola —
   documentado en el handoff, no aquí. **U2 pasa a ser la cabeza de la cola.**
+- 11-sep-2026 — U2 cierra, con los cuatro escenarios mínimos ejercitados contra
+  producción, no solo construidos: baseline adoptado, credenciales separadas
+  (`coraje_migrator`/`coraje_runtime`/`coraje_etl`, `coraje_app` retirado de todo uso
+  automático) y el servicio `migrate` desplegado de verdad, con su gate confirmado en
+  un deploy real de Coolify. Evidencia completa en `estado/handoff.md` (cortes 6-8).
+  **U3 pasa a ser la cabeza de la cola.**

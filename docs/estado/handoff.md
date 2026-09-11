@@ -1,74 +1,62 @@
 # Handoff técnico
 
 ```
-CORTE:   11-sep-2026 (corte 7)
-HEAD:    `1e4a6a8`, publicado en `origin/main` — cambios de esta entrada son
-         solo de base de datos (roles, dueños, `GRANT`) y documentación, sin commit
-         de código todavía
+CORTE:   11-sep-2026 (corte 8)
+HEAD:    `0f1ced5`, publicado en `origin/main`
 RAMA:    main
-UNIDAD:  U2 · F6 CERRADO — CREDENCIALES SEPARADAS Y `coraje_app` RETIRADO DE USO
-         AUTOMÁTICO. Al verificar contra la base real antes de escribir el `GRANT`
-         (disciplina ya aprendida de F12), aparece que `coraje_app` no era solo "una
-         credencial para dos propósitos" como describía F6: es **superusuario**
-         (`rolsuper`, `rolcreatedb`, `rolcreaterole`) y el **único rol de aplicación
-         que existe en todo el clúster** — no hay un `postgres` admin aparte. El
-         usuario decide escalar el alcance: además de separar migración/runtime,
-         retirar `coraje_app` también de n8n.
+UNIDAD:  U2 · CERRADA — LOS CUATRO ESCENARIOS MÍNIMOS CONSTRUIDOS Y EJERCITADOS
+         CONTRA PRODUCCIÓN. Se agrega la etapa `migrator` al `Dockerfile` (liviana:
+         CLI de Prisma + `prisma/`, sin el build de Next — `migrate deploy` no
+         necesita el cliente generado) y el servicio `migrate` en
+         `docker-compose.yaml`, con `DATABASE_URL` apuntando a
+         `DATABASE_MIGRATION_URL` (`coraje_migrator`) y `web` gateado tras él con
+         `depends_on: service_completed_successfully`, igual que Impulsa.
+         Publicado en dos commits separados por riesgo: primero el `Dockerfile`
+         solo (`fa1c983`, inerte hasta que algo lo referencia), ensayado contra la
+         base real antes de wirearlo (`docker build --target migrator` + `docker
+         run` con `coraje_migrator` → `No pending migrations to apply.`); después
+         `docker-compose.yaml` (`0f1ced5`), solo tras confirmar `DATABASE_MIGRATION_URL`
+         ya en Coolify.
 
-         Creados y verificados contra `pg_class`/`pg_roles`: `coraje_migrator`
-         (dueño de las 14 tablas y 8 funciones de `core`+`helpdesk` — usará el
-         futuro servicio `migrate`), `coraje_runtime` (solo DML sobre `core`+
-         `helpdesk`, sin `staging` — usa `web` desde el cambio de `DATABASE_URL` en
-         Coolify), `coraje_etl` (DML sobre `staging`+`core`+`helpdesk` — usa n8n
-         desde el cambio de credencial en sus workflows). `coraje_app` conserva su
-         superusuario (es el único admin del clúster; retirárselo sin uno de
-         respaldo no tiene vuelta atrás) pero ya no lo usa ningún sistema
-         automático — queda para diagnóstico y emergencia humana, con su
-         contraseña rotada. `ALTER DEFAULT PRIVILEGES` deja que lo que
-         `coraje_migrator` cree en migraciones futuras llegue ya concedido a los
-         otros tres roles.
+         **El primer deploy real con el gate activo quedó confirmado por los logs
+         de Coolify**, no solo por el ensayo manual: el servicio `migrate` corrió
+         `prisma migrate deploy`, mostró `No pending migrations to apply.` y
+         terminó bien; `web` arrancó después, no en paralelo. **La última salvedad
+         de F6 quedó cerrada en el mismo paso:** el usuario creó un ticket real
+         desde el portal (`Prueba de ticket`, visible en `/portal/tickets`) y
+         probó la redirección — `coraje_runtime` escribiendo en producción,
+         confirmado por comportamiento, no solo por `GRANT` verificado.
 
-         **Dos incidencias reales de exposición de credenciales, ambas resueltas:**
-         (1) la contraseña original de `coraje_app` quedó expuesta en texto plano en
-         esta conversación al pegar la salida de un `docker run` — fue lo que
-         escaló el alcance de F6; (2) los tres roles nuevos se crearon, por error de
-         comunicación, con los placeholders de contraseña sin sustituir —
-         corregido de inmediato con `\password` interactivo antes de que nada
-         dependiera de ellos. **Regla nueva, ya en `operacion.md`: toda contraseña
-         real se fija con `\password` interactivo, nunca con `-c "ALTER ROLE ...
-         PASSWORD"` inline.**
+         **U2 cierra con los cuatro escenarios mínimos de `plan-ejecucion.md`
+         cerrados y verificados:** baseline adoptado (corte 6) · credenciales
+         separadas, incluida la corrida real de n8n con `coraje_etl` tras
+         corregir el ownership de `staging` y retirar un `CREATE INDEX` embebido
+         contra `core.dim_cliente_contai` que contradecía D1 (corte 7) · servicio
+         `migrate` desplegado y gateando `web` de verdad (esta entrada) · una
+         escritura real confirmada con `coraje_runtime` (esta entrada). **U3 pasa
+         a ser la cabeza de `plan-ejecucion.md`.**
 
-         **La corrida real de n8n con `coraje_etl` reveló dos huecos que el `GRANT`
-         original no cubría — ambos corregidos, no solo con más permisos:**
-         (1) `staging` seguía siendo propiedad de `coraje_app`; el nodo `PG - Ensure
-         Incremental Infrastructure` hace `CREATE SCHEMA`/`CREATE TABLE IF NOT
-         EXISTS` sobre `staging` como parte normal de su ejecución, no como
-         excepción — se transfiere el dueño de `staging` y sus 10 tablas a
-         `coraje_etl`, igual que `core`/`helpdesk` con `coraje_migrator`.
-         (2) el nodo `PG - Transform 02 Clientes` traía un `CREATE UNIQUE INDEX IF
-         NOT EXISTS` contra `core.dim_cliente_contai` — ese índice específico
-         (`uq_dim_cliente_contai_identificacion_fiscal_not_null`) ya lo garantiza el
-         baseline de Prisma; n8n intentando "asegurarlo" por su cuenta es
-         exactamente el patrón que D1 decidió abandonar (SQL a mano gestionando el
-         esquema de `core`/`helpdesk`). Se retira del workflow (vivo y export
-         committeado), sin tocar la transformación real que sigue en la misma
-         consulta. Confirmado por el usuario: el flujo de ingesta corrió completo
-         con `coraje_etl` después de ambas correcciones.
+CORTE ANTERIOR (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
+         revela que `coraje_app` era superusuario y el único rol de aplicación del
+         clúster — se amplía F6 para retirarlo también de n8n. Creados
+         `coraje_migrator`, `coraje_runtime`, `coraje_etl`; `coraje_app` rotado y
+         reservado a emergencias humanas. Dos incidencias de exposición de
+         credenciales, ambas resueltas (contraseña original pegada en el chat;
+         los tres roles nuevos creados con placeholders sin sustituir, corregido
+         con `\password` interactivo). La corrida real de n8n reveló dos huecos
+         más (ownership de `staging`, `CREATE INDEX` embebido contra `core`),
+         corregidos. Detalle completo en el changelog.
 
-         **Pendiente de ejercitar, no bloqueante:** ninguna escritura real (crear o
-         redirigir un ticket) con `coraje_runtime` se ha confirmado todavía — la
-         verificación disponible ahí sigue siendo de propietarios y `GRANT`, no de
-         comportamiento en producción.
-
-CORTE ANTERIOR (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
+CORTE DOS ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
          `20260910000000_baseline/migration.sql`, se migran 20 archivos de
          aplicación a `camelCase`, y se adopta la migración contra producción con
          `prisma migrate resolve --applied` (`applied_steps_count = 0`, sin
          ejecutar DDL). Detalle completo en el changelog.
 STAGING: no aplica. No hay entorno de pruebas declarado para este proyecto
-LINT:    sin cambios de código en esta entrada — ver UNIDAD
-         arriba (`tsc --noEmit`, `eslint .`, `pnpm build`, todos limpios)
+LINT:    no aplica — esta entrada es `Dockerfile`/`docker-compose.yaml`, sin
+         TypeScript tocado. Validado por build real: Coolify construyó ambas
+         etapas y el deploy completo terminó `Running`
 ```
 
 **Qué es este documento:** el estado observado, la evidencia disponible, las
@@ -198,7 +186,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F11~~ | ~~`sql/elt/06_transform_ticket.sql` y el nodo `PG - Transform 06 Tickets Legacy` de n8n tenían lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy~~ — **cerrado 10-sep-2026 (corte 4), decisión del usuario: gana n8n.** Reconciliado: el bloque del repositorio se reemplaza por la lógica de n8n. Hallazgo real, más grave que la descripción original: la versión del repositorio no "cubría menos casos" — no cubría ninguno. Comparaba contra literales en MAYÚSCULAS que `core.norm_text()` (siempre minúsculas) nunca podía igualar, así que el bloque completo caía al `ELSE` en cualquier ejecución sobre ese archivo. La copia de n8n, la única que corre en producción, usa minúsculas y es la que clasificó correctamente los 2.825 tickets ingeridos hasta hoy. Sin cambio de comportamiento en producción — n8n ya tenía la versión correcta | ~~Media~~ | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
 | ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` y un subsistema de identidad sin rastro en el repositorio~~ — **cerrado de verdad, 10-sep-2026 (corte 5).** El primer cierre (corte 4) estaba mal: se apoyó solo en `git log`, nunca en la base real. Investigado a fondo: `codigo_ticket` confirmado como el mecanismo real y correcto (trigger + contador por área/año, con guarda idempotente) — el baseline lo captura tal cual. `identidad_correo`/`resolucion_*` (y, descubierto después, cuatro columnas `*_snapshot` más en `fact_ticket` con la misma data) confirmados como el mismo problema que ya resuelve `sql/elt/04_transform_personal_historico.sql`, abandonados desde jul-2026, sin nada que dim_personal no tuviera ya — retirados de la base real, con lo rescatable en `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral: el backfill de F10 estaba incompleto (solo un correo de varios) — cerrado con un `UPDATE` de 72 filas. `fact_ticket` verificado con exactamente las 18 columnas de `sql/db/06_helpdesk_facts.sql` | ~~Alta~~ | `docs/legacy/identidad-correo-2026-07.md`; consultas de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026, columnas/índices/CHECK/triggers/funciones de `core`+`helpdesk`+`staging` completas |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
-| ~~F6~~ | ~~Una sola credencial de base para migrar y para servir~~ — **cerrado 11-sep-2026, más grave de lo descrito: `coraje_app` resultó ser además superusuario y el único rol de aplicación del clúster.** Creados `coraje_migrator` (dueño de `core`+`helpdesk`), `coraje_runtime` (DML, usa `web`) y `coraje_etl` (dueño de `staging`, DML sobre `core`+`helpdesk`, usa n8n); `coraje_app` retirado de todo uso automático, contraseña rotada, queda solo para emergencias humanas. **Corrida real de n8n con `coraje_etl` confirmada de punta a punta** tras corregir dos huecos que el `GRANT` inicial no cubría: `staging` sin transferir a `coraje_etl`, y un `CREATE UNIQUE INDEX` que n8n traía embebido contra `core.dim_cliente_contai` — ya redundante y contrario a D1, retirado del workflow (vivo y committeado). **Pendiente de ejercitar, no bloqueante:** una escritura real (crear/redirigir un ticket) con `coraje_runtime` | ~~Media~~ | `estado/operacion.md` |
+| ~~F6~~ | ~~Una sola credencial de base para migrar y para servir~~ — **cerrado 11-sep-2026, más grave de lo descrito: `coraje_app` resultó ser además superusuario y el único rol de aplicación del clúster.** Creados `coraje_migrator` (dueño de `core`+`helpdesk`), `coraje_runtime` (DML, usa `web`) y `coraje_etl` (dueño de `staging`, DML sobre `core`+`helpdesk`, usa n8n); `coraje_app` retirado de todo uso automático, contraseña rotada, queda solo para emergencias humanas. **Corrida real de n8n con `coraje_etl` confirmada de punta a punta** tras corregir dos huecos que el `GRANT` inicial no cubría: `staging` sin transferir a `coraje_etl`, y un `CREATE UNIQUE INDEX` que n8n traía embebido contra `core.dim_cliente_contai` — ya redundante y contrario a D1, retirado del workflow (vivo y committeado). **`coraje_runtime` confirmado con una escritura real** (ticket creado desde el portal, corte 8) | ~~Media~~ | `estado/operacion.md` |
 | F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
@@ -221,7 +209,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | El equipo trabaja en la plataforma y la ingesta le borra el trabajo | Pérdida de trabajo real | U9 antes de que U7 esté en uso |
 | Un cliente radica y el ticket se duplica en SharePoint | Visible para PowerApps y para el cliente | Reducido, no eliminado: el diseño del workflow ya no duplica (U1 §2, `sincronizacion-sharepoint.md` §4.2), pero sigue sin ejercitarse con un caso real — probarlo con el primer ticket real del portal antes de anunciarlo cerrado |
 | La autorización destructiva alcanza datos reales | Pérdida irrecuperable | `contexto-canonico.md` §1.3 delimita el alcance |
-| Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza | Entre esta decisión y que U2 construya ese servicio, no hay ninguna forma documentada de verificar comportamiento — ni local, ni por push | **Prerrequisitos cumplidos (corte 6/7):** el baseline está adoptado contra producción y las credenciales están separadas (F6). Falta construir el servicio `migrate` en sí — sin él, sigue sin haber gate de despliegue |
+| ~~Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza~~ — **resuelto 11-sep-2026 (corte 8)**: servicio `migrate` desplegado, gate `depends_on: service_completed_successfully` confirmado en un deploy real de Coolify (logs: `No pending migrations to apply.` antes de que `web` arrancara) | ~~Sin el servicio, no había forma documentada de verificar comportamiento — ni local, ni por push~~ | ~~Cerrado~~ |
 | ~~La contraseña real de `coraje_app` se pegó en texto plano en esta conversación~~ — **resuelto 11-sep-2026**: rotada al cerrar F6, con `\password` interactivo (no vuelve a aparecer en texto). `coraje_app` además dejó de ser la credencial de cualquier sistema automático | ~~Si el historial de esta sesión quedaba expuesto, exponía con él la credencial de base de producción~~ | ~~Cerrado~~ |
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
@@ -230,7 +218,12 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
-| `1e4a6a8` | **Corte vigente.** Construye el baseline Prisma: `schema.prisma` (14 modelos `PascalCase`+`@@map`), migración a mano `20260910000000_baseline`, 20 archivos de aplicación migrados a `camelCase` |
+| `0f1ced5` | **Corte vigente.** Activa el servicio `migrate` en `docker-compose.yaml` y gatea el arranque de `web` — cierra U2 |
+| `08438c2` | Retira el `CREATE INDEX` embebido contra `core` del workflow de n8n, confirmado en vivo |
+| `fa1c983` | Agrega la etapa `migrator` al `Dockerfile`, inerte hasta el commit anterior |
+| `95c1d8b` | Cierra F6 en la documentación |
+| `da951d8` | Documenta la adopción del baseline contra producción |
+| `1e4a6a8` | Construye el baseline Prisma: `schema.prisma` (14 modelos `PascalCase`+`@@map`), migración a mano `20260910000000_baseline`, 20 archivos de aplicación migrados a `camelCase` |
 | `134663a` | Cierra F10 en la documentación con evidencia de ejecución real |
 | `6fb3bd5` | Reemplaza placeholders de conexión por valores reales en los comandos entregados |
 | `e3b95a1` | Construye el modelo de buzón compartido para `dim_personal` (F10) |
@@ -268,6 +261,15 @@ credencial usar (`coraje_migrator`). **La acción inmediata es ese servicio**: e
 nuevas de Coolify (`DATABASE_MIGRATION_URL` con `coraje_migrator`) antes de publicar
 el compose — nunca al revés, o el primer deploy con el servicio ya wireado se cae
 igual que se explicó al usuario sobre la baseline (ver corte 6).
+
+**El corte 8 construye y despliega ese servicio de verdad — U2 queda cerrada.**
+Publicado en dos commits separados por riesgo (`fa1c983` inerte, `0f1ced5` activa el
+gate), con `DATABASE_MIGRATION_URL` ya en Coolify antes del segundo push. El deploy
+real confirmó en logs lo que el ensayo manual ya había mostrado: `migrate` corre,
+dice `No pending migrations to apply.` y termina bien; `web` arranca después. La
+última salvedad de F6 (una escritura real con `coraje_runtime`) se cerró en el mismo
+paso: el usuario creó un ticket real desde el portal y probó la redirección.
+**Siguiente unidad: U3 · Identidad de empleados**, cabeza de `plan-ejecucion.md`.
 
 Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
 efectivamente se corrió contra la base real — no son pasos pendientes.
@@ -403,9 +405,9 @@ WHERE id_asignado IN (
 | Tipografía Lato, con pesos reales 400/500/600/700 | Ídem §2 | Decidida, no construida |
 | HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | Decidida, no construida |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
-| Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Baseline construido y adoptado contra producción (corte 6)** — falta el servicio `migrate` que automatice futuras migraciones en cada deploy |
+| Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Construida por completo (corte 8):** baseline adoptado, y el servicio `migrate` ya automatiza cada deploy futuro |
 | Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | Decidida, no construida |
-| Se retira del runbook el ciclo de desarrollo local; la verificación funcional es siempre vía commit + push a lo desplegado | `estado/operacion.md` | Decidida, no construida — falta el servicio `migrate` que la sostenga (ver riesgo nuevo abajo) |
+| Se retira del runbook el ciclo de desarrollo local; la verificación funcional es siempre vía commit + push a lo desplegado | `estado/operacion.md` | **Construida (corte 8):** el servicio `migrate` que la sostenía ya existe y quedó confirmado en un deploy real |
 | Convención de nombres del modelo Prisma: `PascalCase` con `@@map` a `snake_case`, igual que Impulsa (D1') | `contexto-canonico.md` §4 | **Construida (corte 6):** las 14 tablas de `core`+`helpdesk` mapeadas en `schema.prisma`; `staging` queda deliberadamente fuera de Prisma (es dominio del ELT) |
 | Observadores (watchers de solo lectura) van en v1, a partir del prototipo `helpdesk_santi/` | `specs/tickets.md` §11, `specs/permisos.md` §10 | Decidida, no construida — depende del catálogo de personas/roles todavía `ABIERTO` |
 | Solicitud de validación dirigida a persona va en v1, distinta de la autorización excepcional | Ídem | Decidida, no construida — sin decidir aún si bloquea el avance del ticket |
@@ -683,3 +685,17 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   instancia viva ya corría igual — nunca antes, para no repetir el error de F11.
   Con esto, la única salvedad de F6 que sigue sin ejercitarse es una escritura real
   con `coraje_runtime` (crear o redirigir un ticket).
+- 11-sep-2026 (corte 8, mismo día) — **U2 cierra.** Se agrega la etapa `migrator` al
+  `Dockerfile` (liviana, sin el build de Next) y se ensaya contra la base real antes
+  de tocar el despliegue: `docker build --target migrator` + `docker run` con
+  `coraje_migrator` confirma `No pending migrations to apply.`. Publicado inerte
+  primero (`fa1c983`); solo tras confirmar `DATABASE_MIGRATION_URL` en Coolify se
+  publica el servicio `migrate` en `docker-compose.yaml` con el gate
+  `depends_on: service_completed_successfully` sobre `web` (`0f1ced5`). El deploy
+  real en Coolify confirma en logs lo mismo que el ensayo manual, y `web` arranca
+  después de `migrate`, no en paralelo. El usuario cierra la última salvedad de F6
+  en el mismo paso: crea un ticket real desde el portal y prueba la redirección,
+  confirmando `coraje_runtime` en producción por comportamiento, no solo por
+  `GRANT`. Los cuatro escenarios mínimos de U2 quedan cerrados y ejercitados.
+  `plan-ejecucion.md` se actualiza: U2 cerrada, **U3 (identidad de empleados) pasa a
+  ser la cabeza de la cola.**
