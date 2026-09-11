@@ -1,10 +1,31 @@
 services:
+  # Servicio de un disparo: aplica migraciones pendientes contra la base real
+  # con coraje_migrator (dueño de core+helpdesk) y termina. `web` no arranca
+  # hasta que este servicio termine con éxito — ver `depends_on` abajo.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+
+    restart: "no"
+
+    environment:
+      DATABASE_URL: ${DATABASE_MIGRATION_URL}
+
+    networks:
+      - coraje_net
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
 
     restart: unless-stopped
+
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
     environment:
       NODE_ENV: production
