@@ -6,11 +6,11 @@ import { useMemo, useRef, useState } from "react";
 import { selectClientAction } from "@/app/portal/actions";
 
 type ClientListItem = {
-  id_cliente_contai: string;
-  nombre_cliente: string;
-  identificacion_fiscal: string | null;
-  tipo_cliente: string | null;
-  grupo_economico: string | null;
+  idClienteContai: string;
+  nombreCliente: string;
+  identificacionFiscal: string | null;
+  tipoCliente: string | null;
+  grupoEconomico: string | null;
 };
 
 type ClientSearchResponse = {
@@ -58,7 +58,7 @@ export function ClientSelector({
       return "";
     }
 
-    return `${selectedClient.nombre_cliente} · ${selectedClient.identificacion_fiscal ?? "Sin NIT"
+    return `${selectedClient.nombreCliente} · ${selectedClient.identificacionFiscal ?? "Sin NIT"
       }`;
   }, [selectedClient]);
 
@@ -100,11 +100,11 @@ export function ClientSelector({
         const byId = new Map<string, ClientListItem>();
 
         for (const item of current) {
-          byId.set(item.id_cliente_contai, item);
+          byId.set(item.idClienteContai, item);
         }
 
         for (const item of data.items) {
-          byId.set(item.id_cliente_contai, item);
+          byId.set(item.idClienteContai, item);
         }
 
         return Array.from(byId.values());
@@ -153,7 +153,7 @@ export function ClientSelector({
   function handleSelectClient(client: ClientListItem) {
     setSelectedClient(client);
     setQuery(
-      `${client.nombre_cliente} · ${client.identificacion_fiscal ?? "Sin NIT"}`,
+      `${client.nombreCliente} · ${client.identificacionFiscal ?? "Sin NIT"}`,
     );
     setIsOpen(false);
   }
@@ -200,7 +200,7 @@ export function ClientSelector({
         <input
           type="hidden"
           name="clientId"
-          value={selectedClient?.id_cliente_contai ?? ""}
+          value={selectedClient?.idClienteContai ?? ""}
         />
 
         <div className="relative">
@@ -240,24 +240,24 @@ export function ClientSelector({
               ) : (
                 <ul className="divide-y divide-[#e2e8f0]">
                   {clients.map((client) => (
-                    <li key={client.id_cliente_contai}>
+                    <li key={client.idClienteContai}>
                       <button
                         type="button"
                         onClick={() => handleSelectClient(client)}
                         className="block w-full px-4 py-3 text-left transition hover:bg-[#f0f9ff]"
                       >
                         <span className="block text-sm font-black text-[#001871]">
-                          {client.nombre_cliente}
+                          {client.nombreCliente}
                         </span>
 
                         <span className="mt-1 block text-xs font-semibold text-[#718096]">
                           NIT / ID:{" "}
-                          {client.identificacion_fiscal ?? "Sin dato"}
+                          {client.identificacionFiscal ?? "Sin dato"}
                         </span>
 
                         <span className="mt-1 block text-xs font-medium text-zinc-400">
-                          {client.tipo_cliente ?? "Sin tipo"} ·{" "}
-                          {client.grupo_economico ?? "Sin grupo"}
+                          {client.tipoCliente ?? "Sin tipo"} ·{" "}
+                          {client.grupoEconomico ?? "Sin grupo"}
                         </span>
                       </button>
                     </li>

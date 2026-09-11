@@ -11,34 +11,34 @@ import { prisma } from "@/lib/prisma";
  */
 export async function getRedirectCatalog() {
   const [areas, tiposRequerimiento] = await Promise.all([
-    prisma.dim_area.findMany({
+    prisma.dimArea.findMany({
       orderBy: {
-        nombre_area: "asc",
+        nombreArea: "asc",
       },
       select: {
-        id_area: true,
-        nombre_area: true,
+        idArea: true,
+        nombreArea: true,
       },
     }),
 
-    prisma.dim_tipo_requerimiento.findMany({
+    prisma.dimTipoRequerimiento.findMany({
       orderBy: [
         {
-          tipo_requerimiento: "asc",
+          tipoRequerimiento: "asc",
         },
         {
-          categoria_1: "asc",
+          categoria1: "asc",
         },
         {
-          categoria_2: "asc",
+          categoria2: "asc",
         },
       ],
       select: {
-        id_tipo_req: true,
-        id_area: true,
-        tipo_requerimiento: true,
-        categoria_1: true,
-        categoria_2: true,
+        idTipoReq: true,
+        idArea: true,
+        tipoRequerimiento: true,
+        categoria1: true,
+        categoria2: true,
       },
     }),
   ]);

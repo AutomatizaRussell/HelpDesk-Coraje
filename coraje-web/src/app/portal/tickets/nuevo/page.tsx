@@ -61,7 +61,7 @@ export default async function NewPortalTicketPage() {
           <p className="text-sm font-medium text-[#718096]">
             Cliente seleccionado:{" "}
             <span className="font-black text-[#001871]">
-              {client.nombre_cliente}
+              {client.nombreCliente}
             </span>
           </p>
         </header>
@@ -73,16 +73,16 @@ export default async function NewPortalTicketPage() {
             </p>
 
             <p className="mt-2 font-black text-[#001871]">
-              {client.nombre_cliente}
+              {client.nombreCliente}
             </p>
 
             <p className="mt-1 text-sm font-medium text-[#718096]">
-              NIT / ID: {client.identificacion_fiscal ?? "Sin dato"}
+              NIT / ID: {client.identificacionFiscal ?? "Sin dato"}
             </p>
 
             <p className="mt-1 text-sm font-medium text-[#718096]">
-              Tipo: {client.tipo_cliente ?? "Sin tipo"} · Grupo:{" "}
-              {client.grupo_economico ?? "Sin grupo"}
+              Tipo: {client.tipoCliente ?? "Sin tipo"} · Grupo:{" "}
+              {client.grupoEconomico ?? "Sin grupo"}
             </p>
           </div>
 

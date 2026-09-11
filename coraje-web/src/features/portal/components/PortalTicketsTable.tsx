@@ -1,15 +1,15 @@
 type PortalTicket = {
-  id_ticket: string;
-  codigo_ticket: string;
-  descripcion_problema: string;
-  fecha_creacion: Date;
-  fecha_limite: Date | null;
-  fecha_resolucion: Date | null;
-  respuesta_final: string | null;
-  id_area_destino: string | null;
-  id_tipo_req: string | null;
-  dim_estado: {
-    nombre_estado: string;
+  idTicket: string;
+  codigoTicket: string | null;
+  descripcionProblema: string;
+  fechaCreacion: Date;
+  fechaLimite: Date | null;
+  fechaResolucion: Date | null;
+  respuestaFinal: string | null;
+  idAreaDestino: string | null;
+  idTipoReq: string | null;
+  dimEstado: {
+    nombreEstado: string;
   };
 };
 
@@ -41,13 +41,13 @@ function formatDate(date: Date | null): string {
  * recibido por el portal pero todavía no entró al flujo legacy.
  */
 function getClientVisibleStatus(ticket: PortalTicket): string {
-  const estado = ticket.dim_estado.nombre_estado.toUpperCase();
+  const estado = ticket.dimEstado.nombreEstado.toUpperCase();
 
   if (estado === "CERRADO") {
     return "Cerrado";
   }
 
-  if (!ticket.id_area_destino) {
+  if (!ticket.idAreaDestino) {
     return "Recibido";
   }
 
@@ -66,12 +66,12 @@ function getClientVisibleStatus(ticket: PortalTicket): string {
  * decide si se muestra el botón en la tabla.
  */
 function canDeleteFromPortal(ticket: PortalTicket): boolean {
-  const estado = ticket.dim_estado.nombre_estado.toUpperCase();
+  const estado = ticket.dimEstado.nombreEstado.toUpperCase();
 
   return (
     estado === "ABIERTO" &&
-    ticket.id_area_destino === null &&
-    ticket.id_tipo_req === null
+    ticket.idAreaDestino === null &&
+    ticket.idTipoReq === null
   );
 }
 
@@ -114,25 +114,25 @@ export function PortalTicketsTable({
           <tbody className="divide-y divide-[#e2e8f0]">
             {tickets.map((ticket) => (
               <tr
-                key={ticket.id_ticket}
+                key={ticket.idTicket}
                 className="border-l-4 border-transparent text-zinc-700 transition hover:scale-[1.002] hover:border-[#00a9ce] hover:bg-[#f0f9ff]"
               >
                 <td className="whitespace-nowrap px-5 py-4 font-mono text-xs font-bold text-[#001871]">
-                  {ticket.codigo_ticket}
+                  {ticket.codigoTicket ?? "Sin código"}
                 </td>
 
                 <td className="max-w-xl px-5 py-4 font-semibold text-zinc-900">
                   <span className="line-clamp-2">
-                    {ticket.descripcion_problema}
+                    {ticket.descripcionProblema}
                   </span>
                 </td>
 
                 <td className="whitespace-nowrap px-5 py-4 font-medium text-[#718096]">
-                  {formatDate(ticket.fecha_creacion)}
+                  {formatDate(ticket.fechaCreacion)}
                 </td>
 
                 <td className="whitespace-nowrap px-5 py-4 font-medium text-[#718096]">
-                  {formatDate(ticket.fecha_limite)}
+                  {formatDate(ticket.fechaLimite)}
                 </td>
 
                 <td className="px-5 py-4">
@@ -142,11 +142,11 @@ export function PortalTicketsTable({
                 </td>
 
                 <td className="whitespace-nowrap px-5 py-4 font-medium text-[#718096]">
-                  {formatDate(ticket.fecha_resolucion)}
+                  {formatDate(ticket.fechaResolucion)}
                 </td>
 
                 <td className="max-w-md px-5 py-4 text-sm font-medium text-[#718096]">
-                  {ticket.respuesta_final ?? "Sin respuesta todavía"}
+                  {ticket.respuestaFinal ?? "Sin respuesta todavía"}
                 </td>
 
                 <td className="whitespace-nowrap px-5 py-4">
@@ -155,7 +155,7 @@ export function PortalTicketsTable({
                       <button
                         type="submit"
                         name="ticketId"
-                        value={ticket.id_ticket}
+                        value={ticket.idTicket}
                         className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100"
                       >
                         Eliminar

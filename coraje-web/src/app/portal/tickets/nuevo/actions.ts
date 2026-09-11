@@ -33,12 +33,12 @@ export async function createPortalTicketAction(formData: FormData) {
   }
 
   await prisma.$transaction(async (tx) => {
-    const estadoAbierto = await tx.dim_estado.findUnique({
+    const estadoAbierto = await tx.dimEstado.findUnique({
       where: {
-        nombre_estado: "ABIERTO",
+        nombreEstado: "ABIERTO",
       },
       select: {
-        id_estado: true,
+        idEstado: true,
       },
     });
 
@@ -46,13 +46,13 @@ export async function createPortalTicketAction(formData: FormData) {
       throw new Error("No existe el estado ABIERTO en helpdesk.dim_estado.");
     }
 
-    const prioridadMedia = await tx.dim_prioridad.findUnique({
+    const prioridadMedia = await tx.dimPrioridad.findUnique({
       where: {
-        nombre_prioridad: "MEDIA",
+        nombrePrioridad: "MEDIA",
       },
       select: {
-        id_prioridad: true,
-        dias_sla: true,
+        idPrioridad: true,
+        diasSla: true,
       },
     });
 
@@ -60,10 +60,12 @@ export async function createPortalTicketAction(formData: FormData) {
       throw new Error("No existe la prioridad MEDIA en helpdesk.dim_prioridad.");
     }
 
+    // SQL crudo: el alias de columna es de la fila devuelta, no un campo del
+    // modelo Prisma — se queda en snake_case a propósito.
     const fechaLimiteRows = await tx.$queryRaw<{ fecha_limite: Date }[]>`
       SELECT core.add_colombia_business_days(
         CURRENT_DATE,
-        ${prioridadMedia.dias_sla}
+        ${prioridadMedia.diasSla}
       )::timestamptz AS fecha_limite
     `;
 
@@ -73,14 +75,14 @@ export async function createPortalTicketAction(formData: FormData) {
       throw new Error("No fue posible calcular la fecha límite del ticket.");
     }
 
-    await tx.fact_ticket.create({
+    await tx.factTicket.create({
       data: {
-        descripcion_problema: descripcion,
-        id_cliente_contai: clientId,
-        id_estado: estadoAbierto.id_estado,
-        id_prioridad: prioridadMedia.id_prioridad,
-        fecha_limite: fechaLimite,
-        origen_sistema: "PORTAL_CLIENTE",
+        descripcionProblema: descripcion,
+        idClienteContai: clientId,
+        idEstado: estadoAbierto.idEstado,
+        idPrioridad: prioridadMedia.idPrioridad,
+        fechaLimite: fechaLimite,
+        origenSistema: "PORTAL_CLIENTE",
       },
     });
   });

@@ -5,40 +5,40 @@ import { prisma } from "@/lib/prisma";
  * redirigidos a un área.
  *
  * Regla de negocio:
- * - origen_sistema = PORTAL_CLIENTE
+ * - origenSistema = PORTAL_CLIENTE
  * - estado = ABIERTO
- * - id_area_destino IS NULL
+ * - idAreaDestino IS NULL
  *
  * Estos tickets todavía no deben enviarse a SharePoint/PowerApps hasta que
  * el empleado redireccionador seleccione área, tipo y categoría.
  */
 export async function getPendingRedirectTickets() {
-  return prisma.fact_ticket.findMany({
+  return prisma.factTicket.findMany({
     where: {
-      origen_sistema: "PORTAL_CLIENTE",
-      id_area_destino: null,
-      dim_estado: {
-        nombre_estado: "ABIERTO",
+      origenSistema: "PORTAL_CLIENTE",
+      idAreaDestino: null,
+      dimEstado: {
+        nombreEstado: "ABIERTO",
       },
     },
     orderBy: {
-      fecha_creacion: "asc",
+      fechaCreacion: "asc",
     },
     select: {
-      id_ticket: true,
-      codigo_ticket: true,
-      descripcion_problema: true,
-      fecha_creacion: true,
-      fecha_limite: true,
-      dim_cliente_contai: {
+      idTicket: true,
+      codigoTicket: true,
+      descripcionProblema: true,
+      fechaCreacion: true,
+      fechaLimite: true,
+      dimClienteContai: {
         select: {
-          nombre_cliente: true,
-          identificacion_fiscal: true,
+          nombreCliente: true,
+          identificacionFiscal: true,
         },
       },
-      dim_estado: {
+      dimEstado: {
         select: {
-          nombre_estado: true,
+          nombreEstado: true,
         },
       },
     },

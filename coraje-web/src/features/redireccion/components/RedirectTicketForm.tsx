@@ -3,16 +3,16 @@
 import { useMemo, useState } from "react";
 
 type AreaOption = {
-  id_area: string;
-  nombre_area: string;
+  idArea: string;
+  nombreArea: string;
 };
 
 type TipoRequerimientoOption = {
-  id_tipo_req: string;
-  id_area: string;
-  tipo_requerimiento: string;
-  categoria_1: string | null;
-  categoria_2: string | null;
+  idTipoReq: string;
+  idArea: string;
+  tipoRequerimiento: string;
+  categoria1: string | null;
+  categoria2: string | null;
 };
 
 type RedirectTicketFormProps = {
@@ -37,8 +37,8 @@ function cleanOptionalValue(value: string | null): string {
  */
 function isTipoSinCategorias(item: TipoRequerimientoOption): boolean {
   return (
-    cleanOptionalValue(item.categoria_1) === "" &&
-    cleanOptionalValue(item.categoria_2) === ""
+    cleanOptionalValue(item.categoria1) === "" &&
+    cleanOptionalValue(item.categoria2) === ""
   );
 }
 
@@ -82,7 +82,7 @@ function formatCatalogLabel(value: string): string {
  * - tipoReqId
  *
  * No envía textos de categoría porque la combinación final ya está representada
- * por id_tipo_req.
+ * por idTipoReq.
  */
 export function RedirectTicketForm({
   ticketId,
@@ -105,8 +105,8 @@ export function RedirectTicketForm({
     return Array.from(
       new Set(
         tiposRequerimiento
-          .filter((item) => item.id_area === areaId)
-          .map((item) => item.tipo_requerimiento),
+          .filter((item) => item.idArea === areaId)
+          .map((item) => item.tipoRequerimiento),
       ),
     ).sort((a, b) => a.localeCompare(b, "es"));
   }, [areaId, tiposRequerimiento]);
@@ -121,9 +121,9 @@ export function RedirectTicketForm({
         tiposRequerimiento
           .filter(
             (item) =>
-              item.id_area === areaId && item.tipo_requerimiento === tipo,
+              item.idArea === areaId && item.tipoRequerimiento === tipo,
           )
-          .map((item) => cleanOptionalValue(item.categoria_1))
+          .map((item) => cleanOptionalValue(item.categoria1))
           .filter(Boolean),
       ),
     ).sort((a, b) => a.localeCompare(b, "es"));
@@ -139,11 +139,11 @@ export function RedirectTicketForm({
         tiposRequerimiento
           .filter(
             (item) =>
-              item.id_area === areaId &&
-              item.tipo_requerimiento === tipo &&
-              cleanOptionalValue(item.categoria_1) === categoria1,
+              item.idArea === areaId &&
+              item.tipoRequerimiento === tipo &&
+              cleanOptionalValue(item.categoria1) === categoria1,
           )
-          .map((item) => cleanOptionalValue(item.categoria_2))
+          .map((item) => cleanOptionalValue(item.categoria2))
           .filter(Boolean),
       ),
     ).sort((a, b) => a.localeCompare(b, "es"));
@@ -164,7 +164,7 @@ export function RedirectTicketForm({
     setTipoReqId("");
 
     const matches = tiposRequerimiento.filter(
-      (item) => item.id_area === areaId && item.tipo_requerimiento === nextTipo,
+      (item) => item.idArea === areaId && item.tipoRequerimiento === nextTipo,
     );
 
     /**
@@ -173,12 +173,12 @@ export function RedirectTicketForm({
      * Ejemplo:
      *   ADMINISTRACIÓN-RECEPCIÓN / asignacion agenda / null / null
      *
-     * En este caso, seleccionar el tipo ya resuelve id_tipo_req.
+     * En este caso, seleccionar el tipo ya resuelve idTipoReq.
      */
     const tipoSinCategorias = matches.find(isTipoSinCategorias);
 
     if (tipoSinCategorias) {
-      setTipoReqId(tipoSinCategorias.id_tipo_req);
+      setTipoReqId(tipoSinCategorias.idTipoReq);
       return;
     }
 
@@ -188,9 +188,9 @@ export function RedirectTicketForm({
      * No hay ambigüedad, aunque el catálogo esté incompleto.
      */
     if (matches.length === 1) {
-      setCategoria1(cleanOptionalValue(matches[0].categoria_1));
-      setCategoria2(cleanOptionalValue(matches[0].categoria_2));
-      setTipoReqId(matches[0].id_tipo_req);
+      setCategoria1(cleanOptionalValue(matches[0].categoria1));
+      setCategoria2(cleanOptionalValue(matches[0].categoria2));
+      setTipoReqId(matches[0].idTipoReq);
     }
   }
 
@@ -201,9 +201,9 @@ export function RedirectTicketForm({
 
     const matches = tiposRequerimiento.filter(
       (item) =>
-        item.id_area === areaId &&
-        item.tipo_requerimiento === tipo &&
-        cleanOptionalValue(item.categoria_1) === nextCategoria1,
+        item.idArea === areaId &&
+        item.tipoRequerimiento === tipo &&
+        cleanOptionalValue(item.categoria1) === nextCategoria1,
     );
 
     /**
@@ -212,11 +212,11 @@ export function RedirectTicketForm({
      * Entonces categoría 2 es realmente opcional y podemos guardar esa fila.
      */
     const matchSinCategoria2 = matches.find(
-      (item) => cleanOptionalValue(item.categoria_2) === "",
+      (item) => cleanOptionalValue(item.categoria2) === "",
     );
 
     if (matchSinCategoria2) {
-      setTipoReqId(matchSinCategoria2.id_tipo_req);
+      setTipoReqId(matchSinCategoria2.idTipoReq);
       return;
     }
 
@@ -226,8 +226,8 @@ export function RedirectTicketForm({
      * No hay ambigüedad.
      */
     if (matches.length === 1) {
-      setCategoria2(cleanOptionalValue(matches[0].categoria_2));
-      setTipoReqId(matches[0].id_tipo_req);
+      setCategoria2(cleanOptionalValue(matches[0].categoria2));
+      setTipoReqId(matches[0].idTipoReq);
     }
   }
 
@@ -236,13 +236,13 @@ export function RedirectTicketForm({
 
     const match = tiposRequerimiento.find(
       (item) =>
-        item.id_area === areaId &&
-        item.tipo_requerimiento === tipo &&
-        cleanOptionalValue(item.categoria_1) === categoria1 &&
-        cleanOptionalValue(item.categoria_2) === nextCategoria2,
+        item.idArea === areaId &&
+        item.tipoRequerimiento === tipo &&
+        cleanOptionalValue(item.categoria1) === categoria1 &&
+        cleanOptionalValue(item.categoria2) === nextCategoria2,
     );
 
-    setTipoReqId(match?.id_tipo_req ?? "");
+    setTipoReqId(match?.idTipoReq ?? "");
   }
 
   const categoria2EsNecesariaPorAmbiguedad =
@@ -300,8 +300,8 @@ export function RedirectTicketForm({
           >
             <option value="">Selecciona un área</option>
             {areas.map((area) => (
-              <option key={area.id_area} value={area.id_area}>
-                {area.nombre_area}
+              <option key={area.idArea} value={area.idArea}>
+                {area.nombreArea}
               </option>
             ))}
           </select>

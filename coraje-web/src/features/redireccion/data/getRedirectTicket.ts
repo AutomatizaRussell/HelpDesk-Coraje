@@ -11,32 +11,32 @@ import { prisma } from "@/lib/prisma";
  * Si el ticket no cumple esas condiciones, devuelve null.
  */
 export async function getRedirectTicket(ticketId: string) {
-  return prisma.fact_ticket.findFirst({
+  return prisma.factTicket.findFirst({
     where: {
-      id_ticket: ticketId,
-      origen_sistema: "PORTAL_CLIENTE",
-      id_area_destino: null,
-      dim_estado: {
-        nombre_estado: "ABIERTO",
+      idTicket: ticketId,
+      origenSistema: "PORTAL_CLIENTE",
+      idAreaDestino: null,
+      dimEstado: {
+        nombreEstado: "ABIERTO",
       },
     },
     select: {
-      id_ticket: true,
-      codigo_ticket: true,
-      descripcion_problema: true,
-      fecha_creacion: true,
-      fecha_limite: true,
-      dim_cliente_contai: {
+      idTicket: true,
+      codigoTicket: true,
+      descripcionProblema: true,
+      fechaCreacion: true,
+      fechaLimite: true,
+      dimClienteContai: {
         select: {
-          nombre_cliente: true,
-          identificacion_fiscal: true,
-          tipo_cliente: true,
-          grupo_economico: true,
+          nombreCliente: true,
+          identificacionFiscal: true,
+          tipoCliente: true,
+          grupoEconomico: true,
         },
       },
-      dim_estado: {
+      dimEstado: {
         select: {
-          nombre_estado: true,
+          nombreEstado: true,
         },
       },
     },

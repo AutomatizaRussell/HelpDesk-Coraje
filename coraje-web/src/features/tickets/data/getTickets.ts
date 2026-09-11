@@ -7,78 +7,79 @@ import type { TicketListItem } from "../types";
  * Decisiones técnicas:
  * - Consulta directa server-side mediante Prisma.
  * - No expone el modelo Prisma completo a la UI.
- * - Traduce nombres físicos snake_case a nombres semánticos camelCase.
+ * - Traduce nombres semánticos camelCase del cliente Prisma a los campos de
+ *   TicketListItem.
  * - Usa fallbacks explícitos para relaciones opcionales que pueden venir
  *   incompletas desde la migración legacy.
  */
 export async function getRecentTickets(limit = 25): Promise<TicketListItem[]> {
-  const tickets = await prisma.fact_ticket.findMany({
+  const tickets = await prisma.factTicket.findMany({
     take: limit,
     orderBy: {
-      fecha_creacion: "desc",
+      fechaCreacion: "desc",
     },
     select: {
-      id_ticket: true,
-      codigo_ticket: true,
-      descripcion_problema: true,
-      fecha_creacion: true,
-      fecha_limite: true,
-      fecha_resolucion: true,
-      origen_sistema: true,
+      idTicket: true,
+      codigoTicket: true,
+      descripcionProblema: true,
+      fechaCreacion: true,
+      fechaLimite: true,
+      fechaResolucion: true,
+      origenSistema: true,
 
-      dim_estado: {
+      dimEstado: {
         select: {
-          nombre_estado: true,
+          nombreEstado: true,
         },
       },
 
-      dim_prioridad: {
+      dimPrioridad: {
         select: {
-          nombre_prioridad: true,
+          nombrePrioridad: true,
         },
       },
 
-      dim_area: {
+      dimArea: {
         select: {
-          nombre_area: true,
+          nombreArea: true,
         },
       },
 
-      dim_cliente_contai: {
+      dimClienteContai: {
         select: {
-          nombre_cliente: true,
+          nombreCliente: true,
         },
       },
 
-      dim_tipo_requerimiento: {
+      dimTipoRequerimiento: {
         select: {
-          tipo_requerimiento: true,
-          categoria_1: true,
-          categoria_2: true,
+          tipoRequerimiento: true,
+          categoria1: true,
+          categoria2: true,
         },
       },
     },
   });
 
   return tickets.map((ticket) => ({
-    idTicket: ticket.id_ticket,
-    codigoTicket: ticket.codigo_ticket,
-    descripcion: ticket.descripcion_problema,
+    idTicket: ticket.idTicket,
+    codigoTicket: ticket.codigoTicket,
+    descripcion: ticket.descripcionProblema,
 
-    cliente: ticket.dim_cliente_contai?.nombre_cliente ?? "Sin cliente",
-    area: ticket.dim_area?.nombre_area ?? "Sin área",
-    estado: ticket.dim_estado.nombre_estado,
-    prioridad: ticket.dim_prioridad?.nombre_prioridad ?? "Sin prioridad",
+    cliente: ticket.dimClienteContai?.nombreCliente ?? "Sin cliente",
+    area: ticket.dimArea?.nombreArea ?? "Sin área",
+    estado: ticket.dimEstado.nombreEstado,
+    prioridad: ticket.dimPrioridad?.nombrePrioridad ?? "Sin prioridad",
 
     tipoRequerimiento:
-      ticket.dim_tipo_requerimiento?.tipo_requerimiento ?? "Sin tipo",
-    categoria1: ticket.dim_tipo_requerimiento?.categoria_1 ?? "Sin categoría",
+      ticket.dimTipoRequerimiento?.tipoRequerimiento ?? "Sin tipo",
+    categoria1: ticket.dimTipoRequerimiento?.categoria1 ?? "Sin categoría",
     categoria2:
-      ticket.dim_tipo_requerimiento?.categoria_2 ?? "Sin subcategoría",
+      ticket.dimTipoRequerimiento?.categoria2 ?? "Sin subcategoría",
 
-    fechaCreacion: ticket.fecha_creacion,
-    fechaLimite: ticket.fecha_limite,
-    fechaResolucion: ticket.fecha_resolucion,
-    origenSistema: ticket.origen_sistema,
+    fechaCreacion: ticket.fechaCreacion,
+    fechaLimite: ticket.fechaLimite,
+    fechaResolucion: ticket.fechaResolucion,
+    origenSistema: ticket.origenSistema,
   }));
 }

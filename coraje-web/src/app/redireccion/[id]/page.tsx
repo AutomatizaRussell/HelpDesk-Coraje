@@ -64,7 +64,7 @@ export default async function RedirectTicketPage({
             </p>
 
             <h1 className="mt-2 text-3xl font-black tracking-tight text-[#001871]">
-              Redirigir ticket {ticket.codigo_ticket}
+              Redirigir ticket {ticket.codigoTicket ?? "(pendiente de código)"}
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-[#718096]">
@@ -89,7 +89,7 @@ export default async function RedirectTicketPage({
             </p>
 
             <p className="mt-3 whitespace-pre-line text-sm font-semibold leading-7 text-zinc-800">
-              {ticket.descripcion_problema}
+              {ticket.descripcionProblema}
             </p>
           </section>
 
@@ -100,12 +100,12 @@ export default async function RedirectTicketPage({
               </p>
 
               <p className="mt-2 font-black text-[#001871]">
-                {ticket.dim_cliente_contai?.nombre_cliente ?? "Sin cliente"}
+                {ticket.dimClienteContai?.nombreCliente ?? "Sin cliente"}
               </p>
 
               <p className="mt-1 text-sm font-medium text-[#718096]">
                 NIT / ID:{" "}
-                {ticket.dim_cliente_contai?.identificacion_fiscal ??
+                {ticket.dimClienteContai?.identificacionFiscal ??
                   "Sin dato"}
               </p>
             </div>
@@ -116,7 +116,7 @@ export default async function RedirectTicketPage({
                   Creación
                 </p>
                 <p className="mt-1 font-black text-[#001871]">
-                  {formatDate(ticket.fecha_creacion)}
+                  {formatDate(ticket.fechaCreacion)}
                 </p>
               </div>
 
@@ -125,7 +125,7 @@ export default async function RedirectTicketPage({
                   Fecha límite
                 </p>
                 <p className="mt-1 font-black text-[#ed8b00]">
-                  {formatDate(ticket.fecha_limite)}
+                  {formatDate(ticket.fechaLimite)}
                 </p>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default async function RedirectTicketPage({
 
           <div className="mt-6">
             <RedirectTicketForm
-              ticketId={ticket.id_ticket}
+              ticketId={ticket.idTicket}
               areas={catalog.areas}
               tiposRequerimiento={catalog.tiposRequerimiento}
               action={redirectTicketAction}

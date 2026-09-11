@@ -1,0 +1,4 @@
+# Este archivo lo mantiene Prisma Migrate. NO editar a mano.
+# Ver https://pris.ly/d/migrate-lock-file
+
+provider = "postgresql"

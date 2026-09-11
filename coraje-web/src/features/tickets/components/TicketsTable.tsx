@@ -71,7 +71,7 @@ export function TicketsTable({ tickets }: TicketsTableProps) {
                 className="border-l-4 border-transparent text-zinc-700 transition hover:scale-[1.002] hover:border-[#00a9ce] hover:bg-[#f0f9ff]"
               >
                 <td className="whitespace-nowrap px-5 py-4 font-mono text-xs font-bold text-[#001871]">
-                  {ticket.codigoTicket}
+                  {ticket.codigoTicket ?? "Sin código"}
                 </td>
 
                 <td className="max-w-xl px-5 py-4 font-semibold text-zinc-900">

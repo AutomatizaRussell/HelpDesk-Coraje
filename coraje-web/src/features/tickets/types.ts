@@ -16,8 +16,12 @@ export type TicketListItem = {
   /**
    * Código visible generado por PostgreSQL.
    * Reemplaza el uso legacy de consecutivo_sp / Id_Req.
+   *
+   * Nullable: el trigger de base de datos no lo genera hasta que el ticket
+   * tiene área destino — un ticket recién creado desde el portal todavía no
+   * la tiene.
    */
-  codigoTicket: string;
+  codigoTicket: string | null;
 
   /**
    * Descripción principal del requerimiento.

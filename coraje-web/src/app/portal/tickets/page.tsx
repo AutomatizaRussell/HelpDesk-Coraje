@@ -29,7 +29,7 @@ export default async function PortalTicketsPage() {
     redirect("/portal");
   }
 
-  const tickets = await getPortalTickets(client.id_cliente_contai);
+  const tickets = await getPortalTickets(client.idClienteContai);
 
   return (
     <AppShell>
@@ -41,16 +41,16 @@ export default async function PortalTicketsPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-black tracking-tight text-[#001871]">
-              Tickets de {client.nombre_cliente}
+              Tickets de {client.nombreCliente}
             </h1>
 
             <p className="mt-2 text-sm font-medium text-[#718096]">
-              NIT / ID: {client.identificacion_fiscal ?? "Sin dato"}
+              NIT / ID: {client.identificacionFiscal ?? "Sin dato"}
             </p>
 
             <p className="mt-1 text-sm font-medium text-[#718096]">
-              Tipo: {client.tipo_cliente ?? "Sin tipo"} · Grupo:{" "}
-              {client.grupo_economico ?? "Sin grupo"}
+              Tipo: {client.tipoCliente ?? "Sin tipo"} · Grupo:{" "}
+              {client.grupoEconomico ?? "Sin grupo"}
             </p>
           </div>
 

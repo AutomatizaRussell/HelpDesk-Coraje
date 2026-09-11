@@ -9,209 +9,288 @@ datasource db {
   schemas  = ["core", "helpdesk"]
 }
 
-model cliente_contai_recurso {
-  id_recurso         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  id_cliente_contai  String             @db.Uuid
-  nombre_recurso     String?            @db.VarChar(100)
-  url_recurso        String
-  created_at         DateTime           @default(now()) @db.Timestamptz(6)
-  dim_cliente_contai dim_cliente_contai @relation(fields: [id_cliente_contai], references: [id_cliente_contai], onDelete: Cascade, onUpdate: NoAction)
+// =====================================================================
+// CORE — datos maestros
+// =====================================================================
 
+model AreaExclusion {
+  nombreAreaNormalizado String   @id @map("nombre_area_normalizado")
+  motivo                String
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("area_exclusion")
   @@schema("core")
 }
 
-model dim_area {
-  id_area                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sp_area_id             Int?                     @unique
-  nombre_area            String                   @unique @db.VarChar(100)
-  encargado_recepcion    String?                  @db.VarChar(100)
-  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
-  dim_personal           dim_personal[]
-  dim_tipo_requerimiento dim_tipo_requerimiento[]
-  fact_ticket            fact_ticket[]
+model ClienteContaiRecurso {
+  idRecurso         String            @id @default(dbgenerated("gen_random_uuid()")) @map("id_recurso") @db.Uuid
+  idClienteContai   String            @map("id_cliente_contai") @db.Uuid
+  nombreRecurso     String?           @map("nombre_recurso") @db.VarChar(100)
+  urlRecurso        String            @map("url_recurso")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  dimClienteContai  DimClienteContai  @relation(fields: [idClienteContai], references: [idClienteContai], onDelete: Cascade, onUpdate: NoAction)
 
+  @@map("cliente_contai_recurso")
   @@schema("core")
 }
 
-model dim_cliente_contai {
-  id_cliente_contai      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sp_cliente_id          Int?                     @unique
-  identificacion_fiscal  String?                  @db.VarChar(50)
-  nombre_cliente         String                   @db.VarChar(150)
-  tipo_cliente           String?                  @db.VarChar(50)
-  grupo_economico        String?                  @db.VarChar(100)
-  estado_cliente         Boolean                  @default(true)
-  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
-  cliente_contai_recurso cliente_contai_recurso[]
-  fact_ticket            fact_ticket[]
+model DimArea {
+  idArea              String                   @id @default(dbgenerated("gen_random_uuid()")) @map("id_area") @db.Uuid
+  spAreaId            Int?                     @unique @map("sp_area_id")
+  nombreArea          String                   @unique @map("nombre_area") @db.VarChar(100)
+  encargadoRecepcion  String?                  @map("encargado_recepcion") @db.VarChar(100)
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  // NOT NULL confirmado contra la base real (10-sep-2026) — sql/db/04_core.sql la
+  // declara nullable, pero la columna viva ya no lo es. La captura el baseline tal
+  // como está hoy, no como dice el archivo committeado.
+  codigoArea          String                   @unique @map("codigo_area") @db.VarChar(10)
+  dimPersonal         DimPersonal[]
+  dimTipoRequerimiento DimTipoRequerimiento[]
+  factTicket          FactTicket[]
+  ticketCodigoCounter TicketCodigoCounter[]
 
+  @@map("dim_area")
   @@schema("core")
 }
 
-model dim_personal {
-  id_personal                                          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sp_personal_id                                       Int?                 @unique
-  sp_user_id                                           Int?                 @unique
-  cedula                                               String?              @db.VarChar(20)
-  nombre_completo                                      String               @db.VarChar(200)
-  correo_corporativo                                   String?              @db.VarChar(150)
-  id_area                                              String?              @db.Uuid
-  cargo                                                String?              @db.VarChar(100)
-  estado_activo                                        Boolean              @default(true)
-  created_at                                           DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at                                           DateTime             @default(now()) @db.Timestamptz(6)
-  dim_area                                             dim_area?            @relation(fields: [id_area], references: [id_area], onDelete: NoAction, onUpdate: NoAction)
-  fact_ticket_fact_ticket_id_asignadoTodim_personal    fact_ticket[]        @relation("fact_ticket_id_asignadoTodim_personal")
-  fact_ticket_fact_ticket_id_solicitanteTodim_personal fact_ticket[]        @relation("fact_ticket_id_solicitanteTodim_personal")
-  fact_ticket_evento                                   fact_ticket_evento[]
+model DimClienteContai {
+  idClienteContai        String                   @id @default(dbgenerated("gen_random_uuid()")) @map("id_cliente_contai") @db.Uuid
+  spClienteId            Int?                     @unique @map("sp_cliente_id")
+  identificacionFiscal   String?                  @map("identificacion_fiscal") @db.VarChar(50)
+  nombreCliente          String                   @map("nombre_cliente") @db.VarChar(150)
+  tipoCliente            String?                  @map("tipo_cliente") @db.VarChar(50)
+  grupoEconomico         String?                  @map("grupo_economico") @db.VarChar(100)
+  estadoCliente          Boolean                  @default(true) @map("estado_cliente")
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  clienteContaiRecurso   ClienteContaiRecurso[]
+  factTicket             FactTicket[]
 
+  // Único parcial: NIT no vacío no se repite, pero permite múltiples clientes
+  // sin identificación fiscal registrada (identificacion_fiscal IS NULL).
+  @@unique([identificacionFiscal], map: "uq_dim_cliente_contai_identificacion_fiscal_not_null", where: raw("(identificacion_fiscal IS NOT NULL)"))
+  @@map("dim_cliente_contai")
   @@schema("core")
 }
 
-model dim_estado {
-  id_estado     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombre_estado String        @unique @db.VarChar(50)
-  fact_ticket   fact_ticket[]
+model DimPersonal {
+  idPersonal                             String               @id @default(dbgenerated("gen_random_uuid()")) @map("id_personal") @db.Uuid
+  spPersonalId                           Int?                 @unique @map("sp_personal_id")
+  spUserId                               Int?                 @unique @map("sp_user_id")
+  cedula                                 String?              @db.VarChar(20)
+  nombreCompleto                         String               @map("nombre_completo") @db.VarChar(200)
+  correoCorporativo                      String?              @map("correo_corporativo") @db.VarChar(150)
+  idArea                                 String?              @map("id_area") @db.Uuid
+  cargo                                  String?              @db.VarChar(100)
+  estadoActivo                           Boolean              @default(true) @map("estado_activo")
+  createdAt                              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                              DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  // Modelo de buzón compartido (docs/specs/tickets.md §7.3, F10). Marca la fila
+  // "responsable histórico no identificado" de un correo compartido por más de una
+  // persona a lo largo del tiempo — nunca la persona que lo ocupa hoy.
+  esResponsableHistoricoNoIdentificado   Boolean              @default(false) @map("es_responsable_historico_no_identificado")
+  dimArea                                DimArea?             @relation(fields: [idArea], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+  factTicketAsignado                     FactTicket[]         @relation("FactTicketAsignado")
+  factTicketSolicitante                  FactTicket[]         @relation("FactTicketSolicitante")
+  factTicketEvento                       FactTicketEvento[]
 
+  // Como máximo un marcador histórico por correo compartido — protege la regla
+  // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
+  @@unique([correoCorporativo], map: "ux_dim_personal_correo_historico", where: raw("es_responsable_historico_no_identificado"))
+  @@map("dim_personal")
+  @@schema("core")
+}
+
+// =====================================================================
+// HELPDESK — dimensiones, hechos y reglas
+// =====================================================================
+
+model DimEstado {
+  idEstado      String        @id @default(dbgenerated("gen_random_uuid()")) @map("id_estado") @db.Uuid
+  nombreEstado  String        @unique @map("nombre_estado") @db.VarChar(50)
+  factTicket    FactTicket[]
+
+  @@map("dim_estado")
   @@schema("helpdesk")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model dim_prioridad {
-  id_prioridad     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombre_prioridad String        @unique @db.VarChar(50)
-  dias_sla         Int
-  peso_prioridad   Int
-  fact_ticket      fact_ticket[]
+/// dias_sla > 0, peso_prioridad >= 1 — CHECK no representable en el DSL de Prisma.
+/// Preservado a mano en la migración baseline; ver disciplina de migrate en
+/// docs/estado/operacion.md antes de correr `migrate dev` sobre esta tabla.
+model DimPrioridad {
+  idPrioridad     String        @id @default(dbgenerated("gen_random_uuid()")) @map("id_prioridad") @db.Uuid
+  nombrePrioridad String        @unique @map("nombre_prioridad") @db.VarChar(50)
+  diasSla         Int           @map("dias_sla")
+  pesoPrioridad   Int           @map("peso_prioridad")
+  factTicket      FactTicket[]
 
+  @@map("dim_prioridad")
   @@schema("helpdesk")
 }
 
-model dim_tipo_requerimiento {
-  id_tipo_req                                                                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sp_tipo_req_id                                                              Int?          @unique
-  id_area                                                                     String        @db.Uuid
-  tipo_requerimiento                                                          String        @db.VarChar(150)
-  categoria_1                                                                 String?       @db.VarChar(150)
-  categoria_2                                                                 String?       @db.VarChar(150)
-  created_at                                                                  DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at                                                                  DateTime      @default(now()) @db.Timestamptz(6)
-  dim_area                                                                    dim_area      @relation(fields: [id_area], references: [id_area], onDelete: NoAction, onUpdate: NoAction)
-  fact_ticket                                                                 fact_ticket[]
-  fact_ticket_fact_ticket_id_tipo_req_id_area_destinoTodim_tipo_requerimiento fact_ticket[] @relation("fact_ticket_id_tipo_req_id_area_destinoTodim_tipo_requerimiento")
-  routing_rule                                                                routing_rule?
+model DimTipoRequerimiento {
+  idTipoReq             String        @id @default(dbgenerated("gen_random_uuid()")) @map("id_tipo_req") @db.Uuid
+  spTipoReqId           Int?          @unique @map("sp_tipo_req_id")
+  idArea                String        @map("id_area") @db.Uuid
+  tipoRequerimiento     String        @map("tipo_requerimiento") @db.VarChar(150)
+  categoria1            String?       @map("categoria_1") @db.VarChar(150)
+  categoria2            String?       @map("categoria_2") @db.VarChar(150)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  dimArea               DimArea       @relation(fields: [idArea], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+  factTicket            FactTicket[]  @relation("FactTicketTipoReq")
+  factTicketAreaDestino FactTicket[]  @relation("FactTicketTipoReqArea")
+  routingRule           RoutingRule?
 
-  @@unique([id_area, tipo_requerimiento, categoria_1, categoria_2], map: "uq_dim_tipo_req_natural")
-  @@unique([id_tipo_req, id_area], map: "uq_dim_tipo_requerimiento_id_tipo_req_id_area")
+  @@unique([idArea, tipoRequerimiento, categoria1, categoria2], map: "uq_dim_tipo_req_natural")
+  @@unique([idTipoReq, idArea], map: "uq_dim_tipo_requerimiento_id_tipo_req_id_area")
+  @@map("dim_tipo_requerimiento")
   @@schema("helpdesk")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model fact_ticket {
-  id_ticket                                                                              String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo_ticket                                                                          String                        @unique @default(dbgenerated("helpdesk.next_codigo_ticket()"))
-  descripcion_problema                                                                   String
-  id_cliente_contai                                                                      String?                       @db.Uuid
-  id_solicitante                                                                         String?                       @db.Uuid
-  id_area_destino                                                                        String?                       @db.Uuid
-  id_asignado                                                                            String?                       @db.Uuid
-  id_estado                                                                              String                        @db.Uuid
-  id_prioridad                                                                           String?                       @db.Uuid
-  id_tipo_req                                                                            String?                       @db.Uuid
-  fecha_creacion                                                                         DateTime                      @default(now()) @db.Timestamptz(6)
-  fecha_limite                                                                           DateTime?                     @db.Timestamptz(6)
-  fecha_resolucion                                                                       DateTime?                     @db.Timestamptz(6)
-  respuesta_final                                                                        String?
-  calificacion                                                                           Int?
-  origen_sistema                                                                         String
-  ultima_actualizacion                                                                   DateTime                      @default(now()) @db.Timestamptz(6)
-  encargado_interno                                                                      String?
-  dim_area                                                                               dim_area?                     @relation(fields: [id_area_destino], references: [id_area], onDelete: NoAction, onUpdate: NoAction)
-  dim_personal_fact_ticket_id_asignadoTodim_personal                                     dim_personal?                 @relation("fact_ticket_id_asignadoTodim_personal", fields: [id_asignado], references: [id_personal], onDelete: NoAction, onUpdate: NoAction)
-  dim_cliente_contai                                                                     dim_cliente_contai?           @relation(fields: [id_cliente_contai], references: [id_cliente_contai], onDelete: NoAction, onUpdate: NoAction)
-  dim_estado                                                                             dim_estado                    @relation(fields: [id_estado], references: [id_estado], onDelete: NoAction, onUpdate: NoAction)
-  dim_prioridad                                                                          dim_prioridad?                @relation(fields: [id_prioridad], references: [id_prioridad], onDelete: NoAction, onUpdate: NoAction)
-  dim_personal_fact_ticket_id_solicitanteTodim_personal                                  dim_personal?                 @relation("fact_ticket_id_solicitanteTodim_personal", fields: [id_solicitante], references: [id_personal], onDelete: NoAction, onUpdate: NoAction)
-  dim_tipo_requerimiento                                                                 dim_tipo_requerimiento?       @relation(fields: [id_tipo_req], references: [id_tipo_req], onDelete: NoAction, onUpdate: NoAction)
-  dim_tipo_requerimiento_fact_ticket_id_tipo_req_id_area_destinoTodim_tipo_requerimiento dim_tipo_requerimiento?       @relation("fact_ticket_id_tipo_req_id_area_destinoTodim_tipo_requerimiento", fields: [id_tipo_req, id_area_destino], references: [id_tipo_req, id_area], onDelete: NoAction, onUpdate: NoAction, map: "fk_fact_ticket_tipo_req_area")
-  fact_ticket_evento                                                                     fact_ticket_evento[]
-  ticket_legacy_sharepoint_ref                                                           ticket_legacy_sharepoint_ref?
-  ticket_sync_outbox                                                                     ticket_sync_outbox[]
+/// CHECK no representables (chk_fact_ticket_calificacion, _fechas_validas,
+/// _origen_exclusivo, _origen_sistema) y el trigger trg_set_codigo_ticket, que
+/// completa `codigoTicket` antes de INSERT o de UPDATE de `idAreaDestino` — ambos
+/// preservados a mano en la migración baseline, ninguno representable en el DSL.
+model FactTicket {
+  idTicket             String                  @id @default(dbgenerated("gen_random_uuid()")) @map("id_ticket") @db.Uuid
+  // Nullable en la base real (sql/db/ lo declara NOT NULL): un ticket de portal
+  // nace sin área y el trigger no genera código hasta que la tiene.
+  codigoTicket         String?                 @unique @map("codigo_ticket")
+  descripcionProblema  String                  @map("descripcion_problema")
+  idClienteContai      String?                 @map("id_cliente_contai") @db.Uuid
+  idSolicitante        String?                 @map("id_solicitante") @db.Uuid
+  idAreaDestino        String?                 @map("id_area_destino") @db.Uuid
+  idAsignado           String?                 @map("id_asignado") @db.Uuid
+  idEstado             String                  @map("id_estado") @db.Uuid
+  idPrioridad          String?                 @map("id_prioridad") @db.Uuid
+  idTipoReq            String?                 @map("id_tipo_req") @db.Uuid
+  fechaCreacion        DateTime                @default(now()) @map("fecha_creacion") @db.Timestamptz(6)
+  fechaLimite          DateTime?               @map("fecha_limite") @db.Timestamptz(6)
+  fechaResolucion      DateTime?               @map("fecha_resolucion") @db.Timestamptz(6)
+  respuestaFinal       String?                 @map("respuesta_final")
+  calificacion         Int?
+  origenSistema        String                  @map("origen_sistema")
+  ultimaActualizacion  DateTime                @default(now()) @map("ultima_actualizacion") @db.Timestamptz(6)
+  encargadoInterno     String?                 @map("encargado_interno")
+  dimArea              DimArea?                @relation(fields: [idAreaDestino], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+  dimPersonalAsignado  DimPersonal?            @relation("FactTicketAsignado", fields: [idAsignado], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  dimClienteContai     DimClienteContai?       @relation(fields: [idClienteContai], references: [idClienteContai], onDelete: NoAction, onUpdate: NoAction)
+  dimEstado            DimEstado               @relation(fields: [idEstado], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
+  dimPrioridad         DimPrioridad?           @relation(fields: [idPrioridad], references: [idPrioridad], onDelete: NoAction, onUpdate: NoAction)
+  dimPersonalSolicitante DimPersonal?          @relation("FactTicketSolicitante", fields: [idSolicitante], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  dimTipoRequerimiento DimTipoRequerimiento?   @relation("FactTicketTipoReq", fields: [idTipoReq], references: [idTipoReq], onDelete: NoAction, onUpdate: NoAction)
+  dimTipoRequerimientoArea DimTipoRequerimiento? @relation("FactTicketTipoReqArea", fields: [idTipoReq, idAreaDestino], references: [idTipoReq, idArea], onDelete: NoAction, onUpdate: NoAction, map: "fk_fact_ticket_tipo_req_area")
+  factTicketEvento     FactTicketEvento[]
+  ticketLegacySharepointRef TicketLegacySharepointRef?
+  ticketSyncOutbox     TicketSyncOutbox[]
 
+  // Sin índices sobre las FK (id_cliente_contai, id_solicitante, id_area_destino,
+  // id_asignado, id_estado, id_prioridad, id_tipo_req): sql/db/06_helpdesk_facts.sql
+  // los declara, pero ninguno existe contra la base real (confirmado 10-sep-2026) —
+  // el baseline captura la realidad, no el archivo. Brecha de rendimiento real sobre
+  // 2.825+ filas, sin resolver: no es parte del alcance de esta unidad.
+  @@map("fact_ticket")
   @@schema("helpdesk")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model fact_ticket_evento {
-  id_evento      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sp_event_id    Int?          @unique
-  event_hash     String?       @unique
-  id_ticket      String        @db.Uuid
-  id_autor       String?       @db.Uuid
-  tipo_evento    String        @db.VarChar(50)
-  contenido      String
-  fecha_registro DateTime      @default(now()) @db.Timestamptz(6)
-  dim_personal   dim_personal? @relation(fields: [id_autor], references: [id_personal], onDelete: NoAction, onUpdate: NoAction)
-  fact_ticket    fact_ticket   @relation(fields: [id_ticket], references: [id_ticket], onDelete: Cascade, onUpdate: NoAction)
+/// chk_fact_ticket_evento_tipo vive hoy MÁS ANGOSTO que sql/db/06_helpdesk_facts.sql:
+/// permite COMENTARIO/REASIGNACION/CAMBIO_ESTADO/MIGRACION_LEGACY, no CREACION ni
+/// CANCELACION_CLIENTE. Sin investigar por qué diverge — el ELT actual
+/// (sql/elt/07_transform_ticket_evento.sql) solo inserta COMENTARIO, así que hoy no
+/// tiene efecto práctico. El baseline captura la versión angosta, real; ampliarla es
+/// decisión de U6 (modelo de eventos del ticket), no de esta unidad.
+model FactTicketEvento {
+  idEvento      String        @id @default(dbgenerated("gen_random_uuid()")) @map("id_evento") @db.Uuid
+  spEventId     Int?          @unique @map("sp_event_id")
+  eventHash     String?       @unique @map("event_hash")
+  idTicket      String        @map("id_ticket") @db.Uuid
+  idAutor       String?       @map("id_autor") @db.Uuid
+  tipoEvento    String        @map("tipo_evento") @db.VarChar(50)
+  contenido     String
+  fechaRegistro DateTime      @default(now()) @map("fecha_registro") @db.Timestamptz(6)
+  dimPersonal   DimPersonal?  @relation(fields: [idAutor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  factTicket    FactTicket    @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction)
 
+  @@map("fact_ticket_evento")
   @@schema("helpdesk")
 }
 
-model ticket_legacy_sharepoint_ref {
-  id_ticket         String      @id @db.Uuid
-  sp_id             Int         @unique
-  legacy_id_req     String?
-  legacy_title      String?
-  legacy_created_at DateTime?   @db.Timestamptz(6)
-  created_at        DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime    @default(now()) @db.Timestamptz(6)
-  fact_ticket       fact_ticket @relation(fields: [id_ticket], references: [id_ticket], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticket_legacy_sharepoint_ref_ticket")
+model RoutingRule {
+  idRoutingRule         String                @id @default(dbgenerated("gen_random_uuid()")) @map("id_routing_rule") @db.Uuid
+  idTipoReq             String                @unique(map: "uq_routing_rule_tipo_req") @map("id_tipo_req") @db.Uuid
+  encargadoInterno      String                @map("encargado_interno")
+  descripcion           String?
+  activo                Boolean               @default(true)
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  dimTipoRequerimiento  DimTipoRequerimiento  @relation(fields: [idTipoReq], references: [idTipoReq], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([activo], map: "ix_routing_rule_activo")
+  @@index([idTipoReq], map: "ix_routing_rule_tipo_req")
+  @@map("routing_rule")
   @@schema("helpdesk")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model ticket_sync_outbox {
-  id_sync       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  id_ticket     String      @db.Uuid
-  target_system String      @default("SHAREPOINT")
+/// chk_ticket_codigo_counter_anio (anio >= 2000), _last_number (last_number >= 0) —
+/// no representables, preservados a mano en la migración baseline.
+///
+/// Tabla no documentada en ningún sql/db/*.sql hasta esta unidad (F12,
+/// docs/estado/handoff.md corte 5): sostiene el trigger trg_set_codigo_ticket, que
+/// genera codigo_ticket como "{codigo_area}-{año real}-{consecutivo de 4 dígitos}",
+/// un consecutivo por área y año. Confirmado activo y correcto contra la base real.
+model TicketCodigoCounter {
+  idArea      String    @map("id_area") @db.Uuid
+  anio        Int
+  lastNumber  Int       @default(0) @map("last_number")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  dimArea     DimArea   @relation(fields: [idArea], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([idArea, anio])
+  @@map("ticket_codigo_counter")
+  @@schema("helpdesk")
+}
+
+model TicketLegacySharepointRef {
+  idTicket         String      @id @map("id_ticket") @db.Uuid
+  spId             Int         @unique @map("sp_id")
+  legacyIdReq      String?     @map("legacy_id_req")
+  legacyTitle      String?     @map("legacy_title")
+  legacyCreatedAt  DateTime?   @map("legacy_created_at") @db.Timestamptz(6)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  factTicket       FactTicket  @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticket_legacy_sharepoint_ref_ticket")
+
+  // ix_ticket_legacy_sharepoint_ref_legacy_id_req / _legacy_created_at: declarados
+  // en sql/db/06_helpdesk_facts.sql, sin existir contra la base real (10-sep-2026) —
+  // mismo patrón que fact_ticket. El baseline no los recrea.
+  @@map("ticket_legacy_sharepoint_ref")
+  @@schema("helpdesk")
+}
+
+/// CHECK no representables (chk_ticket_sync_outbox_target/_operation/_status/
+/// _attempts) preservados a mano en la migración baseline. Patrón bueno, no se
+/// rediseña (docs/estado/handoff.md, gotchas): fuente de verdad en PostgreSQL,
+/// ON CONFLICT DO NOTHING sobre índice parcial único para idempotencia.
+model TicketSyncOutbox {
+  idSync        String      @id @default(dbgenerated("gen_random_uuid()")) @map("id_sync") @db.Uuid
+  idTicket      String      @map("id_ticket") @db.Uuid
+  targetSystem  String      @default("SHAREPOINT") @map("target_system")
   operation     String
   status        String      @default("PENDING")
   payload       Json        @default("{}")
   attempts      Int         @default(0)
-  last_error    String?
-  created_at    DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime    @default(now()) @db.Timestamptz(6)
-  processed_at  DateTime?   @db.Timestamptz(6)
-  fact_ticket   fact_ticket @relation(fields: [id_ticket], references: [id_ticket], onDelete: Cascade, onUpdate: NoAction)
+  lastError     String?     @map("last_error")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  processedAt   DateTime?   @map("processed_at") @db.Timestamptz(6)
+  factTicket    FactTicket  @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([id_ticket, operation], map: "uq_ticket_sync_outbox_pending_operation", where: raw("(status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text]))"))
-  @@index([status, created_at], map: "ix_ticket_sync_outbox_status_created")
-  @@index([id_ticket], map: "ix_ticket_sync_outbox_ticket")
-  @@schema("helpdesk")
-}
-
-model area_exclusion {
-  nombre_area_normalizado String   @id
-  motivo                  String
-  created_at              DateTime @default(now()) @db.Timestamptz(6)
-
-  @@schema("core")
-}
-
-model routing_rule {
-  id_routing_rule        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  id_tipo_req            String                 @unique(map: "uq_routing_rule_tipo_req") @db.Uuid
-  encargado_interno      String
-  descripcion            String?
-  activo                 Boolean                @default(true)
-  created_at             DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime               @default(now()) @db.Timestamptz(6)
-  dim_tipo_requerimiento dim_tipo_requerimiento @relation(fields: [id_tipo_req], references: [id_tipo_req], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([activo], map: "ix_routing_rule_activo")
-  @@index([id_tipo_req], map: "ix_routing_rule_tipo_req")
+  @@unique([idTicket, operation], map: "uq_ticket_sync_outbox_pending_operation", where: raw("(status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text]))"))
+  @@index([status, createdAt], map: "ix_ticket_sync_outbox_status_created")
+  @@index([idTicket], map: "ix_ticket_sync_outbox_ticket")
+  @@map("ticket_sync_outbox")
   @@schema("helpdesk")
 }

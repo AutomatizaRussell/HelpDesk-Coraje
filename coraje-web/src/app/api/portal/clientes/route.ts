@@ -33,24 +33,24 @@ export async function GET(request: Request) {
       : 25;
 
   const where = {
-    estado_cliente: true,
+    estadoCliente: true,
     ...(search
       ? {
           OR: [
             {
-              nombre_cliente: {
+              nombreCliente: {
                 contains: search,
                 mode: "insensitive" as const,
               },
             },
             {
-              identificacion_fiscal: {
+              identificacionFiscal: {
                 contains: search,
                 mode: "insensitive" as const,
               },
             },
             {
-              grupo_economico: {
+              grupoEconomico: {
                 contains: search,
                 mode: "insensitive" as const,
               },
@@ -64,24 +64,24 @@ export async function GET(request: Request) {
    * Pedimos pageSize + 1 para saber si existe una página siguiente.
    * El registro adicional no se devuelve al cliente.
    */
-  const rows = await prisma.dim_cliente_contai.findMany({
+  const rows = await prisma.dimClienteContai.findMany({
     where,
     orderBy: [
       {
-        nombre_cliente: "asc",
+        nombreCliente: "asc",
       },
       {
-        id_cliente_contai: "asc",
+        idClienteContai: "asc",
       },
     ],
     skip: safePage * pageSize,
     take: pageSize + 1,
     select: {
-      id_cliente_contai: true,
-      nombre_cliente: true,
-      identificacion_fiscal: true,
-      tipo_cliente: true,
-      grupo_economico: true,
+      idClienteContai: true,
+      nombreCliente: true,
+      identificacionFiscal: true,
+      tipoCliente: true,
+      grupoEconomico: true,
     },
   });
 

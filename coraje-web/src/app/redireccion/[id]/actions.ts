@@ -120,14 +120,14 @@ export async function redirectTicketAction(formData: FormData) {
     /**
      * 1. Validar que el tipo de requerimiento pertenece al área seleccionada.
      */
-    const tipoReq = await tx.dim_tipo_requerimiento.findFirst({
+    const tipoReq = await tx.dimTipoRequerimiento.findFirst({
       where: {
-        id_tipo_req: tipoReqId,
-        id_area: areaId,
+        idTipoReq: tipoReqId,
+        idArea: areaId,
       },
       select: {
-        id_tipo_req: true,
-        id_area: true,
+        idTipoReq: true,
+        idArea: true,
       },
     });
 
@@ -140,17 +140,17 @@ export async function redirectTicketAction(formData: FormData) {
     /**
      * 2. Validar que el ticket aún está disponible para redirección.
      */
-    const ticket = await tx.fact_ticket.findFirst({
+    const ticket = await tx.factTicket.findFirst({
       where: {
-        id_ticket: ticketId,
-        origen_sistema: "PORTAL_CLIENTE",
-        id_area_destino: null,
-        dim_estado: {
-          nombre_estado: "ABIERTO",
+        idTicket: ticketId,
+        origenSistema: "PORTAL_CLIENTE",
+        idAreaDestino: null,
+        dimEstado: {
+          nombreEstado: "ABIERTO",
         },
       },
       select: {
-        id_ticket: true,
+        idTicket: true,
       },
     });
 

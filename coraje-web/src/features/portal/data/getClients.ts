@@ -9,26 +9,26 @@ import { prisma } from "@/lib/prisma";
 export async function getClients(search?: string) {
   const normalizedSearch = search?.trim();
 
-  return prisma.dim_cliente_contai.findMany({
+  return prisma.dimClienteContai.findMany({
     where: {
-      estado_cliente: true,
+      estadoCliente: true,
       ...(normalizedSearch
         ? {
             OR: [
               {
-                nombre_cliente: {
+                nombreCliente: {
                   contains: normalizedSearch,
                   mode: "insensitive",
                 },
               },
               {
-                identificacion_fiscal: {
+                identificacionFiscal: {
                   contains: normalizedSearch,
                   mode: "insensitive",
                 },
               },
               {
-                grupo_economico: {
+                grupoEconomico: {
                   contains: normalizedSearch,
                   mode: "insensitive",
                 },
@@ -39,19 +39,19 @@ export async function getClients(search?: string) {
     },
     orderBy: [
       {
-        nombre_cliente: "asc",
+        nombreCliente: "asc",
       },
       {
-        id_cliente_contai: "asc",
+        idClienteContai: "asc",
       },
     ],
     take: 25,
     select: {
-      id_cliente_contai: true,
-      nombre_cliente: true,
-      identificacion_fiscal: true,
-      tipo_cliente: true,
-      grupo_economico: true,
+      idClienteContai: true,
+      nombreCliente: true,
+      identificacionFiscal: true,
+      tipoCliente: true,
+      grupoEconomico: true,
     },
   });
 }

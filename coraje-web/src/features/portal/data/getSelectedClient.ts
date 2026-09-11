@@ -17,17 +17,17 @@ export async function getSelectedClient() {
     return null;
   }
 
-  return prisma.dim_cliente_contai.findUnique({
+  return prisma.dimClienteContai.findUnique({
     where: {
-      id_cliente_contai: clientId,
+      idClienteContai: clientId,
     },
     select: {
-      id_cliente_contai: true,
-      nombre_cliente: true,
-      identificacion_fiscal: true,
-      tipo_cliente: true,
-      grupo_economico: true,
-      estado_cliente: true,
+      idClienteContai: true,
+      nombreCliente: true,
+      identificacionFiscal: true,
+      tipoCliente: true,
+      grupoEconomico: true,
+      estadoCliente: true,
     },
   });
 }
