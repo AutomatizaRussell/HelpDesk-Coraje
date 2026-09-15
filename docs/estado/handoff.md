@@ -342,27 +342,39 @@ Registration propio (independiente, mismo patrón que Impulsa) con tres razones 
 un solo punto de fallo administrativo compartido entre los dos módulos, logs de
 sign-in de Entra mezclados por `client_id`, y que crear uno nuevo no cuesta nada—, y
 decidió reutilizar el de Conecta de todas formas. **Riesgo aceptado, no descartado:**
-si alguien rota todos los secrets del App Registration compartido, deshabilita `ID
-tokens` en su configuración de Authentication, o lo elimina, **Conecta y HelpDesk caen
-a la vez** — ninguno de los dos puede aislar el incidente del otro. El código no
+si alguien rota todos los secrets del App Registration compartido, cambia su
+configuración de Authentication (tipo de plataforma, redirect URIs), o lo elimina,
+**Conecta y HelpDesk caen a la vez** — ninguno de los dos puede aislar el incidente
+del otro. El código no
 depende de que el App Registration sea exclusivo (`entra-oidc.ts` solo lee las cuatro
 variables de entorno, agnóstico a su origen), así que no hace falta cambiar nada de lo
 construido. Pasos en el Entra admin center, sobre el App Registration **ya existente**:
-- Agregar el redirect URI de HelpDesk a la lista de URIs permitidos:
+- Agregar el redirect URI de HelpDesk a la lista de URIs permitidos, **como tipo
+  "Web"** (no "SPA" ni "público" — usamos `client_secret`, cliente confidencial):
   `https://<dominio-de-helpdesk>/api/auth/microsoft/callback` — el dominio exacto
   depende de D7 (`contexto-canonico.md` §1.1), todavía sin resolver.
 - Generar un **nuevo** `client secret` propio de HelpDesk (Azure permite varios
   secrets activos simultáneamente sobre la misma app) — va directo a Coolify (paso 4),
   nunca al chat. No reutilizar el secret que ya usa Conecta: aunque compartan
   `client_id`, cada módulo debe poder rotar el suyo sin coordinar con el otro.
-- Confirmar que "Authentication" ya tiene habilitada la emisión de `ID tokens` (lo
-  necesita el flujo de Conecta en `stiben`, así que debería estar ya) y que los
-  permisos de API `openid`/`profile`/`email` están concedidos — HelpDesk no necesita
-  pedir nada adicional (**no** `Mail.Send` ni `offline_access` — fuera de alcance, §9
-  de la spec).
-- Tenant: el corporativo real, **nunca** `common`/`organizations`/`consumers`
-  (`entra-oidc.ts` lo rechaza explícitamente si lo detecta) — mismo tenant que ya usa
-  el App Registration de Conecta.
+- **El checkbox "ID tokens" de Authentication (implicit/hybrid) no aplica y no hace
+  falta tocarlo** — nuestro flujo pide `response_type=code` puro, el `id_token` sale
+  del intercambio POST a `/token`, no de la respuesta de `/authorize`.
+- Permisos de API: `openid`/`profile`/`email` — **no hace falta `User.Read`** (es de
+  Microsoft Graph, para leer perfil vía API; HelpDesk no llama a Graph, todo sale de
+  los *claims* del `id_token`). Si ya está ahí porque Conecta lo pide, no estorba —
+  el consentimiento es por los scopes que cada petición pide, no por lo que la app
+  tiene configurado. **No** pedir `Mail.Send` ni `offline_access` — fuera de alcance,
+  §9 de la spec.
+- Tenant: el corporativo real, **single-tenant**, **nunca** `common`/`organizations`/
+  `consumers` (`entra-oidc.ts` lo rechaza explícitamente si lo detecta) — mismo
+  tenant que ya usa el App Registration de Conecta.
+- **Verificar, no construir:** si el tenant tiene deshabilitado el consentimiento de
+  usuario, un administrador debe dar *admin consent* una vez sobre esta app para
+  `openid`/`profile`/`email` — si no, cada persona ve una pantalla de consentimiento
+  la primera vez. Y si la Enterprise Application tiene "Assignment required" activado
+  con una lista específica, esa lista también decide quién puede autenticarse contra
+  HelpDesk, encima de la puerta de admisión propia en `dim_personal`.
 
 **2. Generar la clave de sellado** (`HELPDESK_TOKEN_ENCRYPTION_KEY`). Comando para
 generarla (32 bytes en base64, corre en cualquier máquina con Node):
