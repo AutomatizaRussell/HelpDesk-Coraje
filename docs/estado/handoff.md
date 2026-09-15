@@ -2,7 +2,7 @@
 
 ```
 CORTE:   15-sep-2026 (corte 9)
-HEAD:    `f896381`, publicado en `origin/main`
+HEAD:    `10856c8`, publicado en `origin/main`
 RAMA:    main
 UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA Y VERIFICADA ESTÁTICAMENTE, SIN
          EJERCITAR CONTRA EL TENANT NI CONTRA LA BASE REAL. No cierra todavía:
@@ -267,12 +267,14 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 | La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo` (filas activas, no marcadas como buzón histórico). **Sin verificar contra la base real**: si dos filas activas comparten correo hoy, el `CREATE UNIQUE INDEX` falla al desplegar | El servicio `migrate` falla explícitamente (bueno: no degrada en silencio), pero bloquea el arranque de `web` hasta corregirlo | Correr la consulta de verificación entregada en la acción inmediata **antes** de este deploy — mismo patrón que la verificación previa de F10 |
+| **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `f896381` | **Corte vigente.** Construye OIDC/PKCE, admisión y sesión de empleados (U3); nuevo schema `app`, columnas de identidad en `dim_personal`, `pnpm test` |
+| `10856c8` | **Corte vigente.** Registra U3 en handoff/specs/contexto-canonico, con la decisión de reutilizar el App Registration de Conecta |
+| `660fd2b` | Construye OIDC/PKCE, admisión y sesión de empleados (U3); nuevo schema `app`, columnas de identidad en `dim_personal`, `pnpm test` |
 | `0f1ced5` | Activa el servicio `migrate` en `docker-compose.yaml` y gatea el arranque de `web` — cierra U2 |
 | `08438c2` | Retira el `CREATE INDEX` embebido contra `core` del workflow de n8n, confirmado en vivo |
 | `fa1c983` | Agrega la etapa `migrator` al `Dockerfile`, inerte hasta el commit anterior |
@@ -328,24 +330,39 @@ paso: el usuario creó un ticket real desde el portal y probó la redirección.
 
 **El corte 9 construye U3 completa** (OIDC/PKCE, admisión, sesión propia) y la verifica
 estáticamente (`prisma generate`, `tsc --noEmit`, `eslint`, `next build`, 26 pruebas
-unitarias) — publicado en `f896381`. **U3 no cierra en este corte**: nada de esto se ha
+unitarias) — publicado en `660fd2b`. **U3 no cierra en este corte**: nada de esto se ha
 ejercitado contra el tenant real ni contra la base real. Antes de que alguien pueda
 completar un ingreso de verdad hacen falta, en este orden, los cuatro pendientes que
 siguen — los tres primeros son decisiones/datos que solo el usuario puede resolver, el
 cuarto es mecánico una vez resueltos los anteriores.
 
-**1. Crear el App Registration de HelpDesk en Entra ID** (confirmado por el usuario en
-esta sesión: no existe todavía). En el Entra admin center del tenant corporativo:
-- Tipo: aplicación web, cliente confidencial (no SPA/público).
-- Redirect URI: `https://<dominio-de-helpdesk>/api/auth/microsoft/callback` — el dominio
-  exacto depende de D7 (`contexto-canonico.md` §1.1), todavía sin resolver.
-- Permisos de API: `openid`, `profile`, `email` (delegados, consentimiento de usuario;
-  **no** `Mail.Send` ni `offline_access` — fuera de alcance, ver §9 de la spec).
-- En "Authentication": habilitar la emisión de `ID tokens` (implicit/hybrid flow) para
-  el flujo de autorización.
-- Generar un `client secret` — va directo a Coolify (paso 4), nunca al chat.
-- Tenant a usar: el tenant corporativo real, **nunca** `common`/`organizations`/
-  `consumers` (`entra-oidc.ts` lo rechaza explícitamente si lo detecta).
+**1. Añadir HelpDesk al App Registration existente de Conecta — decisión explícita del
+usuario, contra la recomendación dada.** Se le presentó la alternativa de un App
+Registration propio (independiente, mismo patrón que Impulsa) con tres razones —
+un solo punto de fallo administrativo compartido entre los dos módulos, logs de
+sign-in de Entra mezclados por `client_id`, y que crear uno nuevo no cuesta nada—, y
+decidió reutilizar el de Conecta de todas formas. **Riesgo aceptado, no descartado:**
+si alguien rota todos los secrets del App Registration compartido, deshabilita `ID
+tokens` en su configuración de Authentication, o lo elimina, **Conecta y HelpDesk caen
+a la vez** — ninguno de los dos puede aislar el incidente del otro. El código no
+depende de que el App Registration sea exclusivo (`entra-oidc.ts` solo lee las cuatro
+variables de entorno, agnóstico a su origen), así que no hace falta cambiar nada de lo
+construido. Pasos en el Entra admin center, sobre el App Registration **ya existente**:
+- Agregar el redirect URI de HelpDesk a la lista de URIs permitidos:
+  `https://<dominio-de-helpdesk>/api/auth/microsoft/callback` — el dominio exacto
+  depende de D7 (`contexto-canonico.md` §1.1), todavía sin resolver.
+- Generar un **nuevo** `client secret` propio de HelpDesk (Azure permite varios
+  secrets activos simultáneamente sobre la misma app) — va directo a Coolify (paso 4),
+  nunca al chat. No reutilizar el secret que ya usa Conecta: aunque compartan
+  `client_id`, cada módulo debe poder rotar el suyo sin coordinar con el otro.
+- Confirmar que "Authentication" ya tiene habilitada la emisión de `ID tokens` (lo
+  necesita el flujo de Conecta en `stiben`, así que debería estar ya) y que los
+  permisos de API `openid`/`profile`/`email` están concedidos — HelpDesk no necesita
+  pedir nada adicional (**no** `Mail.Send` ni `offline_access` — fuera de alcance, §9
+  de la spec).
+- Tenant: el corporativo real, **nunca** `common`/`organizations`/`consumers`
+  (`entra-oidc.ts` lo rechaza explícitamente si lo detecta) — mismo tenant que ya usa
+  el App Registration de Conecta.
 
 **2. Generar la clave de sellado** (`HELPDESK_TOKEN_ENCRYPTION_KEY`). Comando para
 generarla (32 bytes en base64, corre en cualquier máquina con Node):
@@ -844,7 +861,24 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   `tsx` está activo como loader (se pasa un glob explícito sobre archivos `.test.mts`,
   no un directorio). Verificado en local con FNM (Node 24.16.0): `prisma generate`,
   `tsc --noEmit`, `eslint`, `next build` y los 26 tests, todos limpios. Publicado en
-  `f896381`. **U3 no cierra**: sin App Registration en Entra ID, sin la clave de
-  sellado en Coolify, sin nadie con `rol_aplicacion` asignado, y sin ejercitar la
-  migración contra la base real — los cuatro quedan como acción inmediata, explícitos
-  en la cabecera.
+  `660fd2b` (código) y `10856c8` (documentación), con el fetch/push confirmando que
+  ninguna otra sesión había publicado nada mientras tanto. **U3 no cierra**: sin App
+  Registration en Entra ID, sin la clave de sellado en Coolify, sin nadie con
+  `rol_aplicacion` asignado, y sin ejercitar la migración contra la base real — los
+  cuatro quedan como acción inmediata, explícitos en la cabecera. El usuario confirma
+  que hará push consciente del riesgo del índice único parcial antes de que corra la
+  migración.
+- 15-sep-2026 (corte 9, mismo día) — el usuario pregunta si conviene aplazar el
+  ejercicio real de U3 hasta que el resto del producto esté construido. Se responde
+  que el código ya publicado no se pierde aplazando, pero que U4/U6-U7/U8 dependen de
+  que alguien pueda entrar de verdad — U5 (contrato de diseño) es la única unidad
+  siguiente libre de esa dependencia. A continuación pregunta si HelpDesk debería
+  reutilizar el App Registration de Conecta en vez de crear uno propio, para no
+  registrar una aplicación nueva. Se le explica que la validación de audiencia no se
+  rompe (mismo `client_id` deja de ser "otra aplicación"), pero que el acoplamiento
+  administrativo sí es real y gratuito de evitar (ver riesgo nuevo en §6). **El
+  usuario decide reutilizar el App Registration de Conecta de todas formas**, contra
+  la recomendación dada. El código no cambia — `entra-oidc.ts` ya es agnóstico al
+  origen del App Registration —; se actualiza la acción inmediata (paso 1) para
+  reflejar el procedimiento real (agregar redirect URI y generar un secret propio
+  sobre la app existente, no crear una nueva) y se registra el riesgo aceptado.
