@@ -6,12 +6,26 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["core", "helpdesk"]
+  schemas  = ["app", "core", "helpdesk"]
 }
 
 // =====================================================================
 // CORE — datos maestros
 // =====================================================================
+
+// Catálogo cerrado de roles de aplicación (specs/acceso-empleados.md §7,
+// specs/permisos.md §6). Un único valor por ahora: el levantamiento de roles
+// reales de la mesa de ayuda depende de U0/permisos.md §8 paso 1, todavía sin
+// cerrar — el catálogo fino de rol+acción es competencia de esa unidad, no de
+// esta. `AGENTE` basta para que la admisión (U3) pueda distinguir "persona con
+// rol reconocido" de `UNKNOWN_ROLE`, sin inventar aquí una jerarquía que no le
+// corresponde.
+enum RolAplicacion {
+  AGENTE
+
+  @@map("rol_aplicacion")
+  @@schema("core")
+}
 
 model AreaExclusion {
   nombreAreaNormalizado String   @id @map("nombre_area_normalizado")
@@ -90,6 +104,20 @@ model DimPersonal {
   // "responsable histórico no identificado" de un correo compartido por más de una
   // persona a lo largo del tiempo — nunca la persona que lo ocupa hoy.
   esResponsableHistoricoNoIdentificado   Boolean              @default(false) @map("es_responsable_historico_no_identificado")
+  // --- Identidad de empleados (specs/acceso-empleados.md, U3) ---
+  // Columnas propias de la plataforma, nunca tocadas por el UPSERT del ELT
+  // (sql/elt/03_transform_personal.sql no las incluye en su SET) — mismo patrón
+  // aditivo ya usado por F10 arriba. `rolAplicacion` nulo es la condición normal
+  // de una fila recién llegada de SharePoint: la admisión la rechaza con
+  // UNKNOWN_ROLE hasta que alguien la habilite a mano.
+  rolAplicacion                          RolAplicacion?       @map("rol_aplicacion")
+  // Sujeto inmutable del directorio de Entra ID (claim `oid` del id_token).
+  // Se enlaza una sola vez, en el primer ingreso federado, y nunca se
+  // sobrescribe desde una petición (specs/acceso-empleados.md §7, V4) — así una
+  // cuenta renombrada o recreada en el tenant no puede capturar en silencio el
+  // historial de otra persona.
+  entraObjectId                          String?              @unique @map("entra_object_id") @db.VarChar(64)
+  employeeSession                        EmployeeSession[]
   dimArea                                DimArea?             @relation(fields: [idArea], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
   factTicketAsignado                     FactTicket[]         @relation("FactTicketAsignado")
   factTicketSolicitante                  FactTicket[]         @relation("FactTicketSolicitante")
@@ -98,8 +126,47 @@ model DimPersonal {
   // Como máximo un marcador histórico por correo compartido — protege la regla
   // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
   @@unique([correoCorporativo], map: "ux_dim_personal_correo_historico", where: raw("es_responsable_historico_no_identificado"))
+  // Búsqueda determinista por correo en el primer ingreso federado (bootstrap
+  // antes de que exista el enlace por entraObjectId): a lo sumo una fila activa,
+  // no marcada como buzón histórico, por correo corporativo. specs/acceso-empleados.md
+  // §7.1 señalaba este hueco; este índice es lo que lo cierra.
+  @@unique([correoCorporativo], map: "ux_dim_personal_correo_activo", where: raw("estado_activo AND NOT es_responsable_historico_no_identificado"))
   @@map("dim_personal")
   @@schema("core")
+}
+
+// =====================================================================
+// APP — estado propio de la plataforma (ni dato migrado de SharePoint, ni
+// dominio de tickets). Schema separado de `core`/`helpdesk` a propósito: la
+// sesión de un empleado no es un dato maestro ni un hecho de negocio.
+// =====================================================================
+
+/// specs/acceso-empleados.md §6: el navegador guarda solo una credencial opaca
+/// aleatoria; esta tabla guarda su hash (nunca el valor plano), a quién
+/// pertenece, qué proveedor afirmó la identidad y cuándo muere. Única función
+/// que crea filas aquí: issueEmployeeSession (src/server/auth/employee-session.ts).
+model EmployeeSession {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPersonal       String    @map("id_personal") @db.Uuid
+  tokenHash        String    @unique @map("token_hash") @db.VarChar(64)
+  identitySubject  String    @map("identity_subject") @db.VarChar(255)
+  identityTenantId String    @map("identity_tenant_id") @db.VarChar(64)
+  issuedAt         DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  // Actualizado con throttle (specs/acceso-empleados.md §6): renderizar una
+  // página no debe costar una escritura en cada petición.
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  // Vida absoluta de 8h, sin renovación deslizante — una sesión que se renueva
+  // sola no vence nunca.
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason    String?   @map("revoked_reason") @db.VarChar(200)
+  userAgent        String?   @map("user_agent") @db.VarChar(400)
+  dimPersonal      DimPersonal @relation(fields: [idPersonal], references: [idPersonal], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([idPersonal, expiresAt], map: "ix_employee_session_personal_expires")
+  @@index([expiresAt], map: "ix_employee_session_expires")
+  @@map("employee_session")
+  @@schema("app")
 }
 
 // =====================================================================

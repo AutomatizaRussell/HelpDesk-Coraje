@@ -33,6 +33,13 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
+      # Identidad de empleados (specs/acceso-empleados.md, U3) — variables
+      # nuevas en Coolify antes de este deploy, nunca al revés.
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET}
+      ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI}
+      HELPDESK_TOKEN_ENCRYPTION_KEY: ${HELPDESK_TOKEN_ENCRYPTION_KEY}
 
     expose:
       - "3000"
