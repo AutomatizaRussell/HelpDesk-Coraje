@@ -109,7 +109,7 @@ interna · SharePoint como sistema legacy en convivencia temporal.
 ## Comandos
 
 ```
-pnpm build · pnpm lint
+pnpm build · pnpm lint · pnpm test
 pnpm exec tsc --noEmit
 pnpm exec prisma generate · pnpm exec prisma migrate deploy · pnpm exec prisma studio
 git status --short · git diff --check
@@ -117,9 +117,12 @@ git status --short · git diff --check
 
 Todos se ejecutan **dentro de `coraje-web/`**, no en la raíz del repositorio.
 
-> **No existen `pnpm typecheck` ni `pnpm test`** como scripts en `package.json`, y no
-> existe ninguna prueba automatizada en el repositorio. El typecheck se invoca por su
-> forma larga. Cuando se añada el primer test, este bloque cambia con él.
+> **`pnpm test` existe desde U3** (`node --import tsx --test`, sobre archivos
+> `*.test.mts`) — sin `pnpm typecheck` todavía, el typecheck se sigue invocando por su
+> forma larga. **Alcance real: solo pruebas unitarias sin base de datos.** Sin ciclo
+> local no hay cómo correr pruebas de integración contra Postgres desde aquí; lo que
+> exige datos reales (bind del sujeto inmutable, expiración de sesión, relectura de
+> admisión) se ejercita contra la base desplegada, no en esta suite.
 
 **No hay ciclo local, por decisión explícita — verificar en local es pérdida de tiempo
 para esta app.** No se corre `pnpm dev`, no se levanta la aplicación en modo
@@ -127,10 +130,9 @@ desarrollador, no se valida "en la máquina" nada que dependa de comportamiento 
 ejecución. **La verificación funcional es siempre vía commit y push** a lo desplegado —
 amend cuando aplique, nunca un commit nuevo para corregir trabajo aún sin publicar de
 esta misma unidad. `docker compose` de la raíz sigue disponible solo para chequeos
-estáticos (`tsc`, `lint`, `build`) antes de publicar. Ver `docs/estado/operacion.md`
-para el estado real de esta transición: la decisión ya se tomó, pero el servicio
-`migrate` que la sostiene todavía no existe (es objeto de U2 en
-`docs/estado/plan-ejecucion.md`).
+estáticos (`tsc`, `lint`, `build`, `test`) antes de publicar. El servicio `migrate` que
+sostiene esta decisión ya existe y gatea el arranque de `web` desde U2 (ver
+`docs/estado/operacion.md`).
 
 ## Fronteras de herramientas
 

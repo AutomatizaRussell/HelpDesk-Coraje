@@ -1,14 +1,20 @@
 # Acceso de empleados
 
 ```
-ESTADO:      aprobado, NO implementado — no existe una línea de este contrato en
-             `coraje-web/`. Lo que hay hoy es una contraseña compartida en
-             `REDIRECCION_PASSWORD` que protege una sola ruta
-CORTE:       03-sep-2026
-EVIDENCIA:   ninguna sobre HelpDesk. Este documento describe comportamiento acordado,
-             no observado. Las afirmaciones sobre `plataforma-impulsa` sí están
-             verificadas por lectura directa de su código en el corte de esta fecha
-MIGRACIÓN:   requiere columnas nuevas en `core.dim_personal` y dos tablas nuevas
+ESTADO:      CONSTRUIDO (U3, 15-sep-2026), SIN EJERCITAR contra el tenant real ni
+             contra la base real. `REDIRECCION_PASSWORD` sigue en el código —
+             coexiste con este contrato hasta que U4 lo retire (no es este documento
+             quien lo hace)
+CORTE:       15-sep-2026
+EVIDENCIA:   `prisma generate`/`tsc --noEmit`/`eslint`/`next build` limpios y 26
+             pruebas unitarias (`pnpm test`) sobre validación de `id_token`, admisión
+             y saneo de destino — ver tabla de verificación (§12) para el detalle por
+             afirmación. Ningún ingreso real contra Entra ID todavía: falta el App
+             Registration (`docs/estado/handoff.md`, acción inmediata)
+MIGRACIÓN:   construida — `prisma/migrations/20260911150000_agregar_identidad_empleados`
+             (columnas nuevas en `core.dim_personal`, schema `app` con
+             `employee_session`). Sin aplicar contra la base real: corre con el
+             servicio `migrate` en el próximo deploy
 ```
 
 **Autoridad:** este documento es propietario del contrato de identidad interna y de la
@@ -276,21 +282,22 @@ corporativa.
 
 ## 12. Verificación contra código
 
-Todas las filas están **sin verificar**: no hay implementación. La tabla queda escrita
-para la unidad que la construya.
+Estado por afirmación tras U3 (15-sep-2026). Ninguna fila se ejerció contra el tenant
+real ni contra la base real — la columna "evidencia" distingue qué tipo de verificación
+respalda cada una.
 
-| # | Afirmación a verificar | Dónde comprobarlo |
-|---|---|---|
-| V1 | La validación del `id_token` comprueba firma, emisor, audiencia, `nonce` y expiración, con `RS256` fijado | Módulo OIDC; orden de las comprobaciones |
-| V2 | Solo una función crea sesiones y exige admisión previa | Emisor de sesión; ausencia de otros puntos de creación |
-| V3 | El directorio se relee y las reglas se reevalúan en **cada** petición | Lector de sesión |
-| V4 | El enlace del sujeto inmutable no se sobrescribe nunca desde una petición | Transacción de emisión |
-| V5 | El perímetro deniega por defecto y la lista pública es exhaustiva | Proxy; prueba que enumere las páginas de `src/app` |
-| V6 | El destino de retorno se sanea en ambos extremos | Sellado y lectura de la cookie de estado |
-| V7 | `prompt=none` protegido contra bucle por marca de un solo uso | Ruta de inicio de autorización |
-| V8 | No queda ninguna referencia a `REDIRECCION_PASSWORD` | `grep` sobre `src/` y sobre las variables de entorno |
-| V9 | Pruebas negativas por cada causa de rechazo | Tests de admisión |
-| V10 | Ninguna comparación de rol fuera del autorizador | `grep` de comparaciones de rol en componentes y handlers |
+| # | Afirmación a verificar | Dónde comprobarlo | Estado |
+|---|---|---|---|
+| V1 | La validación del `id_token` comprueba firma, emisor, audiencia, `nonce` y expiración, con `RS256` fijado | `src/server/auth/entra-oidc.ts` | **Verificado por test** (7 pruebas, `entra-oidc.test.mts`): cada paso rechaza de forma independiente, incluido `alg: none` |
+| V2 | Solo una función crea sesiones y exige admisión previa | `src/server/auth/employee-session.ts` | **Verificado por inspección**: `grep` de `employeeSession.create` sobre `src/` devuelve una única aparición, dentro de `issueEmployeeSession` |
+| V3 | El directorio se relee y las reglas se reevalúan en **cada** petición | `readEmployeeSession` | **Construido**, verificado por inspección (llama a `reevaluateAdmissionByPersonalId` en cada lectura). Sin test de integración: exige Postgres real |
+| V4 | El enlace del sujeto inmutable no se sobrescribe nunca desde una petición | `issueEmployeeSession`, `updateMany({ where: { entraObjectId: null } })` | **Construido**, verificado por inspección. Sin test de integración: exige Postgres real con dos intentos de login reales |
+| V5 | El perímetro deniega por defecto y la lista pública es exhaustiva | Proxy; prueba que enumere las páginas de `src/app` | **Fuera de alcance de U3** — es `U4` según `plan-ejecucion.md`, deliberadamente diferido |
+| V6 | El destino de retorno se sanea en ambos extremos | `sanitizeDestination`, aplicado en `/start` y en `/login` | **Verificado por test** (5 pruebas, `sanitize-destination.test.mts`) más una corrección real hecha al llenar esta tabla: el callback no volvía a sanear `state.destino` antes del redirect final, solo confiaba en el sellado — corregido en la misma sesión |
+| V7 | `prompt=none` protegido contra bucle por marca de un solo uso | `/api/auth/microsoft/start` | **Construido**, verificado por inspección (cookie `helpdesk_oidc_silent_attempted`). Sin ejercitar contra el proveedor real |
+| V8 | No queda ninguna referencia a `REDIRECCION_PASSWORD` | `grep` sobre `src/` y sobre las variables de entorno | **Fuera de alcance de U3** — es `U4`; `REDIRECCION_PASSWORD` sigue en el código a propósito |
+| V9 | Pruebas negativas por cada causa de rechazo | `employee-admission.test.mts` | **Verificado por test**: las cuatro causas, más una prueba explícita de que ninguna combinación admite por defecto |
+| V10 | Ninguna comparación de rol fuera del autorizador | `grep` de comparaciones de rol en componentes y handlers | **Verificado por inspección**: `grep` no encuentra ninguna comparación de `rolAplicacion` fuera de `evaluateAdmissionRules` — no hay autorizador de rol+acción todavía (`specs/permisos.md`, `U7`), solo la puerta binaria de admisión |
 
 **Changelog:** 03-sep-2026 — línea base. Descarta el traspaso de token desde Conecta con
 sus tres razones y la evidencia del modelo desacoplado ya vigente en Impulsa (§2);
@@ -298,3 +305,10 @@ adopta SSO silencioso con `prompt=none` como respuesta al requisito de fricción
 registra que el directorio actual no puede sostener la admisión sin columnas nuevas
 (§7.1); declara fuera de alcance el *grant* de correo, la suplantación y el selector de
 empleados (§9).
+- 15-sep-2026 (U3) — construido el contrato completo, con evidencia real (no
+  suposición) de que Conecta no ofrece ningún mecanismo de federación de identidad:
+  se inspeccionó su repositorio real antes de descartar la alternativa. §12 pasa de
+  "sin verificar" a verificado por test/inspección según cada fila — V5 y V8 quedan
+  explícitamente fuera de esta unidad (`U4`). Corregido durante la propia verificación
+  de esta tabla: el destino de retorno no se saneaba en el extremo de lectura del
+  callback, solo en el de sellado.

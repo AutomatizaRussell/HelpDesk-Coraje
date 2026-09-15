@@ -70,10 +70,19 @@ una decisión de navegación y de interfaz, no de autenticación. Ningún token 
 aplicaciones (`specs/acceso-empleados.md` §2), y la continuidad para el empleado se
 consigue con el ingreso silencioso contra el mismo tenant, no compartiendo credenciales.
 
-> `ABIERTO` **Mecanismo concreto de integración.** Si es *reverse proxy* bajo el dominio
-> de Conecta, subdominio con shell replicado, u otra forma, depende de cómo esté montado
-> Conecta —que este contrato no ha inspeccionado— y de qué admita su responsable. Afecta
-> a cookies, rutas y despliegue, así que **se decide antes de construir el shell**.
+> `ABIERTO` **Mecanismo concreto de navegación/URL** (*reverse proxy* bajo el dominio de
+> Conecta, subdominio con shell replicado, u otra forma) — sigue sin decidir, afecta a
+> rutas y despliegue del shell visual, y se decide antes de construirlo.
+>
+> **La sub-pregunta de identidad queda resuelta (U3, 15-sep-2026), con el repositorio
+> real de Conecta inspeccionado, no por suposición:** Conecta no ofrece ningún mecanismo
+> de federación (no usa Entra ID en lo desplegado, no actúa como *reverse proxy* de
+> identidad, no expone una API de "quién soy" pensada para otro módulo — detalle en
+> `docs/estado/handoff.md`, corte 9). HelpDesk no necesita ni debe apoyarse en el login
+> de Conecta: resuelve su propia sesión contra el mismo tenant de Entra ID, con SSO
+> silencioso (`prompt=none`) como la vía que evita una segunda pantalla sin acoplarse a
+> Conecta. Esto es independiente del mecanismo de navegación/URL que quede pendiente
+> arriba.
 
 ### 1.2 Economía de recursos
 
@@ -270,3 +279,6 @@ límites (§1.3) y la decisión pendiente sobre el modelo de esquema (§4); fija
 debe ser o parecer parte de Conecta, en dirección contraria a Impulsa, que se despegó de
 esa idea (§1.1), y eleva la economía de recursos de la VPS a criterio permanente de
 diseño (§1.2).
+- 15-sep-2026 (U3) — resuelve la sub-pregunta de identidad de D7 (§1.1) con el
+  repositorio real de Conecta inspeccionado: no ofrece ningún mecanismo de federación,
+  HelpDesk no se apoya en su login. El mecanismo de navegación/URL sigue `ABIERTO`.

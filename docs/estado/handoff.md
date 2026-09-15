@@ -1,42 +1,80 @@
 # Handoff técnico
 
 ```
-CORTE:   11-sep-2026 (corte 8)
-HEAD:    `0f1ced5`, publicado en `origin/main`
+CORTE:   15-sep-2026 (corte 9)
+HEAD:    `f896381`, publicado en `origin/main`
 RAMA:    main
-UNIDAD:  U2 · CERRADA — LOS CUATRO ESCENARIOS MÍNIMOS CONSTRUIDOS Y EJERCITADOS
-         CONTRA PRODUCCIÓN. Se agrega la etapa `migrator` al `Dockerfile` (liviana:
-         CLI de Prisma + `prisma/`, sin el build de Next — `migrate deploy` no
-         necesita el cliente generado) y el servicio `migrate` en
-         `docker-compose.yaml`, con `DATABASE_URL` apuntando a
-         `DATABASE_MIGRATION_URL` (`coraje_migrator`) y `web` gateado tras él con
-         `depends_on: service_completed_successfully`, igual que Impulsa.
-         Publicado en dos commits separados por riesgo: primero el `Dockerfile`
-         solo (`fa1c983`, inerte hasta que algo lo referencia), ensayado contra la
-         base real antes de wirearlo (`docker build --target migrator` + `docker
-         run` con `coraje_migrator` → `No pending migrations to apply.`); después
-         `docker-compose.yaml` (`0f1ced5`), solo tras confirmar `DATABASE_MIGRATION_URL`
-         ya en Coolify.
+UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA Y VERIFICADA ESTÁTICAMENTE, SIN
+         EJERCITAR CONTRA EL TENANT NI CONTRA LA BASE REAL. No cierra todavía:
+         quedan cuatro pendientes operativos, todos fuera del alcance de esta
+         sesión (crear el App Registration en Entra ID, generar la clave de
+         sellado, asignar `rol_aplicacion` a al menos una persona real, y poner
+         las variables nuevas en Coolify — ver acción inmediata).
 
-         **El primer deploy real con el gate activo quedó confirmado por los logs
-         de Coolify**, no solo por el ensayo manual: el servicio `migrate` corrió
-         `prisma migrate deploy`, mostró `No pending migrations to apply.` y
-         terminó bien; `web` arrancó después, no en paralelo. **La última salvedad
-         de F6 quedó cerrada en el mismo paso:** el usuario creó un ticket real
-         desde el portal (`Prueba de ticket`, visible en `/portal/tickets`) y
-         probó la redirección — `coraje_runtime` escribiendo en producción,
-         confirmado por comportamiento, no solo por `GRANT` verificado.
+         Implementa el núcleo de `specs/acceso-empleados.md`: flujo OIDC con PKCE
+         contra Entra ID (SSO silencioso vía `prompt=none`, con reintento
+         explícito tras `login_required`/`interaction_required` y cookie
+         anti-bucle de un solo uso); validación completa del `id_token` en el
+         orden exigido (firma `RS256` fijada → emisor → audiencia → nonce →
+         expiración con holgura de 120s); admisión contra `core.dim_personal` con
+         las cuatro causas de rechazo cerradas (`EMAIL_INVALID`/`NOT_REGISTERED`/
+         `INACTIVE`/`UNKNOWN_ROLE`); sesión propia opaca en `app.employee_session`
+         (8h absolutas, sin renovación deslizante, releyendo admisión en cada
+         lectura); saneo del destino de retorno contra *open redirect*.
 
-         **U2 cierra con los cuatro escenarios mínimos de `plan-ejecucion.md`
-         cerrados y verificados:** baseline adoptado (corte 6) · credenciales
-         separadas, incluida la corrida real de n8n con `coraje_etl` tras
-         corregir el ownership de `staging` y retirar un `CREATE INDEX` embebido
-         contra `core.dim_cliente_contai` que contradecía D1 (corte 7) · servicio
-         `migrate` desplegado y gateando `web` de verdad (esta entrada) · una
-         escritura real confirmada con `coraje_runtime` (esta entrada). **U3 pasa
-         a ser la cabeza de `plan-ejecucion.md`.**
+         Esquema: `dim_personal` gana `rol_aplicacion` (enum con un único valor,
+         `AGENTE` — el catálogo fino de roles es competencia de
+         `specs/permisos.md`, todavía sin cerrar) y `entra_object_id` (sujeto
+         inmutable, enlazado una sola vez, nunca sobrescrito). Nuevo schema
+         `app` en PostgreSQL para `employee_session` — estado propio de la
+         plataforma, separado de `core`/`helpdesk` — con `GRANT` explícito a
+         `coraje_runtime`. Migración escrita a mano (mismo motivo que el
+         baseline: sin acceso a la base real desde este entorno de trabajo).
 
-CORTE ANTERIOR (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
+         **D7 (`contexto-canonico.md` §1.1) se resuelve en esta unidad, con
+         evidencia real, no por suposición.** Se clonó el repositorio real de
+         Conecta (`RBGCT-REACT`, autorizado por el usuario) para decidir si
+         HelpDesk debía apoyarse en su login: `main` (lo desplegado en Coolify)
+         no usa Entra ID — es JWT propio (HS256, email+contraseña+2FA); una rama
+         de trabajo (`stiben`, 127 commits por delante, no mergeada) agrega un
+         botón de Microsoft, pero incluso ahí Conecta emite su propio JWT, nunca
+         una sesión de Entra. Confirmado además, por lectura de
+         `nginx/nginx-proxy.conf` y `docker-compose.prod.yml`, que Conecta no
+         actúa como *reverse proxy* ni federa identidad hacia otros módulos. Se
+         descarta acoplar HelpDesk a Conecta — mismas razones que
+         `specs/acceso-empleados.md` §2 ya daba para el traspaso de token — y se
+         confirma que Conecta también autentica contra el mismo tenant de
+         Microsoft 365, lo que sostiene el diseño de SSO silencioso: sin tocar
+         Conecta, la persona deja de ver una segunda pantalla en cuanto ambos
+         módulos hablen con el mismo Entra ID.
+
+         **Alcance deliberadamente fuera de esta unidad:** el perímetro global
+         *deny-by-default* y el retiro de `REDIRECCION_PASSWORD` (`U4`, según
+         `plan-ejecucion.md` — `/portal` y `/redireccion` no se tocaron); el
+         catálogo fino de roles y el autorizador ejecutable (`specs/permisos.md`,
+         `U7`).
+
+         **Evidencia real de esta unidad:** `prisma generate`, `tsc --noEmit`,
+         `eslint` y `next build` limpios; 26/26 pruebas unitarias (`pnpm test`,
+         `node --test` vía `tsx`) cubriendo el orden de validación del
+         `id_token`, las cuatro causas de rechazo de admisión y el saneo de
+         destino. **Ninguna de las dos cosas que probarían esto de verdad se
+         ejercitó todavía:** ni un ingreso real contra el tenant (no existe el
+         App Registration), ni la migración contra la base real (corre con el
+         servicio `migrate` en el próximo deploy, y el índice único parcial de
+         correo activo podría fallar si hay un duplicado real no detectado —
+         ver acción inmediata).
+
+CORTE ANTERIOR (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
+         mínimos de `plan-ejecucion.md` cerrados y verificados: baseline
+         adoptado (corte 6) · credenciales separadas, incluida la corrida real
+         de n8n con `coraje_etl` (corte 7) · servicio `migrate` desplegado y
+         gateando `web` de verdad, confirmado en logs reales de Coolify (esta
+         entrada) · una escritura real confirmada con `coraje_runtime` — el
+         usuario creó un ticket real desde el portal y probó la redirección.
+         **U3 pasó a ser la cabeza de `plan-ejecucion.md`.**
+
+CORTE DOS ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
          revela que `coraje_app` era superusuario y el único rol de aplicación del
          clúster — se amplía F6 para retirarlo también de n8n. Creados
          `coraje_migrator`, `coraje_runtime`, `coraje_etl`; `coraje_app` rotado y
@@ -47,16 +85,18 @@ CORTE ANTERIOR (11-sep-2026, corte 7): verificación previa a escribir el `GRANT
          más (ownership de `staging`, `CREATE INDEX` embebido contra `core`),
          corregidos. Detalle completo en el changelog.
 
-CORTE DOS ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
+CORTE TRES ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
          `20260910000000_baseline/migration.sql`, se migran 20 archivos de
          aplicación a `camelCase`, y se adopta la migración contra producción con
          `prisma migrate resolve --applied` (`applied_steps_count = 0`, sin
          ejecutar DDL). Detalle completo en el changelog.
 STAGING: no aplica. No hay entorno de pruebas declarado para este proyecto
-LINT:    no aplica — esta entrada es `Dockerfile`/`docker-compose.yaml`, sin
-         TypeScript tocado. Validado por build real: Coolify construyó ambas
-         etapas y el deploy completo terminó `Running`
+LINT:    limpio (`eslint`, sin reglas nuevas). `tsc --noEmit` y `next build`
+         también limpios — validado en local con FNM (Node 24.16.0) y pnpm
+         11.2.2, no solo por inspección. Sin `DATABASE_URL` real disponible desde
+         este entorno, `next build` corrió con el mismo dummy que usa la etapa
+         `builder` del `Dockerfile`
 ```
 
 **Qué es este documento:** el estado observado, la evidencia disponible, las
@@ -73,10 +113,13 @@ runbook operativo (`estado/operacion.md`) ni la cola de trabajo
 **Lo que está cerrado:** el conjunto documental existe, es coherente y cada afirmación
 sobre el código está marcada como verificada o como pendiente de verificar.
 
-**Lo que no:** absolutamente nada del producto. No hay autenticación, no hay
-autorización, no hay contrato de diseño, no hay ciclo de vida del ticket y no hay una
-sola prueba automatizada. El proyecto tiene una base de datos sólida con datos reales y
-una capa de aplicación que es un prototipo.
+**Lo que cambió con U3:** existe una implementación real de identidad de empleados
+(OIDC/PKCE, admisión, sesión propia), con 26 pruebas unitarias — la primera evidencia
+automatizada del repositorio. **Lo que sigue sin existir:** un ingreso ejercitado contra
+el tenant real (el diseño está construido, no probado con una persona real), autorización
+de rol+acción, contrato de diseño, ciclo de vida del ticket. La capa de aplicación deja
+de ser enteramente un prototipo — la pieza de identidad ya tiene el rigor exigido por la
+spec, aunque todavía no se haya visto funcionar.
 
 **Salvedad sobre lo que parece cerrado.** Escribir la especificación no adelanta la
 implementación. Tres de las cinco specs están además **bloqueadas por hechos que nadie
@@ -89,9 +132,9 @@ consultas de U1, lo que se construya será diseño por analogía.
 |---|---|---|
 | Ingesta SharePoint → PostgreSQL | `EJERCITADO, con el código corregido de esta unidad` | 2.313 tickets conciliados en `legacy/baseline-calidad.md` (baseline histórico, no se edita) → 2.559 el 10-sep-2026 antes de esta unidad → **2.825 el 10-sep-2026 tras ejecutar la ingesta con el fix de F10** (§4). El crecimiento es la ingesta incremental real, confirmado por el usuario — no es un error de conteo |
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
-| Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial |
-| Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida, sin identidad de persona |
-| Identidad de empleados | `NO EXISTE` | Contrato escrito, bloqueado por U1 §1 y U2 |
+| Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial — U3 no lo tocó |
+| Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida — `REDIRECCION_PASSWORD` sigue en el código, su retiro es `U4` |
+| Identidad de empleados | `CONSTRUIDA, SIN EJERCITAR` | OIDC/PKCE, admisión y sesión propia implementados y verificados estáticamente (§4). Sin ingreso real contra el tenant: falta el App Registration en Entra ID |
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
 | Sistema de diseño | `NO EXISTE` | Contrato escrito |
@@ -100,16 +143,24 @@ consultas de U1, lo que se construya será diseño por analogía.
 
 ## 3. Capacidades publicadas en esta unidad
 
-Ninguna capacidad de producto. Lo entregado es documental:
+Identidad de empleados, construida de punta a punta pero **sin un ingreso real todavía**:
 
-- `CLAUDE.md` reescrito, con la autorización destructiva y sus límites, las fronteras de
-  herramientas, la disciplina de contexto y las convenciones de commit.
-- `docs/contexto-canonico.md`, `docs/README-documentacion.md`.
-- Cinco specs: acceso de empleados, acceso de clientes, tickets, sincronización con
-  SharePoint, permisos.
-- `docs/design/sistema-helpdesk.md`.
-- `docs/estado/`: este handoff, plan de ejecución, runbook de operación, backlog.
-- `docs/legacy/`: cuatro documentos movidos sin alterar su contenido.
+- Flujo OIDC/PKCE contra Entra ID con SSO silencioso (`prompt=none`) y reintento
+  explícito tras rechazo del proveedor (`src/app/api/auth/microsoft/{start,callback}`).
+- Validación completa del `id_token` en el orden exigido por la spec
+  (`src/server/auth/entra-oidc.ts`).
+- Admisión contra `core.dim_personal` con las cuatro causas de rechazo cerradas
+  (`src/server/auth/employee-admission.ts`).
+- Sesión propia opaca en `app.employee_session`, con revocación y relectura de admisión
+  en cada petición (`src/server/auth/employee-session.ts`).
+- Saneo del destino de retorno, sellado AEAD de la cookie de estado OIDC, credencial
+  opaca (`src/server/auth/sanitize-destination.ts`, `src/server/security/`).
+- Pantalla de login y landing raíz reemplazando el selector portal/redirección
+  (`src/app/login/page.tsx`, `src/app/page.tsx`) — sin estilo propio a propósito, el
+  contrato de diseño es competencia de `U5`.
+- Migración de esquema (`prisma/migrations/20260911150000_agregar_identidad_empleados`)
+  y `pnpm test` como script nuevo del proyecto (primera suite automatizada del
+  repositorio, 26 pruebas).
 
 ## 4. Evidencia disponible
 
@@ -120,6 +171,8 @@ Ninguna capacidad de producto. Lo entregado es documental:
 | `git log` y `git status` | Que el árbol estaba limpio y cuál es el HEAD | Nada sobre despliegues |
 | `legacy/baseline-calidad.md` | Que la carga inicial cuadró **en su momento** (fecha no fijada, anterior al 03-sep-2026) | Que siga cuadrando hoy — **ver contradicción abajo** |
 | 3 consultas SQL en la VPS (U1 §1, §4, §5) + lectura directa de `n8n/` (U1 §2, §3), ambas **10-sep-2026** | Ver tabla siguiente — las cinco preguntas de U1 | Que la instancia viva de n8n tenga hoy exactamente lo que el archivo exportado describe (nota al pie de esta sección) |
+| `prisma generate`/`tsc --noEmit`/`eslint`/`next build` + 26 pruebas unitarias, 15-sep-2026, en local con FNM (Node 24.16.0) | Que el código de U3 tipa, construye y las reglas puras de validación/admisión/saneo se comportan como la spec exige, **con datos de prueba** | Que el flujo funcione contra Entra ID real, ni que la migración aplique limpio contra `core.dim_personal` con sus 167+ filas reales — pruebas contractuales, no E2E |
+| Lectura del repositorio real de Conecta (`RBGCT-REACT`, ramas `main` y `stiben`), 15-sep-2026 | Cómo autentica Conecta hoy y qué no ofrece para federar identidad (§ cabecera) | Que `stiben` vaya a desplegarse tal cual, ni el estado de Conecta más allá de este corte |
 
 **U1 — resultados reales, contra la base de producción, 10-sep-2026:**
 
@@ -213,12 +266,14 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~La contraseña real de `coraje_app` se pegó en texto plano en esta conversación~~ — **resuelto 11-sep-2026**: rotada al cerrar F6, con `\password` interactivo (no vuelve a aparecer en texto). `coraje_app` además dejó de ser la credencial de cualquier sistema automático | ~~Si el historial de esta sesión quedaba expuesto, exponía con él la credencial de base de producción~~ | ~~Cerrado~~ |
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
+| La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo` (filas activas, no marcadas como buzón histórico). **Sin verificar contra la base real**: si dos filas activas comparten correo hoy, el `CREATE UNIQUE INDEX` falla al desplegar | El servicio `migrate` falla explícitamente (bueno: no degrada en silencio), pero bloquea el arranque de `web` hasta corregirlo | Correr la consulta de verificación entregada en la acción inmediata **antes** de este deploy — mismo patrón que la verificación previa de F10 |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `0f1ced5` | **Corte vigente.** Activa el servicio `migrate` en `docker-compose.yaml` y gatea el arranque de `web` — cierra U2 |
+| `f896381` | **Corte vigente.** Construye OIDC/PKCE, admisión y sesión de empleados (U3); nuevo schema `app`, columnas de identidad en `dim_personal`, `pnpm test` |
+| `0f1ced5` | Activa el servicio `migrate` en `docker-compose.yaml` y gatea el arranque de `web` — cierra U2 |
 | `08438c2` | Retira el `CREATE INDEX` embebido contra `core` del workflow de n8n, confirmado en vivo |
 | `fa1c983` | Agrega la etapa `migrator` al `Dockerfile`, inerte hasta el commit anterior |
 | `95c1d8b` | Cierra F6 en la documentación |
@@ -270,6 +325,71 @@ dice `No pending migrations to apply.` y termina bien; `web` arranca después. L
 última salvedad de F6 (una escritura real con `coraje_runtime`) se cerró en el mismo
 paso: el usuario creó un ticket real desde el portal y probó la redirección.
 **Siguiente unidad: U3 · Identidad de empleados**, cabeza de `plan-ejecucion.md`.
+
+**El corte 9 construye U3 completa** (OIDC/PKCE, admisión, sesión propia) y la verifica
+estáticamente (`prisma generate`, `tsc --noEmit`, `eslint`, `next build`, 26 pruebas
+unitarias) — publicado en `f896381`. **U3 no cierra en este corte**: nada de esto se ha
+ejercitado contra el tenant real ni contra la base real. Antes de que alguien pueda
+completar un ingreso de verdad hacen falta, en este orden, los cuatro pendientes que
+siguen — los tres primeros son decisiones/datos que solo el usuario puede resolver, el
+cuarto es mecánico una vez resueltos los anteriores.
+
+**1. Crear el App Registration de HelpDesk en Entra ID** (confirmado por el usuario en
+esta sesión: no existe todavía). En el Entra admin center del tenant corporativo:
+- Tipo: aplicación web, cliente confidencial (no SPA/público).
+- Redirect URI: `https://<dominio-de-helpdesk>/api/auth/microsoft/callback` — el dominio
+  exacto depende de D7 (`contexto-canonico.md` §1.1), todavía sin resolver.
+- Permisos de API: `openid`, `profile`, `email` (delegados, consentimiento de usuario;
+  **no** `Mail.Send` ni `offline_access` — fuera de alcance, ver §9 de la spec).
+- En "Authentication": habilitar la emisión de `ID tokens` (implicit/hybrid flow) para
+  el flujo de autorización.
+- Generar un `client secret` — va directo a Coolify (paso 4), nunca al chat.
+- Tenant a usar: el tenant corporativo real, **nunca** `common`/`organizations`/
+  `consumers` (`entra-oidc.ts` lo rechaza explícitamente si lo detecta).
+
+**2. Generar la clave de sellado** (`HELPDESK_TOKEN_ENCRYPTION_KEY`). Comando para
+generarla (32 bytes en base64, corre en cualquier máquina con Node):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+El valor resultante va directo a Coolify (paso 4) — no se pega en ningún chat ni se
+commitea.
+
+**3. Verificar el supuesto de la migración y asignar el primer rol.** Antes del deploy
+que aplica la migración de U3, correr esta consulta de solo lectura contra la base real
+(confirma que el índice único parcial `ux_dim_personal_correo_activo` no va a fallar):
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+SELECT correo_corporativo, COUNT(*)
+FROM core.dim_personal
+WHERE estado_activo AND NOT es_responsable_historico_no_identificado
+GROUP BY correo_corporativo
+HAVING COUNT(*) > 1;
+"
+```
+
+Si devuelve alguna fila, detenerse — hay un correo activo duplicado que el índice no
+puede aceptar, y hay que decidir cuál fila es la real antes de desplegar. Si devuelve
+cero filas (esperado), continuar. Luego, para poder ejercitar el primer ingreso real,
+asignar el rol a la persona que vaya a probarlo (sustituir el correo real):
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+UPDATE core.dim_personal
+SET rol_aplicacion = 'AGENTE'
+WHERE correo_corporativo = '<correo-corporativo-real>' AND estado_activo;
+"
+```
+
+**4. Variables nuevas en Coolify antes de este deploy — nunca al revés** (mismo patrón
+que `DATABASE_MIGRATION_URL` en U2, corte 7-8): `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`,
+`ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`, `HELPDESK_TOKEN_ENCRYPTION_KEY`. Sin ellas,
+el servicio `web` arranca pero cualquier intento de login falla con el error de
+configuración incompleta de `entra-oidc.ts`/`secret-box.ts` — fallo explícito, no
+silencioso, pero sigue bloqueando el ingreso.
 
 Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
 efectivamente se corrió contra la base real — no son pasos pendientes.
@@ -397,8 +517,8 @@ WHERE id_asignado IN (
 
 | Decisión | Dónde | Estado |
 |---|---|---|
-| Ningún token viaja entre Conecta y HelpDesk; cada módulo hace su propio OIDC | `specs/acceso-empleados.md` §2 | Decidida, no construida |
-| SSO silencioso con `prompt=none` para eliminar la fricción del botón | Ídem §4 | Decidida, no construida |
+| Ningún token viaja entre Conecta y HelpDesk; cada módulo hace su propio OIDC | `specs/acceso-empleados.md` §2 | **Construida (U3, corte 9):** `src/server/auth/entra-oidc.ts`; confirmada además con evidencia real de que Conecta no ofrece ningún mecanismo de federación, no solo por principio |
+| SSO silencioso con `prompt=none` para eliminar la fricción del botón | Ídem §4 | **Construida (U3, corte 9):** `/api/auth/microsoft/start`, con cookie anti-bucle de un solo uso. Sin ejercitar contra el tenant real |
 | El acceso de clientes se ancla al cliente, no al ticket | `specs/acceso-clientes.md` §3 | Decidida, no construida |
 | Estado del ticket derivado de eventos, con escritor único | `specs/tickets.md` §3 | Decidida, no construida |
 | Rediseño visual completo, sin fase de centralización posterior | `design/sistema-helpdesk.md` §1 | Decidida, no construida |
@@ -438,9 +558,12 @@ WHERE id_asignado IN (
 
 ## Consecuencias vigentes que no son defectos
 
-- **No hay pruebas automatizadas y eso no bloquea este corte**, porque no hubo código. Sí
-  bloquea el criterio de cierre de U3 en adelante: sus condiciones exigen pruebas
-  negativas.
+- **U3 agrega la primera suite de pruebas automatizadas del repositorio** (26 unitarias,
+  `pnpm test`) — cubre las cuatro causas de rechazo de admisión con prueba negativa y el
+  orden de validación del `id_token`, tal como exigía el criterio de cierre. Lo que
+  sigue sin cubrir: cualquier escenario que necesite Postgres real (bind del sujeto,
+  expiración de sesión con datos reales) — sin ciclo local, eso se ejercita contra la
+  base desplegada, no en esta suite.
 - **El ELT está bien escrito para lo que se escribió.** Su precedencia incondicional
   hacia SharePoint es correcta en una migración one-way; se convierte en defecto solo
   cuando la plataforma pasa a ser interfaz de trabajo. Es ausencia de una decisión, no
@@ -699,3 +822,29 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   `GRANT`. Los cuatro escenarios mínimos de U2 quedan cerrados y ejercitados.
   `plan-ejecucion.md` se actualiza: U2 cerrada, **U3 (identidad de empleados) pasa a
   ser la cabeza de la cola.**
+- 15-sep-2026 (corte 9) — el usuario pide continuar con U3. Antes de diseñar, se
+  pregunta si HelpDesk debe apoyarse en el login de Conecta: el usuario responde que sí
+  usa Entra ID, lo cual contradecía lo que se sabía. Se resuelve la contradicción con
+  evidencia, no por afirmación: clonado el repositorio real de Conecta (`RBGCT-REACT`,
+  autorizado explícitamente por el usuario), se confirma que `main` (lo desplegado) usa
+  JWT propio, sin Entra ID, y que una rama sin mergear (`stiben`) agrega un botón de
+  Microsoft que igual termina en el JWT propio de Conecta — ninguna sesión de Entra real
+  sale de ahí. Se descarta acoplar HelpDesk a Conecta (mismas razones ya escritas en
+  `acceso-empleados.md` §2) y se confirma que el SSO silencioso contra el mismo tenant
+  sigue siendo la vía correcta, sin depender de Conecta. D7 (`contexto-canonico.md`
+  §1.1) queda resuelto para efectos de esta unidad. Se construye el módulo completo:
+  `entra-oidc.ts` (protocolo, validación de `id_token`), `employee-admission.ts`
+  (admisión pura, cuatro rechazos), `employee-session.ts`/`current-employee.ts`
+  (sesión), rutas de `/api/auth/microsoft/{start,callback}` y `/api/auth/logout`,
+  `login`/página raíz nuevas. Esquema: `rol_aplicacion` (enum de un solo valor,
+  `AGENTE`) y `entra_object_id` en `dim_personal`; nuevo schema `app` con
+  `employee_session`; migración escrita a mano (sin acceso a la base real desde este
+  entorno). Se agrega `pnpm test` (primera suite del repositorio, 26 pruebas
+  unitarias) tras resolver un problema real de `node --test` con directorios cuando
+  `tsx` está activo como loader (se pasa un glob explícito sobre archivos `.test.mts`,
+  no un directorio). Verificado en local con FNM (Node 24.16.0): `prisma generate`,
+  `tsc --noEmit`, `eslint`, `next build` y los 26 tests, todos limpios. Publicado en
+  `f896381`. **U3 no cierra**: sin App Registration en Entra ID, sin la clave de
+  sellado en Coolify, sin nadie con `rol_aplicacion` asignado, y sin ejercitar la
+  migración contra la base real — los cuatro quedan como acción inmediata, explícitos
+  en la cabecera.
