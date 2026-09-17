@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { APP_BASE_PATH } from "@/server/auth/base-path";
 import { prisma } from "@/lib/prisma";
 import {
   createOpaqueCredential,
@@ -145,5 +146,5 @@ export async function revokeCurrentEmployeeSession(
     });
   }
 
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  cookieStore.delete({ name: SESSION_COOKIE_NAME, path: APP_BASE_PATH });
 }

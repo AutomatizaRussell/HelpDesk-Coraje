@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { APP_BASE_PATH, buildAppUrl } from "@/server/auth/base-path";
 import {
   exchangeAuthorizationCode,
   validateIdToken,
@@ -29,19 +30,19 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 function redirectToLogin(request: NextRequest, error: string) {
-  const target = new URL("/login", request.url);
+  const target = buildAppUrl("/login", request.url);
   target.searchParams.set("error", error);
   const response = NextResponse.redirect(target);
-  response.cookies.delete(STATE_COOKIE_NAME);
+  response.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
   return response;
 }
 
 function redirectToSilentRetry(request: NextRequest, destino: string) {
-  const target = new URL("/api/auth/microsoft/start", request.url);
+  const target = buildAppUrl("/api/auth/microsoft/start", request.url);
   target.searchParams.set("destino", destino);
   target.searchParams.set("silent", "0");
   const response = NextResponse.redirect(target);
-  response.cookies.delete(STATE_COOKIE_NAME);
+  response.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
   return response;
 }
 
@@ -101,14 +102,14 @@ export async function GET(request: NextRequest) {
     // (specs/acceso-empleados.md §5, paso 2 — defensa en profundidad, no
     // redundancia decorativa).
     const successResponse = NextResponse.redirect(
-      new URL(sanitizeDestination(state.destino), request.url),
+      buildAppUrl(sanitizeDestination(state.destino), request.url),
     );
-    successResponse.cookies.delete(STATE_COOKIE_NAME);
+    successResponse.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
     successResponse.cookies.set(SESSION_COOKIE_NAME, result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/",
+      path: APP_BASE_PATH,
       maxAge: SESSION_TTL_SECONDS,
     });
     return successResponse;

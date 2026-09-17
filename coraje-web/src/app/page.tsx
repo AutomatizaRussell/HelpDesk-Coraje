@@ -1,6 +1,18 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentEmployee } from "@/server/auth/current-employee";
+import { revokeCurrentEmployeeSession } from "@/server/auth/employee-session";
+
+/**
+ * Server Action en vez de `<form action="/api/auth/logout">`: un action
+ * literal no antepone el basePath de HelpDesk (D7) como sí lo hacen
+ * `redirect()` y las Server Actions — evita construir esa URL a mano.
+ */
+async function logoutAction() {
+  "use server";
+  await revokeCurrentEmployeeSession("LOGOUT");
+  redirect("/login");
+}
 
 /**
  * Entrada raíz de HelpDesk para empleados (specs/acceso-empleados.md §4).
@@ -29,7 +41,7 @@ export default async function HomePage() {
     <main>
       <h1>HelpDesk</h1>
       <p>Sesión activa: {employee.nombreCompleto}.</p>
-      <form action="/api/auth/logout" method="post">
+      <form action={logoutAction}>
         <button type="submit">Cerrar sesión</button>
       </form>
     </main>

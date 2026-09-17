@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { APP_BASE_PATH } from "@/server/auth/base-path";
 import { createAuthorizationRequest } from "@/server/auth/entra-oidc";
 import { STATE_COOKIE_NAME, type SealedOidcState } from "@/server/auth/oidc-state";
 import { sanitizeDestination } from "@/server/auth/sanitize-destination";
@@ -37,11 +38,13 @@ export async function GET(request: NextRequest) {
   const isProduction = process.env.NODE_ENV === "production";
   const response = NextResponse.redirect(authorizationRequest.url);
 
+  // Acotada a APP_BASE_PATH, no a "/": HelpDesk comparte dominio con Conecta
+  // (D7), y esta cookie no debe viajar en peticiones a rutas que no son suyas.
   response.cookies.set(STATE_COOKIE_NAME, sealSecret(JSON.stringify(sealedState)), {
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
-    path: "/",
+    path: APP_BASE_PATH,
     maxAge: STATE_TTL_SECONDS,
   });
 
@@ -53,11 +56,13 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       secure: isProduction,
       sameSite: "lax",
-      path: "/",
+      path: APP_BASE_PATH,
       maxAge: STATE_TTL_SECONDS,
     });
   } else {
-    response.cookies.delete(SILENT_ATTEMPT_COOKIE_NAME);
+    // El path debe coincidir con el usado al crearla, o el navegador la trata
+    // como una cookie distinta y nunca borra la original.
+    response.cookies.delete({ name: SILENT_ATTEMPT_COOKIE_NAME, path: APP_BASE_PATH });
   }
 
   return response;

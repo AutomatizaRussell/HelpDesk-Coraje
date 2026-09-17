@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { sanitizeDestination } from "@/server/auth/sanitize-destination";
 
 /**
@@ -39,7 +41,14 @@ export default async function LoginPage({
     <main>
       <h1>HelpDesk</h1>
       {message ? <p role="alert">{message}</p> : null}
-      <a href={startUrl}>Continuar con Microsoft</a>
+      {/* prefetch={false}: esta ruta no es de solo lectura — dispara el
+          flujo de login (crea cookie de estado, redirige a Microsoft). Un
+          prefetch al pasar el mouse lo activaría sin que la persona
+          hiciera clic. Link (no <a>) para que anteponga el basePath de
+          HelpDesk (next.config.ts) sin tenerlo que hacer a mano aquí. */}
+      <Link href={startUrl} prefetch={false}>
+        Continuar con Microsoft
+      </Link>
     </main>
   );
 }
