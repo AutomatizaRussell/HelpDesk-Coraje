@@ -364,8 +364,11 @@ construido. Pasos en el Entra admin center, sobre el App Registration **ya exist
   Microsoft Graph, para leer perfil vía API; HelpDesk no llama a Graph, todo sale de
   los *claims* del `id_token`). Si ya está ahí porque Conecta lo pide, no estorba —
   el consentimiento es por los scopes que cada petición pide, no por lo que la app
-  tiene configurado. **No** pedir `Mail.Send` ni `offline_access` — fuera de alcance,
-  §9 de la spec.
+  tiene configurado. **Agregar también `Mail.Send` y `offline_access`** (D6 resuelta,
+  17-sep-2026: HelpDesk enviará correo al cliente desde la cuenta de quien responde
+  — el código ya los pide en el `scope` desde este corte, así que el App Registration
+  necesita tenerlos concedidos como permisos delegados de Microsoft Graph, no de
+  aplicación). **No** pedir `Mail.Send.Shared` — sin decidir todavía (§9 de la spec).
 - Tenant: el corporativo real, **single-tenant**, **nunca** `common`/`organizations`/
   `consumers` (`entra-oidc.ts` lo rechaza explícitamente si lo detecta) — mismo
   tenant que ya usa el App Registration de Conecta.
@@ -566,6 +569,7 @@ WHERE id_asignado IN (
 | U0 pregunta 2: Jimena Tejeiro no tiene nada especial en su rol frente a Legal — es exactamente el mismo caso que Alex para Proyectos y TI, la responsable normal del área. Quitando la pantalla fusionada (interfaz, no se replica) y el puente a `TareasLegal` (aplazado), no queda ninguna regla de negocio distinta que conservar | `legacy/reglas-negocio-powerapps.md` §11 | Cerrada. Legal se enruta igual que cualquier otra área en la tabla de enrutamiento, sin comparación de identidad en el código |
 | U0 pregunta 5: no requiere ningún mecanismo de producto. Reportar y cerrar con las acciones realizadas es responsabilidad de quien resuelve o de quien radicó, no algo que la aplicación pueda detectar | — | Cerrada, sin acción de diseño |
 | Modelo de buzón compartido (F10): columna `es_responsable_historico_no_identificado` en `core.dim_personal` (no rango de fechas — sin evidencia de cuándo cambió de manos el buzón), resuelto por `LEFT JOIN LATERAL` con prioridad a la fila histórica. **Bajo ninguna circunstancia** los 155 (hoy 165) tickets históricos quedan a nombre de Eilyn (la ocupante actual) | `specs/tickets.md` §7.3 | **Construida y ejercitada contra la base real** (10-sep-2026): ingesta corrida de punta a punta sin error, 155 → 165 tickets confirmados en el marcador histórico |
+| D6: HelpDesk enviará correo al cliente desde la cuenta de quien responde el ticket; `Mail.Send`/`offline_access` se piden desde el primer consentimiento para no exigir una segunda ronda por empleado | `specs/acceso-empleados.md` §9 | **Consentimiento construido (corte 9, 17-sep-2026):** `entra-oidc.ts` ya los incluye en el `scope`. **El mecanismo de envío no** — falta el *grant* delegado cifrado (equivalente a `graph-grant.ts` de Impulsa), sin fecha, probablemente junto a `U7`. `Mail.Send.Shared` (buzón compartido de la firma) sigue sin decidir |
 
 ## Decisiones que faltan y bloquean
 
@@ -575,15 +579,10 @@ WHERE id_asignado IN (
 | D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
 | D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
 | D5 | Acento visual propio del módulo o compartido con Impulsa | Materialización del tema | Usuario |
-| D6 | Si se pide `Mail.Send` en el primer consentimiento de Entra | Evitar una segunda ronda de consentimiento por empleado | Usuario |
-| D7 | Mecanismo de integración con Conecta: *reverse proxy*, subdominio con shell replicado u otro | Cookies, rutas, despliegue y el shell entero | Usuario y responsable de Conecta |
+| D7 | Mecanismo de navegación/URL con Conecta: *reverse proxy*, subdominio con shell replicado u otro (la sub-pregunta de identidad ya se resolvió, corte 9 — ver `contexto-canonico.md` §1.1) | Rutas, despliegue y el shell visual | Usuario y responsable de Conecta |
 
-> **D7 se resuelve inspeccionando Conecta**, que este conjunto documental no ha visto.
-> Es la única decisión que depende de un sistema fuera de estos dos repositorios.
-
-> **D6 tiene ventana.** Pedirlo después significa que cada empleado vuelva a consentir.
-> Si HelpDesk va a enviar correo alguna vez, la decisión es **antes** del primer
-> despliegue de identidad, no cuando aparezca la necesidad.
+> **D7 (navegación) se resuelve inspeccionando Conecta**, ya clonado y leído para la
+> sub-pregunta de identidad (corte 9) pero no para su capa de rutas/shell.
 
 ## Consecuencias vigentes que no son defectos
 
@@ -894,3 +893,15 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   origen del App Registration —; se actualiza la acción inmediata (paso 1) para
   reflejar el procedimiento real (agregar redirect URI y generar un secret propio
   sobre la app existente, no crear una nueva) y se registra el riesgo aceptado.
+- 17-sep-2026 (corte 9, mismo día) — al aclarar qué tipo de permiso elegir en el
+  formulario de Azure ("delegados" vs. "de la aplicación"), el usuario confirma un
+  caso de uso real: HelpDesk necesitará enviar correo al cliente desde la cuenta de
+  quien responde el ticket. **D6 queda resuelta.** Se agregan `offline_access` y
+  `Mail.Send` (delegados) al `scope` de `entra-oidc.ts` para capturar el
+  consentimiento desde este despliegue, sin construir todavía el mecanismo de envío
+  (el intercambio de código recibe el `refresh_token` y lo descarta sin persistirlo,
+  comentado en el propio código). Se corrige de paso una imprecisión del corte
+  anterior sobre el checkbox "ID tokens" de Authentication (no aplica al flujo real,
+  que es `response_type=code` puro). Queda abierta, sin decidir, la necesidad de
+  `Mail.Send.Shared` para un eventual envío desde el buzón compartido de la firma.
+  `tsc --noEmit` y `pnpm test` (26/26) limpios tras el cambio.

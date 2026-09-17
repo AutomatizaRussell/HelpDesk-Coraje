@@ -12,7 +12,14 @@ import {
  * emite sesión — solo produce y valida los artefactos del protocolo.
  */
 
-const SCOPES = "openid profile email";
+// Mail.Send/offline_access: confirmado por el usuario (D6, contexto-canonico.md/
+// handoff) que HelpDesk necesitará enviar correo al cliente en nombre del
+// empleado que responde. Se piden desde el primer despliegue de identidad,
+// aunque el envío en sí no esté construido todavía — pedirlos después
+// significa una segunda ronda de consentimiento por cada empleado, y la
+// ventana para evitarla es ahora, no cuando aparezca la necesidad.
+const SCOPES =
+  "openid profile email offline_access https://graph.microsoft.com/Mail.Send";
 const CLOCK_SKEW_SECONDS = 120;
 const JWKS_CACHE_TTL_MS = 60 * 60 * 1000;
 const MULTI_TENANT_ALIASES = new Set(["common", "organizations", "consumers"]);
@@ -130,6 +137,12 @@ export async function exchangeAuthorizationCode(params: {
     );
   }
 
+  // La respuesta también trae `refresh_token` y `access_token` (por
+  // offline_access y el scope de Graph) — se ignoran deliberadamente aquí:
+  // el envío de correo como el empleado (D6) todavía no tiene el mecanismo
+  // de custodia (cifrado, renovación, revocación) que ese refresh_token
+  // necesitaría para guardarse con seguridad. Pedir el consentimiento ya no
+  // implica construir el resto en esta unidad.
   const payload = (await response.json()) as { id_token?: string };
   if (!payload.id_token) {
     throw new Error("La respuesta de token de Entra ID no incluyó id_token.");

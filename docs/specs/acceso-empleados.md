@@ -4,8 +4,10 @@
 ESTADO:      CONSTRUIDO (U3, 15-sep-2026), SIN EJERCITAR contra el tenant real ni
              contra la base real. `REDIRECCION_PASSWORD` sigue en el código —
              coexiste con este contrato hasta que U4 lo retire (no es este documento
-             quien lo hace)
-CORTE:       15-sep-2026
+             quien lo hace). D6 (§9) resuelta el 17-sep-2026: el consentimiento de
+             `Mail.Send`/`offline_access` ya se pide, el mecanismo de envío sigue
+             sin construir
+CORTE:       17-sep-2026
 EVIDENCIA:   `prisma generate`/`tsc --noEmit`/`eslint`/`next build` limpios y 26
              pruebas unitarias (`pnpm test`) sobre validación de `id_token`, admisión
              y saneo de destino — ver tabla de verificación (§12) para el detalle por
@@ -233,14 +235,25 @@ tal cual: interpreta códigos de un conjunto conocido y **no muestra nada** ante
 desconocido. Un enlace fabricado no puede poner texto propio en una pantalla
 corporativa.
 
-## 9. Lo que este contrato **no** incluye
+## 9. Lo que este contrato **no** incluye (todavía)
 
-- **Envío de correo como el empleado.** Impulsa pide `Mail.Send` y `offline_access` en
-  el mismo consentimiento y guarda un *grant* delegado cifrado, porque despacha correo
-  a nombre de quien pulsó el botón, horas después y sin sesión. HelpDesk **no tiene hoy
-  ese requisito**. Cuando lo tenga, pedir esos permisos después significa una segunda
-  ronda de consentimiento por cada empleado: la decisión de incluirlos o no hay que
-  tomarla **antes** del primer despliegue, no cuando aparezca la necesidad.
+- **Envío de correo como el empleado — D6 resuelta (17-sep-2026): sí hará falta.**
+  Confirmado por el usuario: HelpDesk necesitará que la respuesta al cliente pueda
+  salir como correo desde la cuenta de quien atendió el ticket. El **consentimiento**
+  ya se pide desde U3 — `Mail.Send` y `offline_access` están en el `scope` de la
+  petición de autorización (`src/server/auth/entra-oidc.ts`) desde el primer
+  despliegue de identidad, precisamente para no exigir una segunda ronda de
+  consentimiento por empleado el día que el envío se construya. **Lo que sigue sin
+  construirse es el mecanismo mismo**: Impulsa lo resuelve con un *grant* delegado
+  cifrado (`graph-grant.ts`) porque despacha correo horas después y sin sesión activa
+  — HelpDesk necesitará el mismo patrón, adaptado, cuando se construya el envío real
+  (probablemente junto al ciclo del ticket, `U7`). Hasta entonces, el intercambio de
+  código recibe el `refresh_token` en la respuesta y lo descarta sin persistirlo — ver
+  comentario en `exchangeAuthorizationCode`.
+  - **Pendiente, no decidido:** si además hará falta `Mail.Send.Shared` para un
+    escenario de correo desde un buzón compartido de la firma (el dominio ya tiene ese
+    patrón — F10, `es_responsable_historico_no_identificado`), en vez de siempre desde
+    la cuenta de una persona. No se pide ese scope hasta que se confirme.
 - **Suplantación para pruebas.** Impulsa la tiene, marcada como temporal y a retirar
   antes de producción, y su propia spec la declara en contradicción con otra decisión
   suya. No se importa.
@@ -312,3 +325,11 @@ empleados (§9).
   explícitamente fuera de esta unidad (`U4`). Corregido durante la propia verificación
   de esta tabla: el destino de retorno no se saneaba en el extremo de lectura del
   callback, solo en el de sellado.
+- 17-sep-2026 — **D6 resuelta.** El usuario confirma que HelpDesk necesitará enviar
+  correo al cliente desde la cuenta de quien responde el ticket. Se agregan
+  `offline_access` y `Mail.Send` al `scope` de la petición de autorización
+  (`entra-oidc.ts`) para capturar el consentimiento desde este despliegue — el
+  mecanismo de envío (grant delegado cifrado, equivalente a `graph-grant.ts` de
+  Impulsa) queda pendiente, sin fecha, probablemente junto a `U7`. Queda abierta,
+  sin decidir, la necesidad de `Mail.Send.Shared` para un eventual envío desde un
+  buzón compartido de la firma (§9).
