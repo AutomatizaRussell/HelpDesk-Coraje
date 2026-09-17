@@ -70,10 +70,6 @@ una decisión de navegación y de interfaz, no de autenticación. Ningún token 
 aplicaciones (`specs/acceso-empleados.md` §2), y la continuidad para el empleado se
 consigue con el ingreso silencioso contra el mismo tenant, no compartiendo credenciales.
 
-> `ABIERTO` **Mecanismo concreto de navegación/URL** (*reverse proxy* bajo el dominio de
-> Conecta, subdominio con shell replicado, u otra forma) — sigue sin decidir, afecta a
-> rutas y despliegue del shell visual, y se decide antes de construirlo.
->
 > **La sub-pregunta de identidad queda resuelta (U3, 15-sep-2026), con el repositorio
 > real de Conecta inspeccionado, no por suposición:** Conecta no ofrece ningún mecanismo
 > de federación (no usa Entra ID en lo desplegado, no actúa como *reverse proxy* de
@@ -81,8 +77,24 @@ consigue con el ingreso silencioso contra el mismo tenant, no compartiendo crede
 > `docs/estado/handoff.md`, corte 9). HelpDesk no necesita ni debe apoyarse en el login
 > de Conecta: resuelve su propia sesión contra el mismo tenant de Entra ID, con SSO
 > silencioso (`prompt=none`) como la vía que evita una segunda pantalla sin acoplarse a
-> Conecta. Esto es independiente del mecanismo de navegación/URL que quede pendiente
-> arriba.
+> Conecta.
+
+**Mecanismo de navegación/URL — decidido (17-sep-2026), parcialmente construido.**
+HelpDesk cuelga de `https://conecta.rbgct.cloud/app/HelpDesk`: una subruta del dominio
+de Conecta, no un subdominio propio. **Conserva el sidebar y el topbar de Conecta**
+—decisión explícita del usuario, coherente con "es o parece parte de Conecta" arriba—,
+con la posibilidad de replegar el sidebar específicamente en las vistas de HelpDesk.
+Esto es responsabilidad de `U5` (contrato de diseño) cuando llegue: por ahora, `/login`
+y la landing raíz de HelpDesk se renderizan sin ningún shell propio, deliberadamente
+(ver comentarios en esos archivos).
+
+Construido de este lado (`coraje-web`, `next.config.ts`): `basePath: "/app/HelpDesk"`,
+que Next.js antepone automáticamente a `<Link>` y a `redirect()` de Server Components.
+**No construido — mitad de Conecta:** la regla de enrutamiento que reenvía
+`/app/HelpDesk/*` (sin quitar el prefijo) al contenedor de HelpDesk, en el proxy que
+sirve a Conecta (Traefik de Coolify, o el Nginx interno de su stack). Sin esa regla,
+`basePath` no tiene ningún tráfico real que recibir. Ver acción inmediata en
+`docs/estado/handoff.md`.
 
 ### 1.2 Economía de recursos
 
@@ -282,3 +294,8 @@ diseño (§1.2).
 - 15-sep-2026 (U3) — resuelve la sub-pregunta de identidad de D7 (§1.1) con el
   repositorio real de Conecta inspeccionado: no ofrece ningún mecanismo de federación,
   HelpDesk no se apoya en su login. El mecanismo de navegación/URL sigue `ABIERTO`.
+- 17-sep-2026 (U3) — D7 (navegación/URL) queda decidido: HelpDesk cuelga de
+  `/app/HelpDesk` bajo el dominio de Conecta, conservando su sidebar/topbar (con
+  posibilidad de replegar el sidebar). Construido de este lado: `basePath` en
+  `next.config.ts`. Pendiente, del lado de Conecta: la regla de proxy que reenvíe ese
+  path al contenedor de HelpDesk.
