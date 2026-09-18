@@ -79,22 +79,52 @@ consigue con el ingreso silencioso contra el mismo tenant, no compartiendo crede
 > silencioso (`prompt=none`) como la vía que evita una segunda pantalla sin acoplarse a
 > Conecta.
 
-**Mecanismo de navegación/URL — decidido (17-sep-2026), parcialmente construido.**
-HelpDesk cuelga de `https://conecta.rbgct.cloud/app/HelpDesk`: una subruta del dominio
-de Conecta, no un subdominio propio. **Conserva el sidebar y el topbar de Conecta**
+**Mecanismo de navegación/URL — decidido (18-sep-2026), parcialmente construido.**
+HelpDesk cuelga de `https://conecta.rbgct.cloud/helpdesk`: una subruta del dominio de
+Conecta, no un subdominio propio. **Conserva el sidebar y el topbar de Conecta**
 —decisión explícita del usuario, coherente con "es o parece parte de Conecta" arriba—,
 con la posibilidad de replegar el sidebar específicamente en las vistas de HelpDesk.
 Esto es responsabilidad de `U5` (contrato de diseño) cuando llegue: por ahora, `/login`
 y la landing raíz de HelpDesk se renderizan sin ningún shell propio, deliberadamente
 (ver comentarios en esos archivos).
 
-Construido de este lado (`coraje-web`, `next.config.ts`): `basePath: "/app/HelpDesk"`,
-que Next.js antepone automáticamente a `<Link>` y a `redirect()` de Server Components.
-**No construido — mitad de Conecta:** la regla de enrutamiento que reenvía
-`/app/HelpDesk/*` (sin quitar el prefijo) al contenedor de HelpDesk, en el proxy que
-sirve a Conecta (Traefik de Coolify, o el Nginx interno de su stack). Sin esa regla,
-`basePath` no tiene ningún tráfico real que recibir. Ver acción inmediata en
-`docs/estado/handoff.md`.
+**El prefijo es de primer nivel y en minúsculas, y sustituye al `/app/HelpDesk` decidido
+el 17-sep-2026.** Las dos propiedades son deliberadas y ninguna depende de cómo esté
+implementado Conecta hoy:
+
+- **Fuera de `/app`.** `/app` no es un path libre del dominio: es el espacio de rutas del
+  portal de empleados de Conecta, con sus propias rutas hijas y su propio guardia de
+  sesión. Colgar de ahí una aplicación con identidad distinta acopla HelpDesk a un
+  prefijo que otro equipo edita, y sugiere en la URL una pertenencia de sesión que no
+  existe. No compra nada a cambio: bajo enrutamiento transparente el prefijo no aporta
+  integración visual ninguna — el shell lo aporta la interfaz, no la URL.
+- **En minúsculas.** La regla de enrutamiento del proxy distingue mayúsculas. Con un
+  prefijo de caja mixta, una URL escrita o compartida con otra caja no llega a HelpDesk:
+  cae en el SPA de Conecta, que no reconoce la ruta y redirige a su raíz. Es un fallo
+  silencioso, sin error visible ni rastro para diagnosticarlo.
+
+**La composición en tiempo de request queda descartada, con evidencia.** Se consideró que
+Conecta inyectara el contenido de HelpDesk dentro de su propio layout real, para no
+replicar sidebar ni topbar. No es posible: la interfaz de Conecta es un SPA de React
+compilado con Vite y servido como estáticos, y su Nginx solo hace `proxy_pass`. No existe
+ningún layout renderizado en servidor dentro del cual inyectar un fragmento. Por lo tanto
+**el shell se replica dentro de HelpDesk** (`U5`), y la navegación entre ambos módulos es
+carga completa de página, no transición de cliente.
+
+Construido de este lado (`coraje-web`, `next.config.ts`): `basePath: "/helpdesk"`, que
+Next.js antepone automáticamente a `<Link>`, a `redirect()` de Server Components y a los
+assets. **No construido — el lado de la infraestructura:** la regla de enrutamiento que
+reenvía `/helpdesk/*` (**sin quitar el prefijo**) al contenedor de HelpDesk. Se resuelve
+en Traefik de Coolify, declarando el dominio con path en el propio recurso de HelpDesk;
+**el Nginx interno de Conecta no se toca**, porque Traefik prioriza la regla más
+específica y la petición nunca llega hasta él. Sin esa regla, `basePath` no tiene ningún
+tráfico real que recibir. Ver acción inmediata en `docs/estado/handoff.md`.
+
+> **Cuando `U5` añada el enlace a HelpDesk en el sidebar de Conecta, debe ser un enlace
+> de navegación real (`<a href>` o equivalente), nunca una navegación de cliente del
+> router de su SPA.** Una navegación de cliente la resuelve React Router dentro de
+> Conecta, que no conoce la ruta y redirige a su raíz: el usuario nunca sale hacia
+> HelpDesk. Es el único cambio que esta decisión exige en el repositorio de Conecta.
 
 ### 1.2 Economía de recursos
 
@@ -299,3 +329,10 @@ diseño (§1.2).
   posibilidad de replegar el sidebar). Construido de este lado: `basePath` en
   `next.config.ts`. Pendiente, del lado de Conecta: la regla de proxy que reenvíe ese
   path al contenedor de HelpDesk.
+- 18-sep-2026 (U3) — se corrige el prefijo de D7: `/helpdesk` en lugar de
+  `/app/HelpDesk`. `/app` resultó ser el espacio de rutas del portal de empleados de
+  Conecta, no un path libre, y un prefijo de caja mixta produce fallos silenciosos en un
+  proxy que distingue mayúsculas. Se descarta además la composición en tiempo de request
+  con evidencia (la interfaz de Conecta es un SPA sin layout de servidor), y con ello se
+  fija que el shell se replica en HelpDesk y que el enrutamiento se resuelve en Traefik
+  sin tocar el Nginx de Conecta.

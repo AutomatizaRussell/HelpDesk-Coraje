@@ -1,8 +1,8 @@
 # Handoff técnico
 
 ```
-CORTE:   18-sep-2026 (corte 10, cierre de sesión)
-HEAD:    `5f6aacd`, publicado en `origin/main`
+CORTE:   18-sep-2026 (corte 11, D7 cerrada)
+HEAD:    `PENDIENTE` — se fija al publicar, en el commit de corte siguiente
 RAMA:    main
 UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA, DESPLEGADA Y CON SUS CUATRO
          PENDIENTES OPERATIVOS CERRADOS CON EVIDENCIA REAL (App Registration
@@ -11,13 +11,15 @@ UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA, DESPLEGADA Y CON SUS CUATR
          variables en Coolify, migración aplicada tras reparar un `GRANT`
          faltante). **No cierra todavía, y por una sola razón:** nadie ha
          completado un ingreso real de punta a punta porque **la ruta
-         `/app/HelpDesk` no tiene todavía ningún tráfico llegándole** — falta
-         la pieza de proxy/enrutamiento del lado de Conecta. Ver "Acción
+         `/helpdesk` no tiene todavía ningún tráfico llegándole** — falta
+         declarar la regla de enrutamiento en Traefik de Coolify. **D7 dejó de
+         ser una decisión abierta en este corte:** sus tres preguntas
+         —prefijo, réplica vs. composición del shell, y red Docker— quedaron
+         resueltas con evidencia, y lo que resta es configuración, no diseño.
+         El prefijo cambió de `/app/HelpDesk` a `/helpdesk`. Ver "Acción
          inmediata para la siguiente sesión" más abajo: ahí queda todo lo que
          hace falta saber para retomar esto sin el contexto de esta
-         conversación, incluidas dos preguntas de arquitectura sin resolver
-         (no solo de configuración) y los comandos de solo lectura para
-         responderlas.
+         conversación.
 
          Implementa el núcleo de `specs/acceso-empleados.md`: flujo OIDC con PKCE
          contra Entra ID (SSO silencioso vía `prompt=none`, con reintento
@@ -125,7 +127,7 @@ sobre el código está marcada como verificada o como pendiente de verificar.
 (OIDC/PKCE, admisión, sesión propia), desplegada y aplicada contra la base real, con
 26 pruebas unitarias — la primera evidencia automatizada del repositorio. **Lo único
 que sigue sin ejercitarse es el ingreso mismo, y por una sola causa aislada:** la ruta
-`/app/HelpDesk` no tiene todavía tráfico real llegándole (D7, mecanismo de navegación
+`/helpdesk` no tiene todavía tráfico real llegándole (D7, mecanismo de navegación
 con Conecta, sin construir) — no un defecto de la identidad en sí. Autorización de
 rol+acción, contrato de diseño y ciclo de vida del ticket siguen sin existir. La capa
 de aplicación deja de ser enteramente un prototipo — la pieza de identidad ya tiene el
@@ -144,7 +146,7 @@ consultas de U1, lo que se construya será diseño por analogía.
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
 | Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial — U3 no lo tocó |
 | Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida — `REDIRECCION_PASSWORD` sigue en el código, su retiro es `U4` |
-| Identidad de empleados | `CONSTRUIDA Y DESPLEGADA, SIN EJERCITAR POR FALTA DE RUTA` | OIDC/PKCE, admisión y sesión propia, migración aplicada contra la base real, App Registration/variables/persona ya configurados (§4). Nadie ha completado un ingreso real: `/app/HelpDesk` no tiene todavía ningún tráfico llegándole — falta la pieza de proxy/enrutamiento con Conecta (D7, ver "Acción inmediata para la siguiente sesión") |
+| Identidad de empleados | `CONSTRUIDA Y DESPLEGADA, SIN EJERCITAR POR FALTA DE RUTA` | OIDC/PKCE, admisión y sesión propia, migración aplicada contra la base real, App Registration/variables/persona ya configurados (§4). Nadie ha completado un ingreso real: `/helpdesk` no tiene todavía ningún tráfico llegándole — falta la pieza de proxy/enrutamiento con Conecta (D7, ver "Acción inmediata para la siguiente sesión") |
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
 | Sistema de diseño | `NO EXISTE` | Contrato escrito |
@@ -174,7 +176,7 @@ HelpDesk**, no por nada de lo que sigue:
   **aplicada contra la base real** tras reparar un `GRANT` faltante (§6), y `pnpm test`
   como script nuevo del proyecto (primera suite automatizada del repositorio, 26
   pruebas).
-- `basePath: "/app/HelpDesk"` (`next.config.ts`) y la corrección de todos los puntos
+- `basePath: "/helpdesk"` (`next.config.ts`) y la corrección de todos los puntos
   donde Next.js no lo antepone solo: URLs de los route handlers de auth
   (`src/server/auth/base-path.ts`), `path` de las cookies de sesión/estado, `<Link>`
   en vez de `<a>` en `/login`, Server Action en vez de `<form action>` en la landing.
@@ -285,7 +287,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 | ~~La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo`~~ — **descartado como causa real (17-sep-2026)**: la consulta de verificación devolvió 0 filas, ningún duplicado. El deploy sí falló, pero por otra razón — ver fila siguiente | ~~El `CREATE UNIQUE INDEX` fallaría al desplegar si hubiera un duplicado~~ | ~~Verificado y descartado~~ |
 | ~~**El primer deploy de U3 falló.**~~ — **resuelto 18-sep-2026, con evidencia completa.** `coraje_migrator` (dueño de `core`/`helpdesk` desde F6) nunca recibió el privilegio `CREATE` sobre la base de datos completa — crear un schema nuevo (`app`) lo exige, ser dueño de schemas existentes no alcanza. Error real: `permission denied for database coraje` (SQLSTATE 42501), `applied_steps_count: 0`. Reparado: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` → `prisma migrate resolve --rolled-back` (confirmado por `rolled_back_at` poblado) → redeploy → columnas `rol_aplicacion`/`entra_object_id` confirmadas existentes → `UPDATE` exitoso sobre `daniellopera@rbcol.co` | ~~Bloqueaba por completo el arranque de `web` — el gate de U2 hizo justo lo que debía~~ | ~~Cerrado, con evidencia de cada paso~~ |
-| **Nuevo, 17-sep-2026: la regla de proxy que reenvía `/app/HelpDesk/*` al contenedor de HelpDesk no existe todavía.** `basePath` ya está construido de este lado (`next.config.ts`), pero sin esa regla en el Traefik de Coolify o el Nginx de Conecta, no hay tráfico real que llegue — el redirect URI de Entra ID apuntaría a una ruta que nadie sirve | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration y las variables de Coolify ya estén listos | Investigar cómo Conecta enruta hoy (`nginx-proxy.conf`, ya leído en el corte 9) y replicar el patrón hacia el contenedor de `web` de HelpDesk — pendiente, sin fecha |
+| **La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía** (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
 
 ## 7. Commits relevantes
@@ -377,101 +379,126 @@ habilitada). **Todo lo de identidad está construido, desplegado y con al menos 
 persona lista para ejercitarlo.**
 
 **En esta misma sesión se resolvió D7 (navegación/URL):** HelpDesk cuelga de
-`/app/HelpDesk` bajo el dominio de Conecta, conservando su sidebar/topbar. Construido:
+`/helpdesk` bajo el dominio de Conecta, conservando su sidebar/topbar. Construido:
 `basePath` en `next.config.ts`, y la corrección de todas las URLs/cookies que ese
 prefijo afecta (`src/server/auth/base-path.ts`, route handlers de auth, `login/page.tsx`,
 landing raíz) — commit `58eb27f`. **No construido, y es la única pieza que sigue
 bloqueando el primer ingreso real:** la regla de proxy en Conecta (Traefik de Coolify
-o su Nginx interno) que reenvíe `/app/HelpDesk/*` al contenedor de HelpDesk. Sin ella,
+o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin ella,
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — D7, mecanismo de navegación/URL
+## Acción inmediata para la siguiente sesión — D7, regla de enrutamiento en Traefik
 
 **Todo lo de identidad (U3) está cerrado con evidencia real.** Lo único que falta para
-completar un ingreso de punta a punta es que `https://conecta.rbgct.cloud/app/HelpDesk`
-tenga tráfico real llegándole al contenedor de HelpDesk. Esto **no es solo
-configuración** — hay dos preguntas de arquitectura sin resolver, y resolverlas mal
-puede significar rehacer código ya escrito (`basePath`).
+completar un ingreso de punta a punta es que `https://conecta.rbgct.cloud/helpdesk`
+tenga tráfico real llegándole al contenedor de HelpDesk.
 
-### Pregunta 1 — ¿réplica visual o composición en tiempo real?
+### Lo que se decidió el 18-sep-2026 y ya está construido en el código
 
-El usuario pidió conservar el sidebar y el topbar de Conecta, con el sidebar
-replegable en las vistas de HelpDesk (mensaje del usuario, esta sesión). Hay dos formas
-de lograrlo, y son mutuamente excluyentes en cómo se construyen:
+Las dos preguntas de arquitectura que este documento dejó abiertas en el corte anterior
+quedaron **resueltas con evidencia**, no por suposición:
 
-- **A. Enrutamiento transparente (lo que `basePath` ya asume).** Traefik o el Nginx de
-  Conecta reenvían `/app/HelpDesk/*` directo al contenedor de HelpDesk, sin tocar la
-  respuesta. El usuario nunca ve el HTML real de Conecta en esas rutas — así que el
-  sidebar/topbar **tendría que replicarse dentro del propio código de HelpDesk**
-  (nuevos componentes en `coraje-web`, sincronizados a mano con el diseño de Conecta,
-  sin compartir código real entre los dos repos). Esto es trabajo de `U5` (contrato de
-  diseño), no de esta pieza de infraestructura.
-- **B. Composición en tiempo de request.** Conecta (su backend o su Nginx) recibe la
-  petición, y **inyecta** el contenido de HelpDesk dentro de su propio layout real
-  (sidebar/topbar verdaderos, no replicados) — vía *server-side includes*, un fetch
-  proxied del fragmento HTML, o un patrón de micro-frontend. Bastante más trabajo, y
-  toca código de **ambos** repos, no solo configuración de proxy.
+- **Réplica visual, no composición en tiempo de request.** Se descartó que Conecta
+  inyectara el contenido de HelpDesk dentro de su layout real: su interfaz es un SPA de
+  React compilado con Vite y servido como estáticos (`Dockerfile.frontend`,
+  `docker-compose.prod.yml` de `RBGCT-REACT`), y su Nginx solo hace `proxy_pass`
+  (`nginx/nginx-proxy.conf`). No existe ningún layout renderizado en servidor donde
+  inyectar un fragmento. **El sidebar/topbar se replican dentro de HelpDesk** — trabajo
+  de `U5`, no de esta pieza.
+- **El prefijo cambia de `/app/HelpDesk` a `/helpdesk`.** `App.jsx` de Conecta monta
+  `path="/app"` como el portal de empleados de su propio SPA, con siete rutas hijas y su
+  propio guardia de sesión: no es un path libre del dominio. Además, un prefijo de caja
+  mixta produce un fallo silencioso (una URL con otra caja cae en el SPA de Conecta, que
+  redirige a su raíz, sin error visible). Razonamiento completo en
+  `contexto-canonico.md` §1.1.
 
-**`basePath` en `next.config.ts` ya construido asume la opción A.** Si la respuesta
-real es B, ese cambio (y varios de los que corrigieron cookies/redirects en el commit
-`58eb27f`) hay que revisarlos — no se descartan solos. Decidir esto es el primer paso,
-antes de tocar cualquier proxy.
+Construido en el código en este corte: `basePath: "/helpdesk"` (`next.config.ts`) y
+`APP_BASE_PATH` (`src/server/auth/base-path.ts`), con `tsc --noEmit`, `eslint`,
+`next build` y 26/26 pruebas limpios.
 
-### Pregunta 2 — ¿qué red Docker comparten (o no) Conecta y HelpDesk en Coolify?
+### Lo que falta, y es infraestructura, no código
 
-Confirmado por lectura directa de ambos repos (no por suposición):
-- HelpDesk (`coraje-web/docker-compose.yaml`) conecta su servicio `web` a dos redes
-  externas: `coolify` y `coraje_net`.
-- Conecta (`RBGCT-REACT/docker-compose.prod.yml`) conecta su `nginx` a su red propia
-  (`gct-network-prod`) más una red de Coolify específica de su proyecto, con la label
-  `traefik.docker.network=hqso6bdpvt7izvvlu2fq541t` — necesaria porque sin ella Traefik
-  resolvía la IP equivocada (`CLAUDE.md`/`docs` de ese repo lo documentan como
-  incidente ya resuelto ahí).
-- **Sin confirmar:** si la red genérica `coolify` que usa HelpDesk es la misma red (o
-  una red que también alcanza) que `hqso6bdpvt7izvvlu2fq541t` de Conecta. Si no lo es,
-  ni Traefik ni el Nginx de Conecta pueden alcanzar por nombre de red al contenedor de
-  HelpDesk sin una tercera red compartida.
-- **Sin confirmar:** el nombre DNS interno estable del contenedor `web` de HelpDesk.
-  Los logs de deploy de Coolify muestran nombres de contenedor con sufijo dinámico
-  (`web-w73wj6mtfbxih4kg5v53bn0w-162644214175`, cambia en cada deploy) — cualquier
-  regla de proxy que hardcodee ese nombre se rompería en el siguiente deploy. Hace
-  falta el alias de red estable (normalmente el nombre del servicio, `web`, pero eso
-  depende de cómo Coolify registra el alias en redes externas compartidas entre
-  proyectos — sin verificar).
+**El Nginx de Conecta no se toca.** La regla se declara en Traefik de Coolify, sobre el
+propio recurso `web` de HelpDesk, y Traefik prioriza la regla más específica
+(`Host(...) && PathPrefix(/helpdesk)` gana a `Host(...)` a secas), así que la petición
+nunca llega al stack de Conecta.
 
-Comandos de solo lectura para responder esto, a correr en la VPS y traer el resultado
-(nunca ejecutarlos yo mismo — `sin-acceso-directo-vps.md`):
+Pasos, en orden:
+
+1. **En Coolify, recurso `web` de HelpDesk → sección Domains:** declarar
+   `https://conecta.rbgct.cloud/helpdesk`.
+2. **Verificar que Coolify NO aplique *strip prefix*.** Es el único punto donde esto
+   puede fallar en silencio: si el proxy quita `/helpdesk` antes de reenviar, Next.js
+   con `basePath` no reconoce ninguna de sus rutas y responde 404 en todas. Si Coolify
+   genera un middleware de `stripprefix`, hay que desactivarlo.
+3. **En Entra ID, App Registration compartido con Conecta:** cambiar el redirect URI a
+   `https://conecta.rbgct.cloud/helpdesk/api/auth/microsoft/callback`. El anterior
+   (`/app/HelpDesk/...`) ya no sirve y conviene retirarlo, no dejar los dos.
+4. **En Coolify, variables de `web`:** actualizar `ENTRA_REDIRECT_URI` al mismo valor
+   exacto del paso 3. Debe coincidir carácter por carácter con lo registrado en Entra.
+5. **Redeploy y verificación**, en este orden:
 
 ```bash
-# Redes existentes y quién está en cada una — busca si "coolify" y la red de
-# Conecta (hqso6bdpvt7izvvlu2fq541t) son la misma o están puenteadas
-docker network ls
-docker network inspect coolify --format '{{range .Containers}}{{.Name}} {{end}}'
+# Debe responder 200 y servir HTML de HelpDesk, no el SPA de Conecta.
+curl -sS -o /dev/null -w '%{http_code}\n' https://conecta.rbgct.cloud/helpdesk/login
 
-# Nombre real y alias de red del contenedor web de HelpDesk vivo ahora mismo
-docker ps --filter "name=web" --format "{{.Names}}\t{{.Image}}"
-docker inspect --format '{{json .NetworkSettings.Networks}}' <nombre-del-contenedor-web-de-helpdesk>
+# Debe responder 200: confirma que el prefijo NO se está quitando (si Coolify
+# aplicara strip prefix, los assets de Next.js darían 404 aunque la página cargue).
+curl -sS -o /dev/null -w '%{http_code}\n' https://conecta.rbgct.cloud/helpdesk/_next/static/chunks/main-app.js
+
+# Debe seguir sirviendo Conecta, no HelpDesk — confirma que la regla no se comió
+# el resto del dominio.
+curl -sS -o /dev/null -w '%{http_code}\n' https://conecta.rbgct.cloud/app
 ```
 
-### Alternativa a considerar antes de tocar Nginx de Conecta
+Con eso, el ingreso real queda ejercitable: `daniellopera@rbcol.co` ya tiene
+`rol_aplicacion = 'AGENTE'` y las cinco variables están puestas.
 
-Si la respuesta a la Pregunta 1 es A (enrutamiento transparente), **puede que ni haga
-falta tocar el repositorio de Conecta en absoluto**: Coolify normalmente permite
-declarar, en la configuración del propio recurso de HelpDesk, un dominio con *path*
-(`conecta.rbgct.cloud/app/HelpDesk`) y deja que Traefik enrute directo — sin pasar por
-el Nginx interno de Conecta. Esto evita acoplar el código de los dos repos para una
-pieza que es pura infraestructura. Vale la pena revisar la UI de Coolify (sección
-"Domains" del recurso `web` de HelpDesk) antes de escribir ninguna regla a mano en
-`nginx-proxy.conf`.
+### Red Docker — resuelto, sin acción pendiente
+
+`coolify-proxy` (Traefik v3.6) está unido a `coolify`, a `coraje_net` y a la red del
+proyecto de HelpDesk (`w73wj6mtfbxih4kg5v53bn0w`) — verificado con `docker inspect` el
+18-sep-2026. Alcanza al contenedor `web` por cualquiera de las dos redes que este
+declara, así que **no hace falta ninguna red compartida nueva** y el escenario que
+produjo los 504 de Conecta (Traefik eligiendo la IP de una red a la que no está unido)
+**no aplica aquí**.
+
+Queda una elección no determinista, no un defecto: Traefik puede tomar la IP de `web`
+en `coolify` o en `coraje_net`. Fijarla con la label `traefik.docker.network=coolify`
+en `coraje-web/docker-compose.yaml` es higiene razonable, pero **conviene declarar
+primero el dominio y mirar las labels que Coolify genera solo**, para no introducir una
+label que entre en conflicto con las suyas.
+
+> **`coraje_net` no se puede quitar del compose de `coraje-web`.** Es la red donde vive
+> `coraje_postgres` (`docker-compose.yml` de la raíz): `web` y `migrate` la necesitan
+> para alcanzar la base. Lo que sí es un parche —y es otra cosa, del lado del proxy, no
+> de este repositorio— es que `coolify-proxy` esté unido a `coraje_net`; se hizo para
+> que Traefik alcanzara a n8n, que vive en esa red. La solución de raíz sería unir n8n
+> a la red `coolify` y sacar el proxy de `coraje_net`. **Fuera del alcance de U3:** n8n
+> corre en producción y el cambio no desbloquea nada de D7. Efecto lateral registrado,
+> no corregido: mientras el proxy siga en `coraje_net`, el contenedor de Traefik alcanza
+> directamente a `coraje_postgres`.
+
+### Lo que falta del lado de Conecta, y es de `U5`, no de ahora
+
+El SPA de Conecta no tiene hoy ningún enlace a HelpDesk (verificado por búsqueda en
+`frontend/src`). Cuando `U5` lo añada al sidebar, **debe ser un enlace de navegación
+real (`<a href>`), nunca `navigate()` de su router**: una navegación de cliente la
+resuelve React Router dentro de Conecta, que no conoce la ruta y redirige a su raíz.
+Es el único cambio que D7 exige en el repositorio de Conecta.
 
 ### Lo que NO hace falta repetir
 
-Todo lo de identidad (App Registration compartido con permisos completos, redirect URI
-`https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback`, `client secret`,
-cinco variables en Coolify, `daniellopera@rbcol.co` con `rol_aplicacion = 'AGENTE'`,
-migración aplicada) está cerrado y verificado — no es parte de esta acción inmediata.
+Todo lo de identidad (App Registration compartido con permisos completos, `client
+secret`, cinco variables en Coolify, `daniellopera@rbcol.co` con
+`rol_aplicacion = 'AGENTE'`, migración aplicada) está cerrado y verificado.
 
+**Única excepción, y sí es parte de la acción inmediata:** el redirect URI registrado en
+Entra ID y la variable `ENTRA_REDIRECT_URI` de Coolify apuntan todavía a
+`https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback`, la ruta anterior
+al cambio de prefijo del 18-sep-2026. Hay que cambiar ambos a `/helpdesk/...` — pasos 3
+y 4 de arriba.
 Los pasos numerados 1, 2 y 4 que siguen abajo quedan como referencia de lo que ya se
 completó en Entra ID/Coolify — no repetirlos.
 
@@ -662,15 +689,17 @@ WHERE id_asignado IN (
 | D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
 | D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
 | D5 | Acento visual propio del módulo o compartido con Impulsa | Materialización del tema | Usuario |
-| D7 | Mecanismo de proxy/enrutamiento hacia `/app/HelpDesk` **y** si el sidebar/topbar de Conecta se replica en HelpDesk o se compone en tiempo de request — dos preguntas distintas, ver "Acción inmediata para la siguiente sesión" | Si nadie puede llegar a HelpDesk, y si hay que revisar el `basePath` ya construido | Usuario, con investigación de la red Docker/Coolify |
+| D7 | **Cerrada el 18-sep-2026.** Ya no es una decisión abierta: queda una tarea de configuración, descrita en "Acción inmediata para la siguiente sesión" | — | — |
 
-> **D7 — la ruta (`/app/HelpDesk`) y el sidebar/topbar ya se decidieron** (18-sep-2026,
-> `contexto-canonico.md` §1.1). Lo que sigue abierto es **cómo** se construye eso:
-> réplica visual en HelpDesk vs. composición real en Conecta, y qué red Docker conecta
-> (o no) ambos contenedores en Coolify — ninguna de las dos es una pregunta de
-> identidad, ya resuelta desde el corte 9.
+> **D7 cerrada en sus tres preguntas** (`contexto-canonico.md` §1.1). La ruta es
+> `/helpdesk`, prefijo de primer nivel y en minúsculas. El sidebar/topbar **se replican
+> dentro de HelpDesk** (`U5`): la composición en tiempo de request se descartó con
+> evidencia, porque la interfaz de Conecta es un SPA sin layout de servidor. Y la red
+> Docker dejó de ser una incógnita: `coolify-proxy` ya alcanza al contenedor `web` por
+> `coolify` y por `coraje_net`, así que no hace falta ninguna red nueva. Lo que queda es
+> declarar el dominio con path en Coolify y actualizar el redirect URI — configuración,
+> no diseño.
 
-## Consecuencias vigentes que no son defectos
 
 - **U3 agrega la primera suite de pruebas automatizadas del repositorio** (26 unitarias,
   `pnpm test`) — cubre las cuatro causas de rechazo de admisión con prueba negativa y el
