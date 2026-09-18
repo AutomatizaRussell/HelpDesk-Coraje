@@ -267,7 +267,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 | ~~La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo`~~ — **descartado como causa real (17-sep-2026)**: la consulta de verificación devolvió 0 filas, ningún duplicado. El deploy sí falló, pero por otra razón — ver fila siguiente | ~~El `CREATE UNIQUE INDEX` fallaría al desplegar si hubiera un duplicado~~ | ~~Verificado y descartado~~ |
-| **Materializado, 17-sep-2026: el primer deploy de U3 falló.** `coraje_migrator` (dueño de `core`/`helpdesk` desde F6) nunca recibió el privilegio `CREATE` sobre la base de datos completa — crear un schema nuevo (`app`, de esta unidad) lo exige, ser dueño de schemas existentes no alcanza. Error real: `permission denied for database coraje` (SQLSTATE 42501), `applied_steps_count: 0` — nada se aplicó, sin DDL parcial que limpiar. Prisma bloquea con `P3009` cualquier migración nueva mientras ese registro fallido siga sin resolver | El servicio `migrate` falla explícitamente (bueno: no degradó en silencio) pero bloqueó por completo el arranque de `web` — el gate de U2 hizo justo lo que debía | `GRANT CREATE ON DATABASE coraje TO coraje_migrator;` (con `coraje_app`) + `prisma migrate resolve --rolled-back 20260911150000_agregar_identidad_empleados` + redeploy. Entregado al usuario como acción inmediata; **estado real de la reparación sin confirmar al cierre de este corte** |
+| ~~**El primer deploy de U3 falló.**~~ — **resuelto 18-sep-2026, con evidencia completa.** `coraje_migrator` (dueño de `core`/`helpdesk` desde F6) nunca recibió el privilegio `CREATE` sobre la base de datos completa — crear un schema nuevo (`app`) lo exige, ser dueño de schemas existentes no alcanza. Error real: `permission denied for database coraje` (SQLSTATE 42501), `applied_steps_count: 0`. Reparado: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` → `prisma migrate resolve --rolled-back` (confirmado por `rolled_back_at` poblado) → redeploy → columnas `rol_aplicacion`/`entra_object_id` confirmadas existentes → `UPDATE` exitoso sobre `daniellopera@rbcol.co` | ~~Bloqueaba por completo el arranque de `web` — el gate de U2 hizo justo lo que debía~~ | ~~Cerrado, con evidencia de cada paso~~ |
 | **Nuevo, 17-sep-2026: la regla de proxy que reenvía `/app/HelpDesk/*` al contenedor de HelpDesk no existe todavía.** `basePath` ya está construido de este lado (`next.config.ts`), pero sin esa regla en el Traefik de Coolify o el Nginx de Conecta, no hay tráfico real que llegue — el redirect URI de Entra ID apuntaría a una ruta que nadie sirve | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration y las variables de Coolify ya estén listos | Investigar cómo Conecta enruta hoy (`nginx-proxy.conf`, ya leído en el corte 9) y replicar el patrón hacia el contenedor de `web` de HelpDesk — pendiente, sin fecha |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
 
@@ -338,38 +338,35 @@ completar un ingreso de verdad hacen falta, en este orden, los cuatro pendientes
 siguen — los tres primeros son decisiones/datos que solo el usuario puede resolver, el
 cuarto es mecánico una vez resueltos los anteriores.
 
-**Corte 10 (17-sep-2026): los pasos 1, 2 y 4 de abajo quedaron completados por el
-usuario** — App Registration de Conecta reutilizado con todos los permisos (§9 de la
-spec), redirect URI `https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback`
-agregado, client secret generado, y las cinco variables puestas en Coolify. El paso 3
-(verificación de duplicados) también se corrió: **0 filas**, ningún correo activo
-duplicado — el índice único parcial no es un riesgo real. Pero el intento de deploy
-**falló**, y por eso el `UPDATE ... SET rol_aplicacion` de ese mismo paso 3 no pudo
-completarse (`column "rol_aplicacion" does not exist`) — ver el riesgo materializado en
-§6 para el diagnóstico completo (`permission denied for database coraje`, `coraje_migrator`
-sin `CREATE` sobre la base). Reparación entregada (`GRANT CREATE ON DATABASE`, luego
-`prisma migrate resolve --rolled-back`, luego redeploy) — **sin confirmar al cierre de
-este corte si ya se ejecutó y si el redeploy tuvo éxito.**
+**Corte 10 (17/18-sep-2026): los cuatro pendientes operativos de U3 quedaron
+completados por el usuario, con evidencia real, incluida la reparación del primer
+deploy fallido.** App Registration de Conecta reutilizado con todos los permisos (§9
+de la spec), redirect URI
+`https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback` agregado,
+client secret generado, cinco variables en Coolify. Verificación de duplicados: **0
+filas** — el índice único parcial nunca fue un riesgo real. El primer intento de
+deploy **falló** (`permission denied for database coraje`: `coraje_migrator` nunca
+tuvo `CREATE` sobre la base, solo era dueño de `core`/`helpdesk` desde F6) — reparado
+de punta a punta: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` → `prisma
+migrate resolve --rolled-back 20260911150000_agregar_identidad_empleados` (confirmado
+por `rolled_back_at` poblado en `_prisma_migrations`) → redeploy → columnas
+`rol_aplicacion`/`entra_object_id` confirmadas existentes → `UPDATE` exitoso
+(`rol_aplicacion = 'AGENTE'` para `daniellopera@rbcol.co`, la primera persona
+habilitada). **Todo lo de identidad está construido, desplegado y con al menos una
+persona lista para ejercitarlo.**
 
 **En esta misma sesión se resolvió D7 (navegación/URL):** HelpDesk cuelga de
 `/app/HelpDesk` bajo el dominio de Conecta, conservando su sidebar/topbar. Construido:
 `basePath` en `next.config.ts`, y la corrección de todas las URLs/cookies que ese
 prefijo afecta (`src/server/auth/base-path.ts`, route handlers de auth, `login/page.tsx`,
-landing raíz) — commit `58eb27f`. **No construido:** la regla de proxy en Conecta
-(Traefik de Coolify o su Nginx interno) que reenvíe `/app/HelpDesk/*` al contenedor de
-HelpDesk. Sin ella, aunque el deploy de HelpDesk funcione, ese path no le llega ningún
-tráfico — es la mitad de D7 que sigue pendiente, sin fecha ni diseño concreto todavía.
+landing raíz) — commit `58eb27f`. **No construido, y es la única pieza que sigue
+bloqueando el primer ingreso real:** la regla de proxy en Conecta (Traefik de Coolify
+o su Nginx interno) que reenvíe `/app/HelpDesk/*` al contenedor de HelpDesk. Sin ella,
+aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
+llega ningún tráfico.
 
-**Acción inmediata real de este corte, en orden:**
-1. Confirmar (o ejecutar) la reparación de la migración: `GRANT CREATE ON DATABASE
-   coraje TO coraje_migrator;` con `coraje_app`, luego `prisma migrate resolve
-   --rolled-back 20260911150000_agregar_identidad_empleados` contra
-   `DATABASE_MIGRATION_URL`, luego redisparar el deploy en Coolify.
-2. Tras un deploy exitoso (columna `rol_aplicacion` ya existente), volver a correr el
-   `UPDATE ... SET rol_aplicacion = 'AGENTE' WHERE correo_corporativo = '<real>'` sobre
-   la persona que va a probar el ingreso — no se pudo completar en este corte.
-3. Diseñar y construir la regla de proxy de Conecta hacia HelpDesk (D7, navegación) —
-   sin la cual nadie puede ejercitar el ingreso real aunque todo lo demás esté listo.
+**Acción inmediata real de este corte — una sola pieza, todo lo demás ya cerrado:**
+diseñar y construir la regla de proxy de Conecta hacia HelpDesk (D7, navegación).
 
 Los pasos numerados 1, 2 y 4 que siguen abajo quedan como referencia de lo que ya se
 completó en Entra ID/Coolify — no repetirlos.
@@ -399,8 +396,8 @@ Configurado en el Entra admin center:
 Coolify.
 
 **3. Verificación de duplicados — hecha, 0 filas.** Asignación de `rol_aplicacion` —
-**pendiente, bloqueada por la reparación de la migración** (paso 1 de la acción
-inmediata de arriba).
+**hecha, tras la reparación de la migración**: `daniellopera@rbcol.co` es la primera
+persona habilitada.
 
 **4. Cinco variables en Coolify — hecho.** `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`,
 `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`, `HELPDESK_TOKEN_ENCRYPTION_KEY`.
@@ -910,3 +907,14 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   (26/26) limpios. Queda pendiente, sin construir de ningún lado, la regla de proxy en
   Conecta que reenvíe `/app/HelpDesk/*` al contenedor de HelpDesk — sin ella, el
   `basePath` no tiene tráfico real que recibir.
+- 18-sep-2026 (corte 10, continuación) — el usuario ejecuta la reparación completa
+  contra la base real: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` (con
+  `coraje_app`), `prisma migrate resolve --rolled-back` sobre la imagen `migrate` ya
+  construida por Coolify (confirmado por `rolled_back_at` poblado en
+  `_prisma_migrations`), redeploy exitoso (columnas `rol_aplicacion`/`entra_object_id`
+  confirmadas), y el `UPDATE` que asigna `rol_aplicacion = 'AGENTE'` a
+  `daniellopera@rbcol.co` — la primera persona habilitada para ejercitar el ingreso.
+  **De los cuatro pendientes operativos de U3, los cuatro quedan cerrados con
+  evidencia real.** La única pieza que sigue bloqueando un ingreso de punta a punta es
+  la regla de proxy de Conecta hacia HelpDesk (D7, navegación) — sin construir, sin
+  fecha.
