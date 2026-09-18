@@ -1,15 +1,23 @@
 # Handoff técnico
 
 ```
-CORTE:   15-sep-2026 (corte 9)
-HEAD:    `10856c8`, publicado en `origin/main`
+CORTE:   18-sep-2026 (corte 10, cierre de sesión)
+HEAD:    `5f6aacd`, publicado en `origin/main`
 RAMA:    main
-UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA Y VERIFICADA ESTÁTICAMENTE, SIN
-         EJERCITAR CONTRA EL TENANT NI CONTRA LA BASE REAL. No cierra todavía:
-         quedan cuatro pendientes operativos, todos fuera del alcance de esta
-         sesión (crear el App Registration en Entra ID, generar la clave de
-         sellado, asignar `rol_aplicacion` a al menos una persona real, y poner
-         las variables nuevas en Coolify — ver acción inmediata).
+UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA, DESPLEGADA Y CON SUS CUATRO
+         PENDIENTES OPERATIVOS CERRADOS CON EVIDENCIA REAL (App Registration
+         compartido con Conecta configurado, clave de sellado en Coolify,
+         `daniellopera@rbcol.co` con `rol_aplicacion = 'AGENTE'`, cinco
+         variables en Coolify, migración aplicada tras reparar un `GRANT`
+         faltante). **No cierra todavía, y por una sola razón:** nadie ha
+         completado un ingreso real de punta a punta porque **la ruta
+         `/app/HelpDesk` no tiene todavía ningún tráfico llegándole** — falta
+         la pieza de proxy/enrutamiento del lado de Conecta. Ver "Acción
+         inmediata para la siguiente sesión" más abajo: ahí queda todo lo que
+         hace falta saber para retomar esto sin el contexto de esta
+         conversación, incluidas dos preguntas de arquitectura sin resolver
+         (no solo de configuración) y los comandos de solo lectura para
+         responderlas.
 
          Implementa el núcleo de `specs/acceso-empleados.md`: flujo OIDC con PKCE
          contra Entra ID (SSO silencioso vía `prompt=none`, con reintento
@@ -114,12 +122,14 @@ runbook operativo (`estado/operacion.md`) ni la cola de trabajo
 sobre el código está marcada como verificada o como pendiente de verificar.
 
 **Lo que cambió con U3:** existe una implementación real de identidad de empleados
-(OIDC/PKCE, admisión, sesión propia), con 26 pruebas unitarias — la primera evidencia
-automatizada del repositorio. **Lo que sigue sin existir:** un ingreso ejercitado contra
-el tenant real (el diseño está construido, no probado con una persona real), autorización
-de rol+acción, contrato de diseño, ciclo de vida del ticket. La capa de aplicación deja
-de ser enteramente un prototipo — la pieza de identidad ya tiene el rigor exigido por la
-spec, aunque todavía no se haya visto funcionar.
+(OIDC/PKCE, admisión, sesión propia), desplegada y aplicada contra la base real, con
+26 pruebas unitarias — la primera evidencia automatizada del repositorio. **Lo único
+que sigue sin ejercitarse es el ingreso mismo, y por una sola causa aislada:** la ruta
+`/app/HelpDesk` no tiene todavía tráfico real llegándole (D7, mecanismo de navegación
+con Conecta, sin construir) — no un defecto de la identidad en sí. Autorización de
+rol+acción, contrato de diseño y ciclo de vida del ticket siguen sin existir. La capa
+de aplicación deja de ser enteramente un prototipo — la pieza de identidad ya tiene el
+rigor exigido por la spec, construida y desplegada, solo falta la puerta de entrada.
 
 **Salvedad sobre lo que parece cerrado.** Escribir la especificación no adelanta la
 implementación. Tres de las cinco specs están además **bloqueadas por hechos que nadie
@@ -134,7 +144,7 @@ consultas de U1, lo que se construya será diseño por analogía.
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
 | Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial — U3 no lo tocó |
 | Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida — `REDIRECCION_PASSWORD` sigue en el código, su retiro es `U4` |
-| Identidad de empleados | `CONSTRUIDA, SIN EJERCITAR` | OIDC/PKCE, admisión y sesión propia implementados y verificados estáticamente (§4). Sin ingreso real contra el tenant: falta el App Registration en Entra ID |
+| Identidad de empleados | `CONSTRUIDA Y DESPLEGADA, SIN EJERCITAR POR FALTA DE RUTA` | OIDC/PKCE, admisión y sesión propia, migración aplicada contra la base real, App Registration/variables/persona ya configurados (§4). Nadie ha completado un ingreso real: `/app/HelpDesk` no tiene todavía ningún tráfico llegándole — falta la pieza de proxy/enrutamiento con Conecta (D7, ver "Acción inmediata para la siguiente sesión") |
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
 | Sistema de diseño | `NO EXISTE` | Contrato escrito |
@@ -143,7 +153,9 @@ consultas de U1, lo que se construya será diseño por analogía.
 
 ## 3. Capacidades publicadas en esta unidad
 
-Identidad de empleados, construida de punta a punta pero **sin un ingreso real todavía**:
+Identidad de empleados, construida, desplegada contra la base real y con la primera
+persona habilitada — **sin un ingreso real todavía porque falta la ruta hacia
+HelpDesk**, no por nada de lo que sigue:
 
 - Flujo OIDC/PKCE contra Entra ID con SSO silencioso (`prompt=none`) y reintento
   explícito tras rechazo del proveedor (`src/app/api/auth/microsoft/{start,callback}`).
@@ -158,9 +170,14 @@ Identidad de empleados, construida de punta a punta pero **sin un ingreso real t
 - Pantalla de login y landing raíz reemplazando el selector portal/redirección
   (`src/app/login/page.tsx`, `src/app/page.tsx`) — sin estilo propio a propósito, el
   contrato de diseño es competencia de `U5`.
-- Migración de esquema (`prisma/migrations/20260911150000_agregar_identidad_empleados`)
-  y `pnpm test` como script nuevo del proyecto (primera suite automatizada del
-  repositorio, 26 pruebas).
+- Migración de esquema (`prisma/migrations/20260911150000_agregar_identidad_empleados`),
+  **aplicada contra la base real** tras reparar un `GRANT` faltante (§6), y `pnpm test`
+  como script nuevo del proyecto (primera suite automatizada del repositorio, 26
+  pruebas).
+- `basePath: "/app/HelpDesk"` (`next.config.ts`) y la corrección de todos los puntos
+  donde Next.js no lo antepone solo: URLs de los route handlers de auth
+  (`src/server/auth/base-path.ts`), `path` de las cookies de sesión/estado, `<Link>`
+  en vez de `<a>` en `/login`, Server Action en vez de `<form action>` en la landing.
 
 ## 4. Evidencia disponible
 
@@ -275,7 +292,11 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
-| `10856c8` | **Corte vigente.** Registra U3 en handoff/specs/contexto-canonico, con la decisión de reutilizar el App Registration de Conecta |
+| `5f6aacd` | **Corte vigente.** Cierra la reparación del deploy de U3, con evidencia real de cada paso |
+| `e648fcb` | Documenta la resolución de D7 (navegación) y el fallo del deploy |
+| `58eb27f` | Construye `basePath` para D7: corrige URLs/cookies que Next.js no antepone solo |
+| `b2e7ad0` | Pide `Mail.Send`/`offline_access` desde el primer consentimiento (D6) |
+| `10856c8` | Registra U3 en handoff/specs/contexto-canonico, con la decisión de reutilizar el App Registration de Conecta |
 | `660fd2b` | Construye OIDC/PKCE, admisión y sesión de empleados (U3); nuevo schema `app`, columnas de identidad en `dim_personal`, `pnpm test` |
 | `0f1ced5` | Activa el servicio `migrate` en `docker-compose.yaml` y gatea el arranque de `web` — cierra U2 |
 | `08438c2` | Retira el `CREATE INDEX` embebido contra `core` del workflow de n8n, confirmado en vivo |
@@ -365,8 +386,91 @@ o su Nginx interno) que reenvíe `/app/HelpDesk/*` al contenedor de HelpDesk. Si
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-**Acción inmediata real de este corte — una sola pieza, todo lo demás ya cerrado:**
-diseñar y construir la regla de proxy de Conecta hacia HelpDesk (D7, navegación).
+## Acción inmediata para la siguiente sesión — D7, mecanismo de navegación/URL
+
+**Todo lo de identidad (U3) está cerrado con evidencia real.** Lo único que falta para
+completar un ingreso de punta a punta es que `https://conecta.rbgct.cloud/app/HelpDesk`
+tenga tráfico real llegándole al contenedor de HelpDesk. Esto **no es solo
+configuración** — hay dos preguntas de arquitectura sin resolver, y resolverlas mal
+puede significar rehacer código ya escrito (`basePath`).
+
+### Pregunta 1 — ¿réplica visual o composición en tiempo real?
+
+El usuario pidió conservar el sidebar y el topbar de Conecta, con el sidebar
+replegable en las vistas de HelpDesk (mensaje del usuario, esta sesión). Hay dos formas
+de lograrlo, y son mutuamente excluyentes en cómo se construyen:
+
+- **A. Enrutamiento transparente (lo que `basePath` ya asume).** Traefik o el Nginx de
+  Conecta reenvían `/app/HelpDesk/*` directo al contenedor de HelpDesk, sin tocar la
+  respuesta. El usuario nunca ve el HTML real de Conecta en esas rutas — así que el
+  sidebar/topbar **tendría que replicarse dentro del propio código de HelpDesk**
+  (nuevos componentes en `coraje-web`, sincronizados a mano con el diseño de Conecta,
+  sin compartir código real entre los dos repos). Esto es trabajo de `U5` (contrato de
+  diseño), no de esta pieza de infraestructura.
+- **B. Composición en tiempo de request.** Conecta (su backend o su Nginx) recibe la
+  petición, y **inyecta** el contenido de HelpDesk dentro de su propio layout real
+  (sidebar/topbar verdaderos, no replicados) — vía *server-side includes*, un fetch
+  proxied del fragmento HTML, o un patrón de micro-frontend. Bastante más trabajo, y
+  toca código de **ambos** repos, no solo configuración de proxy.
+
+**`basePath` en `next.config.ts` ya construido asume la opción A.** Si la respuesta
+real es B, ese cambio (y varios de los que corrigieron cookies/redirects en el commit
+`58eb27f`) hay que revisarlos — no se descartan solos. Decidir esto es el primer paso,
+antes de tocar cualquier proxy.
+
+### Pregunta 2 — ¿qué red Docker comparten (o no) Conecta y HelpDesk en Coolify?
+
+Confirmado por lectura directa de ambos repos (no por suposición):
+- HelpDesk (`coraje-web/docker-compose.yaml`) conecta su servicio `web` a dos redes
+  externas: `coolify` y `coraje_net`.
+- Conecta (`RBGCT-REACT/docker-compose.prod.yml`) conecta su `nginx` a su red propia
+  (`gct-network-prod`) más una red de Coolify específica de su proyecto, con la label
+  `traefik.docker.network=hqso6bdpvt7izvvlu2fq541t` — necesaria porque sin ella Traefik
+  resolvía la IP equivocada (`CLAUDE.md`/`docs` de ese repo lo documentan como
+  incidente ya resuelto ahí).
+- **Sin confirmar:** si la red genérica `coolify` que usa HelpDesk es la misma red (o
+  una red que también alcanza) que `hqso6bdpvt7izvvlu2fq541t` de Conecta. Si no lo es,
+  ni Traefik ni el Nginx de Conecta pueden alcanzar por nombre de red al contenedor de
+  HelpDesk sin una tercera red compartida.
+- **Sin confirmar:** el nombre DNS interno estable del contenedor `web` de HelpDesk.
+  Los logs de deploy de Coolify muestran nombres de contenedor con sufijo dinámico
+  (`web-w73wj6mtfbxih4kg5v53bn0w-162644214175`, cambia en cada deploy) — cualquier
+  regla de proxy que hardcodee ese nombre se rompería en el siguiente deploy. Hace
+  falta el alias de red estable (normalmente el nombre del servicio, `web`, pero eso
+  depende de cómo Coolify registra el alias en redes externas compartidas entre
+  proyectos — sin verificar).
+
+Comandos de solo lectura para responder esto, a correr en la VPS y traer el resultado
+(nunca ejecutarlos yo mismo — `sin-acceso-directo-vps.md`):
+
+```bash
+# Redes existentes y quién está en cada una — busca si "coolify" y la red de
+# Conecta (hqso6bdpvt7izvvlu2fq541t) son la misma o están puenteadas
+docker network ls
+docker network inspect coolify --format '{{range .Containers}}{{.Name}} {{end}}'
+
+# Nombre real y alias de red del contenedor web de HelpDesk vivo ahora mismo
+docker ps --filter "name=web" --format "{{.Names}}\t{{.Image}}"
+docker inspect --format '{{json .NetworkSettings.Networks}}' <nombre-del-contenedor-web-de-helpdesk>
+```
+
+### Alternativa a considerar antes de tocar Nginx de Conecta
+
+Si la respuesta a la Pregunta 1 es A (enrutamiento transparente), **puede que ni haga
+falta tocar el repositorio de Conecta en absoluto**: Coolify normalmente permite
+declarar, en la configuración del propio recurso de HelpDesk, un dominio con *path*
+(`conecta.rbgct.cloud/app/HelpDesk`) y deja que Traefik enrute directo — sin pasar por
+el Nginx interno de Conecta. Esto evita acoplar el código de los dos repos para una
+pieza que es pura infraestructura. Vale la pena revisar la UI de Coolify (sección
+"Domains" del recurso `web` de HelpDesk) antes de escribir ninguna regla a mano en
+`nginx-proxy.conf`.
+
+### Lo que NO hace falta repetir
+
+Todo lo de identidad (App Registration compartido con permisos completos, redirect URI
+`https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback`, `client secret`,
+cinco variables en Coolify, `daniellopera@rbcol.co` con `rol_aplicacion = 'AGENTE'`,
+migración aplicada) está cerrado y verificado — no es parte de esta acción inmediata.
 
 Los pasos numerados 1, 2 y 4 que siguen abajo quedan como referencia de lo que ya se
 completó en Entra ID/Coolify — no repetirlos.
@@ -558,10 +662,13 @@ WHERE id_asignado IN (
 | D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
 | D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
 | D5 | Acento visual propio del módulo o compartido con Impulsa | Materialización del tema | Usuario |
-| D7 | Mecanismo de navegación/URL con Conecta: *reverse proxy*, subdominio con shell replicado u otro (la sub-pregunta de identidad ya se resolvió, corte 9 — ver `contexto-canonico.md` §1.1) | Rutas, despliegue y el shell visual | Usuario y responsable de Conecta |
+| D7 | Mecanismo de proxy/enrutamiento hacia `/app/HelpDesk` **y** si el sidebar/topbar de Conecta se replica en HelpDesk o se compone en tiempo de request — dos preguntas distintas, ver "Acción inmediata para la siguiente sesión" | Si nadie puede llegar a HelpDesk, y si hay que revisar el `basePath` ya construido | Usuario, con investigación de la red Docker/Coolify |
 
-> **D7 (navegación) se resuelve inspeccionando Conecta**, ya clonado y leído para la
-> sub-pregunta de identidad (corte 9) pero no para su capa de rutas/shell.
+> **D7 — la ruta (`/app/HelpDesk`) y el sidebar/topbar ya se decidieron** (18-sep-2026,
+> `contexto-canonico.md` §1.1). Lo que sigue abierto es **cómo** se construye eso:
+> réplica visual en HelpDesk vs. composición real en Conecta, y qué red Docker conecta
+> (o no) ambos contenedores en Coolify — ninguna de las dos es una pregunta de
+> identidad, ya resuelta desde el corte 9.
 
 ## Consecuencias vigentes que no son defectos
 
