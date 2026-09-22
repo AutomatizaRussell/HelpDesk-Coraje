@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 
-import { requireRedireccionAuth } from "@/features/redireccion/data/redireccionAuth";
 import { prisma } from "@/lib/prisma";
+import { requireCurrentEmployee } from "@/server/auth/current-employee";
 
 /**
  * Valida de forma mínima un UUID recibido desde formulario.
@@ -90,7 +90,7 @@ async function kickOutboxWorkflow(): Promise<void> {
  * Redirige un ticket creado desde el portal hacia un área legacy válida.
  *
  * Reglas actuales:
- * - Solo empleado autenticado temporalmente puede ejecutar.
+ * - Solo un empleado con sesión viva y admisible puede ejecutar.
  * - El ticket debe venir de PORTAL_CLIENTE.
  * - El ticket debe estar ABIERTO.
  * - El ticket no debe tener área destino previa.
@@ -107,7 +107,12 @@ async function kickOutboxWorkflow(): Promise<void> {
  * Esta acción NO escribe directamente en SharePoint.
  */
 export async function redirectTicketAction(formData: FormData) {
-  await requireRedireccionAuth();
+  // El guard va aquí y no solo en la página: una Server Action exportada es
+  // un endpoint alcanzable por sí mismo, con independencia de qué dibuje la
+  // vista que la invoca. Sin destino de retorno porque esto no es una
+  // navegación — quien llegue sin sesión debe ver el login, no volver a una
+  // escritura que nunca autorizó.
+  await requireCurrentEmployee();
 
   const ticketId = assertUuid(String(formData.get("ticketId") ?? ""), "ticketId");
   const areaId = assertUuid(String(formData.get("areaId") ?? ""), "areaId");

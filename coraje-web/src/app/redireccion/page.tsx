@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app/AppShell";
 import { PendingRedirectTicketsTable } from "@/features/redireccion/components/PendingRedirectTicketsTable";
 import { getPendingRedirectTickets } from "@/features/redireccion/data/getPendingRedirectTickets";
-import { requireRedireccionAuth } from "@/features/redireccion/data/redireccionAuth";
+import { requireCurrentEmployee } from "@/server/auth/current-employee";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,12 @@ export const dynamic = "force-dynamic";
  * envío posterior hacia SharePoint/HelpDeskBd.
  */
 export default async function RedireccionPage() {
-  await requireRedireccionAuth();
+  // Identidad de empleado, no clave compartida: esta vista pasó de estar
+  // detrás de una contraseña de entorno —que todo el equipo conocía y que no
+  // dejaba rastro de quién había entrado— a exigir la sesión emitida por el
+  // flujo OIDC de specs/acceso-empleados.md. El destino se pasa para que,
+  // tras el ingreso, la persona vuelva aquí y no a la raíz.
+  await requireCurrentEmployee("/redireccion");
 
   const tickets = await getPendingRedirectTickets();
 

@@ -14,6 +14,7 @@ import {
   type EmployeeAdmissionRejection,
 } from "./employee-admission";
 import type { EntraIdTokenClaims } from "./entra-oidc";
+import { SESSION_COOKIE_NAME } from "./session-cookie";
 
 /**
  * Sesión propia opaca (specs/acceso-empleados.md §6): el navegador guarda
@@ -21,7 +22,10 @@ import type { EntraIdTokenClaims } from "./entra-oidc";
  * pertenece, qué proveedor afirmó la identidad y cuándo muere.
  */
 
-export const SESSION_COOKIE_NAME = "helpdesk_employee_session";
+// Reexportado, no redefinido: el nombre vive en `session-cookie.ts` para que
+// el perímetro pueda leerlo sin arrastrar Prisma al runtime del borde. Se
+// reexporta para no obligar al resto de la aplicación a cambiar de origen.
+export { SESSION_COOKIE_NAME };
 
 // Vida absoluta de una jornada, sin renovación deslizante — una sesión que
 // se renueva sola no vence nunca.

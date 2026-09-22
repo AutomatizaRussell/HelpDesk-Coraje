@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app/AppShell";
 import { RedirectTicketForm } from "@/features/redireccion/components/RedirectTicketForm";
 import { getRedirectCatalog } from "@/features/redireccion/data/getRedirectCatalog";
 import { getRedirectTicket } from "@/features/redireccion/data/getRedirectTicket";
-import { requireRedireccionAuth } from "@/features/redireccion/data/redireccionAuth";
+import { requireCurrentEmployee } from "@/server/auth/current-employee";
 
 import { redirectTicketAction } from "./actions";
 
@@ -41,9 +41,12 @@ function formatDate(date: Date | null): string {
 export default async function RedirectTicketPage({
   params,
 }: RedirectTicketPageProps) {
-  await requireRedireccionAuth();
-
   const { id } = await params;
+
+  // El identificador se resuelve antes del guard a propósito: así el destino
+  // de retorno es esta misma ficha y no la bandeja, y quien llega por un
+  // enlace directo sin sesión vuelve exactamente a donde iba.
+  await requireCurrentEmployee(`/redireccion/${id}`);
 
   const [ticket, catalog] = await Promise.all([
     getRedirectTicket(id),

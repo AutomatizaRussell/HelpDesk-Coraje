@@ -23,9 +23,10 @@ async function logoutAction() {
  * Teams). Con sesión: entra.
  *
  * El selector portal/redirección que vivía aquí se retira — la
- * autorización destructiva de CLAUDE.md cubre esta vista. `/portal` y
- * `/redireccion` no se tocan, solo pierden su punto de entrada visual desde
- * la raíz (U4 decide su destino final).
+ * autorización destructiva de CLAUDE.md cubre esta vista. U4 resolvió qué
+ * era de cada destino: `/portal` se retiró por completo (era una superficie
+ * anónima que listaba clientes y escribía tickets), y `/redireccion` quedó
+ * detrás de la identidad de empleado.
  *
  * Sin estilo propio, mismo motivo que /login: el contrato de diseño de
  * HelpDesk es competencia de U5, no de esta unidad.
