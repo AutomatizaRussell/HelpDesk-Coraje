@@ -1,9 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-
-import { buildAppUrl } from "@/server/auth/base-path";
+import { redirectWithinApp } from "@/server/auth/app-redirect";
 import { revokeCurrentEmployeeSession } from "@/server/auth/employee-session";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   await revokeCurrentEmployeeSession("LOGOUT");
-  return NextResponse.redirect(buildAppUrl("/login", request.url));
+  return redirectWithinApp("/login");
 }

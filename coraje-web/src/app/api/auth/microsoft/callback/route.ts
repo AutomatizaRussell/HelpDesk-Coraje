@@ -1,8 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-import { APP_BASE_PATH, buildAppUrl } from "@/server/auth/base-path";
+import { redirectWithinApp } from "@/server/auth/app-redirect";
+import { APP_BASE_PATH } from "@/server/auth/base-path";
 import {
   exchangeAuthorizationCode,
   validateIdToken,
@@ -29,19 +30,17 @@ function constantTimeEquals(a: string, b: string): boolean {
   return timingSafeEqual(bufferA, bufferB);
 }
 
-function redirectToLogin(request: NextRequest, error: string) {
-  const target = buildAppUrl("/login", request.url);
-  target.searchParams.set("error", error);
-  const response = NextResponse.redirect(target);
+function redirectToLogin(error: string) {
+  const response = redirectWithinApp("/login", { error });
   response.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
   return response;
 }
 
-function redirectToSilentRetry(request: NextRequest, destino: string) {
-  const target = buildAppUrl("/api/auth/microsoft/start", request.url);
-  target.searchParams.set("destino", destino);
-  target.searchParams.set("silent", "0");
-  const response = NextResponse.redirect(target);
+function redirectToSilentRetry(destino: string) {
+  const response = redirectWithinApp("/api/auth/microsoft/start", {
+    destino,
+    silent: "0",
+  });
   response.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
   return response;
 }
@@ -54,29 +53,29 @@ export async function GET(request: NextRequest) {
 
   const sealedStateCookie = request.cookies.get(STATE_COOKIE_NAME)?.value;
   if (!sealedStateCookie) {
-    return redirectToLogin(request, "STATE_MISSING");
+    return redirectToLogin("STATE_MISSING");
   }
 
   let state: SealedOidcState;
   try {
     state = JSON.parse(openSecret(sealedStateCookie)) as SealedOidcState;
   } catch {
-    return redirectToLogin(request, "STATE_INVALID");
+    return redirectToLogin("STATE_INVALID");
   }
 
   // Intento silencioso que Entra rechazó (login_required/interaction_required):
   // reintentar una sola vez en modo explícito, nunca en bucle — la marca de
   // un solo uso ya la puso /start.
   if (providerError && state.silent) {
-    return redirectToSilentRetry(request, state.destino);
+    return redirectToSilentRetry(state.destino);
   }
 
   if (providerError || !code || !returnedState) {
-    return redirectToLogin(request, "PROVIDER_ERROR");
+    return redirectToLogin("PROVIDER_ERROR");
   }
 
   if (!constantTimeEquals(returnedState, state.state)) {
-    return redirectToLogin(request, "STATE_MISMATCH");
+    return redirectToLogin("STATE_MISMATCH");
   }
 
   try {
@@ -94,16 +93,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!result.admitted) {
-      return redirectToLogin(request, result.reason);
+      return redirectToLogin(result.reason);
     }
 
     // Se sanea de nuevo aquí, no solo al sellar en /start: el sellado prueba
     // que este servidor escribió el valor, no que era seguro cuando lo hizo
     // (specs/acceso-empleados.md §5, paso 2 — defensa en profundidad, no
     // redundancia decorativa).
-    const successResponse = NextResponse.redirect(
-      buildAppUrl(sanitizeDestination(state.destino), request.url),
-    );
+    const successResponse = redirectWithinApp(sanitizeDestination(state.destino));
     successResponse.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
     successResponse.cookies.set(SESSION_COOKIE_NAME, result.token, {
       httpOnly: true,
@@ -119,6 +116,6 @@ export async function GET(request: NextRequest) {
     // código de un enum cerrado que /login interpreta. El detalle real sí
     // queda en los logs del servidor para poder diagnosticarlo.
     console.error("Fallo al validar el ingreso con Microsoft:", error);
-    return redirectToLogin(request, "VALIDATION_FAILED");
+    return redirectToLogin("VALIDATION_FAILED");
   }
 }
