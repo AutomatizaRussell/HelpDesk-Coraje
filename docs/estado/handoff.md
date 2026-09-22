@@ -1,25 +1,24 @@
 # Handoff técnico
 
 ```
-CORTE:   18-sep-2026 (corte 11, D7 cerrada)
-HEAD:    `PENDIENTE` — se fija al publicar, en el commit de corte siguiente
+CORTE:   22-sep-2026 (corte 12, U3 CERRADA)
+HEAD:    `306d286` — más la documentación de este corte, que se publica encima
 RAMA:    main
-UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA, DESPLEGADA Y CON SUS CUATRO
-         PENDIENTES OPERATIVOS CERRADOS CON EVIDENCIA REAL (App Registration
-         compartido con Conecta configurado, clave de sellado en Coolify,
-         `daniellopera@rbcol.co` con `rol_aplicacion = 'AGENTE'`, cinco
-         variables en Coolify, migración aplicada tras reparar un `GRANT`
-         faltante). **No cierra todavía, y por una sola razón:** nadie ha
-         completado un ingreso real de punta a punta porque **la ruta
-         `/helpdesk` no tiene todavía ningún tráfico llegándole** — falta
-         declarar la regla de enrutamiento en Traefik de Coolify. **D7 dejó de
-         ser una decisión abierta en este corte:** sus tres preguntas
-         —prefijo, réplica vs. composición del shell, y red Docker— quedaron
-         resueltas con evidencia, y lo que resta es configuración, no diseño.
-         El prefijo cambió de `/app/HelpDesk` a `/helpdesk`. Ver "Acción
-         inmediata para la siguiente sesión" más abajo: ahí queda todo lo que
-         hace falta saber para retomar esto sin el contexto de esta
-         conversación.
+UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
+         DESPLIEGUE REAL.** Los ocho escenarios mínimos de `plan-ejecucion.md`
+         §U3 quedan resueltos: **seis ejercitados de punta a punta el
+         22-sep-2026** contra `https://conecta.rbgct.cloud/helpdesk`, y dos
+         (`NOT_REGISTERED`, `EMAIL_INVALID`) cubiertos **solo por prueba
+         unitaria** — no se declaran ejercitados, y la razón queda en §4.
+
+         Lo que faltaba del corte anterior era infraestructura, y se hizo: la
+         regla de enrutamiento en Traefik de Coolify, más el redirect URI de
+         Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`. Al ejercitarla
+         apareció un defecto que solo el despliegue real podía revelar —las
+         redirecciones internas se construían sobre `request.url`, que detrás
+         del proxy vale `0.0.0.0:3000`—, corregido en `306d286` con `Location`
+         relativo. **U4 pasa a ser la cabeza de la cola**; ver "Acción
+         inmediata para la siguiente sesión" más abajo.
 
          Implementa el núcleo de `specs/acceso-empleados.md`: flujo OIDC con PKCE
          contra Entra ID (SSO silencioso vía `prompt=none`, con reintento
@@ -68,14 +67,22 @@ UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — CONSTRUIDA, DESPLEGADA Y CON SUS CUATR
          `eslint` y `next build` limpios; 26/26 pruebas unitarias (`pnpm test`,
          `node --test` vía `tsx`) cubriendo el orden de validación del
          `id_token`, las cuatro causas de rechazo de admisión y el saneo de
-         destino. **Ninguna de las dos cosas que probarían esto de verdad se
-         ejercitó todavía:** ni un ingreso real contra el tenant (no existe el
-         App Registration), ni la migración contra la base real (corre con el
-         servicio `migrate` en el próximo deploy, y el índice único parcial de
-         correo activo podría fallar si hay un duplicado real no detectado —
-         ver acción inmediata).
+         destino. **Y, desde este corte, comportamiento observado contra el
+         despliegue:** ingreso real, cierre de sesión, expulsión por
+         desactivación, rechazo por rol ausente, cookie de sesión manipulada
+         sin efecto, destino de retorno saneado, y el enlace del sujeto
+         inmutable confirmado en `core.dim_personal`. Detalle en §4.
 
-CORTE ANTERIOR (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
+CORTE ANTERIOR (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
+         prefijo cambia de `/app/HelpDesk` a `/helpdesk` (`cfce427`), tras
+         confirmar por lectura del repositorio real de Conecta que `/app` es su
+         propio portal de empleados —no un path libre del dominio— y que un
+         prefijo de caja mixta falla en silencio. Se descarta la composición en
+         tiempo de request: Conecta es un SPA de Vite servido como estáticos,
+         sin layout de servidor donde inyectar un fragmento; el shell se
+         replica dentro de HelpDesk (`U5`).
+
+CORTE DOS ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          mínimos de `plan-ejecucion.md` cerrados y verificados: baseline
          adoptado (corte 6) · credenciales separadas, incluida la corrida real
          de n8n con `coraje_etl` (corte 7) · servicio `migrate` desplegado y
@@ -84,7 +91,7 @@ CORTE ANTERIOR (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          usuario creó un ticket real desde el portal y probó la redirección.
          **U3 pasó a ser la cabeza de `plan-ejecucion.md`.**
 
-CORTE DOS ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
+CORTE TRES ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
          revela que `coraje_app` era superusuario y el único rol de aplicación del
          clúster — se amplía F6 para retirarlo también de n8n. Creados
          `coraje_migrator`, `coraje_runtime`, `coraje_etl`; `coraje_app` rotado y
@@ -95,7 +102,7 @@ CORTE DOS ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRAN
          más (ownership de `staging`, `CREATE INDEX` embebido contra `core`),
          corregidos. Detalle completo en el changelog.
 
-CORTE TRES ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
+CORTE CUATRO ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
          `20260910000000_baseline/migration.sql`, se migran 20 archivos de
          aplicación a `camelCase`, y se adopta la migración contra producción con
@@ -123,20 +130,32 @@ runbook operativo (`estado/operacion.md`) ni la cola de trabajo
 **Lo que está cerrado:** el conjunto documental existe, es coherente y cada afirmación
 sobre el código está marcada como verificada o como pendiente de verificar.
 
-**Lo que cambió con U3:** existe una implementación real de identidad de empleados
-(OIDC/PKCE, admisión, sesión propia), desplegada y aplicada contra la base real, con
-26 pruebas unitarias — la primera evidencia automatizada del repositorio. **Lo único
-que sigue sin ejercitarse es el ingreso mismo, y por una sola causa aislada:** la ruta
-`/helpdesk` no tiene todavía tráfico real llegándole (D7, mecanismo de navegación
-con Conecta, sin construir) — no un defecto de la identidad en sí. Autorización de
-rol+acción, contrato de diseño y ciclo de vida del ticket siguen sin existir. La capa
-de aplicación deja de ser enteramente un prototipo — la pieza de identidad ya tiene el
-rigor exigido por la spec, construida y desplegada, solo falta la puerta de entrada.
+**Lo que cambió con U3:** HelpDesk tiene identidad de empleados real, **en uso**. Deja
+de ser código construido y pasa a ser comportamiento observado: una persona entra con su
+cuenta corporativa, la aplicación emite su propia sesión, la revoca al salir, y
+desactivar a alguien en el directorio lo expulsa en su siguiente navegación sin esperar
+a que caduque nada. Es la primera pieza del proyecto con ese grado de evidencia.
 
-**Salvedad sobre lo que parece cerrado.** Escribir la especificación no adelanta la
-implementación. Tres de las cinco specs están además **bloqueadas por hechos que nadie
-ha medido**, no por trabajo pendiente: sin el levantamiento de PowerApps y sin las cinco
-consultas de U1, lo que se construya será diseño por analogía.
+**Salvedades sobre lo que parece cerrado.** Tres, ninguna cosmética:
+
+1. **Dos de las cuatro causas de rechazo siguen sin prueba real.** `NOT_REGISTERED`
+   exige una cuenta del tenant ausente de `dim_personal`, y `EMAIL_INVALID` un
+   `id_token` sin correo válido, que no se puede producir contra Entra a mano. Ambas son
+   reglas puras en `evaluateAdmissionRules`, cubiertas por la suite unitaria. Se cierran
+   como **cobertura unitaria**, no como escenario ejercitado.
+2. **Autorización sigue sin existir.** `rol_aplicacion` tiene un único valor y nadie
+   consulta permisos: entrar es todo lo que hoy se decide. El autorizador ejecutable es
+   `U7`.
+3. **El perímetro sigue abierto.** `/portal` y `/redireccion` continúan accesibles sin
+   identidad — se confirmó al probar el destino de retorno, que aterrizó en
+   `/helpdesk/portal` sin exigir nada. Es exactamente el alcance de `U4`, ahora cabeza
+   de la cola, y por eso U4 no es opcional ni posterior: mientras esa puerta viva, hay
+   dos formas de entrar y la más débil no deja rastro de quién entró.
+
+Contrato de diseño y ciclo de vida del ticket siguen sin existir, y escribir la
+especificación no adelanta la implementación. Tres de las cinco specs están además
+**bloqueadas por hechos que nadie ha medido**, no por trabajo pendiente: sin el
+levantamiento de PowerApps (U0), lo que se construya será diseño por analogía.
 
 ## 2. Estado por fase
 
@@ -146,7 +165,7 @@ consultas de U1, lo que se construya será diseño por analogía.
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
 | Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial — U3 no lo tocó |
 | Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida — `REDIRECCION_PASSWORD` sigue en el código, su retiro es `U4` |
-| Identidad de empleados | `CONSTRUIDA Y DESPLEGADA, SIN EJERCITAR POR FALTA DE RUTA` | OIDC/PKCE, admisión y sesión propia, migración aplicada contra la base real, App Registration/variables/persona ya configurados (§4). Nadie ha completado un ingreso real: `/helpdesk` no tiene todavía ningún tráfico llegándole — falta la pieza de proxy/enrutamiento con Conecta (D7, ver "Acción inmediata para la siguiente sesión") |
+| Identidad de empleados | `EJERCITADA DE PUNTA A PUNTA` | Ingreso real, cierre de sesión, expulsión por desactivación, rechazo por rol ausente, cookie de sesión manipulada sin efecto y destino de retorno saneado — **todo contra el despliegue, 22-sep-2026** (§4). `NOT_REGISTERED` y `EMAIL_INVALID` quedan con cobertura unitaria únicamente |
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
 | Sistema de diseño | `NO EXISTE` | Contrato escrito |
@@ -155,9 +174,8 @@ consultas de U1, lo que se construya será diseño por analogía.
 
 ## 3. Capacidades publicadas en esta unidad
 
-Identidad de empleados, construida, desplegada contra la base real y con la primera
-persona habilitada — **sin un ingreso real todavía porque falta la ruta hacia
-HelpDesk**, no por nada de lo que sigue:
+Identidad de empleados, **en funcionamiento sobre el despliegue real**, con la primera
+persona habilitada y la ruta pública sirviendo tráfico:
 
 - Flujo OIDC/PKCE contra Entra ID con SSO silencioso (`prompt=none`) y reintento
   explícito tras rechazo del proveedor (`src/app/api/auth/microsoft/{start,callback}`).
@@ -180,6 +198,14 @@ HelpDesk**, no por nada de lo que sigue:
   donde Next.js no lo antepone solo: URLs de los route handlers de auth
   (`src/server/auth/base-path.ts`), `path` de las cookies de sesión/estado, `<Link>`
   en vez de `<a>` en `/login`, Server Action en vez de `<form action>` en la landing.
+- Redirecciones internas con `Location` relativo (`src/server/auth/app-redirect.ts`,
+  `buildAppPath`). Detrás del proxy de Coolify, `request.url` trae el Host del socket
+  interno del contenedor (`0.0.0.0:3000`), no el que pidió el navegador. Se descartó
+  reconstruir el origen desde `x-forwarded-proto`/`x-forwarded-host`: obliga a validarlos
+  contra lista blanca so pena de convertir cada redirección en un *open redirect*,
+  mientras que un `Location` relativo lo resuelve el navegador contra su propio origen
+  (RFC 7231 §7.1.2). El 307 preserva método y cuerpo, que es lo que necesita el cierre
+  de sesión por POST.
 
 ## 4. Evidencia disponible
 
@@ -192,6 +218,31 @@ HelpDesk**, no por nada de lo que sigue:
 | 3 consultas SQL en la VPS (U1 §1, §4, §5) + lectura directa de `n8n/` (U1 §2, §3), ambas **10-sep-2026** | Ver tabla siguiente — las cinco preguntas de U1 | Que la instancia viva de n8n tenga hoy exactamente lo que el archivo exportado describe (nota al pie de esta sección) |
 | `prisma generate`/`tsc --noEmit`/`eslint`/`next build` + 26 pruebas unitarias, 15-sep-2026, en local con FNM (Node 24.16.0) | Que el código de U3 tipa, construye y las reglas puras de validación/admisión/saneo se comportan como la spec exige, **con datos de prueba** | Que el flujo funcione contra Entra ID real, ni que la migración aplique limpio contra `core.dim_personal` con sus 167+ filas reales — pruebas contractuales, no E2E |
 | Lectura del repositorio real de Conecta (`RBGCT-REACT`, ramas `main` y `stiben`), 15-sep-2026 | Cómo autentica Conecta hoy y qué no ofrece para federar identidad (§ cabecera) | Que `stiben` vaya a desplegarse tal cual, ni el estado de Conecta más allá de este corte |
+
+| **Ejercicio de U3 contra el despliegue real, 22-sep-2026** — navegador sobre `https://conecta.rbgct.cloud/helpdesk` más consultas a `app.employee_session` y `core.dim_personal` | Seis de los ocho escenarios mínimos de `plan-ejecucion.md` §U3, el enlace del sujeto inmutable y la revocación en servidor — tabla siguiente | `NOT_REGISTERED` ni `EMAIL_INVALID` (no reproducibles sin una cuenta del tenant ajena al directorio, o un `id_token` sin correo válido); tampoco la expiración de 8h, que solo se observa dejando pasar el tiempo |
+
+**U3 — escenarios mínimos, contra el despliegue real, 22-sep-2026:**
+
+| Escenario (`plan-ejecucion.md` §U3) | Evidencia observada |
+|---|---|
+| Ingreso de persona admitida | `/helpdesk/login` → Entra ID → `/helpdesk` con «Sesión activa: DANIEL FELIPE LOPERA ESTRADA» |
+| Rechazo `INACTIVE`, con prueba negativa | Con sesión viva, `estado_activo = false` en `dim_personal` → recargar → `/helpdesk/login?error=INACTIVE` |
+| Rechazo `UNKNOWN_ROLE`, con prueba negativa | `rol_aplicacion = NULL` manteniendo `estado_activo = true`, para aislarlo del caso anterior → `?error=UNKNOWN_ROLE` |
+| Rechazo `NOT_REGISTERED` | **Sin ejercitar** — solo prueba unitaria |
+| Rechazo `EMAIL_INVALID` | **Sin ejercitar** — solo prueba unitaria |
+| Desactivación con efecto en la siguiente navegación | El mismo caso `INACTIVE`: la expulsión ocurrió al recargar, no en el siguiente ingreso — la relectura de `readEmployeeSession` funciona contra la base real, que es justo lo que ninguna prueba unitaria alcanza |
+| Cookie de sesión manipulada | Alterado un carácter de `helpdesk_employee_session` (`HttpOnly`, no editable desde consola): no concedió acceso, se re-autenticó contra Microsoft y se emitió sesión nueva — fila con `issued_at` posterior en `app.employee_session` |
+| Destino de retorno preservado y saneado | `destino=/portal` aterriza en `/helpdesk/portal` (preservado); `https://evil.example.com`, `//evil.example.com` y `/\evil.example.com` aterrizan los tres en `/helpdesk` (saneados). Ninguno salió del origen |
+
+**Corroboraciones no planificadas, de la misma tabla de sesiones:** `expires_at −
+issued_at` = 8h exactas con `last_seen_at = issued_at` (vida absoluta, sin renovación
+deslizante) · filas con `revoked_reason = 'LOGOUT'` (la revocación mata la fila en
+servidor, no solo borra la cookie) · `entra_object_id` poblado en `dim_personal` (el
+enlace del sujeto inmutable ocurrió de verdad).
+
+**Prueba negativa no planificada:** encadenar dos flujos de ingreso sin terminar el
+primero produjo `?error=STATE_MISMATCH` — el estado OIDC es de un solo uso y no se puede
+cruzar ni reusar. No estaba en la lista; se registra porque es evidencia real.
 
 **U1 — resultados reales, contra la base de producción, 10-sep-2026:**
 
@@ -287,14 +338,16 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 | ~~La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo`~~ — **descartado como causa real (17-sep-2026)**: la consulta de verificación devolvió 0 filas, ningún duplicado. El deploy sí falló, pero por otra razón — ver fila siguiente | ~~El `CREATE UNIQUE INDEX` fallaría al desplegar si hubiera un duplicado~~ | ~~Verificado y descartado~~ |
 | ~~**El primer deploy de U3 falló.**~~ — **resuelto 18-sep-2026, con evidencia completa.** `coraje_migrator` (dueño de `core`/`helpdesk` desde F6) nunca recibió el privilegio `CREATE` sobre la base de datos completa — crear un schema nuevo (`app`) lo exige, ser dueño de schemas existentes no alcanza. Error real: `permission denied for database coraje` (SQLSTATE 42501), `applied_steps_count: 0`. Reparado: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` → `prisma migrate resolve --rolled-back` (confirmado por `rolled_back_at` poblado) → redeploy → columnas `rol_aplicacion`/`entra_object_id` confirmadas existentes → `UPDATE` exitoso sobre `daniellopera@rbcol.co` | ~~Bloqueaba por completo el arranque de `web` — el gate de U2 hizo justo lo que debía~~ | ~~Cerrado, con evidencia de cada paso~~ |
-| **La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía** (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
+| ~~**La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía**~~ — **cerrado 22-sep-2026:** declarada en Traefik de Coolify, sin *strip prefix* (los assets de Next.js cargan y el preflight de Tailwind se aplica), redirect URI de Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`, y `https://conecta.rbgct.cloud/app` sigue sirviendo el SPA de Conecta — la regla no se comió el dominio. Al ejercitarla apareció un defecto que solo el despliegue podía revelar (`Location` absoluto derivado de `request.url`, que resolvía a `0.0.0.0:3000`), corregido en `306d286`. Texto original: (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `5f6aacd` | **Corte vigente.** Cierra la reparación del deploy de U3, con evidencia real de cada paso |
+| `306d286` | **Corte vigente.** Emite las redirecciones internas con `Location` relativo: detrás del proxy, `request.url` resolvía a `0.0.0.0:3000` |
+| `cfce427` | Mueve HelpDesk de `/app/HelpDesk` a `/helpdesk` (D7) |
+| `5f6aacd` | Cierra la reparación del deploy de U3, con evidencia real de cada paso |
 | `e648fcb` | Documenta la resolución de D7 (navegación) y el fallo del deploy |
 | `58eb27f` | Construye `basePath` para D7: corrige URLs/cookies que Next.js no antepone solo |
 | `b2e7ad0` | Pide `Mail.Send`/`offline_access` desde el primer consentimiento (D6) |
@@ -388,259 +441,70 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — D7, regla de enrutamiento en Traefik
+## Acción inmediata para la siguiente sesión — U4, perímetro y retiro de la clave compartida
 
-**Todo lo de identidad (U3) está cerrado con evidencia real.** Lo único que falta para
-completar un ingreso de punta a punta es que `https://conecta.rbgct.cloud/helpdesk`
-tenga tráfico real llegándole al contenedor de HelpDesk.
+**U3 queda cerrada. La cabeza de `plan-ejecucion.md` pasa a ser U4**, sin desviación: es
+la unidad siguiente de la cola, y el propio plan la declara no opcional ni posterior a U3.
 
-### Lo que se decidió el 18-sep-2026 y ya está construido en el código
+**Por qué es más urgente ahora que antes.** Hasta este corte, que `/portal` y
+`/redireccion` no exigieran identidad era un prototipo sin tráfico. Desde hoy el dominio
+público sirve `/helpdesk/*`, y al probar el destino de retorno se llegó por una URL real
+a `/helpdesk/portal` — el selector de clientes sin credencial. La autenticación de
+empleados ya existe; el perímetro que la hace obligatoria, no.
 
-Las dos preguntas de arquitectura que este documento dejó abiertas en el corte anterior
-quedaron **resueltas con evidencia**, no por suposición:
+**Objetivo (`plan-ejecucion.md` §U4):** *deny-by-default* con lista pública explícita, y
+**eliminación** de `REDIRECCION_PASSWORD` y su ruta de acceso.
 
-- **Réplica visual, no composición en tiempo de request.** Se descartó que Conecta
-  inyectara el contenido de HelpDesk dentro de su layout real: su interfaz es un SPA de
-  React compilado con Vite y servido como estáticos (`Dockerfile.frontend`,
-  `docker-compose.prod.yml` de `RBGCT-REACT`), y su Nginx solo hace `proxy_pass`
-  (`nginx/nginx-proxy.conf`). No existe ningún layout renderizado en servidor donde
-  inyectar un fragmento. **El sidebar/topbar se replican dentro de HelpDesk** — trabajo
-  de `U5`, no de esta pieza.
-- **El prefijo cambia de `/app/HelpDesk` a `/helpdesk`.** `App.jsx` de Conecta monta
-  `path="/app"` como el portal de empleados de su propio SPA, con siete rutas hijas y su
-  propio guardia de sesión: no es un path libre del dominio. Además, un prefijo de caja
-  mixta produce un fallo silencioso (una URL con otra caja cae en el SPA de Conecta, que
-  redirige a su raíz, sin error visible). Razonamiento completo en
-  `contexto-canonico.md` §1.1.
+**Criterio de cierre, tal como el plan lo define:** una prueba enumera las páginas de
+`src/app` y exige que cada una fuera de los prefijos públicos resuelva identidad; `grep`
+de `REDIRECCION_PASSWORD` sin resultados.
 
-Construido en el código en este corte: `basePath: "/helpdesk"` (`next.config.ts`) y
-`APP_BASE_PATH` (`src/server/auth/base-path.ts`), con `tsc --noEmit`, `eslint`,
-`next build` y 26/26 pruebas limpios.
+**Lo que ya existe y hay que consumir, no reinventar:** `requireCurrentEmployee()`
+(`src/server/auth/current-employee.ts`) ya es el único punto de lectura de identidad
+expuesto a la aplicación, y ya redirige a `/login` preservando el destino saneado. U4
+decide **dónde se aplica** —middleware, layout, o handler por handler— y cuál es la lista
+pública; no construye el mecanismo desde cero.
 
-### Lo que falta, y es infraestructura, no código
-
-**El Nginx de Conecta no se toca.** La regla se declara en Traefik de Coolify, sobre el
-propio recurso `web` de HelpDesk, y Traefik prioriza la regla más específica
-(`Host(...) && PathPrefix(/helpdesk)` gana a `Host(...)` a secas), así que la petición
-nunca llega al stack de Conecta.
-
-Pasos, en orden:
-
-1. **En Coolify, recurso `web` de HelpDesk → sección Domains:** declarar
-   `https://conecta.rbgct.cloud/helpdesk`.
-2. **Verificar que Coolify NO aplique *strip prefix*.** Es el único punto donde esto
-   puede fallar en silencio: si el proxy quita `/helpdesk` antes de reenviar, Next.js
-   con `basePath` no reconoce ninguna de sus rutas y responde 404 en todas. Si Coolify
-   genera un middleware de `stripprefix`, hay que desactivarlo.
-3. **En Entra ID, App Registration compartido con Conecta:** cambiar el redirect URI a
-   `https://conecta.rbgct.cloud/helpdesk/api/auth/microsoft/callback`. El anterior
-   (`/app/HelpDesk/...`) ya no sirve y conviene retirarlo, no dejar los dos.
-4. **En Coolify, variables de `web`:** actualizar `ENTRA_REDIRECT_URI` al mismo valor
-   exacto del paso 3. Debe coincidir carácter por carácter con lo registrado en Entra.
-5. **Redeploy y verificación**, en este orden:
-
-```bash
-# Debe responder 200 y servir HTML de HelpDesk, no el SPA de Conecta.
-curl -sS -o /dev/null -w '%{http_code}\n' https://conecta.rbgct.cloud/helpdesk/login
-
-# Debe responder 200: confirma que el prefijo NO se está quitando (si Coolify
-# aplicara strip prefix, los assets de Next.js darían 404 aunque la página cargue).
-curl -sS -o /dev/null -w '%{http_code}\n' https://conecta.rbgct.cloud/helpdesk/_next/static/chunks/main-app.js
-
-# Debe seguir sirviendo Conecta, no HelpDesk — confirma que la regla no se comió
-# el resto del dominio.
-curl -sS -o /dev/null -w '%{http_code}\n' https://conecta.rbgct.cloud/app
-```
-
-Con eso, el ingreso real queda ejercitable: `daniellopera@rbcol.co` ya tiene
-`rol_aplicacion = 'AGENTE'` y las cinco variables están puestas.
-
-### Red Docker — resuelto, sin acción pendiente
-
-`coolify-proxy` (Traefik v3.6) está unido a `coolify`, a `coraje_net` y a la red del
-proyecto de HelpDesk (`w73wj6mtfbxih4kg5v53bn0w`) — verificado con `docker inspect` el
-18-sep-2026. Alcanza al contenedor `web` por cualquiera de las dos redes que este
-declara, así que **no hace falta ninguna red compartida nueva** y el escenario que
-produjo los 504 de Conecta (Traefik eligiendo la IP de una red a la que no está unido)
-**no aplica aquí**.
-
-Queda una elección no determinista, no un defecto: Traefik puede tomar la IP de `web`
-en `coolify` o en `coraje_net`. Fijarla con la label `traefik.docker.network=coolify`
-en `coraje-web/docker-compose.yaml` es higiene razonable, pero **conviene declarar
-primero el dominio y mirar las labels que Coolify genera solo**, para no introducir una
-label que entre en conflicto con las suyas.
-
-> **`coraje_net` no se puede quitar del compose de `coraje-web`.** Es la red donde vive
-> `coraje_postgres` (`docker-compose.yml` de la raíz): `web` y `migrate` la necesitan
-> para alcanzar la base. Lo que sí es un parche —y es otra cosa, del lado del proxy, no
-> de este repositorio— es que `coolify-proxy` esté unido a `coraje_net`; se hizo para
-> que Traefik alcanzara a n8n, que vive en esa red. La solución de raíz sería unir n8n
-> a la red `coolify` y sacar el proxy de `coraje_net`. **Fuera del alcance de U3:** n8n
-> corre en producción y el cambio no desbloquea nada de D7. Efecto lateral registrado,
-> no corregido: mientras el proxy siga en `coraje_net`, el contenedor de Traefik alcanza
-> directamente a `coraje_postgres`.
-
-### Lo que falta del lado de Conecta, y es de `U5`, no de ahora
-
-El SPA de Conecta no tiene hoy ningún enlace a HelpDesk (verificado por búsqueda en
-`frontend/src`). Cuando `U5` lo añada al sidebar, **debe ser un enlace de navegación
-real (`<a href>`), nunca `navigate()` de su router**: una navegación de cliente la
-resuelve React Router dentro de Conecta, que no conoce la ruta y redirige a su raíz.
-Es el único cambio que D7 exige en el repositorio de Conecta.
+**Decisión que U4 debe tomar, no heredar:** qué pasa con `/portal` y `/redireccion`. El
+acceso de clientes es `U8` y arrastra decisiones sin cerrar (D2, D3, D4). U4 puede
+cerrarlos tras identidad de empleado, retirarlos, o dejarlos tras el perímetro con una
+condición explícita de caducidad — lo que no puede es dejarlos como están.
 
 ### Lo que NO hace falta repetir
 
-Todo lo de identidad (App Registration compartido con permisos completos, `client
-secret`, cinco variables en Coolify, `daniellopera@rbcol.co` con
-`rol_aplicacion = 'AGENTE'`, migración aplicada) está cerrado y verificado.
+Configuración cerrada y verificada, no volver a tocarla: App Registration compartido con
+Conecta (permisos, `client secret` propio de HelpDesk, redirect URI en `/helpdesk`), las
+cinco variables en Coolify, la clave de sellado, `daniellopera@rbcol.co` con
+`rol_aplicacion = 'AGENTE'`, la migración de U3 aplicada contra la base real, y la regla
+de enrutamiento en Traefik sin *strip prefix*.
 
-**Única excepción, y sí es parte de la acción inmediata:** el redirect URI registrado en
-Entra ID y la variable `ENTRA_REDIRECT_URI` de Coolify apuntan todavía a
-`https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback`, la ruta anterior
-al cambio de prefijo del 18-sep-2026. Hay que cambiar ambos a `/helpdesk/...` — pasos 3
-y 4 de arriba.
-Los pasos numerados 1, 2 y 4 que siguen abajo quedan como referencia de lo que ya se
-completó en Entra ID/Coolify — no repetirlos.
+**Estado de la fila de prueba al cerrar este corte:** `daniellopera@rbcol.co` quedó
+restaurada a `estado_activo = true` y `rol_aplicacion = 'AGENTE'`. Todos los `UPDATE` de
+los escenarios negativos fueron revertidos. **Si alguien repite esas pruebas, el comando
+de restauración debe fijar las dos columnas a la vez**: durante este corte se perdió el
+acceso dos veces por revertir solo una, y no hay una segunda cuenta con rol que pueda
+entrar a arreglarlo desde la aplicación — la salida es siempre por `psql`.
 
-**1. Añadir HelpDesk al App Registration existente de Conecta — decisión explícita del
-usuario, contra la recomendación dada, y ya completada.** Se le presentó la alternativa
-de un App Registration propio (independiente, mismo patrón que Impulsa) con tres
-razones — un solo punto de fallo administrativo compartido entre los dos módulos, logs
-de sign-in de Entra mezclados por `client_id`, y que crear uno nuevo no cuesta nada—, y
-decidió reutilizar el de Conecta de todas formas. **Riesgo aceptado, no descartado:**
-si alguien rota todos los secrets del App Registration compartido, cambia su
-configuración de Authentication (tipo de plataforma, redirect URIs), o lo elimina,
-**Conecta y HelpDesk caen a la vez** — ninguno de los dos puede aislar el incidente
-del otro. El código no depende de que el App Registration sea exclusivo
-(`entra-oidc.ts` solo lee las cuatro variables de entorno, agnóstico a su origen).
-Configurado en el Entra admin center:
-- Redirect URI agregado, tipo "Web":
-  `https://conecta.rbgct.cloud/app/HelpDesk/api/auth/microsoft/callback`.
-- `client secret` nuevo generado para HelpDesk, distinto del de Conecta.
-- Permisos delegados: `openid`/`profile`/`email` (ya estaban) más `Mail.Send` y
-  `offline_access` (D6 resuelta, 17-sep-2026 — HelpDesk enviará correo al cliente desde
-  la cuenta de quien responde). Sin `User.Read` (no hace falta, HelpDesk no llama a
-  Graph). Sin `Mail.Send.Shared` (sin decidir, §9 de la spec).
-- Tenant: el corporativo real, single-tenant.
+### Lo que queda del lado de Conecta, y es de `U5`, no de ahora
 
-**2. Generar la clave de sellado** (`HELPDESK_TOKEN_ENCRYPTION_KEY`) — hecho, ya en
-Coolify.
+El SPA de Conecta no tiene hoy ningún enlace a HelpDesk. Cuando `U5` lo añada al
+sidebar, **debe ser un enlace de navegación real (`<a href>`), nunca `navigate()` de su
+router**: una navegación de cliente la resuelve React Router dentro de Conecta, que no
+conoce la ruta y redirige a su raíz. Es el único cambio que D7 exige en el repositorio
+de Conecta.
 
-**3. Verificación de duplicados — hecha, 0 filas.** Asignación de `rol_aplicacion` —
-**hecha, tras la reparación de la migración**: `daniellopera@rbcol.co` es la primera
-persona habilitada.
+### Higiene registrada, sin acción asignada
 
-**4. Cinco variables en Coolify — hecho.** `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`,
-`ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`, `HELPDESK_TOKEN_ENCRYPTION_KEY`.
-
-Los bloques de comando de abajo (1, 2 y 4) se dejan como referencia de lo que
-efectivamente se corrió contra la base real — no son pasos pendientes.
-
-**1. `codigo_area` en `core.dim_area` — CERRADO, con una contradicción nombrada.**
-Al correr el comando de abajo, la VPS respondió `ERROR: column "codigo_area" of
-relation "dim_area" already exists` (10-sep-2026). Contradice lo que este documento
-afirmaba (que no existía en la base viva) — no hay registro de quién ni cuándo la
-aplicó. No bloquea nada: es aditiva, y `01_transform_area.sql` hace `ON CONFLICT
-(nombre_area)`, no `(codigo_area)`, así que el `UPSERT` funciona exista o no el
-`UNIQUE` real sobre esa columna. Queda como estado real confirmado, no como acción
-pendiente — el comando ya no hace falta correrlo.
-
-```bash
-# Ya no hace falta correr esto — se deja como referencia de lo que se intentó y del
-# error real que confirmó que la columna ya existía.
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-ALTER TABLE core.dim_area ADD COLUMN codigo_area VARCHAR(10) UNIQUE;
-"
-```
-
-**2. Modelo de buzón compartido en `core.dim_personal` (F10) — CERRADO, con evidencia
-real (10-sep-2026):** 2a devolvió exactamente las dos filas esperadas
-(`ccb2a1de...` activa, `ef1e69e7...` fantasma); 2b-2d corrieron sin error
-(`ALTER TABLE`, `UPDATE 1` exacto, `CREATE INDEX` sin violación); 2e devolvió 0 filas.
-El esquema está resuelto y verificado contra la base real. Se deja el bloque como
-referencia — no hace falta repetirlo.
-
-```bash
-# 2a. Verificación previa (solo lectura): confirmar que sigue habiendo exactamente
-# dos filas para el correo compartido conocido, antes de tocar nada.
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-SELECT id_personal, sp_personal_id, correo_corporativo, cargo, estado_activo
-FROM core.dim_personal
-WHERE correo_corporativo = 'recepcion.gct@rbcol.co';
-"
-```
-
-Si esa consulta **no** devuelve exactamente dos filas (una con `cargo = 'EX-EMPLEADO
-(RECUPERADO DEL HISTORIAL)'`), detenerse — el resto de los comandos asume ese estado.
-
-```bash
-# 2b. Columna nueva, aditiva y reversible.
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-ALTER TABLE core.dim_personal
-    ADD COLUMN es_responsable_historico_no_identificado BOOLEAN NOT NULL DEFAULT FALSE;
-"
-
-# 2c. Backfill de la única fila fantasma conocida. Debe reportar 'UPDATE 1' — si
-# reporta un número distinto de 1, detenerse y no seguir a 2d.
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-UPDATE core.dim_personal
-SET es_responsable_historico_no_identificado = TRUE
-WHERE correo_corporativo = 'recepcion.gct@rbcol.co'
-  AND cargo = 'EX-EMPLEADO (RECUPERADO DEL HISTORIAL)'
-  AND estado_activo = FALSE;
-"
-
-# 2d. Índice único parcial: a lo sumo un marcador histórico por correo.
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-CREATE UNIQUE INDEX ux_dim_personal_correo_historico
-ON core.dim_personal (correo_corporativo)
-WHERE es_responsable_historico_no_identificado;
-"
-
-# 2e. Verificación final: debe devolver CERO filas. Si devuelve alguna, la
-# transformación de tickets (paso 4) abortará con la misma condición — mejor
-# encontrarlo aquí que a mitad de la ingesta.
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-SELECT correo_corporativo, COUNT(*) AS filas,
-       COUNT(*) FILTER (WHERE es_responsable_historico_no_identificado) AS marcadas
-FROM core.dim_personal
-WHERE correo_corporativo IS NOT NULL
-GROUP BY correo_corporativo
-HAVING COUNT(*) > 1 AND COUNT(*) FILTER (WHERE es_responsable_historico_no_identificado) <> 1;
-"
-```
-
-**3. n8n — CERRADO por completo (10-sep-2026).** Incidencia real y resuelta: el primer
-intento de ejecutar la ingesta se hizo con la copia **sin** el fix
-(`CORAJE - INCREMENTAL COMPLETO V2.1 - SharePoint to PostgreSQL.json`, suelta en el
-servidor, sin commit) publicada por confusión de nombre con el archivo commiteado que
-sí lo trae. Al reimportar `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to
-PostgreSQL.json` (commit `e3b95a1`), la ingesta corrió sin error. El consumidor del
-outbox (`CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commiteado en `1de8641`)
-quedó confirmado activo, y `V2`/`V2.1` quedaron borradas del servidor y de n8n —
-ambas confirmadas por el usuario.
-
-**4. Ejecución real — CERRADA, con evidencia inequívoca (10-sep-2026).** Tras
-reimportar el workflow correcto: `total_tickets` **2.559 → 2.825** (+266, prueba de que
-sí procesó trabajo nuevo, no fue un no-op) y `tickets_del_buzon_compartido` **155 →
-165** (+10, los diez tickets nuevos que también referencian el buzón compartido
-quedaron en el marcador histórico, no en la ocupante actual — la regla dura se cumple
-también sobre datos que no existían cuando se diseñó el fix). Consultas de referencia:
-
-```bash
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-SELECT COUNT(*) AS total_tickets FROM helpdesk.fact_ticket;
-SELECT COUNT(*) AS tickets_del_buzon_compartido
-FROM helpdesk.fact_ticket
-WHERE id_asignado IN (
-    SELECT id_personal FROM core.dim_personal
-    WHERE es_responsable_historico_no_identificado
-) OR id_solicitante IN (
-    SELECT id_personal FROM core.dim_personal
-    WHERE es_responsable_historico_no_identificado
-);
-"
-```
+- `coolify-proxy` puede tomar la IP de `web` en `coolify` o en `coraje_net` — elección no
+  determinista, no defecto. Fijarla con la label `traefik.docker.network=coolify` es
+  razonable, pero conviene mirar antes las labels que Coolify genera por su cuenta.
+- Mientras `coolify-proxy` siga unido a `coraje_net` —se hizo para alcanzar a n8n—, el
+  contenedor de Traefik alcanza directamente a `coraje_postgres`. La solución de raíz es
+  unir n8n a la red `coolify` y sacar el proxy de `coraje_net`; fuera del alcance de U3
+  y de U4.
+- Manipular la cookie de sesión deja la sesión anterior **viva y sin revocar** hasta su
+  expiración (8h). Nadie conserva ya ese token —el navegador lo sobrescribió— y no
+  contradice la spec, pero es un residuo real observado en `app.employee_session`.
 
 > **F11 (descubierto en el corte 3): cerrado en el corte 4.** La lógica de clasificación
 > de `tipo_requerimiento` legacy divergía entre `sql/elt/06_transform_ticket.sql` y la
@@ -689,7 +553,7 @@ WHERE id_asignado IN (
 | D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
 | D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
 | D5 | Acento visual propio del módulo o compartido con Impulsa | Materialización del tema | Usuario |
-| D7 | **Cerrada el 18-sep-2026.** Ya no es una decisión abierta: queda una tarea de configuración, descrita en "Acción inmediata para la siguiente sesión" | — | — |
+| ~~D7~~ | **Cerrada por completo el 22-sep-2026.** Decidida el 18-sep, y **configurada y ejercitada** en este corte: `/helpdesk` sirve tráfico real y el ingreso funciona de punta a punta | — | — |
 
 > **D7 cerrada en sus tres preguntas** (`contexto-canonico.md` §1.1). La ruta es
 > `/helpdesk`, prefijo de primer nivel y en minúsculas. El sidebar/topbar **se replican
@@ -1054,3 +918,48 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   evidencia real.** La única pieza que sigue bloqueando un ingreso de punta a punta es
   la regla de proxy de Conecta hacia HelpDesk (D7, navegación) — sin construir, sin
   fecha.
+- 18-sep-2026 (corte 11, publicado en `cfce427`) — **se registra de forma retroactiva:
+  este corte no dejó entrada de changelog en su momento.** Se resuelve D7 en sus tres
+  preguntas y el prefijo pasa de `/app/HelpDesk` a `/helpdesk`. Razón, por lectura del
+  repositorio real de Conecta: `App.jsx` monta `path="/app"` como su propio portal de
+  empleados, con siete rutas hijas y guardia de sesión — no es un path libre del
+  dominio; y un prefijo de caja mixta produce un fallo silencioso, porque una URL con
+  otra caja cae en el SPA de Conecta, que redirige a su raíz sin error visible. Se
+  descarta también la composición en tiempo de request: la interfaz de Conecta es un SPA
+  de Vite servido como estáticos, sin layout de servidor donde inyectar un fragmento —
+  el shell se replica dentro de HelpDesk (`U5`).
+- 21-sep-2026 (publicado en `306d286`) — **primer defecto que solo el despliegue real
+  podía revelar.** Una vez declarada la regla de enrutamiento, el ingreso terminaba en
+  `https://0.0.0.0:3000/helpdesk/` con `ERR_ADDRESS_INVALID`: las redirecciones de
+  `/api/auth/microsoft/callback` y `/api/auth/logout` se construían como URL absoluta
+  sobre `request.url`, que detrás del proxy de Coolify se arma con el Host del socket
+  interno del contenedor, no con el que pidió el navegador. `basePath` y la regla de
+  Traefik estaban bien — el prefijo aparecía intacto en la URL rota. `buildAppUrl()` se
+  sustituye por `buildAppPath()` más `redirectWithinApp()`
+  (`src/server/auth/app-redirect.ts`), que emite la respuesta a mano porque
+  `NextResponse.redirect()` exige URL absoluta y lanza ante una ruta relativa. Se
+  descarta reconstruir el origen desde `x-forwarded-proto`/`x-forwarded-host`: obliga a
+  validarlos contra lista blanca, porque un Host inyectado por el cliente convertiría
+  cada redirección en un *open redirect*.
+- 22-sep-2026 (corte 12) — **U3 CIERRA, ejercitada contra el despliegue real.** El
+  usuario completó la configuración pendiente (dominio con path en Coolify, redirect URI
+  de Entra y `ENTRA_REDIRECT_URI` en `/helpdesk`) y el ingreso funcionó de punta a punta.
+  Al preparar el cierre apareció una contradicción documental que este handoff había
+  colapsado: su cabecera reducía el criterio de cierre de U3 a «un ingreso real», pero
+  `plan-ejecucion.md` §U3 exige **ocho escenarios mínimos**, y la cola de unidades tiene
+  más autoridad que el handoff fechado. Se ejercitaron seis contra el despliegue (§4);
+  `NOT_REGISTERED` y `EMAIL_INVALID` quedan con cobertura unitaria únicamente, por
+  imposibilidad material de reproducirlos sin una cuenta del tenant ajena al directorio
+  o un `id_token` sin correo válido. Dos incidencias del propio procedimiento de prueba,
+  ambas resueltas y ambas informativas: revertir una sola de las dos columnas de
+  `dim_personal` dejó al usuario fuera dos veces —la restauración debe fijar
+  `estado_activo` y `rol_aplicacion` a la vez—, y encadenar flujos de ingreso sin
+  terminar el primero produjo `STATE_MISMATCH`, que resultó ser prueba negativa real del
+  uso único del estado OIDC. Se descartó por inspección la hipótesis de que las
+  pantallas sin estilo delataran *strip prefix*: `/login` y la landing están sin estilo a
+  propósito (el contrato de diseño es `U5`), y que el preflight de Tailwind se aplique
+  demuestra que los assets sí cargan. Queda registrado un residuo sin acción asignada:
+  manipular la cookie deja viva la sesión anterior hasta su expiración. **U4 pasa a ser
+  la cabeza de la cola**, con urgencia mayor que antes: `/helpdesk/portal` quedó
+  accesible desde el dominio público sin exigir identidad, cosa que hasta este corte era
+  un prototipo sin tráfico.

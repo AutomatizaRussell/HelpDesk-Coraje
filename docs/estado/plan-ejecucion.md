@@ -105,7 +105,7 @@ además que "commit + push" sea un método de verificación real** (sin el servi
 `migrate`, no hay ciclo local y tampoco hay gate de despliegue — ver riesgo en
 `estado/handoff.md` §6).
 
-### U3 · Identidad de empleados — **cabeza de la cola**
+### ~~U3 · Identidad de empleados~~ — cerrada 22-sep-2026, ya no es cabeza de la cola
 
 **Objetivo:** implementar `specs/acceso-empleados.md` completo: OIDC con PKCE, validación
 del `id_token`, admisión contra directorio, sesión propia opaca y revocable.
@@ -117,7 +117,15 @@ saneado.
 
 **Depende de:** U1 §1, U2.
 
-### U4 · Perímetro y retiro de la clave compartida
+**Cierre real (22-sep-2026):** seis de los ocho escenarios **ejercitados contra el
+despliegue** en `https://conecta.rbgct.cloud/helpdesk` — evidencia detallada en
+`estado/handoff.md` §4. Los dos restantes, `NOT_REGISTERED` y `EMAIL_INVALID`, quedan
+con **cobertura unitaria únicamente**: reproducirlos exige una cuenta del tenant ausente
+del directorio o un `id_token` sin correo válido, y ninguna de las dos se puede fabricar
+contra Entra ID. Se cierra la unidad reconociendo esa limitación, no declarándolos
+ejercitados.
+
+### U4 · Perímetro y retiro de la clave compartida — **cabeza de la cola**
 
 **Objetivo:** *deny-by-default* en el proxy, lista pública explícita, y **eliminación**
 de `REDIRECCION_PASSWORD` y su ruta de acceso.
@@ -127,6 +135,11 @@ prefijos públicos resuelva identidad. `grep` de `REDIRECCION_PASSWORD` sin resu
 
 > **No es opcional ni posterior a U3.** Mientras la clave viva, hay dos formas de entrar
 > y la más débil no deja rastro de quién entró.
+>
+> **Subió de urgencia el 22-sep-2026.** Con `/helpdesk/*` ya sirviendo tráfico en el
+> dominio público, `/helpdesk/portal` —el selector de clientes sin credencial— es
+> alcanzable por una URL real; se comprobó al ejercitar el destino de retorno de U3.
+> Dejó de ser un prototipo sin tráfico.
 
 ### U5 · Contrato de diseño ejecutable y primera vista
 
