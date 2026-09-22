@@ -39,7 +39,7 @@ function dejaPasar(respuesta: Response): boolean {
 }
 
 test("una navegación sin sesión a ruta privada va al ingreso silencioso", () => {
-  const respuesta = proxy(peticion("/helpdesk/redireccion"));
+  const respuesta = proxy(peticion("/helpdesk/tickets"));
 
   assert.equal(respuesta.status, 303);
   const location = respuesta.headers.get("location") ?? "";
@@ -51,7 +51,7 @@ test("una navegación sin sesión a ruta privada va al ingreso silencioso", () =
   // se construiría con el host interno del contenedor (defecto de `306d286`).
   assert.ok(!location.includes("://"), `Location absoluto: ${location}`);
   assert.ok(
-    location.includes(encodeURIComponent("/redireccion")),
+    location.includes(encodeURIComponent("/tickets")),
     "El destino pretendido debe sobrevivir al ingreso",
   );
 });
@@ -59,7 +59,7 @@ test("una navegación sin sesión a ruta privada va al ingreso silencioso", () =
 test("la petición interna de React no dispara el flujo OIDC", () => {
   // Un prefetch que arrancara el ingreso sellaría una cookie de estado nueva
   // y pisaría un login en curso en otra pestaña.
-  const request = peticion("/helpdesk/redireccion");
+  const request = peticion("/helpdesk/tickets");
   request.headers.set("rsc", "1");
 
   const location = proxy(request).headers.get("location") ?? "";
@@ -76,7 +76,7 @@ test("una llamada de API sin sesión recibe 401, no una redirección", () => {
 test("con cookie de sesión presente el perímetro deja pasar", () => {
   // Presencia, no validez: quien decide si la sesión vive es la lectura de
   // sesión contra PostgreSQL, que el proxy no puede alcanzar.
-  assert.ok(dejaPasar(proxy(peticion("/helpdesk/redireccion", { conSesion: true }))));
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/tickets", { conSesion: true }))));
 });
 
 test("las rutas públicas pasan sin sesión", () => {

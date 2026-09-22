@@ -1,33 +1,16 @@
 @import "tailwindcss";
 
-:root {
-  --rb-dark-blue: #001871;
-  --rb-light-blue: #00a9ce;
-  --rb-orange: #ed8b00;
-  --rb-turquoise: #00bfb3;
-
-  --background: #f4f7fa;
-  --foreground: #2d3748;
-  --muted: #718096;
-  --border-light: #e2e8f0;
-
-  --card-shadow: 0 10px 15px -3px rgba(0, 24, 113, 0.05),
-    0 4px 6px -2px rgba(0, 24, 113, 0.03);
-
-  --card-shadow-hover: 0 20px 25px -5px rgba(0, 169, 206, 0.15),
-    0 10px 10px -5px rgba(0, 24, 113, 0.05);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-body {
-  min-height: 100vh;
-  background: radial-gradient(circle at top left, #ffffff, #f4f7fa 100%);
-  color: var(--foreground);
-  -webkit-font-smoothing: antialiased;
-}
+/*
+ * Deliberadamente vacío de valores.
+ *
+ * Aquí vivía un contrato visual a medias heredado del Coraje anterior: cuatro
+ * colores corporativos, dos sombras de tarjeta, un degradado de fondo. Se
+ * retiró entero con el frontend que lo consumía, y no se sustituye por otro
+ * improvisado: los tokens de HelpDesk son competencia del contrato de diseño
+ * ejecutable (docs/design/sistema-helpdesk.md, U5), y un archivo como este
+ * es justo donde un valor quemado se vuelve invisible y se replica solo.
+ *
+ * Hasta que ese contrato exista como código, las pantallas se dibujan sin
+ * estilo propio. Es más honesto que inventar una paleta que habrá que
+ * desmontar.
+ */

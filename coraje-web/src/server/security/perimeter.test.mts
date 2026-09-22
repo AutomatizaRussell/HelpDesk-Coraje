@@ -45,14 +45,6 @@ const RUTAS_DECLARADAS: Record<string, { publica: boolean; razon: string }> = {
     publica: true,
     razon: "La puerta. Se dibuja sin sesión por definición",
   },
-  "/redireccion": {
-    publica: false,
-    razon: "Bandeja interna de tickets por clasificar",
-  },
-  "/redireccion/[id]": {
-    publica: false,
-    razon: "Ficha interna: escribe área destino y encola el envío a SharePoint",
-  },
   "/api/auth/logout": {
     publica: false,
     razon: "Revoca la sesión de quien la trae; sin cookie no hay nada que hacer",
@@ -116,21 +108,28 @@ function recorrerRutas(dir: string, base = ""): ArchivoDeRuta[] {
   return encontradas;
 }
 
-function recorrerServerActions(dir: string, base = ""): ArchivoDeRuta[] {
-  const encontradas: ArchivoDeRuta[] = [];
+/**
+ * Recorre **todo** `src/`, no solo `src/app`.
+ *
+ * Una Server Action no tiene por qué vivir junto a una ruta: al retirar el
+ * frontend heredado, la de redirección se movió a `src/features/` y ahí
+ * seguiría siendo un endpoint en cuanto una vista volviera a importarla. La
+ * propiedad que se verifica —resuelve identidad por su cuenta— depende del
+ * archivo, no de dónde esté guardado.
+ */
+function recorrerServerActions(dir: string): string[] {
+  const encontradas: string[] = [];
   for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const relativo = path.join(base, entrada.name);
+    const completo = path.join(dir, entrada.name);
     if (entrada.isDirectory()) {
-      encontradas.push(
-        ...recorrerServerActions(path.join(dir, entrada.name), relativo),
-      );
+      if (entrada.name !== "generated") {
+        encontradas.push(...recorrerServerActions(completo));
+      }
       continue;
     }
-    if (entrada.name === "actions.ts") {
-      encontradas.push({
-        pathname: pathnameDesdeArchivo(relativo),
-        archivo: path.join(dir, entrada.name),
-      });
+    if (!/\.(ts|tsx)$/.test(entrada.name)) continue;
+    if (readFileSync(completo, "utf8").includes('"use server"')) {
+      encontradas.push(completo);
     }
   }
   return encontradas;
@@ -186,15 +185,20 @@ test("toda ruta privada resuelve identidad en su propio archivo", () => {
 });
 
 test("toda Server Action exportada resuelve identidad por su cuenta", () => {
-  for (const { pathname, archivo } of recorrerServerActions(APP_DIR)) {
-    const fuente = readFileSync(archivo, "utf8");
-    if (!fuente.includes('"use server"')) continue;
+  const SRC_DIR = path.resolve(THIS_DIR, "../..");
+  const archivos = recorrerServerActions(SRC_DIR);
 
+  // Si el recorrido dejara de encontrar archivos, la prueba pasaría sin
+  // comprobar nada y nadie se enteraría.
+  assert.ok(archivos.length > 0, "No se encontró ninguna Server Action");
+
+  for (const archivo of archivos) {
+    const fuente = readFileSync(archivo, "utf8");
     assert.ok(
       SIMBOLOS_DE_IDENTIDAD.some((s) => fuente.includes(s)),
-      `Las Server Actions de ${pathname} no resuelven identidad. Una acción ` +
-        "exportada es un endpoint alcanzable por sí mismo: no hereda el guard " +
-        "de la página que la dibuja.",
+      `Las Server Actions de ${path.relative(SRC_DIR, archivo)} no resuelven ` +
+        "identidad. Una acción exportada es un endpoint alcanzable por sí " +
+        "mismo: no hereda el guard de la página que la dibuja.",
     );
   }
 });

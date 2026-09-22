@@ -9,7 +9,10 @@
  * Hay dos motivos para que exista esta excepción, y ninguno es cosmético:
  *
  * - La pantalla de acceso y las de error se dibujan **sin sesión**, así que
- *   cualquier imagen que usen tiene que ser alcanzable sin ella.
+ *   cualquier imagen que usen tiene que ser alcanzable sin ella. Hoy ninguna
+ *   las usa —se dibujan sin estilo hasta que exista el contrato de diseño
+ *   (U5)—, pero el logotipo entra aquí porque la pantalla de acceso es
+ *   exactamente donde va a aparecer en cuanto ese contrato exista.
  * - El optimizador de imágenes de Next (`next/image`) descarga el archivo
  *   original con una petición **interna del servidor a sí mismo**, que no
  *   lleva las cookies del navegador. Si el perímetro la bloqueara, la imagen

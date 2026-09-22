@@ -6,6 +6,25 @@ import { prisma } from "@/lib/prisma";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 
 /**
+ * `REFERENCIA` Esta acción **no la invoca ninguna pantalla**.
+ *
+ * Las vistas de redirección heredadas del Coraje anterior se retiraron junto
+ * con el resto del frontend, que se rehace desde el contrato de diseño (U5).
+ * La acción se conserva, y no por nostalgia: es el único sitio donde están
+ * escritas tres reglas de negocio reales que ningún documento recoge
+ * entero —el orden de validación antes de tocar la base, la resolución del
+ * encargado por `helpdesk.routing_rule` con caída a `core.dim_area`, y la
+ * forma exacta del registro que se encola en `helpdesk.ticket_sync_outbox`—.
+ * Borrarla obligaría a reconstruirlas leyendo SQL y nodos de n8n.
+ *
+ * Mientras no la importe ninguna vista, Next **no** publica ningún endpoint
+ * para ella: `"use server"` solo genera uno cuando algo la referencia. Al
+ * volver a conectarla habrá que releer dos cosas que hoy quedan colgando: el
+ * destino final del `redirect`, que apunta a una ruta retirada, y si el ciclo
+ * del ticket (U7) sigue queriendo que sea una sola acción o un evento.
+ */
+
+/**
  * Valida de forma mínima un UUID recibido desde formulario.
  *
  * No restringimos versión UUID aquí porque PostgreSQL ya valida el tipo UUID
