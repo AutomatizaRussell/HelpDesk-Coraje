@@ -243,11 +243,13 @@ pruebas ejecutadas) y **lo que quedó sin verificar**.
   eliminó entero en U4, junto con la clave compartida de redirección. No los busques ni
   los tomes de referencia: el acceso externo se construye desde cero en
   `docs/specs/acceso-clientes.md`, bloqueado por tres decisiones de negocio.
-- **No hay frontend.** El del Coraje anterior se retiró completo (`1937589`): quedan
-  cinco rutas (`/`, `/login` y las tres de autenticación), `globals.css` sin un solo
-  valor y un layout sin tipografía impuesta. No es un descuido: los tokens son
-  competencia de U5 y rellenar el hueco con una paleta improvisada viola la regla dura
-  de este documento.
+- **El contrato de diseño existe como código (U5)**: `coraje-web/src/design-system/`
+  más el `:root` y el `@theme` de `globals.css`. El `@theme` **anula la paleta, los
+  pesos, los tamaños, los radios y las sombras por defecto de Tailwind**: `bg-slate-200`
+  o `font-semibold` no generan CSS y no dan error, simplemente no pintan nada. Un
+  valor nuevo se añade en `themes/helpdesk.ts` **y** en `:root`; si falta uno de los
+  dos, `design-system/contract.test.mts` falla. Solo hay dos vistas: `/`, dentro del
+  shell de Conecta, y `/login`.
 - **`helpdesk.ticket_sync_outbox` es el patrón bueno y se conserva.** Fuente de verdad
   en PostgreSQL, `ON CONFLICT DO NOTHING` sobre un índice parcial único para
   idempotencia, webhook a n8n fuera de la transacción y sin capacidad de romperla. No lo
@@ -275,11 +277,13 @@ contrato y después se consume** — nunca se resuelve localmente. Esto **incluy
 `design-system`**: un valor quemado en un archivo aislado dentro de esa carpeta es la
 misma violación, solo que más difícil de encontrar.
 
-**Referencia de qué significa hacerlo bien.** El contrato de diseño de HelpDesk todavía
-no existe como código. Hasta que exista, la referencia es el de Impulsa:
-`src/design-system/` —fundamentos, tema, recetas, componentes, patrones— y las vistas
-`/clientes` y `/clientes/[clienteId]`. Si tu propuesta se aparta de cómo lo resuelven
-esas vistas, la carga de la prueba es tuya.
+**Referencia conceptual, no visual (decisión del 23-sep-2026).** HelpDesk tiene diseño
+**propio y completamente distinto**. De Impulsa (`src/design-system/`) se toma lo
+conceptual —cadena de autoridad, contrato semántico sobre variables CSS, dos
+adaptadores con validador, capas— y **no** su apariencia ni sus recetas calcadas. De
+Conecta se replica **solo** el shell (sidebar replegado; topbar en revisión) y nada más.
+La marca la fija el *Manual de Marca Corporativa* de Russell Bedford
+(`docs/design/sistema-helpdesk.md` §2).
 
 **Permisos.** Ninguna condición de rol se escribe en el componente, la vista, el handler
 ni el servicio. Se consulta el permiso técnico y su alcance efectivo mediante el

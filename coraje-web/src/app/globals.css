@@ -1,16 +1,258 @@
 @import "tailwindcss";
 
 /*
- * Deliberadamente vacío de valores.
+ * Contrato visual de HelpDesk — adaptador CSS.
  *
- * Aquí vivía un contrato visual a medias heredado del Coraje anterior: cuatro
- * colores corporativos, dos sombras de tarjeta, un degradado de fondo. Se
- * retiró entero con el frontend que lo consumía, y no se sustituye por otro
- * improvisado: los tokens de HelpDesk son competencia del contrato de diseño
- * ejecutable (docs/design/sistema-helpdesk.md, U5), y un archivo como este
- * es justo donde un valor quemado se vuelve invisible y se replica solo.
+ * Tres bloques, cada uno con un solo papel:
  *
- * Hasta que ese contrato exista como código, las pantallas se dibujan sin
- * estilo propio. Es más honesto que inventar una paleta que habrá que
- * desmontar.
+ * 1. `:root` — los **valores**. Es la materialización para el navegador del
+ *    tema de `src/design-system/themes/helpdesk.ts`, clave a clave. El
+ *    validador `design-system/contract.test.mts` exige que ambos coincidan:
+ *    tocar un valor en un lado sin el otro rompe `pnpm test`. Es el único
+ *    sitio de la aplicación, junto con ese tema y `foundations/brand.ts`,
+ *    donde puede aparecer un literal de color, de tamaño o de duración.
+ *
+ * 2. `@theme inline` — el **vocabulario de utilidades**. Primero anula las
+ *    familias por defecto de Tailwind (paleta, fuentes, pesos, tamaños,
+ *    radios, sombras, curvas) y después declara solo las del contrato. Así
+ *    `bg-slate-200` o `font-semibold` no generan CSS: el contrato no se
+ *    sostiene solo por disciplina, sino porque lo que no está declarado no
+ *    existe. `inline` hace que cada utilidad resuelva a `var(--hd-…)` en
+ *    tiempo de ejecución, así que el valor sigue teniendo una sola fuente.
+ *
+ * 3. `@layer base` — lo global mínimo. **Sin `font: inherit`** en controles:
+ *    ese atajo restablece tamaño, peso y altura de línea, y pisaría las
+ *    recetas. El preflight de Tailwind ya hereda la familia, en la capa base,
+ *    por debajo de cualquier utilidad.
  */
+
+:root {
+  --hd-color-canvas: #f4f6f9;
+  --hd-color-surface: #ffffff;
+  --hd-color-surface-sunken: #f8f9fb;
+  --hd-color-ink: #1b2333;
+  --hd-color-ink-muted: #5b6577;
+  --hd-color-heading: #001871;
+  --hd-color-line: #dfe3ea;
+  --hd-color-line-strong: #b3bccb;
+  --hd-color-accent: #00a9ce;
+  --hd-color-accent-surface: #cceef5;
+  --hd-color-focus: #001871;
+  --hd-color-action: #001871;
+  --hd-color-action-hover: #33468d;
+  --hd-color-on-action: #ffffff;
+  --hd-color-danger: #b42318;
+  --hd-color-danger-surface: #fef3f2;
+  --hd-color-warning: #b54708;
+  --hd-color-warning-surface: #fffaeb;
+  --hd-color-success: #067647;
+  --hd-color-success-surface: #ecfdf3;
+
+  --hd-radius-control: 6px;
+  --hd-radius-surface: 10px;
+  --hd-radius-pill: 999px;
+
+  --hd-shadow-overlay: 0 16px 48px rgba(0, 24, 113, 0.18);
+
+  --hd-motion-fast: 120ms;
+  --hd-motion-normal: 180ms;
+  --hd-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+
+  --hd-size-topbar: 72px;
+  --hd-size-topbar-wide: 84px;
+  --hd-size-logo-topbar: 132px;
+  --hd-size-logo-topbar-compact: 116px;
+  --hd-size-logo-sidebar: 200px;
+  --hd-size-logo-access: 200px;
+  --hd-size-stripe: 4px;
+  --hd-size-rail: 72px;
+  --hd-size-sidebar: 320px;
+  --hd-size-access-panel: 400px;
+  --hd-size-content-max: 1440px;
+
+  --hd-layer-rail: 20;
+  --hd-layer-topbar: 30;
+
+  --hd-shell-surface: #ffffff;
+  --hd-shell-line: #e2e8f0;
+  --hd-shell-item-ink: #1e293b;
+  --hd-shell-item-hover-surface: rgba(0, 169, 206, 0.08);
+  --hd-shell-item-hover-ink: #001871;
+  --hd-shell-item-active-from: #001871;
+  --hd-shell-item-active-to: #0a2b5f;
+  --hd-shell-item-active-shadow: 0 8px 18px -12px rgba(0, 24, 113, 0.45);
+  --hd-shell-on-item-active: #ffffff;
+  --hd-shell-muted: #64748b;
+  --hd-shell-control-hover-surface: #f1f5f9;
+  --hd-shell-badge-line: #dce3e8;
+  --hd-shell-badge-surface: #f8fafc;
+  --hd-shell-card-surface: #f8fafc;
+  --hd-shell-sign-out-hover-surface: #fef2f2;
+  --hd-shell-sign-out-hover-ink: #dc2626;
+  --hd-shell-avatar-from: #001871;
+  --hd-shell-avatar-to: #00a9ce;
+  --hd-shell-scrim: rgba(0, 0, 0, 0.5);
+
+  --hd-stripe-0: #001871;
+  --hd-stripe-1: #981d97;
+  --hd-stripe-2: #00bfb3;
+  --hd-stripe-3: #ed8b00;
+
+  --hd-weight-normal: 400;
+  --hd-weight-bold: 700;
+  --hd-weight-black: 900;
+
+  --hd-type-2xs-size: 0.625rem;
+  --hd-type-2xs-line-height: 0.875rem;
+  --hd-type-xs-size: 0.6875rem;
+  --hd-type-xs-line-height: 1rem;
+  --hd-type-sm-size: 0.8125rem;
+  --hd-type-sm-line-height: 1.125rem;
+  --hd-type-base-size: 0.875rem;
+  --hd-type-base-line-height: 1.25rem;
+  --hd-type-md-size: 1rem;
+  --hd-type-md-line-height: 1.5rem;
+  --hd-type-lg-size: 1.25rem;
+  --hd-type-lg-line-height: 1.75rem;
+  --hd-type-xl-size: 1.5rem;
+  --hd-type-xl-line-height: 2rem;
+}
+
+@theme inline {
+  /* Anulación de las familias por defecto: lo no declarado no existe. */
+  --color-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --ease-*: initial;
+
+  /* Tipografía. `--font-lato` lo inyecta next/font en <html> (layout.tsx);
+     Arial es la secundaria que designa el manual de marca. */
+  --font-sans: var(--font-lato), Arial, sans-serif;
+  --font-weight-normal: var(--hd-weight-normal);
+  --font-weight-bold: var(--hd-weight-bold);
+  --font-weight-black: var(--hd-weight-black);
+
+  --text-2xs: var(--hd-type-2xs-size);
+  --text-2xs--line-height: var(--hd-type-2xs-line-height);
+  --text-xs: var(--hd-type-xs-size);
+  --text-xs--line-height: var(--hd-type-xs-line-height);
+  --text-sm: var(--hd-type-sm-size);
+  --text-sm--line-height: var(--hd-type-sm-line-height);
+  --text-base: var(--hd-type-base-size);
+  --text-base--line-height: var(--hd-type-base-line-height);
+  --text-md: var(--hd-type-md-size);
+  --text-md--line-height: var(--hd-type-md-line-height);
+  --text-lg: var(--hd-type-lg-size);
+  --text-lg--line-height: var(--hd-type-lg-line-height);
+  --text-xl: var(--hd-type-xl-size);
+  --text-xl--line-height: var(--hd-type-xl-line-height);
+
+  /* Color semántico de HelpDesk. */
+  --color-canvas: var(--hd-color-canvas);
+  --color-surface: var(--hd-color-surface);
+  --color-surface-sunken: var(--hd-color-surface-sunken);
+  --color-ink: var(--hd-color-ink);
+  --color-ink-muted: var(--hd-color-ink-muted);
+  --color-heading: var(--hd-color-heading);
+  --color-line: var(--hd-color-line);
+  --color-line-strong: var(--hd-color-line-strong);
+  --color-accent: var(--hd-color-accent);
+  --color-accent-surface: var(--hd-color-accent-surface);
+  --color-focus: var(--hd-color-focus);
+  --color-action: var(--hd-color-action);
+  --color-action-hover: var(--hd-color-action-hover);
+  --color-on-action: var(--hd-color-on-action);
+  --color-danger: var(--hd-color-danger);
+  --color-danger-surface: var(--hd-color-danger-surface);
+  --color-warning: var(--hd-color-warning);
+  --color-warning-surface: var(--hd-color-warning-surface);
+  --color-success: var(--hd-color-success);
+  --color-success-surface: var(--hd-color-success-surface);
+
+  /* Réplica del shell de Conecta: solo la consume patterns/conecta-shell. */
+  --color-shell-surface: var(--hd-shell-surface);
+  --color-shell-line: var(--hd-shell-line);
+  --color-shell-item-ink: var(--hd-shell-item-ink);
+  --color-shell-item-hover-surface: var(--hd-shell-item-hover-surface);
+  --color-shell-item-hover-ink: var(--hd-shell-item-hover-ink);
+  --color-shell-item-active-from: var(--hd-shell-item-active-from);
+  --color-shell-item-active-to: var(--hd-shell-item-active-to);
+  --color-shell-on-item-active: var(--hd-shell-on-item-active);
+  --color-shell-muted: var(--hd-shell-muted);
+  --color-shell-control-hover-surface: var(--hd-shell-control-hover-surface);
+  --color-shell-badge-line: var(--hd-shell-badge-line);
+  --color-shell-badge-surface: var(--hd-shell-badge-surface);
+  --color-shell-card-surface: var(--hd-shell-card-surface);
+  --color-shell-sign-out-hover-surface: var(--hd-shell-sign-out-hover-surface);
+  --color-shell-sign-out-hover-ink: var(--hd-shell-sign-out-hover-ink);
+  --color-shell-avatar-from: var(--hd-shell-avatar-from);
+  --color-shell-avatar-to: var(--hd-shell-avatar-to);
+  --color-shell-scrim: var(--hd-shell-scrim);
+
+  /* Franja corporativa (orden del manual de marca). */
+  --color-stripe-0: var(--hd-stripe-0);
+  --color-stripe-1: var(--hd-stripe-1);
+  --color-stripe-2: var(--hd-stripe-2);
+  --color-stripe-3: var(--hd-stripe-3);
+
+  --radius-control: var(--hd-radius-control);
+  --radius-surface: var(--hd-radius-surface);
+  --radius-pill: var(--hd-radius-pill);
+
+  --shadow-overlay: var(--hd-shadow-overlay);
+  --shadow-shell-item-active: var(--hd-shell-item-active-shadow);
+
+  --ease-standard: var(--hd-motion-easing);
+
+  /* Medidas con nombre (`h-topbar`, `w-rail`, `w-logo-topbar`…). El espacio
+     libre del logotipo es el 20 % de su ancho, regla del manual de marca. */
+  --spacing-topbar: var(--hd-size-topbar);
+  --spacing-topbar-wide: var(--hd-size-topbar-wide);
+  --spacing-logo-topbar: var(--hd-size-logo-topbar);
+  --spacing-logo-topbar-compact: var(--hd-size-logo-topbar-compact);
+  --spacing-logo-sidebar: var(--hd-size-logo-sidebar);
+  --spacing-logo-access: var(--hd-size-logo-access);
+  --spacing-logo-clear-topbar: calc(var(--hd-size-logo-topbar) * 0.2);
+  --spacing-logo-clear-topbar-compact: calc(var(--hd-size-logo-topbar-compact) * 0.2);
+  --spacing-logo-clear-sidebar: calc(var(--hd-size-logo-sidebar) * 0.2);
+  --spacing-logo-clear-access: calc(var(--hd-size-logo-access) * 0.2);
+  --spacing-stripe: var(--hd-size-stripe);
+  --spacing-rail: var(--hd-size-rail);
+  --spacing-sidebar: var(--hd-size-sidebar);
+  --container-access-panel: var(--hd-size-access-panel);
+  --container-content: var(--hd-size-content-max);
+}
+
+@layer base {
+  html {
+    background-color: var(--hd-color-canvas);
+    color: var(--hd-color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* En `body` y no en `html`: el tamaño de `html` es la base del `rem`, y
+     reducirlo encogería todas las medidas del contrato, que están en rem. */
+  body {
+    font-size: var(--hd-type-base-size);
+    line-height: var(--hd-type-base-line-height);
+  }
+
+  /* La preferencia de movimiento reducido siempre gana. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

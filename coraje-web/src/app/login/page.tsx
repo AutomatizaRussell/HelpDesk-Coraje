@@ -1,13 +1,15 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/design-system/components/BrandLogo";
+import { BrandStripe } from "@/design-system/components/BrandStripe";
+import { buttonRecipe } from "@/design-system/recipes/button";
 import { sanitizeDestination } from "@/server/auth/sanitize-destination";
 
 /**
- * Pantalla de acceso. Sin estilo propio a propósito: el contrato de diseño
- * de HelpDesk todavía no existe como código (docs/design/sistema-helpdesk.md),
- * y esa es la unidad que lo construye (U5) — no esta. Renderizar sin tokens
- * inventados es más honesto que quemar valores visuales locales que la
- * regla dura del proyecto prohíbe.
+ * Pantalla de acceso. Superficie pública y sobria (design/sistema-helpdesk.md
+ * §6): logotipo oficial con su espacio libre, una sola acción explícita y
+ * ninguna activación automática. Se dibuja sin el shell de Conecta porque
+ * quien llega aquí todavía no tiene sesión que mostrar.
  *
  * Código de error cerrado (specs/acceso-empleados.md §8): un parámetro
  * desconocido no imprime nada. Un enlace fabricado no puede poner texto
@@ -38,17 +40,39 @@ export default async function LoginPage({
   const startUrl = `/api/auth/microsoft/start?destino=${encodeURIComponent(destino)}&silent=0`;
 
   return (
-    <main>
-      <h1>HelpDesk</h1>
-      {message ? <p role="alert">{message}</p> : null}
-      {/* prefetch={false}: esta ruta no es de solo lectura — dispara el
-          flujo de login (crea cookie de estado, redirige a Microsoft). Un
-          prefetch al pasar el mouse lo activaría sin que la persona
-          hiciera clic. Link (no <a>) para que anteponga el basePath de
-          HelpDesk (next.config.ts) sin tenerlo que hacer a mano aquí. */}
-      <Link href={startUrl} prefetch={false}>
-        Continuar con Microsoft
-      </Link>
+    <main className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
+      <div className="w-full max-w-access-panel overflow-hidden rounded-surface border border-line bg-surface">
+        <div className="flex justify-center border-b border-line">
+          <BrandLogo placement="access" />
+        </div>
+
+        <div className="space-y-5 px-8 py-8">
+          <div className="space-y-1">
+            <h1 className="text-xl font-black text-heading">Ingreso a HelpDesk</h1>
+            <p className="text-ink-muted">Usa tu cuenta corporativa de Microsoft.</p>
+          </div>
+
+          {message ? (
+            <p
+              role="alert"
+              className="rounded-control border border-danger/30 bg-danger-surface px-3 py-2 text-sm text-danger"
+            >
+              {message}
+            </p>
+          ) : null}
+
+          {/* prefetch={false}: esta ruta no es de solo lectura — dispara el
+              flujo de login (crea cookie de estado, redirige a Microsoft). Un
+              prefetch al pasar el mouse lo activaría sin que la persona
+              hiciera clic. Link (no <a>) para que anteponga el basePath de
+              HelpDesk (next.config.ts) sin tenerlo que hacer a mano aquí. */}
+          <Link href={startUrl} prefetch={false} className={buttonRecipe({ size: "lg", fullWidth: true })}>
+            Continuar con Microsoft
+          </Link>
+        </div>
+
+        <BrandStripe />
+      </div>
     </main>
   );
 }

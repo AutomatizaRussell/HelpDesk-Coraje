@@ -1,15 +1,17 @@
 # Sistema de diseño de HelpDesk
 
 ```
-ESTADO:      no implementado — no existe contrato de diseño en el código. **Y ya
-             tampoco existe nada que lo contradiga:** el 22-sep-2026 (U4) se retiró
-             el frontend heredado completo, incluido el `AppShell` y los tokens de
-             `globals.css`. No quedan estilos locales, ni tipografía impuesta por el
-             layout, ni un solo valor visual escrito. Este documento fija el
-             objetivo; hoy describe además el punto de partida, que está en blanco
+ESTADO:      contrato ejecutable construido (U5), **cambios locales sin publicar**.
+             `coraje-web/src/design-system/` (fundamentos, tema, recetas,
+             componentes, patrón del shell de Conecta) y el adaptador CSS en
+             `src/app/globals.css`. Consumidores: `/` dentro del shell y `/login`.
+             La bandeja y el detalle del ticket no existen (U7)
 CORTE:       23-sep-2026
-EVIDENCIA:   ninguna. Sin validación visual, de teclado, de lector de pantalla ni
-             móvil, porque no hay nada que validar todavía
+EVIDENCIA:   `pnpm test` 50/50 (8 del contrato, que fallan al forzar divergencia
+             entre adaptadores y una clase prohibida), `tsc --noEmit`, `eslint` y
+             `next build` limpios; utilidades con nombre comprobadas en el CSS
+             compilado. **Sin validación visual, de teclado, de lector de
+             pantalla ni móvil:** nada se ha visto aún en un navegador
 ```
 
 **Autoridad:** primera, las decisiones aprobadas para HelpDesk en este documento;
@@ -39,19 +41,67 @@ su barra lateral, cuelga de su URL y no ofrece ningún enlace de «volver»: un 
 vuelta lo necesita quien salió de un sitio, y aquí el usuario no debe sentir que salió
 de ninguna parte (`contexto-canonico.md` §1.1).
 
-> **Impulsa no es la referencia de este apartado.** Tenía *Volver a Conecta* en el pie
-> de su sidebar porque se planteó como módulo y luego se despegó. HelpDesk va en
-> dirección contraria: **el shell que se replica es el de Conecta**, no el de Impulsa.
-> De Impulsa se toman las **maneras** —cadena de autoridad, tokens, recetas—, no la
-> apariencia ni la navegación.
+> `DECISIÓN` **Diseño propio (23-sep-2026, usuario).** HelpDesk tiene un diseño
+> **completamente distinto** del de Conecta y del de Impulsa:
+>
+> - **De Conecta se replica solo el shell** —su sidebar, y su topbar si se conserva—,
+>   para que la navegación entre módulos se lea continua. Nada más: ni pesos, ni
+>   tipografía, ni superficies, ni recetas. Conecta usa pesos 800/900 que no encajan
+>   con la sobriedad buscada y ni siquiera carga Lato (renderiza la fuente del
+>   sistema); HelpDesk carga Lato aunque Conecta no lo haga.
+> - **De Impulsa se toma lo conceptual** —cadena de autoridad, contrato semántico como
+>   referencias a variables CSS, dos adaptadores con validador, capas del §4—, **no su
+>   apariencia**. Inspirarse no es copiar: una receta de Impulsa no se trae calcada.
+>
+> Esto corrige el criterio anterior de `CLAUDE.md` según el cual apartarse de las
+> vistas de Impulsa exigía justificación: la justificación ahora la exige parecerse.
 
-Comparten, eso sí, marca corporativa: el logotipo vive en `public/rb-logo.png` en ambos
-repositorios.
+> `DECISIÓN` **Navegación (23-sep-2026, usuario).**
+>
+> - **Sidebar de Conecta replegado, sin logo ni globo.** La forma replegada no existe
+>   en Conecta: la define HelpDesk replicando su estructura. Cada icono es un
+>   `<a href>` a Conecta (carga completa, nunca `navigate()` de su router).
+> - **Desplegado, se superpone al contenido; no lo desplaza.** Así cubre el logotipo de
+>   la topbar y nunca se ven dos logotipos a la vez, y la bandeja no cambia de ancho.
+> - **La topbar de Conecta se conserva de momento** y aloja el logotipo oficial a la
+>   izquierda, con su espacio libre. «HelpDesk» no forma bloque con él: lo separa al
+>   menos ese espacio libre y ningún separador vertical (el manual marca «logo |
+>   palabra» como uso incorrecto).
+> - **Las secciones de HelpDesk van en una fila de pestañas bajo la topbar.** Sin
+>   construir: hoy solo existe «Inicio», y una fila con una sola pestaña no navega a
+>   ninguna parte. Se construye con la segunda sección (U7).
+> - **Diferencias deliberadas con Conecta** (`patterns/conecta-shell/`): la topbar
+>   compacta mide 72 px, no 64, porque a 64 el logotipo no cabe con su espacio libre.
+>   El logo del sidebar mide 200 px, no 240, por el mismo motivo. Las etiquetas usan
+>   gris `#64748b`, no `#94a3b8` (2,6:1, por debajo de AA). Los pesos 800 pasan a 700
+>   o 900, los que tiene Lato. «Cursos» no aparece, porque saber si hay cursos exige
+>   la API de Conecta. HelpDesk figura en «Recursos» como ítem activo.
+>
+> `ABIERTO` **Retirar la topbar.** Queda para después. Dato para decidirlo: topbar,
+> franja y pestañas ocupan unos 132 px, y a 1024×576 dejan unos 444 px útiles a la
+> bandeja.
 
-> `ABIERTO` **El shell de Conecta no ha sido inspeccionado por este contrato.** Antes de
-> materializar tokens hay que ver su barra lateral, su tipografía y su paleta reales, y
-> decidir si se replican o se consumen. Es la misma decisión pendiente que el mecanismo
-> de integración de `contexto-canonico.md` §1.1, y bloquea al mismo trabajo.
+**Marca corporativa.** La fuente de verdad es el *Manual de Marca Corporativa* de
+Russell Bedford (inspeccionado el 23-sep-2026). Lo que obliga a este contrato:
+
+- **Logotipo oficial**, `Logo Azul Oscuro_Imagotipo` del paquete de marca, en
+  `public/rb-logo.png`. El archivo anterior era una versión no oficial de navy apagado
+  —el manual prohíbe versiones anteriores o alternativas—. La versión blanca existe para
+  fondos oscuros y solo se incorpora cuando una superficie la necesite.
+- **Espacio libre** alrededor del logotipo de al menos el 20 % de su ancho, y **ningún
+  texto que se lea junto a él**: el nombre «HelpDesk» no forma bloque con el logo.
+- **El isotipo (globo) no es logotipo por sí mismo**, solo motivo decorativo. Por eso
+  el sidebar replegado no lo muestra, y el logotipo completo va en la topbar.
+- **Ancho mínimo de 30 mm** (≈113 px a 96 ppp).
+- **Cinco colores aprobados** y sus tintas al 80/60/40/20 %, para los cinco (no solo
+  navy y naranja). Sky Blue se toma por su hex `#00a9ce`: el RGB del manual es un error
+  de copia.
+- **Cada color de la paleta identifica además un área de la firma** (naranja →
+  Revisoría, teal → BPO, magenta → Contaduría; navy probablemente Administración —
+  `ABIERTO`, sin confirmar—). Como HelpDesk lo usa toda la firma, **puede usar los cinco
+  colores**, pero con contención: usar muchos colores porque sí da una interfaz de
+  feria, no sobria. Si algún elemento llega a representar un área concreta, el mapeo
+  área→color se confirma con el usuario antes de materializarlo; no se infiere.
 
 **Personalidad:** precisa · adulta · sobria · operativa · confiable. Nace del orden y el
 ritmo, **no de saturar color o negrilla**.
@@ -67,18 +117,39 @@ la densidad, el escaneo rápido y la señal de urgencia. El sistema debe optimiz
 > de Impulsa y distinguir solo por iconografía y topbar.
 >
 > Lo que la decisión fija y lo que no: fija que el tema declara **un acento distinto
-> del teal de Impulsa**; no fija cuál. La elección concreta es trabajo de `U5` y tiene
-> tres restricciones que no son negociables aquí —vivir dentro de la paleta corporativa
-> de la firma, no chocar con el navy sobre el que se apoya el shell de Conecta, y
+> del de Impulsa**; no fija cuál.
+>
+> **Corrección (23-sep-2026):** este bloque decía «distinto del teal de Impulsa». Era
+> falso: el acento de Impulsa es **naranja** (`themes/impulsa.ts`: foco y acción
+> primaria); el teal solo tiñe un caso de asociación. Confirmado por el usuario.
+>
+> Restricciones del acento, no negociables: vivir dentro de la paleta corporativa, con
+> contención cromática (cualquiera de los cinco colores cabe, no todos a la vez); y
 > reservar el registro de alerta para la señal de urgencia de la bandeja, que en una
-> mesa de ayuda es información y no decoración—. Un acento que compita con esa señal
-> hace más daño que uno poco distintivo.
+> mesa de ayuda es información y no decoración. Un acento que compita con esa señal hace
+> más daño que uno poco distintivo.
+>
+> `PROPUESTA` **Acento concreto (U5, 23-sep-2026, pendiente de ver en pantalla):
+> Sky Blue**, con navy como color de acción y de foco. El registro cálido (ámbar,
+> rojo) queda reservado para SLA y urgencia, y un acento frío no compite con él. Límite
+> duro: Sky Blue da 2,8:1 sobre blanco, así que solo sirve de **marca** (pestaña activa,
+> barra de selección, su tinta al 20 % como fondo de selección). Nunca va en texto, en
+> el anillo de foco ni como único indicador de un estado. El foco es navy porque
+> necesita 3:1 (WCAG 1.4.11). Materializado en `themes/helpdesk.ts`; se revisa con la
+> primera vista que lo use de verdad.
 
-> `DECISIÓN` **Tipografía.** Se adopta **Lato**, la fuente corporativa ya confirmada en
-> Impulsa. No hay razón para que dos módulos de la misma plataforma tipografíen
-> distinto. **Con la corrección de su deuda conocida:** hay que cargar pesos reales
-> 400/500/600/700 desde el principio, porque Impulsa carga solo 400 y 700 y el navegador
-> sintetiza los intermedios, que es un defecto visible.
+> `DECISIÓN` **Tipografía: Lato, pesos 400 · 700 · 900.** Son los cortes que aprueba
+> el manual (Regular, Bold, Black, además de Italic) y los únicos que
+> `next/font/google` sirve en el rango útil (`100, 300, 400, 700, 900`). La itálica
+> no se carga todavía: next/font precarga cada archivo declarado, y hoy el único texto
+> en itálica (el eslogan) va dentro de la imagen del logotipo.
+>
+> **Corrección (23-sep-2026):** este bloque exigía cargar 400/500/600/700. No es
+> posible —Lato 1.x no tiene 500 ni 600 en Google Fonts— y el diagnóstico era erróneo:
+> el navegador no sintetiza pesos intermedios, pinta el disponible más cercano. El
+> defecto real de Impulsa es que su código pide `font-medium`/`font-semibold` sin que
+> existan. La corrección es que el contrato **solo exponga los pesos que se cargan**, y
+> que una prueba falle si aparece un peso sin corte real.
 
 ## 3. Cadena de autoridad del contrato
 
@@ -185,18 +256,19 @@ Lo que un helpdesk necesita y una plataforma documental no:
 
 ## 9. Verificación contra código
 
-Sin implementación; la tabla queda escrita para la unidad que la construya.
+Estado al 23-sep-2026 (U5, cambios locales sin publicar). «Verificado» significa prueba automática en verde o inspección del artefacto compilado; nada de esta tabla se ha visto todavía en un navegador.
 
-| # | Afirmación a verificar | Dónde comprobarlo |
-|---|---|---|
-| V1 | Lato carga pesos reales 400/500/600/700, sin síntesis | Configuración de fuentes |
-| V2 | Existe contrato ejecutable con capas separadas | Árbol del sistema de diseño |
-| V3 | No hay valores quemados en vistas | `grep` de hex, px y clases arbitrarias fuera del contrato |
-| V4 | Los dos adaptadores del tema no divergen | Validador de coherencia |
-| V5 | El color de estado se resuelve desde una sola autoridad | Módulo de traducción estado→token |
-| V6 | Ningún control usa `font: inherit` | `grep` |
-| V7 | La nota interna y la respuesta al cliente son inequívocas | Validación visual del detalle del ticket |
-| V8 | El portal es operable en móvil, teclado y lector de pantalla | Validación real, no inspección |
+| # | Afirmación a verificar | Dónde comprobarlo | Estado |
+|---|---|---|---|
+| V1 | Lato carga 400/700/900, y ninguna clase pide un peso sin corte (`font-medium`, `font-semibold`, `font-extrabold`, `font-thin`, `font-light`) | `layout.tsx` + `contract.test.mts` | **Verificado:** prueba del literal de `layout.tsx` contra `LATO_WEIGHTS`; el CSS compilado solo trae `@font-face` de 400/700/900 y ninguna regla `.font-semibold`. La itálica se difiere hasta que una vista la use |
+| V1b | `public/rb-logo.png` es el imagotipo oficial azul oscuro, recortado solo del margen transparente (2422×526, opaco en `#001871`) | Dimensiones y color dominante del archivo | **Verificado** al recortarlo (System.Drawing: límites alfa y color opaco dominante) |
+| V2 | Existe contrato ejecutable con capas separadas | `coraje-web/src/design-system/` | **Verificado:** `foundations/`, `themes/`, `recipes/`, `components/`, `patterns/`, `utilities/` |
+| V3 | No hay valores quemados en vistas | Barrido de `contract.test.mts` sobre todo `src/` | **Verificado:** 10 detectores (hex, funciones de color, px, clases arbitrarias, z/duración numéricos, paleta por defecto, pesos, `font: inherit`, tamaño de icono, `style` en línea), cada uno con su prueba positiva y negativa; comprobado además forzando una violación en `page.tsx` |
+| V4 | Los dos adaptadores del tema no divergen | `contract.test.mts` | **Verificado:** igualdad de claves y de valores; falla al forzar un valor distinto y una variable solo en CSS. Además, toda `var(--hd-…)` del código debe existir |
+| V5 | El color de estado se resuelve desde una sola autoridad | Módulo de traducción estado→token | Pendiente: no hay vista con estados (U7) |
+| V6 | Ningún control usa `font: inherit` | Detector del barrido | **Verificado** |
+| V7 | La nota interna y la respuesta al cliente son inequívocas | Validación visual del detalle del ticket | Pendiente (U7) |
+| V8 | El portal es operable en móvil, teclado y lector de pantalla | Validación real, no inspección | Pendiente: no hay portal (U8) |
 
 **Changelog:** 03-sep-2026 — línea base. Declara el rediseño completo y la ausencia de
 fase «primero funciona, luego se centraliza» (§1); adopta Lato corrigiendo su deuda de
@@ -209,3 +281,10 @@ mesa de ayuda y la autoridad única de color de estado (§5).
   condición cumplida: el shell nuevo se construye sobre nada. El usuario resuelve D5 —
   **acento visual propio**, no compartido con Impulsa—; qué acento exactamente sigue
   siendo trabajo de `U5`, con las tres restricciones de §2.
+- 23-sep-2026 (mismo día) — **inspeccionado el Manual de Marca Corporativa y el shell de
+  Conecta.** Diseño propio: de Conecta solo el shell, de Impulsa solo lo conceptual
+  (§2). Sidebar replegado; topbar posiblemente sustituida por navegación superior
+  propia, abierto. Logotipo oficial. Se corrigen dos premisas falsas de §2: el acento de
+  Impulsa es naranja, no teal, y Lato no tiene 500/600 — pesos 400/700/900. Los cinco
+  colores son utilizables porque HelpDesk es de toda la firma, con contención; el uso
+  semántico por área exige confirmar antes el mapeo con el usuario.

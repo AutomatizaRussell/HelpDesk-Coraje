@@ -1,16 +1,32 @@
 import type { Metadata } from "next";
+import { Lato } from "next/font/google";
 
 import "./globals.css";
 
 /**
- * Layout raíz.
+ * Lato, la fuente principal del manual de marca, con sus cortes reales.
  *
- * Reducido a lo indispensable al retirar el frontend heredado: las fuentes
- * Geist que traía eran las de la plantilla de Next, no una decisión de este
- * producto. La tipografía real —Lato, con pesos 400/500/600/700— está
- * decidida en docs/design/sistema-helpdesk.md §2 y se declara cuando exista
- * el contrato de diseño como código (U5), no antes y no aquí suelta.
+ * `weight` repite como literal los pesos de `design-system/foundations/
+ * typography.ts` (`LATO_WEIGHTS`) porque next/font analiza estas opciones en
+ * compilación y no acepta referencias. El validador del contrato comprueba
+ * que ambos coincidan.
  *
+ * Solo `latin` y solo estilo normal: next/font precarga cada archivo que se
+ * le declara, y el español cabe entero en `latin`. La itálica que aprueba el
+ * manual se añade cuando una vista la use — hoy el único texto en itálica,
+ * el eslogan, va dentro de la imagen del logotipo.
+ *
+ * El `<html>` recibe la variable `--font-lato`, que `globals.css` convierte
+ * en la familia de toda la aplicación, con Arial de respaldo.
+ */
+const lato = Lato({
+  variable: "--font-lato",
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  display: "swap",
+});
+
+/**
  * El nombre del producto es HelpDesk. `Coraje` era el nombre del módulo y de
  * la carpeta, y como título de la pestaña no le dice nada a nadie.
  */
@@ -25,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className={lato.variable}>
       <body>{children}</body>
     </html>
   );
