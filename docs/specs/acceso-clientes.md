@@ -30,6 +30,16 @@ seleccionado, que era el mecanismo mismo del problema.
 Lo que sigue de este documento describe **lo que hay que construir**, no lo que se
 sustituye: no queda nada en pie de lo anterior.
 
+> **Confirmación del usuario al cerrar U4 (23-sep-2026), y vale como criterio para lo
+> que viene:** lo retirado no era una implementación de tickets externos a la que le
+> faltara identidad. Era una lista de clientes donde cualquiera entraba a la vista de
+> cualquier otro, sin nada resuelto del lado del ticket. **No se perdió lógica de
+> negocio al borrarlo** — es el único caso del proyecto donde retirar no dejó deuda de
+> conocimiento, a diferencia de la redirección interna, cuya lógica sí se conservó sin
+> pantalla por ese motivo. La consecuencia práctica: al construir este contrato no hay
+> comportamiento anterior que replicar ni con el que ser compatible, ni siquiera como
+> referencia de qué esperaban los usuarios.
+
 ## 2. Decisión central
 
 Se adopta el modelo de acceso externo de Impulsa: **autorización individual, invitación

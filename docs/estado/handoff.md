@@ -57,8 +57,12 @@ UNIDAD:  U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las d
          **Lo que NO está verificado, y conviene no olvidarlo:** cómo llega el
          prefijo `/helpdesk` al pathname dentro del proxy real. No se
          demostró, se neutralizó —`normalizeAppPathname` clasifica igual venga
-         puesto o no—. Es la salvedad 4 de §1. **U5 pasa a ser la cabeza de la
-         cola.**
+         puesto o no—. Es la salvedad 4 de §1.
+
+         **U5 pasa a ser la cabeza de la cola, y arranca sin decisión de
+         usuario pendiente:** D5 se cerró al terminar esta sesión —HelpDesk
+         lleva **acento visual propio**, no el de Impulsa—. Qué acento
+         exactamente es trabajo de U5, no consulta.
 
 CORTE ANTERIOR (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
          DESPLIEGUE REAL.** Los ocho escenarios mínimos de `plan-ejecucion.md`
@@ -597,9 +601,12 @@ Impulsa —fundamentos, tema, recetas, componentes, patrones— y sus vistas `/c
 decisión es como es, incluida la razón por la que la alternativa obvia falla. La carga
 de la prueba es de quien se aparte de cómo lo resuelven esas vistas.
 
-**Decisión que bloquea y no se puede tomar sola: D5** — si HelpDesk tiene acento visual
-propio o comparte el de Impulsa. Es del usuario, y condiciona el tema antes de que haya
-una sola vista escrita.
+**D5 quedó resuelta el 23-sep-2026, así que U5 arranca sin decisión pendiente de
+usuario: HelpDesk lleva acento visual propio.** Lo que sigue abierto es cuál, y eso es
+trabajo de la unidad, no consulta: dentro de la paleta corporativa, sin chocar con el
+navy sobre el que se apoya el shell de Conecta, y sin competir con la señal de urgencia
+de la bandeja — en una mesa de ayuda esa señal es información, no adorno
+(`design/sistema-helpdesk.md` §2, §5).
 
 **Lo que U5 arrastra además, y conviene no descubrir a mitad:** replicar el shell de
 Conecta dentro de HelpDesk (sidebar y topbar) es parte de esta unidad, no de otra — la
@@ -668,6 +675,7 @@ de Conecta.
 | Estado del ticket derivado de eventos, con escritor único | `specs/tickets.md` §3 | Decidida, no construida |
 | Rediseño visual completo, sin fase de centralización posterior | `design/sistema-helpdesk.md` §1 | Decidida, no construida |
 | Tipografía Lato, con pesos reales 400/500/600/700 | Ídem §2 | Decidida, no construida |
+| D5: acento visual propio de HelpDesk, distinto del teal de Impulsa | Ídem §2 | **Decidida el 23-sep-2026**, no construida. Fija que el acento es propio, no cuál: la elección concreta es de `U5`, acotada por la paleta corporativa, el navy del shell de Conecta y la señal de urgencia de la bandeja |
 | HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | Decidida, no construida |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
 | Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Construida por completo (corte 8):** baseline adoptado, y el servicio `migrate` ya automatiza cada deploy futuro |
@@ -691,7 +699,7 @@ de Conecta.
 | D2 | Qué ve un contacto: sus tickets o los de su empresa | El modelo de acceso externo | Usuario |
 | D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
 | D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
-| D5 | Acento visual propio del módulo o compartido con Impulsa | Materialización del tema | Usuario |
+| ~~D5~~ | **Cerrada el 23-sep-2026: acento visual propio**, no el de Impulsa. Fija que el tema declara un acento distinto del teal; **no fija cuál** — esa elección es de `U5`, dentro de la paleta corporativa, sin chocar con el navy del shell de Conecta y sin competir con la señal de urgencia de la bandeja | — | — |
 | ~~D7~~ | **Cerrada por completo el 22-sep-2026.** Decidida el 18-sep, y **configurada y ejercitada** en este corte: `/helpdesk` sirve tráfico real y el ingreso funciona de punta a punta | — | — |
 
 > **D7 cerrada en sus tres preguntas** (`contexto-canonico.md` §1.1). La ruta es
@@ -1120,4 +1128,13 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   valor visual, que es la condición de partida que `U5` necesitaba. Queda sin verificar
   —y declarado como salvedad, no como detalle— cómo llega el prefijo `/helpdesk` al
   pathname dentro del proxy real: se neutralizó, no se demostró. **U5 pasa a ser la
-  cabeza de la cola**, con D5 (acento visual) como decisión de usuario que la bloquea.
+  cabeza de la cola**.
+- 23-sep-2026 (corte 13, cierre de sesión) — **D5 resuelta: acento visual propio**, no
+  el de Impulsa; qué acento exactamente queda como trabajo de `U5`, con las tres
+  restricciones de `design/sistema-helpdesk.md` §2. U5 arranca sin decisión pendiente de
+  usuario. El usuario confirma además que el portal retirado **no contenía lógica de
+  negocio rescatable** —era una lista donde cualquier cliente alcanzaba la vista de
+  otro, sin nada resuelto del lado del ticket—, lo que cierra la duda de si F1 se cerró
+  perdiendo algo: no. Registrado en `acceso-clientes.md` §1 como criterio para
+  construir ese contrato sin buscar compatibilidad con un comportamiento anterior que
+  nunca fue correcto.

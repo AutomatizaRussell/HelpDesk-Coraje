@@ -62,11 +62,17 @@ pantalla principal es una bandeja que alguien mira muchas veces al día, donde i
 la densidad, el escaneo rápido y la señal de urgencia. El sistema debe optimizar para
 **leer muchas filas y decidir rápido**, no para redactar con cuidado.
 
-> `ABIERTO` **Acento del módulo.** Impulsa usa teal como acento sobre navy corporativo.
-> HelpDesk necesita distinguirse dentro de Conecta sin romper la marca compartida. Las
-> dos salidas son un acento propio dentro de la paleta corporativa, o el mismo acento
-> con distinción por iconografía y topbar. **Sin decidir**, y conviene decidirlo antes
-> de materializar el tema, no después.
+> `DECISIÓN` **Acento del módulo (D5, resuelta el 23-sep-2026 por el usuario):
+> HelpDesk lleva acento visual propio.** Se descarta la salida de compartir el acento
+> de Impulsa y distinguir solo por iconografía y topbar.
+>
+> Lo que la decisión fija y lo que no: fija que el tema declara **un acento distinto
+> del teal de Impulsa**; no fija cuál. La elección concreta es trabajo de `U5` y tiene
+> tres restricciones que no son negociables aquí —vivir dentro de la paleta corporativa
+> de la firma, no chocar con el navy sobre el que se apoya el shell de Conecta, y
+> reservar el registro de alerta para la señal de urgencia de la bandeja, que en una
+> mesa de ayuda es información y no decoración—. Un acento que compita con esa señal
+> hace más daño que uno poco distintivo.
 
 > `DECISIÓN` **Tipografía.** Se adopta **Lato**, la fuente corporativa ya confirmada en
 > Impulsa. No hay razón para que dos módulos de la misma plataforma tipografíen
@@ -197,3 +203,9 @@ fase «primero funciona, luego se centraliza» (§1); adopta Lato corrigiendo su
 pesos y deja abierto el acento del módulo (§2); adapta la cadena de autoridad y la
 estructura de capas de Impulsa (§3, §4); introduce la semántica de color propia de una
 mesa de ayuda y la autoridad única de color de estado (§5).
+- 23-sep-2026 — **el punto de partida queda en blanco y D5 se cierra.** U4 retiró el
+  frontend heredado completo (`AppShell`, tokens de `globals.css`, tipografía de
+  plantilla del layout), así que el paso 4 de §8 deja de ser tarea y pasa a ser
+  condición cumplida: el shell nuevo se construye sobre nada. El usuario resuelve D5 —
+  **acento visual propio**, no compartido con Impulsa—; qué acento exactamente sigue
+  siendo trabajo de `U5`, con las tres restricciones de §2.
