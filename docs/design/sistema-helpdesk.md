@@ -70,12 +70,25 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 > - **Las secciones de HelpDesk van en una fila de pestañas bajo la topbar.** Sin
 >   construir: hoy solo existe «Inicio», y una fila con una sola pestaña no navega a
 >   ninguna parte. Se construye con la segunda sección (U7).
-> - **Diferencias deliberadas con Conecta** (`patterns/conecta-shell/`): la topbar
->   compacta mide 72 px, no 64, porque a 64 el logotipo no cabe con su espacio libre.
->   El logo del sidebar mide 200 px, no 240, por el mismo motivo. Las etiquetas usan
->   gris `#64748b`, no `#94a3b8` (2,6:1, por debajo de AA). Los pesos 800 pasan a 700
->   o 900, los que tiene Lato. «Cursos» no aparece, porque saber si hay cursos exige
->   la API de Conecta. HelpDesk figura en «Recursos» como ítem activo.
+> - **Fuente de la réplica:** rama `stiben` @ `9df5500` de RBGCT-REACT (10-sep-2026),
+>   que coincide con lo desplegado en cada elemento visible: sidebar navy, columna
+>   replegada de 80 px y topbar blanca sin franja. `main` (`e27662b`) es una versión
+>   anterior con sidebar blanco y no aplica. `ABIERTO`: el remoto de GitHub responde
+>   *not found* y no se pudo descargar nada más reciente. Falta confirmar en Coolify
+>   la rama y el commit que despliega Conecta.
+> - **Diferencias deliberadas con Conecta** (`patterns/conecta-shell/`):
+>   - La columna replegada no lleva el globo, y el logotipo oficial va en la topbar.
+>   - El sidebar desplegado se superpone al contenido en lugar de empujarlo.
+>   - La topbar compacta mide 72 px, no 64: a 64 el logotipo no cabe con su espacio
+>     libre.
+>   - Las etiquetas de sección van en blanco al 60 %, no al 45 % (4,2:1, por debajo
+>     de AA).
+>   - Los pesos 500, 600 y 800 pasan a 400, 700 o 900, los que tiene Lato.
+>   - No aparecen «Mis clientes» ni «Formación»: su visibilidad depende de permisos
+>     SQF y de cursos que solo conoce Conecta.
+>   - No se replican la campana, el botón flotante de sugerencias ni el pie de
+>     contactos: son funciones de Conecta, no del shell.
+>   - HelpDesk figura en «Recursos» como ítem activo.
 >
 > `ABIERTO` **Retirar la topbar.** Queda para después. Dato para decidirlo: topbar,
 > franja y pestañas ocupan unos 132 px, y a 1024×576 dejan unos 444 px útiles a la

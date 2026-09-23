@@ -40,6 +40,8 @@ export const helpdeskTheme = {
     // El foco es navy y no el acento: un anillo de foco necesita 3:1 contra
     // lo que lo rodea (WCAG 1.4.11) y Sky Blue no lo alcanza sobre blanco.
     focus: brandPrimitives.navy,
+    // Foco sobre superficie oscura (el sidebar navy): el navy sería invisible.
+    focusInverse: brandPrimitives.white,
     action: brandPrimitives.navy,
     actionHover: tint("navy", 80),
     onAction: brandPrimitives.white,
@@ -59,6 +61,7 @@ export const helpdeskTheme = {
     control: "6px",
     surface: "10px",
     pill: "999px",
+    shellItem: "8px", // réplica de Conecta (`rounded-lg` de sus ítems)
   },
   shadow: {
     overlay: "0 16px 48px rgba(0, 24, 113, 0.18)",
@@ -80,10 +83,10 @@ export const helpdeskTheme = {
     topbarWide: "84px",
     logoTopbar: "132px",
     logoTopbarCompact: "116px",
-    logoSidebar: "200px", // 240 en Conecta, pero 240 + 2 × 48 de espacio libre no cabe en 320
+    logoSidebar: "190px", // el de Conecta en escritorio; 190 + 2 × 38 de espacio libre cabe en 320
     logoAccess: "200px",
     stripe: "4px",
-    rail: "72px",
+    rail: "80px",
     sidebar: "320px",
     accessPanel: "400px",
     contentMax: "1440px",
@@ -95,39 +98,57 @@ export const helpdeskTheme = {
 
   /**
    * Réplica del shell de Conecta (sidebar y topbar), y **nada más** de Conecta
-   * (design/sistema-helpdesk.md §2). Son los valores de
-   * `RBGCT-REACT/frontend/src/components/layout/{SidebarShell,UserSidebar,Topbar}.jsx`
-   * e `index.css` en `main` @ `e27662b`, pasados de clases de Tailwind a valor.
+   * (design/sistema-helpdesk.md §2). Son los valores de la rama `stiben` @
+   * `9df5500` de RBGCT-REACT —la que coincide con lo desplegado—:
+   * `components/layout/{SidebarShell,RoleSidebar,Topbar}.jsx` y las reglas
+   * `.rb-sidebar-*` de `index.css`, pasados de clases de Tailwind a valor.
    * Viven agrupados para que se sepa que son copia: si Conecta cambia, este es
    * el único bloque que se actualiza, y ningún otro componente debe tomarlos.
+   *
+   * Una sola desviación de valor, por accesibilidad: la etiqueta de sección
+   * usa blanco al 60 % y no al 45 % —sobre navy, el 45 % da 4,2:1, por debajo
+   * de AA para texto pequeño—.
    */
   shell: {
-    surface: brandPrimitives.white,
-    line: "#e2e8f0",
-    itemInk: "#1e293b",
-    itemHoverSurface: "rgba(0, 169, 206, 0.08)",
-    itemHoverInk: brandPrimitives.navy,
-    itemActiveFrom: brandPrimitives.navy,
-    itemActiveTo: "#0a2b5f",
-    itemActiveShadow: "0 8px 18px -12px rgba(0, 24, 113, 0.45)",
-    onItemActive: brandPrimitives.white,
-    muted: "#64748b",
-    controlHoverSurface: "#f1f5f9",
-    badgeLine: "#dce3e8",
-    badgeSurface: "#f8fafc",
-    cardSurface: "#f8fafc",
-    signOutHoverSurface: "#fef2f2",
-    signOutHoverInk: "#dc2626",
-    avatarFrom: brandPrimitives.navy,
-    avatarTo: brandPrimitives.skyBlue,
+    // Sidebar: navy plano, textos en blanco con opacidades.
+    surface: brandPrimitives.navy,
+    line: "#001560",
+    divider: "rgba(255, 255, 255, 0.1)",
+    itemInk: "rgba(255, 255, 255, 0.72)",
+    itemHoverSurface: "rgba(255, 255, 255, 0.08)",
+    itemActiveSurface: "rgba(255, 255, 255, 0.14)",
+    onSurface: brandPrimitives.white,
+    onSurfaceMuted: "rgba(255, 255, 255, 0.6)",
+    badgeSurface: "rgba(255, 255, 255, 0.12)",
+    badgeInk: "rgba(255, 255, 255, 0.9)",
+    cardLine: "rgba(255, 255, 255, 0.15)",
+    cardSurface: "rgba(255, 255, 255, 0.05)",
+    avatarFrom: "rgba(255, 255, 255, 0.25)",
+    avatarTo: "rgba(255, 255, 255, 0.1)",
+    signOutInk: "rgba(255, 255, 255, 0.7)",
+    signOutHoverSurface: "rgba(239, 68, 68, 0.15)",
+    signOutHoverInk: "#fecaca",
     scrim: "rgba(0, 0, 0, 0.5)",
+
+    // Topbar: blanca, sin franja.
+    topbarSurface: brandPrimitives.white,
+    topbarLine: "#e2e8f0",
+    topbarMuted: "#64748b",
+    controlHoverSurface: "#f1f5f9",
+
+    // Menú del avatar.
+    menuLine: "#e2e8f0",
+    menuHeaderSurface: "#f8fafc",
+    menuShadow: "0 16px 48px -16px rgba(15, 23, 42, 0.22)",
+    menuDangerInk: "#ef4444",
+    menuDangerHoverInk: "#dc2626",
+    menuDangerHoverSurface: "#fef2f2",
   },
 
   /**
    * Franja corporativa de cuatro colores, en el orden del manual de marca
    * (portada, membrete, presentaciones): navy · magenta · teal · naranja. Es
-   * motivo de marca, no del shell: la usan la topbar y la pantalla de acceso.
-   * Conecta la pinta en otro orden; aquí manda el manual.
+   * motivo de marca, no del shell: hoy solo la usa la pantalla de acceso.
    */
   stripe: [
     brandPrimitives.navy,

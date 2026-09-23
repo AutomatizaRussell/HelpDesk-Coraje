@@ -38,6 +38,7 @@
   --hd-color-accent: #00a9ce;
   --hd-color-accent-surface: #cceef5;
   --hd-color-focus: #001871;
+  --hd-color-focus-inverse: #ffffff;
   --hd-color-action: #001871;
   --hd-color-action-hover: #33468d;
   --hd-color-on-action: #ffffff;
@@ -51,6 +52,7 @@
   --hd-radius-control: 6px;
   --hd-radius-surface: 10px;
   --hd-radius-pill: 999px;
+  --hd-radius-shell-item: 8px;
 
   --hd-shadow-overlay: 0 16px 48px rgba(0, 24, 113, 0.18);
 
@@ -62,10 +64,10 @@
   --hd-size-topbar-wide: 84px;
   --hd-size-logo-topbar: 132px;
   --hd-size-logo-topbar-compact: 116px;
-  --hd-size-logo-sidebar: 200px;
+  --hd-size-logo-sidebar: 190px;
   --hd-size-logo-access: 200px;
   --hd-size-stripe: 4px;
-  --hd-size-rail: 72px;
+  --hd-size-rail: 80px;
   --hd-size-sidebar: 320px;
   --hd-size-access-panel: 400px;
   --hd-size-content-max: 1440px;
@@ -73,25 +75,34 @@
   --hd-layer-rail: 20;
   --hd-layer-topbar: 30;
 
-  --hd-shell-surface: #ffffff;
-  --hd-shell-line: #e2e8f0;
-  --hd-shell-item-ink: #1e293b;
-  --hd-shell-item-hover-surface: rgba(0, 169, 206, 0.08);
-  --hd-shell-item-hover-ink: #001871;
-  --hd-shell-item-active-from: #001871;
-  --hd-shell-item-active-to: #0a2b5f;
-  --hd-shell-item-active-shadow: 0 8px 18px -12px rgba(0, 24, 113, 0.45);
-  --hd-shell-on-item-active: #ffffff;
-  --hd-shell-muted: #64748b;
-  --hd-shell-control-hover-surface: #f1f5f9;
-  --hd-shell-badge-line: #dce3e8;
-  --hd-shell-badge-surface: #f8fafc;
-  --hd-shell-card-surface: #f8fafc;
-  --hd-shell-sign-out-hover-surface: #fef2f2;
-  --hd-shell-sign-out-hover-ink: #dc2626;
-  --hd-shell-avatar-from: #001871;
-  --hd-shell-avatar-to: #00a9ce;
+  --hd-shell-surface: #001871;
+  --hd-shell-line: #001560;
+  --hd-shell-divider: rgba(255, 255, 255, 0.1);
+  --hd-shell-item-ink: rgba(255, 255, 255, 0.72);
+  --hd-shell-item-hover-surface: rgba(255, 255, 255, 0.08);
+  --hd-shell-item-active-surface: rgba(255, 255, 255, 0.14);
+  --hd-shell-on-surface: #ffffff;
+  --hd-shell-on-surface-muted: rgba(255, 255, 255, 0.6);
+  --hd-shell-badge-surface: rgba(255, 255, 255, 0.12);
+  --hd-shell-badge-ink: rgba(255, 255, 255, 0.9);
+  --hd-shell-card-line: rgba(255, 255, 255, 0.15);
+  --hd-shell-card-surface: rgba(255, 255, 255, 0.05);
+  --hd-shell-avatar-from: rgba(255, 255, 255, 0.25);
+  --hd-shell-avatar-to: rgba(255, 255, 255, 0.1);
+  --hd-shell-sign-out-ink: rgba(255, 255, 255, 0.7);
+  --hd-shell-sign-out-hover-surface: rgba(239, 68, 68, 0.15);
+  --hd-shell-sign-out-hover-ink: #fecaca;
   --hd-shell-scrim: rgba(0, 0, 0, 0.5);
+  --hd-shell-topbar-surface: #ffffff;
+  --hd-shell-topbar-line: #e2e8f0;
+  --hd-shell-topbar-muted: #64748b;
+  --hd-shell-control-hover-surface: #f1f5f9;
+  --hd-shell-menu-line: #e2e8f0;
+  --hd-shell-menu-header-surface: #f8fafc;
+  --hd-shell-menu-shadow: 0 16px 48px -16px rgba(15, 23, 42, 0.22);
+  --hd-shell-menu-danger-ink: #ef4444;
+  --hd-shell-menu-danger-hover-ink: #dc2626;
+  --hd-shell-menu-danger-hover-surface: #fef2f2;
 
   --hd-stripe-0: #001871;
   --hd-stripe-1: #981d97;
@@ -164,6 +175,7 @@
   --color-accent: var(--hd-color-accent);
   --color-accent-surface: var(--hd-color-accent-surface);
   --color-focus: var(--hd-color-focus);
+  --color-focus-inverse: var(--hd-color-focus-inverse);
   --color-action: var(--hd-color-action);
   --color-action-hover: var(--hd-color-action-hover);
   --color-on-action: var(--hd-color-on-action);
@@ -177,22 +189,31 @@
   /* Réplica del shell de Conecta: solo la consume patterns/conecta-shell. */
   --color-shell-surface: var(--hd-shell-surface);
   --color-shell-line: var(--hd-shell-line);
+  --color-shell-divider: var(--hd-shell-divider);
   --color-shell-item-ink: var(--hd-shell-item-ink);
   --color-shell-item-hover-surface: var(--hd-shell-item-hover-surface);
-  --color-shell-item-hover-ink: var(--hd-shell-item-hover-ink);
-  --color-shell-item-active-from: var(--hd-shell-item-active-from);
-  --color-shell-item-active-to: var(--hd-shell-item-active-to);
-  --color-shell-on-item-active: var(--hd-shell-on-item-active);
-  --color-shell-muted: var(--hd-shell-muted);
-  --color-shell-control-hover-surface: var(--hd-shell-control-hover-surface);
-  --color-shell-badge-line: var(--hd-shell-badge-line);
+  --color-shell-item-active-surface: var(--hd-shell-item-active-surface);
+  --color-shell-on-surface: var(--hd-shell-on-surface);
+  --color-shell-on-surface-muted: var(--hd-shell-on-surface-muted);
   --color-shell-badge-surface: var(--hd-shell-badge-surface);
+  --color-shell-badge-ink: var(--hd-shell-badge-ink);
+  --color-shell-card-line: var(--hd-shell-card-line);
   --color-shell-card-surface: var(--hd-shell-card-surface);
-  --color-shell-sign-out-hover-surface: var(--hd-shell-sign-out-hover-surface);
-  --color-shell-sign-out-hover-ink: var(--hd-shell-sign-out-hover-ink);
   --color-shell-avatar-from: var(--hd-shell-avatar-from);
   --color-shell-avatar-to: var(--hd-shell-avatar-to);
+  --color-shell-sign-out-ink: var(--hd-shell-sign-out-ink);
+  --color-shell-sign-out-hover-surface: var(--hd-shell-sign-out-hover-surface);
+  --color-shell-sign-out-hover-ink: var(--hd-shell-sign-out-hover-ink);
   --color-shell-scrim: var(--hd-shell-scrim);
+  --color-shell-topbar-surface: var(--hd-shell-topbar-surface);
+  --color-shell-topbar-line: var(--hd-shell-topbar-line);
+  --color-shell-topbar-muted: var(--hd-shell-topbar-muted);
+  --color-shell-control-hover-surface: var(--hd-shell-control-hover-surface);
+  --color-shell-menu-line: var(--hd-shell-menu-line);
+  --color-shell-menu-header-surface: var(--hd-shell-menu-header-surface);
+  --color-shell-menu-danger-ink: var(--hd-shell-menu-danger-ink);
+  --color-shell-menu-danger-hover-ink: var(--hd-shell-menu-danger-hover-ink);
+  --color-shell-menu-danger-hover-surface: var(--hd-shell-menu-danger-hover-surface);
 
   /* Franja corporativa (orden del manual de marca). */
   --color-stripe-0: var(--hd-stripe-0);
@@ -203,9 +224,10 @@
   --radius-control: var(--hd-radius-control);
   --radius-surface: var(--hd-radius-surface);
   --radius-pill: var(--hd-radius-pill);
+  --radius-shell-item: var(--hd-radius-shell-item);
 
   --shadow-overlay: var(--hd-shadow-overlay);
-  --shadow-shell-item-active: var(--hd-shell-item-active-shadow);
+  --shadow-shell-menu: var(--hd-shell-menu-shadow);
 
   --ease-standard: var(--hd-motion-easing);
 

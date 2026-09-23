@@ -11,3 +11,7 @@ export const focusRing =
 
 /** Transición de color para estados hover/activo. */
 export const colorTransition = "transition-colors duration-(--hd-motion-fast) ease-standard";
+
+/** Mismo foco sobre superficie oscura (sidebar navy), en blanco. */
+export const focusRingInverse =
+  "outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-inverse";
