@@ -125,7 +125,7 @@ del directorio o un `id_token` sin correo válido, y ninguna de las dos se puede
 contra Entra ID. Se cierra la unidad reconociendo esa limitación, no declarándolos
 ejercitados.
 
-### U4 · Perímetro y retiro de la clave compartida — **cabeza de la cola**
+### ~~U4 · Perímetro y retiro de la clave compartida~~ — cerrada 22-sep-2026, ya no es cabeza de la cola
 
 **Objetivo:** *deny-by-default* en el proxy, lista pública explícita, y **eliminación**
 de `REDIRECCION_PASSWORD` y su ruta de acceso.
@@ -133,21 +133,53 @@ de `REDIRECCION_PASSWORD` y su ruta de acceso.
 **Cierre:** una prueba enumera las páginas de `src/app` y exige que cada una fuera de los
 prefijos públicos resuelva identidad. `grep` de `REDIRECCION_PASSWORD` sin resultados.
 
-> **No es opcional ni posterior a U3.** Mientras la clave viva, hay dos formas de entrar
-> y la más débil no deja rastro de quién entró.
->
-> **Subió de urgencia el 22-sep-2026.** Con `/helpdesk/*` ya sirviendo tráfico en el
-> dominio público, `/helpdesk/portal` —el selector de clientes sin credencial— es
-> alcanzable por una URL real; se comprobó al ejercitar el destino de retorno de U3.
-> Dejó de ser un prototipo sin tráfico.
+**Cierre real (22-sep-2026):** las dos condiciones cumplidas y verificadas. `src/proxy.ts`
+deniega por defecto con la lista pública en `public-paths.ts` —separada para que la
+prueba verifique la misma regla que el proxy aplica, no una copia—; 42 pruebas, de las
+que ocho ejecutan `proxy()` sobre peticiones reales y seis enumeran `src/app`. El `grep`
+de la clave dejó de ser manual: una prueba falla si el nombre reaparece. Cuatro
+escenarios ejercitados contra `https://conecta.rbgct.cloud/helpdesk`. Publicado en
+`735be57` y `1937589`. **U5 pasa a ser la cabeza.**
 
-### U5 · Contrato de diseño ejecutable y primera vista
+**Dos cosas se decidieron dentro de la unidad, y no eran obvias de antemano:**
+
+- **El portal de clientes se retiró, no se declaró público.** `plan-ejecucion.md` no
+  decía qué hacer con él y `acceso-empleados.md` §8 lo daba por excepción prevista.
+  Decisión del usuario, con la constancia de que ningún cliente lo usa: era una
+  superficie anónima en dominio público que listaba clientes con identificación fiscal
+  y creaba tickets sin credencial, y la identidad que iba a protegerla (`U8`) no tiene
+  fecha. Consecuencia registrada: **HelpDesk no tiene hoy canal externo**.
+- **El ingreso sin sesión entra por `/api/auth/microsoft/start`, no por `/login`.**
+  Mandar a la pantalla con botón a quien ya trae sesión viva de Entra contradice el
+  requisito de fricción de `acceso-empleados.md` §4. `/login` queda como destino de lo
+  que no es navegación de documento, y como fallback cuando el silencioso se rechaza.
+
+> **Trabajo adicional, fuera del objetivo de U4 y pedido por el usuario en la misma
+> sesión (`1937589`): se retiró el frontend heredado completo** — las dos vistas de
+> redirección, el `AppShell` con su paleta escrita en la vista, las tablas, el
+> formulario, `features/tickets/` (ya código muerto), los tokens de `globals.css` y las
+> fuentes de plantilla del layout. No se sustituyó nada por nada: los valores visuales
+> son competencia de U5. Quedan cinco rutas: `/`, `/login` y las tres de autenticación.
+> La lógica de redirección se conservó sin pantalla en `features/redireccion/`, por ser
+> el único sitio donde están escritas enteras la resolución del encargado y la forma
+> del registro del outbox.
+
+### U5 · Contrato de diseño ejecutable y primera vista — **cabeza de la cola**
 
 **Objetivo:** fundamentos, tema, validador de coherencia entre los dos adaptadores, y la
 primera vista nueva construida **consumiendo el contrato desde el inicio**.
 
 **Cierre:** la vista no contiene un solo valor visual local, y el validador falla si los
 dos adaptadores divergen.
+
+**Punto de partida cambiado el 22-sep-2026:** no hay frontend que desmontar ni que
+convivir. `/` y `/login` se dibujan sin estilo, `globals.css` no declara un solo valor y
+el layout raíz no impone tipografía. U5 empieza en blanco, que es la condición que
+`design/sistema-helpdesk.md` §1 daba por necesaria al descartar una fase de
+centralización posterior. Sigue pendiente **D5** (acento visual propio o compartido con
+Impulsa), y sigue pendiente replicar el shell de Conecta dentro de HelpDesk, incluido el
+enlace de vuelta desde el sidebar de Conecta como `<a href>` y no como `navigate()` de
+su router.
 
 ### U6 · Modelo de eventos del ticket
 

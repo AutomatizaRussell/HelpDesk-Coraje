@@ -1,22 +1,22 @@
 # Acceso de empleados
 
 ```
-ESTADO:      CONSTRUIDO (U3, 15-sep-2026), SIN EJERCITAR contra el tenant real ni
-             contra la base real. `REDIRECCION_PASSWORD` sigue en el código —
-             coexiste con este contrato hasta que U4 lo retire (no es este documento
-             quien lo hace). D6 (§9) resuelta el 17-sep-2026: el consentimiento de
-             `Mail.Send`/`offline_access` ya se pide, el mecanismo de envío sigue
-             sin construir
-CORTE:       17-sep-2026
-EVIDENCIA:   `prisma generate`/`tsc --noEmit`/`eslint`/`next build` limpios y 26
-             pruebas unitarias (`pnpm test`) sobre validación de `id_token`, admisión
-             y saneo de destino — ver tabla de verificación (§12) para el detalle por
-             afirmación. Ningún ingreso real contra Entra ID todavía: falta el App
-             Registration (`docs/estado/handoff.md`, acción inmediata)
-MIGRACIÓN:   construida — `prisma/migrations/20260911150000_agregar_identidad_empleados`
+ESTADO:      CONSTRUIDO Y EJERCITADO contra el despliegue. El contrato está completo
+             en sus once entregas: U3 (22-sep-2026) cerró el flujo OIDC, la admisión
+             y la sesión; U4 (22-sep-2026) cerró el perímetro *deny-by-default* y
+             **retiró `REDIRECCION_PASSWORD`**, que ya no existe ni en el código ni
+             en las variables del servicio. D6 (§9) resuelta el 17-sep-2026: el
+             consentimiento de `Mail.Send`/`offline_access` ya se pide, el mecanismo
+             de envío sigue sin construir
+CORTE:       23-sep-2026
+EVIDENCIA:   `prisma generate`/`tsc --noEmit`/`eslint`/`next build` limpios y 42
+             pruebas unitarias (`pnpm test`). **Más comportamiento observado contra
+             `https://conecta.rbgct.cloud/helpdesk`:** seis escenarios de ingreso y
+             rechazo en U3, y cuatro del perímetro en U4 — ver §12 para el detalle
+             por afirmación, incluidas las dos que siguen sin poderse ejercitar
+MIGRACIÓN:   aplicada — `prisma/migrations/20260911150000_agregar_identidad_empleados`
              (columnas nuevas en `core.dim_personal`, schema `app` con
-             `employee_session`). Sin aplicar contra la base real: corre con el
-             servicio `migrate` en el próximo deploy
+             `employee_session`), corrida por el servicio `migrate` en el deploy real
 ```
 
 **Autoridad:** este documento es propietario del contrato de identidad interna y de la
@@ -223,6 +223,20 @@ de clientes y su API, que se protegen con **otra identidad**, no con ninguna · 
 endpoints de máquina para n8n, con secreto comparado en tiempo constante · el health
 check.
 
+> **Lista pública real tras U4 (22-sep-2026): solo `/login` y `/api/auth/microsoft`.**
+> De las otras tres previstas, ninguna llegó a existir como excepción. El portal de
+> clientes **se retiró** en lugar de declararse público: la identidad que iba a
+> protegerlo no está construida y no tiene fecha, así que declararlo habría dejado por
+> escrito una superficie anónima en un dominio público. Los endpoints de máquina para
+> n8n y el health check **no existen todavía**; cuando se construyan entrarán aquí uno
+> a uno, que es el único acto que vuelve algo público
+> (`src/server/security/public-paths.ts`).
+>
+> El perímetro deja pasar además los archivos estáticos de una **lista exacta**, no por
+> extensión ni por carpeta: sin ella, el optimizador de imágenes de Next —que descarga
+> el archivo original con una petición interna, sin cookies— recibiría una redirección
+> y fallaría sin error visible.
+
 **Dos capas, ninguna redundante.** El perímetro no alcanza PostgreSQL, así que comprueba
 que la cookie **está presente**, no que sea válida: eso corta el tráfico anónimo antes
 de que llegue a ninguna ruta privada. La lectura de sesión decide si esa cookie
@@ -291,6 +305,13 @@ corporativa.
 > El paso 6 **no es opcional ni posterior**: mientras la clave compartida siga en el
 > código, existen dos formas de entrar y la más débil no deja rastro de quién entró.
 
+**Los siete pasos están construidos y ejercitados** (U3, 22-sep-2026; U4, 22-sep-2026).
+El perímetro añadió una decisión que esta tabla no preveía: el portal de clientes **no
+se declaró público, se retiró**. Estaba en un dominio público sirviendo la lista de
+clientes activos con su identificación fiscal y aceptando crear tickets sin credencial,
+y el acceso externo con identidad propia (`specs/acceso-clientes.md`) no tiene fecha.
+Declararlo público habría sido escribir esa exposición en la lista y darla por buena.
+
 ---
 
 ## 12. Verificación contra código
@@ -305,10 +326,10 @@ respalda cada una.
 | V2 | Solo una función crea sesiones y exige admisión previa | `src/server/auth/employee-session.ts` | **Verificado por inspección**: `grep` de `employeeSession.create` sobre `src/` devuelve una única aparición, dentro de `issueEmployeeSession` |
 | V3 | El directorio se relee y las reglas se reevalúan en **cada** petición | `readEmployeeSession` | **Construido**, verificado por inspección (llama a `reevaluateAdmissionByPersonalId` en cada lectura). Sin test de integración: exige Postgres real |
 | V4 | El enlace del sujeto inmutable no se sobrescribe nunca desde una petición | `issueEmployeeSession`, `updateMany({ where: { entraObjectId: null } })` | **Construido**, verificado por inspección. Sin test de integración: exige Postgres real con dos intentos de login reales |
-| V5 | El perímetro deniega por defecto y la lista pública es exhaustiva | Proxy; prueba que enumere las páginas de `src/app` | **Fuera de alcance de U3** — es `U4` según `plan-ejecucion.md`, deliberadamente diferido |
+| V5 | El perímetro deniega por defecto y la lista pública es exhaustiva | `src/proxy.ts`, `src/server/security/public-paths.ts`; `perimeter.test.mts` y `proxy.test.mts` | **Construido y verificado por test (U4):** ocho pruebas ejecutan `proxy()` sobre peticiones reales —incluida una ruta inexistente, que también se deniega— y seis enumeran `src/app` exigiendo que ninguna ruta quede sin clasificar y que toda privada resuelva identidad en su propio archivo. **Ejercitado contra el despliegue** el 22-sep-2026: ingreso por `/helpdesk` sin sesión y destino de retorno preservado |
 | V6 | El destino de retorno se sanea en ambos extremos | `sanitizeDestination`, aplicado en `/start` y en `/login` | **Verificado por test** (5 pruebas, `sanitize-destination.test.mts`) más una corrección real hecha al llenar esta tabla: el callback no volvía a sanear `state.destino` antes del redirect final, solo confiaba en el sellado — corregido en la misma sesión |
 | V7 | `prompt=none` protegido contra bucle por marca de un solo uso | `/api/auth/microsoft/start` | **Construido**, verificado por inspección (cookie `helpdesk_oidc_silent_attempted`). Sin ejercitar contra el proveedor real |
-| V8 | No queda ninguna referencia a `REDIRECCION_PASSWORD` | `grep` sobre `src/` y sobre las variables de entorno | **Fuera de alcance de U3** — es `U4`; `REDIRECCION_PASSWORD` sigue en el código a propósito |
+| V8 | No queda ninguna referencia a `REDIRECCION_PASSWORD` | `grep` sobre `src/` y sobre las variables de entorno | **Verificado (U4).** No es un `grep` manual: una prueba de la suite recorre `src/` y falla si el nombre reaparece, así que la propiedad se mantiene sola. La pantalla de acceso con clave y su cookie se eliminaron; la variable se retiró del servicio en Coolify, confirmado por el usuario |
 | V9 | Pruebas negativas por cada causa de rechazo | `employee-admission.test.mts` | **Verificado por test**: las cuatro causas, más una prueba explícita de que ninguna combinación admite por defecto |
 | V10 | Ninguna comparación de rol fuera del autorizador | `grep` de comparaciones de rol en componentes y handlers | **Verificado por inspección**: `grep` no encuentra ninguna comparación de `rolAplicacion` fuera de `evaluateAdmissionRules` — no hay autorizador de rol+acción todavía (`specs/permisos.md`, `U7`), solo la puerta binaria de admisión |
 
@@ -333,3 +354,17 @@ empleados (§9).
   Impulsa) queda pendiente, sin fecha, probablemente junto a `U7`. Queda abierta,
   sin decidir, la necesidad de `Mail.Send.Shared` para un eventual envío desde un
   buzón compartido de la firma (§9).
+- 22-sep-2026 (U3, cierre) — el contrato pasa de construido a **ejercitado contra el
+  despliegue**: seis escenarios de punta a punta en `/helpdesk`. `NOT_REGISTERED` y
+  `EMAIL_INVALID` quedan con cobertura unitaria únicamente, y se dice por qué —
+  reproducirlos exige una cuenta del tenant ausente del directorio o un `id_token` sin
+  correo válido, y ninguna se puede fabricar contra Entra ID.
+- 23-sep-2026 (U4) — **V5 y V8 dejan de estar fuera de alcance y quedan verificadas.**
+  Existe perímetro: `src/proxy.ts` deniega por defecto y la lista pública vive en
+  `public-paths.ts`, separada para que la prueba verifique la misma regla que el proxy
+  aplica y no una copia. `REDIRECCION_PASSWORD` se retira del código y del servicio.
+  Dos cosas que esta spec no había previsto: el portal de clientes se **retira** en vez
+  de declararse público (§11), y el ingreso sin sesión entra por
+  `/api/auth/microsoft/start` y no por `/login`, porque mandar a la pantalla con botón
+  a quien ya trae sesión de Entra contradice el requisito de fricción de §4 — `/login`
+  sigue siendo el destino de las peticiones que no son navegación de documento.

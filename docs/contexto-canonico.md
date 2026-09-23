@@ -162,10 +162,10 @@ Alcanzado por la autorización, sin necesidad de justificación adicional:
 
 | Pieza | Por qué deja de aplicar |
 |---|---|
-| Selector abierto de cliente en `/portal` | No es autenticación. Sustituido por autorización individual (`specs/acceso-clientes.md`) |
-| Clave compartida de `/redireccion` | Una contraseña que todos conocen no es un perímetro. Sustituida por identidad federada (`specs/acceso-empleados.md`) |
-| Vistas, componentes y estilos existentes | **Rediseño visual completo**, no solo centralización de tokens (`design/sistema-helpdesk.md`) |
-| Estructura de `src/features/*` vigente | Se rehace al ritmo de las unidades que la tocan |
+| ~~Selector abierto de cliente en `/portal`~~ | **Ejecutado el 22-sep-2026 (U4):** retirado entero, con su API y su cookie. La autorización individual que lo sustituye (`specs/acceso-clientes.md`) sigue sin construirse |
+| ~~Clave compartida de `/redireccion`~~ | **Ejecutado el 22-sep-2026 (U4):** eliminada del código y del servicio. Sustituida por identidad federada y un perímetro que deniega por defecto (`specs/acceso-empleados.md` §8) |
+| ~~Vistas, componentes y estilos existentes~~ | **Ejecutado el 22-sep-2026 (U4):** retirados sin sustituto, para que el rediseño (`design/sistema-helpdesk.md`) empiece en blanco y no sobre lo anterior |
+| Estructura de `src/features/*` vigente | Se rehace al ritmo de las unidades que la tocan. Queda un único módulo, `features/redireccion/`, **sin pantalla**: conserva la resolución del encargado y la forma del registro del outbox como referencia para `U7` |
 
 **No alcanzado por la autorización.** Estas cuatro cosas son fuente de verdad viva y su
 pérdida sería irrecuperable o visible para terceros:

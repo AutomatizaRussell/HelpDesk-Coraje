@@ -4,9 +4,12 @@
 ESTADO:      aprobado en su forma, ABIERTO en su alcance — el mecanismo se adopta de
              `plataforma-impulsa`; la frontera de qué ve un contacto es decisión de
              negocio sin tomar (§3.1). NO implementado
-CORTE:       03-sep-2026
-EVIDENCIA:   ninguna. Lo que existe hoy en `/portal` es un selector abierto: cualquiera
-             que alcance la URL elige cualquier cliente y opera a su nombre
+CORTE:       23-sep-2026
+EVIDENCIA:   ninguna del mecanismo nuevo, que sigue sin construirse. Lo que sí cambió:
+             **el selector abierto ya no existe** — U4 lo retiró el 22-sep-2026, junto
+             con su cookie y su API, sin sustituto. Hoy **no hay ningún acceso externo
+             a HelpDesk**; los clientes no tienen por dónde entrar hasta que este
+             contrato se construya
 MIGRACIÓN:   requiere seis tablas nuevas. Ninguna sustituye a `dim_cliente_contai`
 ```
 
@@ -16,13 +19,16 @@ identidad interna vive en `specs/acceso-empleados.md`; el ciclo del ticket, en
 
 ## 1. Punto de partida y por qué no se conserva
 
-`/portal` lista los clientes activos, deja elegir uno y guarda la elección en una
-cookie. No hay contraseña, ni código, ni verificación de ninguna clase. Quien alcance la
-URL puede radicar tickets a nombre de cualquier empresa y leer los suyos.
+`/portal` listaba los clientes activos, dejaba elegir uno y guardaba la elección en una
+cookie. No había contraseña, ni código, ni verificación de ninguna clase: quien
+alcanzara la URL podía radicar tickets a nombre de cualquier empresa y leer los suyos.
 
-Nunca lo usó un cliente real, así que **no hay nada que migrar ni compatibilidad que
-preservar**. Se retira completo, incluida la cookie de cliente seleccionado, que es el
-mecanismo mismo del problema.
+Nunca lo usó un cliente real, así que **no hubo nada que migrar ni compatibilidad que
+preservar**. Se retiró completo el 22-sep-2026 (U4), incluida la cookie de cliente
+seleccionado, que era el mecanismo mismo del problema.
+
+Lo que sigue de este documento describe **lo que hay que construir**, no lo que se
+sustituye: no queda nada en pie de lo anterior.
 
 ## 2. Decisión central
 
@@ -196,8 +202,17 @@ contactos ni tickets ajenos · limitación de tasa tolerante y recuperable.
 | 2 | Modelo de datos del acceso externo | 1 |
 | 3 | Alta interna de contactos y emisión de invitaciones | 2, `specs/permisos.md` |
 | 4 | Activación, dispositivo recordado y OTP | 2 |
-| 5 | Retirar `/portal` actual y su cookie de cliente | 4 |
+| ~~5~~ | ~~Retirar `/portal` actual y su cookie de cliente~~ | **Hecho el 22-sep-2026, fuera de orden** |
 | 6 | Consola interna de accesos: consultar, reenviar, revocar | 4 |
+
+> **El paso 5 se adelantó a los cuatro anteriores, y la razón importa.** Estaba escrito
+> como último porque se suponía que el portal abierto se apagaría al encender el
+> cerrado. Lo que cambió no fue el diseño sino la exposición: desde que `/helpdesk/*`
+> sirve tráfico en el dominio público, `/portal` dejó de ser un prototipo que nadie
+> alcanzaba. Esperar a los pasos 1-4 —bloqueados por decisiones de negocio sin fecha—
+> significaba mantener abierta mientras tanto la lista de clientes activos con su
+> identificación fiscal. Se retiró en U4 sin sustituto: **hoy no hay ningún acceso
+> externo**, y construirlo sigue siendo este documento.
 
 > `ABIERTO` **Por dónde sale el correo.** Impulsa lo envía desde la aplicación con
 > Microsoft Graph y el *grant* delegado de quien pulsa el botón, y retiró n8n de esa
@@ -215,7 +230,7 @@ Sin implementación; la tabla queda escrita para la unidad que la construya.
 
 | # | Afirmación a verificar | Dónde comprobarlo |
 |---|---|---|
-| V1 | El selector abierto de `/portal` y su cookie no existen | `grep` sobre `src/` |
+| V1 | El selector abierto de `/portal` y su cookie no existen | `grep` sobre `src/` — **cumplida el 22-sep-2026 (U4):** se eliminaron las tres páginas, la API de clientes, la cookie de cliente seleccionado y todo `features/portal/`. Una prueba del perímetro falla si `/portal` o su API reaparecen en la lista pública |
 | V2 | Los tokens e invitaciones se comparan por hash y nunca se guardan en claro | Servicios de invitación y OTP |
 | V3 | El guard exige activación **además** de dispositivo válido | Guard de acceso del portal |
 | V4 | La escritura externa pasa por un guard de escritura propio, con prueba negativa | Handlers de mutación del portal |
@@ -230,3 +245,10 @@ al cliente y no al ticket, y el alta la hace la firma (§3). Deja abiertas la fr
 visibilidad (§3.1), la existencia de vencimiento (§7) y el remitente del correo (§11).
 Incorpora ya cerrada la brecha de dispositivo/activación que Impulsa corrigió el mismo
 día (§6).
+- 23-sep-2026 (U4) — **el portal abierto se retira sin sustituto.** El paso 5 de §11 se
+  adelanta a los cuatro que lo precedían porque el riesgo dejó de ser teórico al
+  empezar a servirse `/helpdesk/*` en el dominio público. Consecuencia que este
+  documento debe registrar con todas sus letras: **HelpDesk no tiene hoy ningún canal
+  externo de recepción de tickets**, y las tres decisiones abiertas (D2 visibilidad,
+  D3 vencimiento, D4 remitente del correo) son lo único que separa a los clientes de
+  volver a tener uno.

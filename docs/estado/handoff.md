@@ -1,10 +1,66 @@
 # Handoff técnico
 
 ```
-CORTE:   22-sep-2026 (corte 12, U3 CERRADA)
-HEAD:    `306d286` — más la documentación de este corte, que se publica encima
+CORTE:   23-sep-2026 (corte 13, U4 CERRADA)
+HEAD:    `1937589` — más la documentación de este corte, que se publica encima
 RAMA:    main
-UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
+UNIDAD:  U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las dos
+         condiciones de cierre de `plan-ejecucion.md` §U4 se cumplen y están
+         verificadas: una prueba enumera las páginas de `src/app` y exige que
+         cada una fuera de los prefijos públicos resuelva identidad, y el
+         `grep` de la clave compartida dejó de ser manual — una prueba falla
+         si el nombre reaparece en `src/`.
+
+         Existe perímetro: `src/proxy.ts` deniega por defecto y la lista
+         pública vive en `src/server/security/public-paths.ts`, con dos
+         entradas (`/login` y `/api/auth/microsoft`). La regla se separó del
+         proxy a propósito, para que la prueba verifique **la misma función**
+         que el perímetro aplica y no una copia que pueda divergir; por el
+         mismo motivo el nombre de la cookie de sesión se trasladó a un
+         módulo sin dependencias, ya que el runtime del borde no puede cargar
+         el módulo de sesión (arrastra Prisma). Dos capas declaradas: el proxy
+         comprueba **presencia** de cookie, `readEmployeeSession` decide
+         validez. Poner una consulta a PostgreSQL por petición se descartó
+         explícitamente por economía de recursos.
+
+         **Dos decisiones que la unidad tomó y no heredó.** El portal de
+         clientes **se retiró, no se declaró público** —decisión del usuario,
+         con la constancia de que ningún cliente lo usa—: era una superficie
+         anónima en dominio público que listaba clientes con identificación
+         fiscal y creaba tickets sin credencial, y la identidad que iba a
+         protegerla (`U8`) está bloqueada por D2/D3/D4, sin fecha. Y el
+         ingreso sin sesión entra por `/api/auth/microsoft/start` y no por
+         `/login`, porque mandar a la pantalla con botón a quien ya trae
+         sesión viva de Entra contradice el requisito de fricción de
+         `acceso-empleados.md` §4.
+
+         **Trabajo adicional pedido por el usuario en la misma sesión
+         (`1937589`), fuera del objetivo de U4: se retiró el frontend heredado
+         completo** — las dos vistas de redirección, el `AppShell` con su
+         paleta escrita en la vista, las tablas, el formulario,
+         `features/tickets/` (ya código muerto), los tokens de `globals.css` y
+         las fuentes de plantilla del layout. Nada se sustituyó por nada: los
+         valores visuales son competencia de `U5`. Quedan cinco rutas: `/`,
+         `/login` y las tres de autenticación. La lógica de redirección se
+         conservó **sin pantalla** en `features/redireccion/`, por ser el
+         único sitio donde están escritas enteras la resolución del encargado
+         y la forma del registro del outbox; al no importarla nadie, Next no
+         publica endpoint para ella.
+
+         **Evidencia:** `tsc --noEmit`, `eslint` y `next build` limpios —el
+         build reconoce el proxy—, 42/42 pruebas unitarias, de las que ocho
+         ejecutan `proxy()` sobre peticiones fabricadas. Contra el despliegue,
+         cuatro escenarios reportados por el usuario: ingreso por `/helpdesk`
+         con el perímetro activo, ausencia de las pantallas retiradas, destino
+         de retorno preservado y variable borrada del servicio en Coolify.
+
+         **Lo que NO está verificado, y conviene no olvidarlo:** cómo llega el
+         prefijo `/helpdesk` al pathname dentro del proxy real. No se
+         demostró, se neutralizó —`normalizeAppPathname` clasifica igual venga
+         puesto o no—. Es la salvedad 4 de §1. **U5 pasa a ser la cabeza de la
+         cola.**
+
+CORTE ANTERIOR (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
          DESPLIEGUE REAL.** Los ocho escenarios mínimos de `plan-ejecucion.md`
          §U3 quedan resueltos: **seis ejercitados de punta a punta el
          22-sep-2026** contra `https://conecta.rbgct.cloud/helpdesk`, y dos
@@ -73,7 +129,7 @@ UNIDAD:  U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
          sin efecto, destino de retorno saneado, y el enlace del sujeto
          inmutable confirmado en `core.dim_personal`. Detalle en §4.
 
-CORTE ANTERIOR (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
+CORTE DOS ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
          prefijo cambia de `/app/HelpDesk` a `/helpdesk` (`cfce427`), tras
          confirmar por lectura del repositorio real de Conecta que `/app` es su
          propio portal de empleados —no un path libre del dominio— y que un
@@ -82,7 +138,7 @@ CORTE ANTERIOR (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y e
          sin layout de servidor donde inyectar un fragmento; el shell se
          replica dentro de HelpDesk (`U5`).
 
-CORTE DOS ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
+CORTE TRES ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          mínimos de `plan-ejecucion.md` cerrados y verificados: baseline
          adoptado (corte 6) · credenciales separadas, incluida la corrida real
          de n8n con `coraje_etl` (corte 7) · servicio `migrate` desplegado y
@@ -91,7 +147,7 @@ CORTE DOS ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          usuario creó un ticket real desde el portal y probó la redirección.
          **U3 pasó a ser la cabeza de `plan-ejecucion.md`.**
 
-CORTE TRES ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
+CORTE CUATRO ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
          revela que `coraje_app` era superusuario y el único rol de aplicación del
          clúster — se amplía F6 para retirarlo también de n8n. Creados
          `coraje_migrator`, `coraje_runtime`, `coraje_etl`; `coraje_app` rotado y
@@ -102,7 +158,7 @@ CORTE TRES ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRA
          más (ownership de `staging`, `CREATE INDEX` embebido contra `core`),
          corregidos. Detalle completo en el changelog.
 
-CORTE CUATRO ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
+CORTE CINCO ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
          `20260910000000_baseline/migration.sql`, se migran 20 archivos de
          aplicación a `camelCase`, y se adopta la migración contra producción con
@@ -114,6 +170,10 @@ LINT:    limpio (`eslint`, sin reglas nuevas). `tsc --noEmit` y `next build`
          11.2.2, no solo por inspección. Sin `DATABASE_URL` real disponible desde
          este entorno, `next build` corrió con el mismo dummy que usa la etapa
          `builder` del `Dockerfile`
+PRUEBAS: 42/42 (`pnpm test`). Al borrar rutas hay que **regenerar `.next`** antes
+         de `tsc --noEmit`: los tipos de ruta que Next deja en `.next/types`
+         siguen apuntando a las páginas eliminadas y producen errores que no
+         existen en el código
 ```
 
 **Qué es este documento:** el estado observado, la evidencia disponible, las
@@ -136,7 +196,15 @@ cuenta corporativa, la aplicación emite su propia sesión, la revoca al salir, 
 desactivar a alguien en el directorio lo expulsa en su siguiente navegación sin esperar
 a que caduque nada. Es la primera pieza del proyecto con ese grado de evidencia.
 
-**Salvedades sobre lo que parece cerrado.** Tres, ninguna cosmética:
+**Lo que cambió con U4:** esa identidad pasó de existir a ser **obligatoria**. Hay
+perímetro: toda ruta es privada salvo dos, y la lista de excepciones es un archivo que
+alguien tiene que editar a la vista de todos. Desaparecieron las dos formas de entrar
+que no eran identidad — la clave compartida de redirección y el portal de clientes sin
+credencial—, y con ellas la única superficie del proyecto que leía datos de clientes y
+escribía tickets sin saber quién lo pedía. En la misma sesión se retiró el frontend
+heredado completo: la aplicación tiene hoy cinco rutas y ni un valor visual escrito.
+
+**Salvedades sobre lo que parece cerrado.** Cinco, ninguna cosmética:
 
 1. **Dos de las cuatro causas de rechazo siguen sin prueba real.** `NOT_REGISTERED`
    exige una cuenta del tenant ausente de `dim_personal`, y `EMAIL_INVALID` un
@@ -146,11 +214,21 @@ a que caduque nada. Es la primera pieza del proyecto con ese grado de evidencia.
 2. **Autorización sigue sin existir.** `rol_aplicacion` tiene un único valor y nadie
    consulta permisos: entrar es todo lo que hoy se decide. El autorizador ejecutable es
    `U7`.
-3. **El perímetro sigue abierto.** `/portal` y `/redireccion` continúan accesibles sin
-   identidad — se confirmó al probar el destino de retorno, que aterrizó en
-   `/helpdesk/portal` sin exigir nada. Es exactamente el alcance de `U4`, ahora cabeza
-   de la cola, y por eso U4 no es opcional ni posterior: mientras esa puerta viva, hay
-   dos formas de entrar y la más débil no deja rastro de quién entró.
+3. ~~**El perímetro sigue abierto.**~~ **Cerrada el 22-sep-2026 (U4).** `/portal` se
+   retiró y `/redireccion` quedó detrás de identidad antes de retirarse también con el
+   frontend heredado. No queda ninguna forma de entrar que no sea la sesión de empleado.
+4. **El perímetro no se autoverifica en ejecución.** Las pruebas ejercitan `proxy()`
+   como función, no el despliegue: que el prefijo `/helpdesk` llegue descontado del
+   pathname dentro del proxy real **no está demostrado**, solo neutralizado —
+   `normalizeAppPathname` clasifica igual venga puesto o no. Se ejercitaron cuatro
+   escenarios contra el dominio y ninguno falló, pero un caso que dependa de esa
+   diferencia podría no haberse tocado. La forma de que deje de importar es que ninguna
+   ruta futura dependa del prefijo, no una prueba más.
+5. **Con el frontend retirado, la aplicación no hace nada todavía.** Entrar es todo lo
+   que se puede hacer: no hay bandeja, ni ficha, ni forma de clasificar un ticket. Es
+   deliberado —lo que había era del proyecto anterior y se rehace desde el contrato de
+   diseño (`U5`)— pero conviene decirlo sin adornos: el proyecto retrocedió en
+   funcionalidad visible a cambio de no construir sobre una base que iba a tirarse.
 
 Contrato de diseño y ciclo de vida del ticket siguen sin existir, y escribir la
 especificación no adelanta la implementación. Tres de las cinco specs están además
@@ -163,8 +241,10 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 |---|---|---|
 | Ingesta SharePoint → PostgreSQL | `EJERCITADO, con el código corregido de esta unidad` | 2.313 tickets conciliados en `legacy/baseline-calidad.md` (baseline histórico, no se edita) → 2.559 el 10-sep-2026 antes de esta unidad → **2.825 el 10-sep-2026 tras ejecutar la ingesta con el fix de F10** (§4). El crecimiento es la ingesta incremental real, confirmado por el usuario — no es un error de conteo |
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
-| Portal de clientes | `PROTOTIPO, A RETIRAR` | Selector abierto sin credencial — U3 no lo tocó |
-| Redirección interna | `PROTOTIPO, A RETIRAR` | Contraseña compartida — `REDIRECCION_PASSWORD` sigue en el código, su retiro es `U4` |
+| Portal de clientes | `RETIRADO, SIN SUSTITUTO` | Eliminado el 22-sep-2026 (U4, `735be57`): las tres páginas, la API de clientes, la cookie de cliente y `features/portal/`. **HelpDesk no tiene hoy canal externo de recepción**; construirlo es `U8`, bloqueado por D2/D3/D4 |
+| Redirección interna | `RETIRADA` | La clave compartida y su pantalla se eliminaron (`735be57`); las dos vistas cayeron con el frontend heredado (`1937589`). La lógica —resolución del encargado y escritura en el outbox— se conservó sin pantalla en `features/redireccion/`, como referencia para `U7` |
+| Perímetro de acceso | `CONSTRUIDO Y EJERCITADO` | *Deny-by-default* en `src/proxy.ts` con lista pública de dos entradas. 42 pruebas, ocho ejecutando `proxy()`; cuatro escenarios contra el despliegue el 22-sep-2026. **No verificado:** el tratamiento del prefijo `/helpdesk` dentro del proxy real (§1, salvedad 4) |
+| Frontend | `VACÍO A PROPÓSITO` | Retirado el heredado (`1937589`). Cinco rutas —`/`, `/login` y las tres de auth—, sin `AppShell`, sin tokens en `globals.css`, sin tipografía impuesta. `U5` empieza en blanco |
 | Identidad de empleados | `EJERCITADA DE PUNTA A PUNTA` | Ingreso real, cierre de sesión, expulsión por desactivación, rechazo por rol ausente, cookie de sesión manipulada sin efecto y destino de retorno saneado — **todo contra el despliegue, 22-sep-2026** (§4). `NOT_REGISTERED` y `EMAIL_INVALID` quedan con cobertura unitaria únicamente |
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
@@ -173,6 +253,42 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 | Documentación | `CERRADA en este corte` | Este conjunto |
 
 ## 3. Capacidades publicadas en esta unidad
+
+### U4 — perímetro, retiro de la clave y del frontend heredado (`735be57`, `1937589`)
+
+- **Perímetro *deny-by-default*** (`src/proxy.ts`). Toda ruta es privada salvo las de
+  `src/server/security/public-paths.ts`, hoy dos: `/login` y `/api/auth/microsoft`.
+  Una página añadida mañana queda protegida sin que su autor haga nada.
+- **La regla vive fuera del proxy a propósito.** `public-paths.ts` no depende de Next,
+  así que la prueba que enumera `src/app` verifica **la misma función** que el proxy
+  aplica, no una copia que pueda divergir. Por el mismo motivo el nombre de la cookie
+  se trasladó a `src/server/auth/session-cookie.ts`, sin dependencias: el runtime del
+  borde no puede cargar el módulo de sesión, que arrastra Prisma.
+- **Dos capas explícitas.** El proxy comprueba **presencia** de cookie —no puede
+  alcanzar PostgreSQL, y poner una consulta por petición es la carga permanente que
+  descarta la economía de recursos—; `readEmployeeSession` decide la validez.
+- **Ingreso sin fricción desde cualquier ruta.** Una navegación de documento sin sesión
+  entra por `/api/auth/microsoft/start`, no por `/login`, preservando el destino. Las
+  peticiones internas de React (`RSC`) y las que no son navegación van a `/login`, para
+  que un prefetch no selle una cookie de estado nueva sobre un ingreso en curso.
+- **Redirección del perímetro con `Location` relativo y 303.** Relativo por lo mismo
+  que `306d286`; 303 y no 307 para que el POST de una Server Action sin sesión llegue
+  al ingreso como GET en vez de producir un 405.
+- **Lista exacta de assets públicos** (`public-assets.ts`), no por extensión ni por
+  carpeta: sin ella el optimizador de imágenes —que descarga el original con una
+  petición interna sin cookies— recibiría una redirección y fallaría en silencio.
+- **`REDIRECCION_PASSWORD` eliminada** del código, de su pantalla y del servicio en
+  Coolify. Una prueba falla si el nombre reaparece en `src/`.
+- **Portal de clientes retirado** entero, con su API y su cookie.
+- **Frontend heredado retirado** entero: vistas de redirección, `AppShell`, tablas,
+  formulario, `features/tickets/` (código muerto), tokens de `globals.css` y fuentes de
+  plantilla del layout. Nada se sustituyó por nada: los valores visuales son `U5`.
+- **16 pruebas nuevas** (42 en total): ocho ejecutan `proxy()` sobre peticiones reales;
+  las otras enumeran `src/app` y exigen que ninguna ruta quede sin clasificar, que toda
+  privada resuelva identidad en su propio archivo, que toda Server Action de `src/` la
+  resuelva por su cuenta, y que la clave compartida no reaparezca.
+
+### U3 — identidad de empleados (corte anterior)
 
 Identidad de empleados, **en funcionamiento sobre el despliegue real**, con la primera
 persona habilitada y la ruta pública sirviendo tráfico:
@@ -220,6 +336,19 @@ persona habilitada y la ruta pública sirviendo tráfico:
 | Lectura del repositorio real de Conecta (`RBGCT-REACT`, ramas `main` y `stiben`), 15-sep-2026 | Cómo autentica Conecta hoy y qué no ofrece para federar identidad (§ cabecera) | Que `stiben` vaya a desplegarse tal cual, ni el estado de Conecta más allá de este corte |
 
 | **Ejercicio de U3 contra el despliegue real, 22-sep-2026** — navegador sobre `https://conecta.rbgct.cloud/helpdesk` más consultas a `app.employee_session` y `core.dim_personal` | Seis de los ocho escenarios mínimos de `plan-ejecucion.md` §U3, el enlace del sujeto inmutable y la revocación en servidor — tabla siguiente | `NOT_REGISTERED` ni `EMAIL_INVALID` (no reproducibles sin una cuenta del tenant ajena al directorio, o un `id_token` sin correo válido); tampoco la expiración de 8h, que solo se observa dejando pasar el tiempo |
+
+| `tsc --noEmit`/`eslint`/`next build` + 42 pruebas unitarias, 22-sep-2026, en local con FNM (Node 24.16.0) | Que el código de U4 tipa, construye —el build reconoce el proxy— y que `proxy()` clasifica y responde como la spec exige sobre peticiones fabricadas, incluida una ruta inexistente | Que el proxy se comporte igual dentro del despliegue: **ninguna prueba demuestra cómo llega el prefijo `/helpdesk` al pathname en ejecución**, solo que las dos formas se clasifican igual |
+| **Ejercicio de U4 contra el despliegue real, 22-sep-2026** — navegador sobre `https://conecta.rbgct.cloud/helpdesk`, más la pantalla de variables de Coolify | Cuatro escenarios, tabla más abajo | Que el 401 de API sin sesión, el paso del asset público o el trato de las peticiones `RSC` se comporten en producción como en la suite — ninguno se tocó a mano |
+
+**U4 — escenarios ejercitados contra el despliegue, 22-sep-2026** (reportados por el
+usuario; no hay captura ni log archivado de cada uno):
+
+| Escenario | Evidencia observada |
+|---|---|
+| Ingreso por la raíz con perímetro activo | `https://conecta.rbgct.cloud/helpdesk` sin sesión lleva al ingreso y termina en la página de HelpDesk con el nombre de la persona |
+| Pantallas retiradas, ausentes | `/helpdesk/redireccion/login` y `/helpdesk/portal` ya no sirven la interfaz anterior |
+| Destino de retorno tras el perímetro | Una ruta privada pedida sin sesión lleva al ingreso y devuelve a esa ruta, no a la raíz |
+| Variable retirada del servicio | `REDIRECCION_PASSWORD` ya no figura entre las variables de entorno en Coolify |
 
 **U3 — escenarios mínimos, contra el despliegue real, 22-sep-2026:**
 
@@ -301,8 +430,8 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | # | Fallo | Severidad | Dónde |
 |---|---|---|---|
-| F1 | El portal permite operar a nombre de cualquier cliente sin credencial | **Alta** | `specs/acceso-clientes.md` §1 |
-| F2 | La redirección usa contraseña compartida; no hay traza de quién redirigió | **Alta** | `specs/acceso-empleados.md` §1 |
+| ~~F1~~ | ~~El portal permite operar a nombre de cualquier cliente sin credencial~~ — **cerrado 22-sep-2026 (U4) por eliminación, no por protección.** Se retiraron las tres páginas, `/api/portal/clientes`, la cookie de cliente y `features/portal/`. Decisión del usuario, con la constancia de que ningún cliente lo usa: la identidad que iba a protegerlo (`U8`) está bloqueada por D2/D3/D4 y no tiene fecha, así que declararlo público en el perímetro habría sido dar por buena la exposición. **Consecuencia que no es cierre: HelpDesk no tiene hoy canal externo de recepción** | ~~Alta~~ | `specs/acceso-clientes.md` §1, §11 |
+| ~~F2~~ | ~~La redirección usa contraseña compartida; no hay traza de quién redirigió~~ — **cerrado 22-sep-2026 (U4).** La clave y su pantalla se eliminaron; las vistas pasaron por identidad de empleado antes de retirarse con el frontend heredado. Una prueba de la suite falla si el nombre de la variable reaparece en `src/`, así que la propiedad se mantiene sin vigilancia humana. La traza de quién opera existe desde U3 (`app.employee_session`), pero **queda sin ejercitarse sobre una redirección real**: no hay pantalla que la produzca hasta `U7` | ~~Alta~~ | `specs/acceso-empleados.md` §8 |
 | F3 | El ELT sobrescribe todos los campos con SharePoint y pierde la procedencia del portal | **Alta** | `specs/sincronizacion-sharepoint.md` §4.1 |
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
 | ~~F10~~ | ~~`core.dim_personal` tenía dos filas con el mismo `correo_corporativo`~~ — **cerrado 10-sep-2026, con ejecución real.** `recepcion.gct@rbcol.co` tenía `ccb2a1de...` (activa) y `ef1e69e7...` (fantasma). Esquema aplicado (`es_responsable_historico_no_identificado`, índice único parcial) y la ingesta corrió de punta a punta sin error: 2.559 → 2.825 tickets, 155 → 165 atribuidos al marcador histórico, ninguno a la ocupante actual (§4). El primer intento falló porque n8n tenía publicada la copia sin el fix (confusión de nombres, ver F11) — resuelto reimportando el archivo correcto | ~~Alta~~ | `core.dim_personal`; `specs/tickets.md` §7.3 |
@@ -310,7 +439,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` y un subsistema de identidad sin rastro en el repositorio~~ — **cerrado de verdad, 10-sep-2026 (corte 5).** El primer cierre (corte 4) estaba mal: se apoyó solo en `git log`, nunca en la base real. Investigado a fondo: `codigo_ticket` confirmado como el mecanismo real y correcto (trigger + contador por área/año, con guarda idempotente) — el baseline lo captura tal cual. `identidad_correo`/`resolucion_*` (y, descubierto después, cuatro columnas `*_snapshot` más en `fact_ticket` con la misma data) confirmados como el mismo problema que ya resuelve `sql/elt/04_transform_personal_historico.sql`, abandonados desde jul-2026, sin nada que dim_personal no tuviera ya — retirados de la base real, con lo rescatable en `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral: el backfill de F10 estaba incompleto (solo un correo de varios) — cerrado con un `UPDATE` de 72 filas. `fact_ticket` verificado con exactamente las 18 columnas de `sql/db/06_helpdesk_facts.sql` | ~~Alta~~ | `docs/legacy/identidad-correo-2026-07.md`; consultas de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026, columnas/índices/CHECK/triggers/funciones de `core`+`helpdesk`+`staging` completas |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | ~~F6~~ | ~~Una sola credencial de base para migrar y para servir~~ — **cerrado 11-sep-2026, más grave de lo descrito: `coraje_app` resultó ser además superusuario y el único rol de aplicación del clúster.** Creados `coraje_migrator` (dueño de `core`+`helpdesk`), `coraje_runtime` (DML, usa `web`) y `coraje_etl` (dueño de `staging`, DML sobre `core`+`helpdesk`, usa n8n); `coraje_app` retirado de todo uso automático, contraseña rotada, queda solo para emergencias humanas. **Corrida real de n8n con `coraje_etl` confirmada de punta a punta** tras corregir dos huecos que el `GRANT` inicial no cubría: `staging` sin transferir a `coraje_etl`, y un `CREATE UNIQUE INDEX` que n8n traía embebido contra `core.dim_cliente_contai` — ya redundante y contrario a D1, retirado del workflow (vivo y committeado). **`coraje_runtime` confirmado con una escritura real** (ticket creado desde el portal, corte 8) | ~~Media~~ | `estado/operacion.md` |
-| F7 | `.env.example` declara una de las cuatro variables que el código lee | Baja | Ídem |
+| F7 | `.env.example` declara **una** variable (`DATABASE_URL`) de las ocho que el código lee: las cuatro de Entra (`ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`), `HELPDESK_TOKEN_ENCRYPTION_KEY` y las dos del webhook de n8n. Todas puestas en Coolify, ninguna documentada. Un despliegue nuevo arranca y falla en el primer ingreso, no al arrancar. Las dos de n8n solo las lee la acción de redirección, hoy sin pantalla que la invoque | Baja | `estado/operacion.md` |
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
 
@@ -339,13 +468,16 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo`~~ — **descartado como causa real (17-sep-2026)**: la consulta de verificación devolvió 0 filas, ningún duplicado. El deploy sí falló, pero por otra razón — ver fila siguiente | ~~El `CREATE UNIQUE INDEX` fallaría al desplegar si hubiera un duplicado~~ | ~~Verificado y descartado~~ |
 | ~~**El primer deploy de U3 falló.**~~ — **resuelto 18-sep-2026, con evidencia completa.** `coraje_migrator` (dueño de `core`/`helpdesk` desde F6) nunca recibió el privilegio `CREATE` sobre la base de datos completa — crear un schema nuevo (`app`) lo exige, ser dueño de schemas existentes no alcanza. Error real: `permission denied for database coraje` (SQLSTATE 42501), `applied_steps_count: 0`. Reparado: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` → `prisma migrate resolve --rolled-back` (confirmado por `rolled_back_at` poblado) → redeploy → columnas `rol_aplicacion`/`entra_object_id` confirmadas existentes → `UPDATE` exitoso sobre `daniellopera@rbcol.co` | ~~Bloqueaba por completo el arranque de `web` — el gate de U2 hizo justo lo que debía~~ | ~~Cerrado, con evidencia de cada paso~~ |
 | ~~**La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía**~~ — **cerrado 22-sep-2026:** declarada en Traefik de Coolify, sin *strip prefix* (los assets de Next.js cargan y el preflight de Tailwind se aplica), redirect URI de Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`, y `https://conecta.rbgct.cloud/app` sigue sirviendo el SPA de Conecta — la regla no se comió el dominio. Al ejercitarla apareció un defecto que solo el despliegue podía revelar (`Location` absoluto derivado de `request.url`, que resolvía a `0.0.0.0:3000`), corregido en `306d286`. Texto original: (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
+| **El perímetro no está verificado en ejecución sobre el punto que más podría fallar.** Ninguna prueba demuestra cómo llega el prefijo `/helpdesk` al pathname dentro del proxy real; lo que hay es una normalización que clasifica igual en los dos casos | Si esa suposición fuera falsa **y** la normalización se retirara o se rompiera, el perímetro clasificaría mal en bloque: o deja pasar todo como público, o deniega todo incluido `/login`. No es un fallo parcial ni ruidoso | No tocar `normalizeAppPathname` sin ejercitar después contra el despliegue. La salida ante un fallo total es `git revert` del commit del perímetro y redesplegar: no hay riesgo para los datos |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `306d286` | **Corte vigente.** Emite las redirecciones internas con `Location` relativo: detrás del proxy, `request.url` resolvía a `0.0.0.0:3000` |
+| `1937589` | **Corte vigente.** Retira el frontend heredado del Coraje anterior: vistas de redirección, `AppShell`, tablas, formulario, `features/tickets/`, tokens de `globals.css` y fuentes del layout. Nada se sustituye: los valores visuales son `U5` |
+| `735be57` | **U4.** Perímetro *deny-by-default* (`src/proxy.ts`), retiro de `REDIRECCION_PASSWORD` y del portal de clientes completo |
+| `306d286` | Emite las redirecciones internas con `Location` relativo: detrás del proxy, `request.url` resolvía a `0.0.0.0:3000` |
 | `cfce427` | Mueve HelpDesk de `/app/HelpDesk` a `/helpdesk` (D7) |
 | `5f6aacd` | Cierra la reparación del deploy de U3, con evidencia real de cada paso |
 | `e648fcb` | Documenta la resolución de D7 (navegación) y el fallo del deploy |
@@ -441,34 +573,41 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U4, perímetro y retiro de la clave compartida
+## Acción inmediata para la siguiente sesión — U5, contrato de diseño ejecutable y primera vista
 
-**U3 queda cerrada. La cabeza de `plan-ejecucion.md` pasa a ser U4**, sin desviación: es
-la unidad siguiente de la cola, y el propio plan la declara no opcional ni posterior a U3.
+**U4 queda cerrada. La cabeza de `plan-ejecucion.md` pasa a ser U5**, sin desviación.
 
-**Por qué es más urgente ahora que antes.** Hasta este corte, que `/portal` y
-`/redireccion` no exigieran identidad era un prototipo sin tráfico. Desde hoy el dominio
-público sirve `/helpdesk/*`, y al probar el destino de retorno se llegó por una URL real
-a `/helpdesk/portal` — el selector de clientes sin credencial. La autenticación de
-empleados ya existe; el perímetro que la hace obligatoria, no.
+**Objetivo (`plan-ejecucion.md` §U5):** fundamentos, tema, validador de coherencia entre
+los dos adaptadores, y la primera vista nueva construida consumiendo el contrato desde
+el inicio.
 
-**Objetivo (`plan-ejecucion.md` §U4):** *deny-by-default* con lista pública explícita, y
-**eliminación** de `REDIRECCION_PASSWORD` y su ruta de acceso.
+**Criterio de cierre, tal como el plan lo define:** la vista no contiene un solo valor
+visual local, y el validador falla si los dos adaptadores divergen.
 
-**Criterio de cierre, tal como el plan lo define:** una prueba enumera las páginas de
-`src/app` y exige que cada una fuera de los prefijos públicos resuelva identidad; `grep`
-de `REDIRECCION_PASSWORD` sin resultados.
+**El punto de partida cambió, y a favor.** No hay frontend que desmontar ni con el que
+convivir: `globals.css` no declara un solo valor, el layout raíz no impone tipografía,
+y `/` y `/login` se dibujan sin estilo. Es la condición que
+`design/sistema-helpdesk.md` §1 daba por necesaria al descartar una fase de
+centralización posterior. La contrapartida es que **la aplicación no hace nada
+visible**: entrar es todo lo que se puede hacer.
 
-**Lo que ya existe y hay que consumir, no reinventar:** `requireCurrentEmployee()`
-(`src/server/auth/current-employee.ts`) ya es el único punto de lectura de identidad
-expuesto a la aplicación, y ya redirige a `/login` preservando el destino saneado. U4
-decide **dónde se aplica** —middleware, layout, o handler por handler— y cuál es la lista
-pública; no construye el mecanismo desde cero.
+**Lo que hay que inspeccionar antes de escribir, no después:** `src/design-system/` de
+Impulsa —fundamentos, tema, recetas, componentes, patrones— y sus vistas `/clientes` y
+`/clientes/[clienteId]`. Sus archivos llevan comentarios que explican por qué cada
+decisión es como es, incluida la razón por la que la alternativa obvia falla. La carga
+de la prueba es de quien se aparte de cómo lo resuelven esas vistas.
 
-**Decisión que U4 debe tomar, no heredar:** qué pasa con `/portal` y `/redireccion`. El
-acceso de clientes es `U8` y arrastra decisiones sin cerrar (D2, D3, D4). U4 puede
-cerrarlos tras identidad de empleado, retirarlos, o dejarlos tras el perímetro con una
-condición explícita de caducidad — lo que no puede es dejarlos como están.
+**Decisión que bloquea y no se puede tomar sola: D5** — si HelpDesk tiene acento visual
+propio o comparte el de Impulsa. Es del usuario, y condiciona el tema antes de que haya
+una sola vista escrita.
+
+**Lo que U5 arrastra además, y conviene no descubrir a mitad:** replicar el shell de
+Conecta dentro de HelpDesk (sidebar y topbar) es parte de esta unidad, no de otra — la
+composición en tiempo de request se descartó con evidencia en el corte 11, porque la
+interfaz de Conecta es un SPA sin layout de servidor. Y `public/rb-logo.png` es hoy el
+único asset del proyecto: lo dejó en pie el perímetro, con una entrada en la lista
+exacta de `public-assets.ts`, precisamente porque la pantalla de acceso va a necesitarlo
+sin sesión en cuanto tenga estilo.
 
 ### Lo que NO hace falta repetir
 
@@ -485,7 +624,7 @@ de restauración debe fijar las dos columnas a la vez**: durante este corte se p
 acceso dos veces por revertir solo una, y no hay una segunda cuenta con rol que pueda
 entrar a arreglarlo desde la aplicación — la salida es siempre por `psql`.
 
-### Lo que queda del lado de Conecta, y es de `U5`, no de ahora
+### Lo que queda del lado de Conecta, y ahora sí entra en alcance
 
 El SPA de Conecta no tiene hoy ningún enlace a HelpDesk. Cuando `U5` lo añada al
 sidebar, **debe ser un enlace de navegación real (`<a href>`), nunca `navigate()` de su
@@ -963,3 +1102,22 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   la cabeza de la cola**, con urgencia mayor que antes: `/helpdesk/portal` quedó
   accesible desde el dominio público sin exigir identidad, cosa que hasta este corte era
   un prototipo sin tráfico.
+- 23-sep-2026 (corte 13) — **U4 cierra.** Existe perímetro *deny-by-default* y
+  desaparecen las dos formas de entrar que no eran identidad: la clave compartida de
+  redirección y el portal de clientes sin credencial. F1 y F2 se cierran, F1 **por
+  eliminación y no por protección** — decisión del usuario ante el hecho de que `U8`
+  está bloqueada por D2/D3/D4 sin fecha; consecuencia que el documento registra en vez
+  de disimular: HelpDesk no tiene hoy canal externo de recepción. Se adelantó el paso 5
+  de `acceso-clientes.md` §11 sobre los cuatro que lo precedían, y la razón no fue de
+  diseño sino de exposición. Del proyecto hermano se adaptó `src/proxy.ts` **sin heredar
+  su deuda**: allí la redirección se construye sobre `request.url`, que es exactamente
+  el defecto que `306d286` había corregido aquí. Dos correcciones nacidas de las propias
+  pruebas: la que exige que la clave no reaparezca atrapó un comentario recién escrito
+  que la nombraba, y la de Server Actions se extendió a todo `src/` al mover la acción
+  de redirección fuera de `src/app`, porque si no habría dejado de comprobar nada en
+  silencio. En la misma sesión, y a petición del usuario, **se retiró el frontend
+  heredado completo** (`1937589`): la aplicación queda en cinco rutas y sin un solo
+  valor visual, que es la condición de partida que `U5` necesitaba. Queda sin verificar
+  —y declarado como salvedad, no como detalle— cómo llega el prefijo `/helpdesk` al
+  pathname dentro del proxy real: se neutralizó, no se demostró. **U5 pasa a ser la
+  cabeza de la cola**, con D5 (acento visual) como decisión de usuario que la bloquea.

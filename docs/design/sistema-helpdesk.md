@@ -1,10 +1,13 @@
 # Sistema de diseño de HelpDesk
 
 ```
-ESTADO:      no implementado — no existe contrato de diseño en el código. Lo que hay
-             en `coraje-web/` son estilos locales sobre un `AppShell` mínimo, y se
-             retira completo. Este documento fija el objetivo, no describe lo vigente
-CORTE:       03-sep-2026
+ESTADO:      no implementado — no existe contrato de diseño en el código. **Y ya
+             tampoco existe nada que lo contradiga:** el 22-sep-2026 (U4) se retiró
+             el frontend heredado completo, incluido el `AppShell` y los tokens de
+             `globals.css`. No quedan estilos locales, ni tipografía impuesta por el
+             layout, ni un solo valor visual escrito. Este documento fija el
+             objetivo; hoy describe además el punto de partida, que está en blanco
+CORTE:       23-sep-2026
 EVIDENCIA:   ninguna. Sin validación visual, de teclado, de lector de pantalla ni
              móvil, porque no hay nada que validar todavía
 ```
@@ -163,7 +166,11 @@ Lo que un helpdesk necesita y una plataforma documental no:
    valores locales.
 3. Extraer a recetas y componentes lo que la segunda vista repita. **No antes:** un
    componente extraído de un solo uso codifica una casualidad.
-4. Retirar `AppShell` y los estilos actuales al construir el shell nuevo.
+4. ~~Retirar `AppShell` y los estilos actuales al construir el shell nuevo.~~
+   **Hecho el 22-sep-2026 (U4), y antes de tiempo a propósito:** se retiró sin esperar
+   al shell nuevo, porque mantenerlo en pie invitaba a construir encima de él. El paso
+   deja de ser una tarea y pasa a ser una condición ya cumplida — el shell nuevo se
+   construye sobre nada, no sobre lo anterior.
 
 > Ninguna regla se considera implementada hasta que componentes y vistas consuman el
 > contrato y superen validación real.

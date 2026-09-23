@@ -185,14 +185,21 @@ igual que Impulsa**, solo falta construirlas (U2):
 |---|---|---|
 | `POSTGRES_*` | Raíz | Contenedor de PostgreSQL local |
 | `DATABASE_URL` | `coraje-web` | Conexión de Prisma |
-| `REDIRECCION_PASSWORD` | `coraje-web` | Clave compartida del módulo de redirección. **Se retira** con `specs/acceso-empleados.md` |
 | `N8N_OUTBOX_KICK_URL` | `coraje-web` | Webhook que despierta el consumo del outbox |
 | `N8N_OUTBOX_KICK_SECRET` | `coraje-web` | Secreto de ese webhook |
 
-> `coraje-web/.env.example` declara **solo** `DATABASE_URL`. Las tres variables restantes
+> **`REDIRECCION_PASSWORD` ya no existe** (U4, 22-sep-2026). La clave compartida del
+> módulo de redirección se retiró del código junto con su pantalla de acceso, y la
+> variable se borró del servicio en Coolify. Una prueba de `pnpm test` falla si el
+> nombre reaparece en `src/`.
+
+> `coraje-web/.env.example` declara **solo** `DATABASE_URL`. Las dos variables de n8n
 > las lee el código y no están documentadas allí: un despliegue nuevo arranca sin ellas
 > y la cola de salida queda muda, con una advertencia en el log y nada más. **Corregir
 > el `.env.example` es trabajo de una línea y evita un fallo silencioso.**
+>
+> A esa lista le faltan además las cinco variables de identidad que U3 introdujo y la
+> clave de sellado — todas configuradas en Coolify, ninguna declarada en el ejemplo.
 
 ## n8n
 

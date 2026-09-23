@@ -234,19 +234,29 @@ pruebas ejecutadas) y **lo que quedó sin verificar**.
 
 ## Gotchas
 
-- **No hay autenticación real en el código publicado.** El portal de clientes deja
-  elegir cualquier cliente sin credencial, y la redirección interna se protege con una
-  contraseña compartida en `REDIRECCION_PASSWORD`. Ambos están documentados en su propio
-  código como temporales. No los trates como base de un modelo de identidad: se
-  reemplazan completos (`docs/specs/acceso-empleados.md`,
-  `docs/specs/acceso-clientes.md`).
+- **La identidad de empleados existe, es obligatoria y está ejercitada** (U3 y U4,
+  22-sep-2026). OIDC con PKCE contra Entra ID, sesión propia opaca y revocable, y un
+  perímetro *deny-by-default* en `coraje-web/src/proxy.ts`: toda ruta es privada salvo
+  las de `src/server/security/public-paths.ts`. **Para volver pública una ruta se edita
+  esa lista y nada más** — no se añade un guard, no se inventa una excepción local.
+- **No hay acceso de clientes, ni abierto ni cerrado.** El portal sin credencial se
+  eliminó entero en U4, junto con la clave compartida de redirección. No los busques ni
+  los tomes de referencia: el acceso externo se construye desde cero en
+  `docs/specs/acceso-clientes.md`, bloqueado por tres decisiones de negocio.
+- **No hay frontend.** El del Coraje anterior se retiró completo (`1937589`): quedan
+  cinco rutas (`/`, `/login` y las tres de autenticación), `globals.css` sin un solo
+  valor y un layout sin tipografía impuesta. No es un descuido: los tokens son
+  competencia de U5 y rellenar el hueco con una paleta improvisada viola la regla dura
+  de este documento.
 - **`helpdesk.ticket_sync_outbox` es el patrón bueno y se conserva.** Fuente de verdad
   en PostgreSQL, `ON CONFLICT DO NOTHING` sobre un índice parcial único para
   idempotencia, webhook a n8n fuera de la transacción y sin capacidad de romperla. No lo
   rediseñes por gusto arquitectónico.
-- **La aplicación se conecta a PostgreSQL con una sola credencial.** No hay separación
-  entre usuario de migración y usuario de runtime, a diferencia de Impulsa. Riesgo
-  registrado, no corregido.
+- **Las credenciales de PostgreSQL están separadas desde el 11-sep-2026** (U2):
+  `coraje_migrator` migra, `coraje_runtime` sirve la aplicación y `coraje_etl` corre la
+  ingesta de n8n. `coraje_app` —que era superusuario y el único rol del clúster— quedó
+  retirado de todo uso automático, con la contraseña rotada, solo para emergencias
+  humanas. No vuelvas a usarlo ni asumas una credencial única.
 - **Los datos migrados de SharePoint son reales, no de prueba**: 2.313 tickets y 439
   eventos cargados y conciliados. Cualquier operación destructiva sobre `core` o
   `helpdesk` los alcanza. La autorización destructiva de este documento **no los
