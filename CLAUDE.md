@@ -251,9 +251,10 @@ firma. **Desde aquí se lee; nunca se escribe por iniciativa propia.**
 **Qué integra HelpDesk con Conecta y cómo**: `docs/specs/integracion-conecta.md`.
 - **Parte 1, construida:** se lee `gct_empleado` del `localStorage` compartido por
   origen. Solo sirve para mostrar y para sugerir la cuenta, nunca para autorizar.
-- **Parte 2, solo diseñada:** endpoint en Conecta para «Formación», con controles
-  obligatorios en su §5.1. Las API keys actuales de Conecta dan poder de SuperAdmin en
-  todas sus rutas: no se reutilizan.
+- **Parte 2, decidida y pendiente de construir (U5.2):** endpoint en Conecta para el
+  dato oficial y «Formación». **Todos** los controles de seguridad de su §5.1 son
+  obligatorios. Las API keys actuales de Conecta dan poder de SuperAdmin en todas sus
+  rutas y no se reutilizan.
 
 La réplica del shell y la lectura de `gct_empleado` dependen del código de Conecta sin
 que su equipo lo sepa. Al tocar el shell, **revisa primero RBGCT-REACT actualizado**, no

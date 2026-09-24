@@ -197,6 +197,34 @@ Impulsa), y sigue pendiente replicar el shell de Conecta dentro de HelpDesk, inc
 enlace de vuelta desde el sidebar de Conecta como `<a href>` y no como `navigate()` de
 su router.
 
+### U5.2 · Endpoint de Conecta: parte 2 de la integración — *en paralelo, latencia humana*
+
+**Objetivo:** construir la parte 2 de la opción 3 (`specs/integracion-conecta.md` §1.1,
+§5), decidida por el usuario el 24-sep-2026. Es un endpoint de solo lectura en el
+backend Django de Conecta, que da a HelpDesk el dato oficial del empleado y si tiene
+«Formación», más su cliente en HelpDesk.
+
+**Condición no negociable:** **todos** los controles de seguridad de §5.1:
+- credencial propia que no entrega un SuperAdmin;
+- alcance comprobado en código;
+- respuesta mínima, solo empleados activos;
+- cupo y registro propios;
+- clave en cabecera, rotable y fuera del repositorio;
+- tiempo de espera ≤ 2 s con fallo cerrado;
+- cotejo exacto por correo;
+- no reutilizar las API keys actuales ni la clase antigua duplicada.
+
+**Procedimiento:** toca RBGCT-REACT, así que rige `integracion-conecta.md` §1.2. El diff
+concreto se presenta al usuario antes de escribirlo, va solo en `lulox`, y llevarlo a
+`main` es trabajo del equipo de Conecta.
+
+**Por qué en paralelo y no en la cabeza:** su cuello de botella es humano (la aprobación
+y el despliegue de otro equipo), igual que U0. No bloquea U6 ni la bloquea U6.
+
+**Cierre:** el endpoint desplegado en Conecta con cada control de §5.1 verificado. HelpDesk
+muestra «Formación» a quien tiene cursos y no a quien no los tiene. Con Conecta caído,
+HelpDesk entra igual.
+
 ### U6 · Modelo de eventos del ticket — **cabeza de la cola**
 
 **Objetivo:** los tres campos ausentes (`specs/tickets.md` §6), el escritor único y la
@@ -284,7 +312,6 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   **U3 pasa a ser la cabeza de la cola.**
 - 24-sep-2026 — U5 cierra: contrato de diseño ejecutable, shell de Conecta y dos modos
   de entrada, con el shell y los modos ejercitados en producción por el usuario.
-  Evidencia en `estado/handoff.md` (corte 14). Quedan registradas como posibilidades no
-  comprometidas, y no como unidades: un panel de administración propio, el endpoint de
-  Conecta para «Formación» y el acceso desde «Auto gestión». **U6 pasa a ser la
-  cabeza de la cola.**
+  Evidencia en `estado/handoff.md` (corte 14). Entra en la cola U5.2 (endpoint de Conecta, parte 2 de la
+  opción 3, decidida y en paralelo por su latencia humana). El panel de administración
+  propio queda como posibilidad no comprometida. **U6 pasa a ser la cabeza de la cola.**

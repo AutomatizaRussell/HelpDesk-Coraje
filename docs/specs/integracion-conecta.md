@@ -1,10 +1,11 @@
 # Integración con Conecta
 
 ```
-ESTADO:      Opción 3 elegida (§1.1). Parte 1 (§2-§4) construida, publicada
-             (`47886bd`) y ejercitada. Parte 2 (§5, endpoint en Conecta)
-             diseñada, NO construida: pendiente de aprobación explícita del
-             usuario para tocar RBGCT-REACT (rama `lulox`, §1.2)
+ESTADO:      Opción 3 DECIDIDA (§1.1): navegador y endpoint, las dos partes.
+             Parte 1 (§2-§4) construida, publicada (`47886bd`) y ejercitada.
+             Parte 2 (§5, endpoint en Conecta) decidida y diseñada, PENDIENTE
+             DE CONSTRUIR (U5.2). Toca RBGCT-REACT, así que su diff concreto se
+             presenta al usuario antes de escribirlo (§1.2)
 CORTE:       24-sep-2026
 EVIDENCIA:   `pnpm test` 62/62 (entry-context, login-hint, proxy, perímetro),
              `tsc --noEmit`, `eslint` y `next build` limpios. **Ejercitado por el
@@ -40,7 +41,7 @@ replica el menú de Conecta, pero dibujarlo igual exige datos que solo Conecta t
 HelpDesk tiene `nombre_completo` en una sola cadena. No se puede partir en «primer
 nombre + primer apellido» sin equivocarse con los nombres compuestos.
 
-## 1.1 `DECISIÓN` Opción 3: navegador ahora, endpoint después (24-sep-2026, usuario)
+## 1.1 `DECISIÓN` Opción 3: navegador **y** endpoint (24-sep-2026, usuario)
 
 Se evaluaron tres formas de obtener los datos de §1:
 
@@ -48,18 +49,27 @@ Se evaluaron tres formas de obtener los datos de §1:
 |---|---|---|---|---|
 | 1 · Navegador | Leer `gct_empleado` del `localStorage` que Conecta comparte por origen (§3) | Sugerir la cuenta a Microsoft (sin selector), detectar si se viene de Conecta, nombre corto, área, «Mis clientes» | «Formación»; personas que nunca abrieron Conecta en ese navegador; datos si Conecta cambia su clave interna | Ninguno de seguridad (§4); acoplamiento a una clave interna de Conecta |
 | 2 · Endpoint | El servidor de HelpDesk pregunta al backend de Conecta (§5) | Nombre, área, «Mis clientes» y «Formación», oficiales y siempre al día | **El selector de cuenta** (el servidor solo pregunta *después* de saber quién es la persona) y **la detección del modo** (solo la conoce el navegador) | **Sí**: una credencial nueva hacia Conecta y un directorio consultable (§5.1) |
-| **3 · Ambas** | 1 ahora, 2 más adelante y solo para lo que 1 no da | Todo | — | El de 2, acotado por los controles de §5.1 |
+| **3 · Ambas** | 1 para lo que solo sabe el navegador; 2 para el dato oficial y «Formación» | Todo | — | El de 2, acotado por los controles obligatorios de §5.1 |
 
-**Elegida la opción 3.** La opción 2 no sustituye a la 1: no resuelve las dos molestias
-observadas, el selector y el modo de entrada. La 1 resuelve ambas hoy sin tocar Conecta
-ni crear accesos nuevos. La parte 2 queda como `PROPUESTA` (§5) con **todos** los
-controles de §5.1 como condición. El usuario pidió «el mayor cuidado del mundo» con ella:
-no se construye sin su aprobación explícita del diff concreto.
+**Elegida la opción 3, completa: las dos partes son parte de la decisión.** Ninguna es
+opcional ni futura. Se necesitan las dos porque cada una resuelve lo que la otra no
+puede:
+
+- **la 1** (navegador) es la única que puede evitar el selector de cuenta y detectar si
+  se viene de Conecta;
+- **la 2** (endpoint) es la única que da el dato oficial y «Formación».
+
+**Orden de construcción.** La 1 se construyó primero porque no tocaba Conecta. La 2 se
+construye con **todos** los controles de §5.1 como condición no negociable: el usuario
+pidió «el mayor cuidado del mundo» con ella. Como toca RBGCT-REACT, rige §1.2: su diff
+concreto se le presenta antes de escribirlo, y va en `lulox`. Es un paso de
+procedimiento, no una decisión pendiente.
 
 **Estado de cada parte:**
 - parte 1: construida y ejercitada (§2-§4);
-- parte 2: diseñada, no construida (§5);
-- «Formación» no aparece hasta que exista la parte 2.
+- parte 2: decidida y diseñada, **pendiente de construir** (§5; unidad U5.2 de
+  `estado/plan-ejecucion.md`);
+- «Formación» no aparece hasta que la parte 2 esté construida.
 
 ## 1.2 `INVARIANTE` Conecta no se toca sin permiso
 
@@ -140,7 +150,7 @@ Implementadas en `server/auth/entry-context.ts` y probadas en `entry-context.tes
    (`helpdesk_entry`, `httpOnly`, acotada a `/helpdesk`). No porque sea secreto, sino para
    que el servidor pinte solo lo que el servidor decidió.
 
-## 5. Endpoint en Conecta — `PROPUESTA`, no construido
+## 5. Endpoint en Conecta — `DECIDIDO`, pendiente de construir (U5.2)
 
 **Para qué:** lo único que el navegador no tiene, «Formación», y con el tiempo un dato
 oficial y siempre actualizado, aunque la persona no haya abierto Conecta en ese
@@ -150,7 +160,7 @@ navegador.
 preguntar *después* de saber quién es la persona) ni la detección del modo de entrada
 (solo la conoce el navegador). Por eso **complementa** §3 y no la sustituye.
 
-**Diseño propuesto:** `GET /api/integraciones/helpdesk/empleado?correo=…` en el backend
+**Diseño:** `GET /api/integraciones/helpdesk/empleado?correo=…` en el backend
 Django de Conecta. Lo llama el servidor de HelpDesk, una vez al admitir, y el resultado
 se guarda en la cookie de entrada. Nunca una llamada por página.
 
@@ -164,6 +174,10 @@ se guarda en la cookie de entrada. Nunca una llamada por página.
 | **Un secreto más que custodiar** | Vive en dos recursos de Coolify | Procedimiento de rotación en `estado/operacion.md`: crear la nueva, desplegar HelpDesk, revocar la vieja. Nunca en el repositorio |
 | **Conecta caído o lento arrastra a HelpDesk** | El menú dependería de su respuesta | Tiempo de espera corto (≤ 2 s). Si falla, datos del navegador (§3) o propios. **Nunca bloquear el ingreso** |
 | **La persona equivocada** | Se cruza por correo | Correo normalizado en minúsculas; sin coincidencia exacta, sin datos. Mismo fallo cerrado que §4 |
+| **Permisos de clave que no se aplican** | El modelo `ApiKey` de Conecta tiene un campo `permisos` (JSON), pero ningún código lo comprueba: solo lo devuelve la acción `verify`. Una clave «limitada» hoy no está limitada en nada | El alcance del endpoint se comprueba **en código**, en su clase de permiso propia. No confiar en el campo `permisos` hasta que Conecta lo aplique |
+| **Cupo de peticiones compartido con el SuperAdmin** | `UserRateThrottle` agrupa por usuario, y una clave entra como el SuperAdmin que la creó: HelpDesk y ese administrador comparten cupo | Límite propio del endpoint, asociado a la clave y no al usuario |
+| **Clase de autenticación antigua duplicada** | `backend/api/authentication.py` define un `ApiKeyAuthentication` viejo que busca `ApiKey.objects.get(key=...)`, un campo que ya no existe. Nadie lo importa hoy | No importarla ni tomarla de modelo. Señalarla al equipo de Conecta para que la retire: un import equivocado la reactivaría |
+| **Ruta interna de Docker** | El nombre `backend` solo resuelve en la red de Conecta, y `ALLOWED_HOSTS` solo admite ciertos nombres | Si algún día se llama por la red interna: unir redes a propósito y añadir el host exacto a `ALLOWED_HOSTS`, nunca con comodines |
 
 ### 5.2 Cursos: el cálculo que hay que respetar
 
@@ -176,7 +190,8 @@ booleano.
 
 ### 5.3 Qué falta para construirlo
 
-1. Aprobación explícita del usuario sobre el diff concreto en `lulox`.
+1. Presentar al usuario el diff concreto en `lulox` y obtener su aprobación (§1.2). Es
+   procedimiento, no decisión: la decisión ya está tomada.
 2. Que alguien del equipo de Conecta lo lleve a `main` y lo despliegue: Coolify
    despliega Conecta desde `main`, a mano.
 3. Del lado de HelpDesk: el cliente con tiempo de espera, el uso de la respuesta en el
@@ -204,8 +219,13 @@ contenido de clientes.
 | I6 | Solo viajan los nueve campos, por POST | `EntryHandoff.tsx` | Inspección; sin ejercitar |
 | I7 | Con sesión de Conecta se entra sin selector aunque haya varias cuentas | Despliegue + Entra real | **Ejercitado** por el usuario, 24-sep-2026 |
 | I8 | Cerrar sesión borra el modo de entrada | `sign-out-action.ts`, `logout/route.ts` | Inspección; sin ejercitar |
-| I9 | Endpoint de Conecta con los controles de §5.1 | RBGCT-REACT | **No construido** |
+| I9 | Endpoint de Conecta con los controles de §5.1 | RBGCT-REACT | **Decidido, pendiente de construir** (U5.2) |
 
-**Changelog:** 24-sep-2026 — línea base. Modos de entrada (§2), dato del navegador y sus
-reglas (§3-§4) construidos; endpoint de Conecta diseñado con sus controles (§5),
-pendiente de aprobación.
+**Changelog:**
+- 24-sep-2026 — línea base. Modos de entrada (§2) y dato del navegador con sus reglas
+  (§3-§4) construidos; endpoint de Conecta diseñado con sus controles (§5).
+- 24-sep-2026 (mismo día) — **corrección del usuario:** la opción 3 incluye la 2 como
+  parte de la decisión, no como propuesta. El endpoint pasa a `DECIDIDO`, pendiente de
+  construir (U5.2). §5.1 gana cuatro controles que salieron del análisis del backend de
+  Conecta: permisos de clave no aplicados, cupo compartido, clase antigua duplicada y
+  ruta interna.

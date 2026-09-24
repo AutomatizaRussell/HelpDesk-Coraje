@@ -556,7 +556,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~**La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía**~~ — **cerrado 22-sep-2026:** declarada en Traefik de Coolify, sin *strip prefix* (los assets de Next.js cargan y el preflight de Tailwind se aplica), redirect URI de Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`, y `https://conecta.rbgct.cloud/app` sigue sirviendo el SPA de Conecta — la regla no se comió el dominio. Al ejercitarla apareció un defecto que solo el despliegue podía revelar (`Location` absoluto derivado de `request.url`, que resolvía a `0.0.0.0:3000`), corregido en `306d286`. Texto original: (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
 | **El perímetro no está verificado en ejecución sobre el punto que más podría fallar.** Ninguna prueba demuestra cómo llega el prefijo `/helpdesk` al pathname dentro del proxy real; lo que hay es una normalización que clasifica igual en los dos casos | Si esa suposición fuera falsa **y** la normalización se retirara o se rompiera, el perímetro clasificaría mal en bloque: o deja pasar todo como público, o deniega todo incluido `/login`. No es un fallo parcial ni ruidoso | No tocar `normalizeAppPathname` sin ejercitar después contra el despliegue. La salida ante un fallo total es `git revert` del commit del perímetro y redesplegar: no hay riesgo para los datos |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
-| **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, pendiente de aprobación |
+| **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, decidido y pendiente de construir (U5.2) |
 | **Compartir origen con Conecta** (D7) expone a cada app lo que la otra guarda en el navegador, incluidos los tokens de sesión de Conecta | Un XSS en cualquiera de las dos compromete a ambas | Disciplina contra XSS (sin `dangerouslySetInnerHTML` ni HTML de terceros), y una política de seguridad de contenido antes de renderizar contenido de clientes (`integracion-conecta.md` §6) |
 
 ## 7. Commits relevantes
@@ -697,16 +697,21 @@ ingesta sigue corriendo. Toda migración nueva pasa por el servicio `migrate` y 
 revisa contra la base real antes de publicar. La autorización destructiva no alcanza
 `core` ni `helpdesk`.
 
+**Decidido y pendiente de construir, fuera de la cabeza de la cola:**
+- **U5.2, endpoint de Conecta** (`specs/integracion-conecta.md` §5): la parte 2 de la
+  opción 3, decidida por el usuario. **Todos** los controles de seguridad de §5.1 son
+  obligatorios. Toca RBGCT-REACT, así que su diff concreto se presenta al usuario antes
+  de escribirlo y va en `lulox` (§1.2). Su latencia es humana (aprobación, y el equipo
+  de Conecta tiene que llevarlo a `main`), por eso corre en paralelo a U6 y no la
+  bloquea.
+- **Acceso a HelpDesk desde Conecta**, en la vista «Auto gestión», no en el menú. Se
+  construye cuando HelpDesk esté listo. Debe ser una navegación real (`<a href>`, misma
+  pestaña), nunca `navigate()` de su router.
+
 **Posibilidades registradas y no comprometidas**, para que no se pierdan sin
 convertirse en tareas implícitas:
 - **Panel de administración propio en HelpDesk**, para quienes en Conecta ven el
   «Panel Administrativo». Hoy el shell replica solo el menú del empleado.
-- **Endpoint de Conecta** para «Formación» (`specs/integracion-conecta.md` §5). Está
-  diseñado con sus controles, y tocar RBGCT-REACT exige aprobación explícita (rama
-  `lulox`).
-- **Acceso a HelpDesk desde Conecta**, en la vista «Auto gestión», no en el menú. Se
-  construye cuando HelpDesk esté listo. Debe ser una navegación real (`<a href>`,
-  misma pestaña), nunca `navigate()` de su router.
 - **Retirar la topbar** en modo Conecta (`design/sistema-helpdesk.md` §2).
 - **Ejercitar el foco con Tab** tras `ed0bd1d`. Es una comprobación de minutos, no una
   unidad.
@@ -770,6 +775,7 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 | Tipografía Lato, pesos 400/700/900 (corregida: Lato no tiene 500/600) | Ídem §2 | **Construida (U5):** `layout.tsx` y una prueba que cruza sus pesos con el contrato |
 | D5: acento visual propio de HelpDesk, distinto del teal de Impulsa | Ídem §2 | **Construida (U5):** Sky Blue como `PROPUESTA` materializada en el tema, solo como marca. La premisa «teal de Impulsa» era falsa, porque su acento es naranja, y se corrigió en §2 |
 | HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | **Construida y ejercitada (U5, 24-sep-2026)** en modo «desde Conecta». Sin Conecta, barra propia (`specs/integracion-conecta.md`) |
+| Integración con Conecta por la opción 3: navegador (`gct_empleado`) **y** endpoint en Conecta, con todos los controles de seguridad de §5.1 | `specs/integracion-conecta.md` §1.1, §5 | **Parte 1 construida y ejercitada (U5). Parte 2 decidida, pendiente de construir (U5.2)**; su diff en RBGCT-REACT se presenta al usuario antes de escribirlo (§1.2, rama `lulox`) |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
 | Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Construida por completo (corte 8):** baseline adoptado, y el servicio `migrate` ya automatiza cada deploy futuro |
 | Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | Decidida, no construida |
