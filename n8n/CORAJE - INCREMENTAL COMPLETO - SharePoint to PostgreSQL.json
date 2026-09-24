@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -704,
-        544
+        1520,
+        2400
       ],
-      "id": "c6d32d62-e755-473b-9d1b-43ec5f7b444b",
+      "id": "d45b8675-604a-411f-ab8d-faa2f38f3a9b",
       "name": "Manual Trigger"
     },
     {
@@ -26,10 +26,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
-        -704,
-        736
+        1520,
+        2592
       ],
-      "id": "36904a8d-bce2-4823-b013-1b027b5b066d",
+      "id": "87de2b68-36ac-4496-84e0-bdbb45f84a94",
       "name": "Schedule - Incremental fallback"
     },
     {
@@ -41,10 +41,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -480,
-        544
+        1744,
+        2400
       ],
-      "id": "8792c096-a59b-4d17-b606-eb44c9de60c5",
+      "id": "1df751b0-ea33-4bb3-8719-ac0c0ea81d1c",
       "name": "PG - Ensure Incremental Infrastructure",
       "credentials": {
         "postgres": {
@@ -60,10 +60,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -256,
-        544
+        1968,
+        2400
       ],
-      "id": "dd4f312a-09c9-4d6c-bade-0878457a9b9d",
+      "id": "53edff6c-66c6-487a-a912-f5095bd6f946",
       "name": "Code - Configure SharePoint Lists"
     },
     {
@@ -73,10 +73,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        0,
-        0
+        2224,
+        1856
       ],
-      "id": "727428cc-6ce7-4683-a8af-1748cc3302e3",
+      "id": "25f42277-f72a-459f-a8d0-bda96deb1e53",
       "name": "Loop - Lists"
     },
     {
@@ -88,10 +88,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        192,
-        448
+        2416,
+        2304
       ],
-      "id": "a5e16e86-527d-4d3c-a997-e0d784f2b363",
+      "id": "0385c68f-47cd-4b4d-a3c5-19ce96593b04",
       "name": "PG - Get List Cursor",
       "credentials": {
         "postgres": {
@@ -119,15 +119,15 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        416,
-        448
+        2640,
+        2304
       ],
-      "id": "7acdd5d8-05fc-4bb7-9236-66651662832c",
+      "id": "1715e52f-37ad-41cc-97b8-5ed9c4055083",
       "name": "HTTP - Get Changed SharePoint Items",
       "credentials": {
         "microsoftSharePointOAuth2Api": {
-          "id": "0SXzHMvQl5qCO5AN",
-          "name": "Cuenta edwin"
+          "id": "CMvf9g4hz3B0CE2C",
+          "name": "Microsoft SharePoint account"
         }
       }
     },
@@ -138,10 +138,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        640,
-        448
+        2864,
+        2304
       ],
-      "id": "1bbbfdf0-148f-475f-85a2-c4625e8cae36",
+      "id": "009dce93-7570-40a0-99e0-55e49d317595",
       "name": "Code - Build Bulk Raw Upsert"
     },
     {
@@ -172,10 +172,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        864,
-        448
+        3088,
+        2304
       ],
-      "id": "7abcd219-6a79-4cc6-8651-d4d4755a3a74",
+      "id": "72af84bc-388c-4fe7-af1f-1d8e3502156e",
       "name": "IF - Has Changed Items"
     },
     {
@@ -187,10 +187,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1088,
-        448
+        3312,
+        2304
       ],
-      "id": "5d8debcc-2f5f-4fd0-a214-d4f074a61529",
+      "id": "abae41f6-8fbd-4f23-a22c-f16b2553543f",
       "name": "PG - Bulk Upsert Raw Items",
       "credentials": {
         "postgres": {
@@ -208,10 +208,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1312,
-        448
+        3536,
+        2304
       ],
-      "id": "e316ba80-244a-4608-8ac0-1655762bf57f",
+      "id": "9ff2d17c-668c-423c-b59d-dac19efe5844",
       "name": "PG - Update List Cursor",
       "credentials": {
         "postgres": {
@@ -229,10 +229,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        416,
-        640
+        2640,
+        2496
       ],
-      "id": "0ea7ba74-b16d-491c-bf40-dd4dfbffb7be",
+      "id": "cf11eace-434a-4394-bdbd-517fb6bdb171",
       "name": "PG - Transform 01 Area",
       "alwaysOutputData": true,
       "credentials": {
@@ -251,10 +251,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        640,
-        640
+        2864,
+        2496
       ],
-      "id": "d28e4e96-d7a2-4529-9bba-487525bcfca5",
+      "id": "150b8111-9487-4f6b-8874-7e2e392b0b77",
       "name": "PG - Transform 02 Clientes",
       "alwaysOutputData": true,
       "credentials": {
@@ -273,10 +273,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        864,
-        640
+        3088,
+        2496
       ],
-      "id": "def89f34-3778-4eaf-9025-1f18619ec543",
+      "id": "beebd3ce-ead8-44de-aa24-403006a2c47f",
       "name": "PG - Transform 03 Personal",
       "alwaysOutputData": true,
       "credentials": {
@@ -295,10 +295,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1088,
-        640
+        3312,
+        2496
       ],
-      "id": "80b77d0c-a901-4155-b462-4aa65c591066",
+      "id": "712c3730-ff72-4702-b906-f9a70f74d26f",
       "name": "PG - Transform 04 Personal Historico",
       "alwaysOutputData": true,
       "credentials": {
@@ -317,10 +317,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1312,
-        640
+        3536,
+        2496
       ],
-      "id": "cd1a766b-8ad5-45de-ba2c-f0ef81309ae3",
+      "id": "d36e4b2a-7f8a-4852-a814-3db962d8e29b",
       "name": "PG - Transform 05 Tipo Requerimiento",
       "alwaysOutputData": true,
       "credentials": {
@@ -339,10 +339,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1536,
-        640
+        3760,
+        2496
       ],
-      "id": "653c36db-cb6e-40ed-9819-8fd5cc17574b",
+      "id": "3a96d9d7-7947-4466-b6c3-7d3e6365165d",
       "name": "PG - Transform 06 Tickets Legacy",
       "alwaysOutputData": true,
       "credentials": {
@@ -361,10 +361,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1984,
-        640
+        4208,
+        2496
       ],
-      "id": "643227fe-ca30-44a9-af09-34f1165858f0",
+      "id": "912e5587-c58f-468f-9b5d-4e2d72ace0c2",
       "name": "PG - Transform 07 Ticket Eventos",
       "alwaysOutputData": true,
       "credentials": {
@@ -381,10 +381,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        192,
-        640
+        2416,
+        2496
       ],
-      "id": "d964c64c-3ad3-4c2d-9190-1d9c0595565e",
+      "id": "44589262-4513-449b-8f45-093e4ad867c1",
       "name": "Code - Start Transform Phase"
     },
     {
@@ -396,10 +396,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1760,
-        640
+        3984,
+        2496
       ],
-      "id": "efd32dce-fe8d-4726-968d-2ad797b476b3",
+      "id": "eebc1f98-592f-4fcd-803d-40692721a51f",
       "name": "PG - Apply Legacy TipoReq Mapping Rules",
       "credentials": {
         "postgres": {
@@ -417,10 +417,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        32,
-        400
+        2256,
+        2256
       ],
-      "id": "9832d631-8985-415f-816a-4d0034923ec3",
+      "id": "85b4cd8f-103a-4cd6-8611-6f257f96d443",
       "name": "Sticky Note"
     },
     {
@@ -433,10 +433,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        32,
-        608
+        2256,
+        2464
       ],
-      "id": "78f4f5bf-c2d8-4ef4-9f40-0babf86b2fad",
+      "id": "c7986716-0a5f-4672-9f5e-a321ba1e5fcc",
       "name": "Sticky Note1"
     },
     {
@@ -449,10 +449,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -784,
-        496
+        1440,
+        2352
       ],
-      "id": "39bb2639-17cf-436c-90bb-cea416fa1ab0",
+      "id": "b7645d22-8f45-42f1-8d4d-1e6f5bbb5eca",
       "name": "Sticky Note2"
     }
   ],
@@ -682,13 +682,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "A10yl90Zh5otaSlJ",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "b311da4e-5009-49c8-8221-6033612ff662",
+  "versionId": "38305efa-2b37-41e8-a5a5-1477d5b623bc",
   "meta": {
     "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
   },
