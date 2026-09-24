@@ -1,17 +1,19 @@
 # Sistema de diseño de HelpDesk
 
 ```
-ESTADO:      contrato ejecutable construido (U5), **cambios locales sin publicar**.
-             `coraje-web/src/design-system/` (fundamentos, tema, recetas,
-             componentes, patrón del shell de Conecta) y el adaptador CSS en
-             `src/app/globals.css`. Consumidores: `/` dentro del shell y `/login`.
-             La bandeja y el detalle del ticket no existen (U7)
-CORTE:       23-sep-2026
-EVIDENCIA:   `pnpm test` 50/50 (8 del contrato, que fallan al forzar divergencia
+ESTADO:      contrato ejecutable construido (U5). `coraje-web/src/design-system/`
+             (fundamentos, tema, recetas, componentes y patrones: shell de
+             Conecta, barra propia, navegación de HelpDesk, menú de usuario) y el
+             adaptador CSS en `src/app/globals.css`. Consumidores: `/` en sus dos
+             modos de entrada, y `/login`. La bandeja y el detalle del ticket no
+             existen (U7)
+CORTE:       24-sep-2026
+EVIDENCIA:   `pnpm test` 61/61 (8 del contrato, que fallan al forzar divergencia
              entre adaptadores y una clase prohibida), `tsc --noEmit`, `eslint` y
              `next build` limpios; utilidades con nombre comprobadas en el CSS
-             compilado. **Sin validación visual, de teclado, de lector de
-             pantalla ni móvil:** nada se ha visto aún en un navegador
+             compilado. Shell de Conecta revisado por el usuario en producción
+             (23 y 24-sep). **Sin validación de teclado, de lector de pantalla ni
+             móvil**, y el modo directo sin ver todavía
 ```
 
 **Autoridad:** primera, las decisiones aprobadas para HelpDesk en este documento;
@@ -56,55 +58,68 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 > Esto corrige el criterio anterior de `CLAUDE.md` según el cual apartarse de las
 > vistas de Impulsa exigía justificación: la justificación ahora la exige parecerse.
 
-> `DECISIÓN` **Navegación (23-sep-2026, usuario).**
+> `DECISIÓN` **Navegación (23 y 24-sep-2026, usuario).** Dos modos según por dónde se
+> entra (`specs/integracion-conecta.md` §2):
 >
-> - **Sidebar de Conecta replegado, sin logo ni globo.** La forma replegada no existe
->   en Conecta: la define HelpDesk replicando su estructura. Cada icono es un
->   `<a href>` a Conecta (carga completa, nunca `navigate()` de su router).
-> - **Desplegado, se superpone al contenido; no lo desplaza.** Así cubre el logotipo de
->   la topbar y nunca se ven dos logotipos a la vez, y la bandeja no cambia de ancho.
-> - **La topbar de Conecta se conserva de momento** y aloja el logotipo oficial a la
->   izquierda, con su espacio libre. «HelpDesk» no forma bloque con él: lo separa al
->   menos ese espacio libre y ningún separador vertical (el manual marca «logo |
->   palabra» como uso incorrecto).
-> - **Las secciones de HelpDesk van en una fila de pestañas bajo la topbar.** Sin
->   construir: hoy solo existe «Inicio», y una fila con una sola pestaña no navega a
->   ninguna parte. Se construye con la segunda sección (U7).
-> - **Fuente de la réplica:** rama `stiben` @ `9df5500` de RBGCT-REACT (10-sep-2026),
->   que coincide con lo desplegado en cada elemento visible: sidebar navy, columna
->   replegada de 80 px y topbar blanca sin franja. `main` (`e27662b`) es una versión
->   anterior con sidebar blanco y no aplica. `ABIERTO`: el remoto de GitHub responde
->   *not found* y no se pudo descargar nada más reciente. Falta confirmar en Coolify
->   la rama y el commit que despliega Conecta.
-> - **Diferencias deliberadas con Conecta** (`patterns/conecta-shell/`):
->   - La columna replegada no lleva el globo, y el logotipo oficial va en la topbar.
->   - El sidebar desplegado se superpone al contenido en lugar de empujarlo.
->   - La topbar compacta mide 72 px, no 64: a 64 el logotipo no cabe con su espacio
->     libre.
->   - Las etiquetas de sección van en blanco al 60 %, no al 45 % (4,2:1, por debajo
->     de AA).
->   - Los pesos 500, 600 y 800 pasan a 400, 700 o 900, los que tiene Lato.
->   - No aparecen «Mis clientes» ni «Formación»: su visibilidad depende de permisos
->     SQF y de cursos que solo conoce Conecta.
->   - No se replican la campana, el botón flotante de sugerencias ni el pie de
->     contactos: son funciones de Conecta, no del shell.
->   - HelpDesk figura en «Recursos» como ítem activo.
+> - **Desde Conecta** (`patterns/conecta-shell/`): réplica del shell de Conecta.
+>   - **Columna replegada** navy de 80 px con el **isotipo blanco** arriba, como en
+>     Conecta, y los iconos de su menú. Cada icono es un `<a href>` a Conecta: carga
+>     completa, nunca `navigate()` de su router.
+>   - **Topbar** blanca y sin franja, de 64 px (84 en escritorio), **sin logotipo**:
+>     la marca va en el sidebar, como en Conecta.
+>   - **Sidebar desplegado** con el logotipo blanco. Se **superpone** al contenido en
+>     lugar de empujarlo, para que la bandeja no cambie de ancho.
+>   - Los datos de la persona (nombre corto, área, «Mis clientes») salen del perfil de
+>     Conecta cotejado en servidor.
+> - **Directo** (`patterns/app-shell/StandaloneShell.tsx`): barra propia de HelpDesk
+>   con el logotipo azul y su espacio libre (72 px, 84 en escritorio), y el avatar con su
+>   menú. Nada de Conecta.
+> - **Navegación propia de HelpDesk** (`patterns/module-nav/`), igual en los dos modos:
+>   fila de pestañas bajo la barra superior. Horizontal y no un segundo sidebar, para no
+>   quitarle 250-300 px a la bandeja. La pestaña activa lleva el subrayado del acento;
+>   hoy solo existe «Inicio» (`features/shell/helpdesk-sections.ts`).
 >
-> `ABIERTO` **Retirar la topbar.** Queda para después. Dato para decidirlo: topbar,
-> franja y pestañas ocupan unos 132 px, y a 1024×576 dejan unos 444 px útiles a la
-> bandeja.
+> `ABIERTO` **Retirar la topbar** en modo Conecta. Queda para después. Dato para
+> decidirlo: topbar y pestañas ocupan 108 px en móvil y 128 en escritorio.
+>
+> **Fuente de la réplica:** RBGCT-REACT, verificada el 24-sep-2026 con acceso de
+> lectura. `main`, `stiben` y `lulox` apuntan las tres a `cb06681` (21-sep-2026), y el
+> fragmento de JS desplegado en producción contiene los mismos valores
+> (`text-[13px]`, `w-56 md:w-64 lg:w-72 xl:w-80`, `acceso_sqf`). La primera versión que se
+> tomó, con sidebar blanco, era un `main` antiguo (`e27662b`) reescrito después con
+> *force push*.
+>
+> **Diferencias deliberadas con Conecta:**
+> - El sidebar desplegado se superpone al contenido en lugar de empujarlo.
+> - El logotipo del sidebar va a 130/150/170/190 px según el ancho, siempre con su
+>   espacio libre. Conecta pone 170 px ya en el sidebar de 224 px.
+> - Las etiquetas de sección van en blanco al 60 %, no al 45 %: al 45 % dan 4,2:1,
+>   por debajo de AA.
+> - La tipografía es Lato, no Inter (decisión del usuario): se ve algo más pequeña.
+>   Los pesos 500, 600 y 800 pasan a 400, 700 o 900.
+> - «Formación» no aparece: sus cursos solo los calcula el backend de Conecta
+>   (`specs/integracion-conecta.md` §5).
+> - No se replican la campana, el botón flotante de sugerencias ni el pie de
+>   contactos: son funciones de Conecta, no del shell.
+> - HelpDesk figura en «Recursos» como ítem activo.
 
 **Marca corporativa.** La fuente de verdad es el *Manual de Marca Corporativa* de
 Russell Bedford (inspeccionado el 23-sep-2026). Lo que obliga a este contrato:
 
-- **Logotipo oficial**, `Logo Azul Oscuro_Imagotipo` del paquete de marca, en
-  `public/rb-logo.png`. El archivo anterior era una versión no oficial de navy apagado
-  —el manual prohíbe versiones anteriores o alternativas—. La versión blanca existe para
-  fondos oscuros y solo se incorpora cuando una superficie la necesite.
+- **Logotipo e isotipo oficiales** del paquete de marca, recortados solo del margen
+  transparente:
+  - `public/rb-logo.png`: imagotipo azul, para la barra propia y el acceso;
+  - `public/rb-logo-white.png`: imagotipo blanco, para el sidebar navy;
+  - `public/rb-isotype-white.png`: isotipo blanco, para la columna replegada.
+
+  El archivo anterior era una versión no oficial de navy apagado, y el manual prohíbe
+  versiones anteriores o alternativas.
 - **Espacio libre** alrededor del logotipo de al menos el 20 % de su ancho, y **ningún
   texto que se lea junto a él**: el nombre «HelpDesk» no forma bloque con el logo.
-- **El isotipo (globo) no es logotipo por sí mismo**, solo motivo decorativo. Por eso
-  el sidebar replegado no lo muestra, y el logotipo completo va en la topbar.
+- **El isotipo (globo) no es logotipo por sí mismo**, según el manual (§4.1), solo motivo
+  decorativo. `DECISIÓN` **Desviación consciente (24-sep-2026, usuario):** la columna
+  replegada lo muestra, como hace Conecta, para que el shell sea idéntico. El logotipo
+  completo aparece al desplegar el sidebar.
 - **Ancho mínimo de 30 mm** (≈113 px a 96 ppp).
 - **Cinco colores aprobados** y sus tintas al 80/60/40/20 %, para los cinco (no solo
   navy y naranja). Sky Blue se toma por su hex `#00a9ce`: el RGB del manual es un error

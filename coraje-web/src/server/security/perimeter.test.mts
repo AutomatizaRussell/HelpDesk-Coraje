@@ -39,11 +39,15 @@ const APP_DIR = path.resolve(THIS_DIR, "../../app");
 const RUTAS_DECLARADAS: Record<string, { publica: boolean; razon: string }> = {
   "/": {
     publica: false,
-    razon: "Entrada de empleados: sin sesión dispara el ingreso silencioso",
+    razon: "Entrada de empleados: sin sesión pasa por /ingreso",
   },
   "/login": {
     publica: true,
     razon: "La puerta. Se dibuja sin sesión por definición",
+  },
+  "/ingreso": {
+    publica: true,
+    razon: "Detecta en el navegador si hay sesión de Conecta y elige el modo de entrada",
   },
   "/api/auth/logout": {
     publica: false,

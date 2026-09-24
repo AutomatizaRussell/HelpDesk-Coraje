@@ -21,6 +21,8 @@ import { APP_BASE_PATH } from "@/server/auth/base-path";
  * era el resultado de un olvido, no de una decisión.
  *
  * - `/login`: la puerta. Se dibuja sin sesión por definición.
+ * - `/ingreso`: la detección de la entrada (specs/integracion-conecta.md §2).
+ *   Decide en el navegador si hay sesión de Conecta; no muestra datos.
  * - `/api/auth/microsoft`: el inicio del flujo OIDC y la vuelta del proveedor.
  *   Quien las pide todavía no tiene sesión; es lo que van a producir.
  *
@@ -29,7 +31,7 @@ import { APP_BASE_PATH } from "@/server/auth/base-path";
  * identidad propia es `specs/acceso-clientes.md`, y hasta que exista no hay
  * ninguna superficie anónima que listara clientes ni escribiera tickets.
  */
-export const PUBLIC_PATHS = ["/login", "/api/auth/microsoft"] as const;
+export const PUBLIC_PATHS = ["/login", "/ingreso", "/api/auth/microsoft"] as const;
 
 /**
  * Prefijo, no coincidencia exacta: `/api/auth/microsoft` cubre `/start` y

@@ -34,14 +34,13 @@ import { isPublicPath, normalizeAppPathname } from "@/server/security/public-pat
  */
 
 /**
- * Peticiones que deben disparar el ingreso sin que la persona haga clic.
+ * Peticiones que deben pasar por la detección de la entrada.
  *
- * El caso ordinario de HelpDesk es alguien que llega desde el menú de Conecta
- * con una sesión de Microsoft ya viva en el navegador: mandarlo a `/login`
- * le pondría delante un botón que no hace falta pulsar
- * (specs/acceso-empleados.md §4). Mandarlo a `/api/auth/microsoft/start` lo
- * deja entrar sin ver ninguna pantalla, porque ese handler intenta primero el
- * modo silencioso y solo cae al explícito si el proveedor lo rechaza.
+ * Una navegación sin sesión va a `/ingreso`, no a `/login` ni directamente al
+ * flujo OIDC: solo el navegador sabe si hay sesión de Conecta (su
+ * `localStorage`), y de eso depende el modo (specs/integracion-conecta.md §2).
+ * Con sesión de Conecta, `/ingreso` arranca el silencioso y la persona entra
+ * sin ver ninguna pantalla; sin ella, la manda a `/login` a elegir cuenta.
  *
  * Se exige que sea una **navegación de documento** —un GET que espera HTML y
  * no lleva la marca `RSC` de las peticiones internas de React— porque el
@@ -87,7 +86,7 @@ export function proxy(request: NextRequest) {
   // `/start` y al leerlo en `/login`—, así que aquí se pasa tal cual.
   const destino = `${pathname}${request.nextUrl.search}`;
   const target = isDocumentNavigation(request)
-    ? "/api/auth/microsoft/start"
+    ? "/ingreso"
     : "/login";
 
   // Redirección con `Location` relativo, no absoluto: detrás del proxy de

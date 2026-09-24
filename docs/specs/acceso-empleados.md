@@ -99,12 +99,23 @@ segunda puerta**.
 
 ## 4. Fricción: qué ve realmente el empleado
 
+> **Actualizado el 24-sep-2026** (decisión del usuario): la entrada depende de si el
+> navegador tiene sesión de Conecta, y quien entra directo **elige cuenta**. El mecanismo
+> completo, sus reglas y sus riesgos están en `specs/integracion-conecta.md`; esta tabla
+> resume lo que ve el empleado.
+
 | Situación | Qué ocurre |
 |---|---|
-| Llega desde Conecta con sesión de Entra viva | **Ningún clic.** Una redirección invisible al proveedor y vuelta con sesión de HelpDesk |
-| Vuelve al día siguiente, sesión de Entra viva | **Ningún clic.** La sesión de HelpDesk expiró; la del tenant no |
-| Sesión de Entra expirada, navegador nuevo o incógnito | Pantalla de Microsoft, una vez |
+| Llega con sesión de Conecta y de Entra vivas | **Ningún clic.** `/ingreso` pasa la cuenta de Conecta como `login_hint` y el intento silencioso entra con ella, aunque el navegador tenga varias cuentas abiertas |
+| Llega con sesión de Conecta, pero la de Entra expiró | Pantalla de Microsoft con la cuenta ya sugerida (modo `hinted`), una vez |
+| Llega **sin** sesión de Conecta (enlace directo, marcador) | Pantalla de ingreso de HelpDesk; el botón abre el **selector de cuenta** de Microsoft (`prompt=select_account`), aunque haya sesión viva |
 | Cuenta del tenant sin registro interno | Pantalla que nombra la causa y a quién pedir el alta |
+
+> **Por qué la pista y no solo `prompt=none`.** Con varias cuentas abiertas en el
+> navegador —la personal más buzones compartidos, habitual en la firma— Entra no puede
+> elegir sin preguntar y responde `interaction_required` aunque todas tengan sesión. Se
+> observó en producción el 24-sep-2026: cuatro cuentas abiertas, selector en cada
+> ingreso. `login_hint` le dice a Entra cuál usar.
 
 El mecanismo del primer caso es `prompt=none` en la petición de autorización: se le pide
 al proveedor que **no interactúe**. Si hay sesión en el tenant, devuelve el código de

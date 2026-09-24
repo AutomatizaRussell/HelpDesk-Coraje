@@ -60,15 +60,24 @@
   --hd-motion-normal: 180ms;
   --hd-motion-easing: cubic-bezier(0.2, 0, 0, 1);
 
-  --hd-size-topbar: 72px;
+  --hd-size-topbar: 64px;
   --hd-size-topbar-wide: 84px;
-  --hd-size-logo-topbar: 132px;
-  --hd-size-logo-topbar-compact: 116px;
-  --hd-size-logo-sidebar: 190px;
+  --hd-size-app-bar: 72px;
+  --hd-size-app-bar-wide: 84px;
+  --hd-size-logo-app-bar: 132px;
+  --hd-size-logo-app-bar-compact: 116px;
+  --hd-size-isotype: 36px;
+  --hd-size-sidebar: 224px;
+  --hd-size-sidebar-md: 256px;
+  --hd-size-sidebar-lg: 288px;
+  --hd-size-sidebar-xl: 320px;
+  --hd-size-logo-sidebar: 130px;
+  --hd-size-logo-sidebar-md: 150px;
+  --hd-size-logo-sidebar-lg: 170px;
+  --hd-size-logo-sidebar-xl: 190px;
   --hd-size-logo-access: 200px;
   --hd-size-stripe: 4px;
   --hd-size-rail: 80px;
-  --hd-size-sidebar: 320px;
   --hd-size-access-panel: 400px;
   --hd-size-content-max: 1440px;
 
@@ -235,17 +244,29 @@
      libre del logotipo es el 20 % de su ancho, regla del manual de marca. */
   --spacing-topbar: var(--hd-size-topbar);
   --spacing-topbar-wide: var(--hd-size-topbar-wide);
-  --spacing-logo-topbar: var(--hd-size-logo-topbar);
-  --spacing-logo-topbar-compact: var(--hd-size-logo-topbar-compact);
+  --spacing-app-bar: var(--hd-size-app-bar);
+  --spacing-app-bar-wide: var(--hd-size-app-bar-wide);
+  --spacing-logo-app-bar: var(--hd-size-logo-app-bar);
+  --spacing-logo-app-bar-compact: var(--hd-size-logo-app-bar-compact);
+  --spacing-isotype: var(--hd-size-isotype);
   --spacing-logo-sidebar: var(--hd-size-logo-sidebar);
+  --spacing-logo-sidebar-md: var(--hd-size-logo-sidebar-md);
+  --spacing-logo-sidebar-lg: var(--hd-size-logo-sidebar-lg);
+  --spacing-logo-sidebar-xl: var(--hd-size-logo-sidebar-xl);
   --spacing-logo-access: var(--hd-size-logo-access);
-  --spacing-logo-clear-topbar: calc(var(--hd-size-logo-topbar) * 0.2);
-  --spacing-logo-clear-topbar-compact: calc(var(--hd-size-logo-topbar-compact) * 0.2);
+  --spacing-logo-clear-app-bar: calc(var(--hd-size-logo-app-bar) * 0.2);
+  --spacing-logo-clear-app-bar-compact: calc(var(--hd-size-logo-app-bar-compact) * 0.2);
   --spacing-logo-clear-sidebar: calc(var(--hd-size-logo-sidebar) * 0.2);
+  --spacing-logo-clear-sidebar-md: calc(var(--hd-size-logo-sidebar-md) * 0.2);
+  --spacing-logo-clear-sidebar-lg: calc(var(--hd-size-logo-sidebar-lg) * 0.2);
+  --spacing-logo-clear-sidebar-xl: calc(var(--hd-size-logo-sidebar-xl) * 0.2);
   --spacing-logo-clear-access: calc(var(--hd-size-logo-access) * 0.2);
   --spacing-stripe: var(--hd-size-stripe);
   --spacing-rail: var(--hd-size-rail);
   --spacing-sidebar: var(--hd-size-sidebar);
+  --spacing-sidebar-md: var(--hd-size-sidebar-md);
+  --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
+  --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
   --container-access-panel: var(--hd-size-access-panel);
   --container-content: var(--hd-size-content-max);
 }

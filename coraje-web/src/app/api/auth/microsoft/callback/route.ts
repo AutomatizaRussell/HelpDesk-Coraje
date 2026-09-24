@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 import { redirectWithinApp } from "@/server/auth/app-redirect";
+import { beginAuthorization } from "@/server/auth/authorization-start";
 import { APP_BASE_PATH } from "@/server/auth/base-path";
 import {
   exchangeAuthorizationCode,
@@ -13,6 +14,9 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
 } from "@/server/auth/employee-session";
+import { bindProfileToIdentity, type EntryContext } from "@/server/auth/entry-context";
+import { ENTRY_COOKIE_NAME, sealEntryContext } from "@/server/auth/entry-cookie";
+import { sanitizeLoginHint } from "@/server/auth/login-hint";
 import { STATE_COOKIE_NAME, type SealedOidcState } from "@/server/auth/oidc-state";
 import { sanitizeDestination } from "@/server/auth/sanitize-destination";
 import { openSecret } from "@/server/security/secret-box";
@@ -36,13 +40,22 @@ function redirectToLogin(error: string) {
   return response;
 }
 
-function redirectToSilentRetry(destino: string) {
-  const response = redirectWithinApp("/api/auth/microsoft/start", {
-    destino,
-    silent: "0",
+/**
+ * Reintento tras un silencioso rechazado, sin volver a pasar por el navegador:
+ * quien entró desde Conecta conserva su cuenta como pista (modo `hinted`), y
+ * quien no, elige cuenta (`select`). `beginAuthorization` reemplaza la cookie
+ * de estado por una nueva.
+ */
+function retryInteractively(state: SealedOidcState) {
+  const via = state.via ?? "directo";
+  const profile = via === "conecta" ? (state.conectaProfile ?? null) : null;
+  return beginAuthorization({
+    destino: state.destino,
+    mode: profile ? "hinted" : "select",
+    via,
+    loginHint: profile?.email,
+    conectaProfile: profile,
   });
-  response.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
-  return response;
 }
 
 export async function GET(request: NextRequest) {
@@ -64,10 +77,10 @@ export async function GET(request: NextRequest) {
   }
 
   // Intento silencioso que Entra rechazó (login_required/interaction_required):
-  // reintentar una sola vez en modo explícito, nunca en bucle — la marca de
-  // un solo uso ya la puso /start.
+  // reintentar una sola vez en modo interactivo, nunca en bucle — el reintento
+  // ya no es silencioso, así que no puede volver a caer aquí.
   if (providerError && state.silent) {
-    return redirectToSilentRetry(state.destino);
+    return retryInteractively(state);
   }
 
   if (providerError || !code || !returnedState) {
@@ -103,6 +116,23 @@ export async function GET(request: NextRequest) {
     const successResponse = redirectWithinApp(sanitizeDestination(state.destino));
     successResponse.cookies.delete({ name: STATE_COOKIE_NAME, path: APP_BASE_PATH });
     successResponse.cookies.set(SESSION_COOKIE_NAME, result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: APP_BASE_PATH,
+      maxAge: SESSION_TTL_SECONDS,
+    });
+
+    // Contexto de entrada (entry-context.ts): fija el shell de la sesión. El
+    // perfil de Conecta solo se conserva si es de la persona recién admitida
+    // —mismo claim con el que la admisión la buscó en el directorio—; en un
+    // navegador compartido, el de otra persona se descarta (regla 2).
+    const admittedEmail = sanitizeLoginHint(claims.preferred_username ?? claims.email);
+    const entry: EntryContext =
+      state.via === "conecta"
+        ? { via: "conecta", profile: bindProfileToIdentity(state.conectaProfile, admittedEmail) }
+        : { via: "directo" };
+    successResponse.cookies.set(ENTRY_COOKIE_NAME, sealEntryContext(entry), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

@@ -63,8 +63,23 @@ export interface AuthorizationRequest {
   codeVerifier: string;
 }
 
+/**
+ * Cómo debe comportarse Entra en la pantalla de autorización:
+ *
+ * - `silent` (`prompt=none`): sin interacción. Si no puede, responde
+ *   `login_required`/`interaction_required` y el llamador reintenta.
+ * - `hinted`: interactivo, con la cuenta sugerida. Es el reintento de un
+ *   silencioso fallido cuando se sabe qué cuenta usa la persona.
+ * - `select` (`prompt=select_account`): obliga a elegir cuenta aunque haya
+ *   sesión viva. Es la entrada directa, sin Conecta, por decisión del
+ *   24-sep-2026 (specs/integracion-conecta.md §2).
+ */
+export type AuthorizationMode = "silent" | "hinted" | "select";
+
 export function createAuthorizationRequest(options: {
-  silent: boolean;
+  mode: AuthorizationMode;
+  /** Correo ya saneado (`login-hint.ts`). Nunca se envía en modo `select`. */
+  loginHint?: string | null;
 }): AuthorizationRequest {
   const config = resolveConfig();
 
@@ -91,8 +106,15 @@ export function createAuthorizationRequest(options: {
   // tenant viva, devuelve el código de inmediato; si no, responde
   // login_required/interaction_required, y el llamador reintenta sin este
   // parámetro (specs/acceso-empleados.md §4).
-  if (options.silent) {
-    params.set("prompt", "none");
+  if (options.mode === "silent") params.set("prompt", "none");
+  if (options.mode === "select") params.set("prompt", "select_account");
+
+  // Con varias cuentas abiertas en el navegador, prompt=none sin pista
+  // responde interaction_required aunque todas tengan sesión (login-hint.ts).
+  // En `select` no se envía: ahí la persona debe poder elegir cualquier
+  // cuenta, que es justo para lo que existe ese modo.
+  if (options.mode !== "select" && options.loginHint) {
+    params.set("login_hint", options.loginHint);
   }
 
   const url = `https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/authorize?${params.toString()}`;

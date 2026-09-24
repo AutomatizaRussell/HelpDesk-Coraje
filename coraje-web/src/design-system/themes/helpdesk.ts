@@ -72,22 +72,38 @@ export const helpdeskTheme = {
     easing: "cubic-bezier(0.2, 0, 0, 1)",
   },
   size: {
-    // El manual exige al logotipo un ancho mínimo de 30 mm (≈ 113 px) y un
-    // espacio libre alrededor de al menos el 20 % de su ancho. Con la
-    // proporción del imagotipo oficial (2422 × 526 ≈ 4,6 : 1):
-    //   · topbar ancha  84 px, logo 132 px → alto 28,7, libre 26,4, holgura vertical 27,6 ✓
-    //   · topbar compacta 72 px, logo 116 px → alto 25,2, libre 23,2, holgura vertical 23,4 ✓
-    // Por eso la topbar compacta mide 72 y no los 64 de Conecta: a 64 el logo
-    // no cabe con su espacio libre en ningún tamaño legal.
-    topbar: "72px",
+    // Topbar replicada de Conecta (h-16, lg:h-[84px]). No lleva logotipo: la
+    // marca va en el sidebar, como en Conecta (design/sistema-helpdesk.md §2).
+    topbar: "64px",
     topbarWide: "84px",
-    logoTopbar: "132px",
-    logoTopbarCompact: "116px",
-    logoSidebar: "190px", // el de Conecta en escritorio; 190 + 2 × 38 de espacio libre cabe en 320
+    // Barra propia de HelpDesk en entrada directa, sin shell de Conecta, con
+    // el logotipo. El manual exige un ancho mínimo de 30 mm (≈ 113 px) y un
+    // espacio libre de al menos el 20 % de su ancho. Con la proporción del
+    // imagotipo oficial (2422 × 526 ≈ 4,6 : 1):
+    //   · ancha 84 px, logo 132 px → alto 28,7, libre 26,4, holgura vertical 27,6 ✓
+    //   · compacta 72 px, logo 116 px → alto 25,2, libre 23,2, holgura vertical 23,4 ✓
+    appBar: "72px",
+    appBarWide: "84px",
+    logoAppBar: "132px",
+    logoAppBarCompact: "116px",
+    // Isotipo de la columna replegada, como en Conecta (md:h-9).
+    isotype: "36px",
+    // Sidebar desplegado: los cuatro anchos de Conecta (w-56 md:w-64 lg:w-72
+    // xl:w-80). El logotipo crece con él y siempre cabe con su espacio libre
+    // (20 % por lado) más el botón de cerrar: 130·1,4+36 ≤ 224, 150·1,4+36 ≤ 256,
+    // 170·1,4+36 ≤ 288, 190·1,4+36 ≤ 320. Conecta pone 170 ya en 224 px, sin
+    // espacio libre; aquí manda el manual.
+    sidebar: "224px",
+    sidebarMd: "256px",
+    sidebarLg: "288px",
+    sidebarXl: "320px",
+    logoSidebar: "130px",
+    logoSidebarMd: "150px",
+    logoSidebarLg: "170px",
+    logoSidebarXl: "190px",
     logoAccess: "200px",
     stripe: "4px",
     rail: "80px",
-    sidebar: "320px",
     accessPanel: "400px",
     contentMax: "1440px",
   },
@@ -98,8 +114,8 @@ export const helpdeskTheme = {
 
   /**
    * Réplica del shell de Conecta (sidebar y topbar), y **nada más** de Conecta
-   * (design/sistema-helpdesk.md §2). Son los valores de la rama `stiben` @
-   * `9df5500` de RBGCT-REACT —la que coincide con lo desplegado—:
+   * (design/sistema-helpdesk.md §2). Son los valores de RBGCT-REACT `cb06681`
+   * (`main` = `stiben` = `lulox`, verificado el 24-sep-2026 contra lo desplegado):
    * `components/layout/{SidebarShell,RoleSidebar,Topbar}.jsx` y las reglas
    * `.rb-sidebar-*` de `index.css`, pasados de clases de Tailwind a valor.
    * Viven agrupados para que se sepa que son copia: si Conecta cambia, este es

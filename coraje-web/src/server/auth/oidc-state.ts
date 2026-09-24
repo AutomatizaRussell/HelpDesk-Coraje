@@ -1,3 +1,5 @@
+import type { ConectaProfile } from "./entry-context";
+
 /**
  * Forma de la cookie de estado OIDC, compartida entre la ruta que inicia el
  * ingreso (`/api/auth/microsoft/start`) y la que recibe el retorno del
@@ -14,4 +16,8 @@ export interface SealedOidcState {
   codeVerifier: string;
   destino: string;
   silent: boolean;
+  /** Por dónde entró (entry-context.ts). Decide el shell tras admitir. */
+  via: "conecta" | "directo";
+  /** Perfil de Conecta aún sin cotejar: el callback lo ata a la identidad. */
+  conectaProfile: ConectaProfile | null;
 }

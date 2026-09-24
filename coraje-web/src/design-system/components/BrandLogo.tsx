@@ -23,17 +23,18 @@ import { cn } from "../utilities/cn";
  * que el perímetro no intercepta (`proxy.ts`, `matcher`).
  */
 const placements = {
-  topbar: {
+  // Barra propia de HelpDesk en entrada directa (sin shell de Conecta).
+  appBar: {
     source: logoBlue,
-    frame: "p-logo-clear-topbar-compact lg:p-logo-clear-topbar",
-    image: "w-logo-topbar-compact lg:w-logo-topbar",
-    width: helpdeskTheme.size.logoTopbar,
+    frame: "p-logo-clear-app-bar-compact lg:p-logo-clear-app-bar",
+    image: "w-logo-app-bar-compact lg:w-logo-app-bar",
+    width: helpdeskTheme.size.logoAppBar,
   },
   sidebar: {
     source: logoWhite,
-    frame: "p-logo-clear-sidebar",
-    image: "w-logo-sidebar",
-    width: helpdeskTheme.size.logoSidebar,
+    frame: "p-logo-clear-sidebar md:p-logo-clear-sidebar-md lg:p-logo-clear-sidebar-lg xl:p-logo-clear-sidebar-xl",
+    image: "w-logo-sidebar md:w-logo-sidebar-md lg:w-logo-sidebar-lg xl:w-logo-sidebar-xl",
+    width: helpdeskTheme.size.logoSidebarXl,
   },
   access: {
     source: logoBlue,

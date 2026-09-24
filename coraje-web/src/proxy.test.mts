@@ -38,14 +38,14 @@ function dejaPasar(respuesta: Response): boolean {
   return respuesta.headers.get("x-middleware-next") === "1";
 }
 
-test("una navegación sin sesión a ruta privada va al ingreso silencioso", () => {
+test("una navegación sin sesión a ruta privada va a la detección de la entrada", () => {
   const respuesta = proxy(peticion("/helpdesk/tickets"));
 
   assert.equal(respuesta.status, 303);
   const location = respuesta.headers.get("location") ?? "";
   assert.ok(
-    location.startsWith("/helpdesk/api/auth/microsoft/start"),
-    `Esperaba el arranque del flujo OIDC, no ${location}`,
+    location.startsWith("/helpdesk/ingreso"),
+    `Esperaba /ingreso, no ${location}`,
   );
   // Relativo, nunca absoluto: detrás del proxy de Coolify una URL absoluta
   // se construiría con el host interno del contenedor (defecto de `306d286`).
@@ -81,6 +81,7 @@ test("con cookie de sesión presente el perímetro deja pasar", () => {
 
 test("las rutas públicas pasan sin sesión", () => {
   assert.ok(dejaPasar(proxy(peticion("/helpdesk/login"))));
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/ingreso"))));
   assert.ok(dejaPasar(proxy(peticion("/helpdesk/api/auth/microsoft/start"))));
   assert.ok(dejaPasar(proxy(peticion("/helpdesk/api/auth/microsoft/callback"))));
 });
@@ -92,9 +93,9 @@ test("el logotipo de la lista exacta pasa sin sesión, y nada más de public/", 
   assert.equal(proxy(peticion("/helpdesk/otro-archivo.png")).status, 303);
 });
 
-test("la raíz sin sesión también entra por el flujo silencioso", () => {
+test("la raíz sin sesión también pasa por la detección de la entrada", () => {
   const location = proxy(peticion("/helpdesk")).headers.get("location") ?? "";
-  assert.ok(location.startsWith("/helpdesk/api/auth/microsoft/start"), location);
+  assert.ok(location.startsWith("/helpdesk/ingreso"), location);
 });
 
 test("una ruta que no existe tampoco se filtra: deniega por defecto", () => {

@@ -248,8 +248,11 @@ pruebas ejecutadas) y **lo que quedó sin verificar**.
   pesos, los tamaños, los radios y las sombras por defecto de Tailwind**: `bg-slate-200`
   o `font-semibold` no generan CSS y no dan error, simplemente no pintan nada. Un
   valor nuevo se añade en `themes/helpdesk.ts` **y** en `:root`; si falta uno de los
-  dos, `design-system/contract.test.mts` falla. Solo hay dos vistas: `/`, dentro del
-  shell de Conecta, y `/login`.
+  dos, `design-system/contract.test.mts` falla. Vistas: `/`, `/login` e `/ingreso`.
+- **Dos modos de entrada** (`docs/specs/integracion-conecta.md`). Con sesión de Conecta en
+  el navegador, se entra sin clics dentro del shell de Conecta. Sin ella, se entra por
+  `/login` eligiendo cuenta, con la barra propia de HelpDesk. El perfil que Conecta deja en
+  `localStorage` (`gct_empleado`) **solo decide qué se muestra, nunca un permiso**.
 - **`helpdesk.ticket_sync_outbox` es el patrón bueno y se conserva.** Fuente de verdad
   en PostgreSQL, `ON CONFLICT DO NOTHING` sobre un índice parcial único para
   idempotencia, webhook a n8n fuera de la transacción y sin capacidad de romperla. No lo
@@ -281,7 +284,7 @@ misma violación, solo que más difícil de encontrar.
 **propio y completamente distinto**. De Impulsa (`src/design-system/`) se toma lo
 conceptual —cadena de autoridad, contrato semántico sobre variables CSS, dos
 adaptadores con validador, capas— y **no** su apariencia ni sus recetas calcadas. De
-Conecta se replica **solo** el shell (sidebar replegado; topbar en revisión) y nada más.
+Conecta se replica **solo** el shell (columna replegada, topbar, sidebar) y nada más.
 La marca la fija el *Manual de Marca Corporativa* de Russell Bedford
 (`docs/design/sistema-helpdesk.md` §2).
 

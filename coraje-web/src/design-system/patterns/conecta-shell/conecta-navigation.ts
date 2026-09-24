@@ -1,8 +1,10 @@
 import {
   BookOpen,
+  Building2,
   CircleUser,
   ClipboardList,
   ExternalLink,
+  FileSpreadsheet,
   LayoutDashboard,
   LifeBuoy,
   Wrench,
@@ -13,28 +15,30 @@ import {
  * Menú del portal de empleados de Conecta, replicado dentro de HelpDesk.
  *
  * Copia de `SIDEBAR_CONFIG.empleado` en
- * `RBGCT-REACT/frontend/src/components/layout/sidebarConfig.js`, rama
- * `stiben` @ `9df5500` (la que coincide con lo desplegado): mismas secciones,
- * etiquetas, iconos y rutas. Si Conecta cambia su menú, este archivo es lo
- * único que se actualiza.
+ * `RBGCT-REACT/frontend/src/components/layout/sidebarConfig.js`, verificada
+ * contra `cb06681` (24-sep-2026, `main` = `stiben` = `lulox`): mismas
+ * secciones, etiquetas, iconos, rutas y condiciones de visibilidad. Si Conecta
+ * cambia su menú, este archivo es lo único que se actualiza.
  *
- * Diferencias deliberadas con el original, todas por la misma razón —Conecta
- * decide su visibilidad con datos que HelpDesk no tiene ni debe pedir—:
+ * Condiciones de visibilidad, tal como las aplica Conecta:
  *
- * - **Mis clientes** (grupo con «Formularios SQF») no aparece: Conecta lo
- *   muestra solo si el empleado tiene alguno de los permisos `acceso_sqf_*`.
- * - **Formación** no aparece: Conecta la muestra solo si su API devuelve
- *   cursos activos. Mostrarla siempre llevaría a veces a una pantalla vacía.
- * - **HelpDesk** figura en «Recursos», marcado como activo. Conecta todavía no
- *   tiene esa entrada: añadirla en su repositorio es el único cambio que D7
- *   exige del lado de Conecta (`contexto-canonico.md` §1.1).
+ * - **Mis clientes** (grupo con «Formularios SQF»): solo con algún permiso
+ *   `acceso_sqf_*`. HelpDesk lo sabe por el perfil de Conecta
+ *   (server/auth/entry-context.ts), y solo lo muestra; Conecta protege la ruta.
+ * - **Formación**: solo si el empleado tiene cursos vigentes. Ese cálculo vive
+ *   en el backend de Conecta y no está en el navegador, así que hoy no aparece
+ *   (specs/integracion-conecta.md §5, pendiente).
  *
- * Las rutas internas son del dominio de Conecta, fuera del `basePath` de
- * HelpDesk: el shell las pinta con `<a>` y nunca con `<Link>`, que les
- * antepondría `/helpdesk`. Los accesos rápidos (`external`) abren pestaña
- * nueva, igual que en Conecta.
+ * Diferencia deliberada: **HelpDesk** figura en «Recursos» como ítem activo.
+ * Conecta todavía no tiene esa entrada (D7, `contexto-canonico.md` §1.1).
+ *
+ * Las rutas son del dominio de Conecta, fuera del `basePath` de HelpDesk: el
+ * shell las pinta con `<a>` y nunca con `<Link>`, que les antepondría
+ * `/helpdesk`. Los accesos rápidos (`external`) abren pestaña nueva, como en
+ * Conecta.
  */
-export type ConectaNavItem = {
+export type ConectaNavLink = {
+  kind: "link";
   label: string;
   href: string;
   icon: LucideIcon;
@@ -42,34 +46,64 @@ export type ConectaNavItem = {
   external?: boolean;
 };
 
-export type ConectaNavSection = { label: string; items: ConectaNavItem[] };
+/** Grupo estático: no navega, solo agrupa sus hijos (como en Conecta). */
+export type ConectaNavGroup = {
+  kind: "group";
+  label: string;
+  icon: LucideIcon;
+  children: ConectaNavLink[];
+};
+
+export type ConectaNavEntry = ConectaNavLink | ConectaNavGroup;
+export type ConectaNavSection = { label: string; items: ConectaNavEntry[] };
+
+/** Lo que decide qué entradas ve cada persona. */
+export type ConectaNavVisibility = { sqfAccess: boolean };
 
 export const CONECTA_BADGE = "Portal Empleado";
 
 /** Etiqueta del rol que la topbar de Conecta muestra encima del nombre. */
 export const CONECTA_ROLE_LABEL = "Colaborador";
 
-export const CONECTA_NAVIGATION: ConectaNavSection[] = [
-  {
-    label: "Mi espacio",
-    items: [
-      { label: "Mi resumen", href: "/app", icon: LayoutDashboard },
-      { label: "Auto gestión", href: "/app/auto-gestion", icon: ClipboardList },
-      { label: "Mi perfil", href: "/app/perfil", icon: CircleUser },
-    ],
-  },
-  {
-    label: "Recursos",
-    items: [
-      { label: "Reglamento", href: "/app/comunicados", icon: BookOpen },
-      { label: "Herramientas", href: "/app/utilidades", icon: Wrench },
-      { label: "HelpDesk", href: "/helpdesk", icon: LifeBuoy, current: true },
-    ],
-  },
-  {
-    label: "Accesos rápidos",
-    items: [
-      { label: "SQF", href: "https://app.sqfmanager.com/sign-in", icon: ExternalLink, external: true },
-    ],
-  },
-];
+/** Subtítulo de la tarjeta cuando no hay área ni cargo (misma regla que Conecta). */
+export const CONECTA_SUBTITLE_FALLBACK = "Colaborador";
+
+export function conectaNavigation({ sqfAccess }: ConectaNavVisibility): ConectaNavSection[] {
+  const miEspacio: ConectaNavEntry[] = [
+    { kind: "link", label: "Mi resumen", href: "/app", icon: LayoutDashboard },
+    { kind: "link", label: "Auto gestión", href: "/app/auto-gestion", icon: ClipboardList },
+  ];
+  if (sqfAccess) {
+    miEspacio.push({
+      kind: "group",
+      label: "Mis clientes",
+      icon: Building2,
+      children: [{ kind: "link", label: "Formularios SQF", href: "/app/sqf", icon: FileSpreadsheet }],
+    });
+  }
+  miEspacio.push({ kind: "link", label: "Mi perfil", href: "/app/perfil", icon: CircleUser });
+
+  return [
+    { label: "Mi espacio", items: miEspacio },
+    {
+      label: "Recursos",
+      items: [
+        { kind: "link", label: "Reglamento", href: "/app/comunicados", icon: BookOpen },
+        { kind: "link", label: "Herramientas", href: "/app/utilidades", icon: Wrench },
+        { kind: "link", label: "HelpDesk", href: "/helpdesk", icon: LifeBuoy, current: true },
+      ],
+    },
+    {
+      label: "Accesos rápidos",
+      items: [
+        {
+          kind: "link",
+          label: "SQF",
+          href: "https://app.sqfmanager.com/sign-in",
+          icon: ExternalLink,
+          external: true,
+        },
+      ],
+    },
+  ];
+}
