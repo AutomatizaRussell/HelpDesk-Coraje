@@ -56,7 +56,7 @@ Aplicado al ticket, y sujeto a §6:
 | Registrar nota interna | No sale. Fricción mínima a propósito |
 | Cerrar | Declara terminado |
 | Rechazar | Declara que no se atiende, con motivo |
-| Reabrir | Deshace un terminal |
+| Reabrir | **Fuera de v1** (`specs/tickets.md` §4.1): no hay reapertura. Cuando exista `RESUELTO`, deshará una resolución, no un terminal |
 | Administrar accesos de clientes | Concede acceso externo |
 | Añadir/quitar observador (§10) | Da seguimiento sin dar responsabilidad de atender |
 | Solicitar validación (§10) | Pide confirmación a alguien más antes de seguir; **no** es autorización excepcional (§5) |

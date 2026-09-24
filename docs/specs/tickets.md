@@ -55,6 +55,20 @@ Lo que el esquema **no** puede decirnos, y hace falta saber antes de construir:
 > empleados se nieguen a migrar. El levantamiento no es documentación: es el insumo del
 > diseño, y es **anterior** a decidir el vocabulario de estados de §4.
 
+> **`SUPOSICIÓN` explícita (24-sep-2026) — U0, pregunta 3, sin respuesta.** De las cinco
+> preguntas de U0, cuatro se cerraron el 03-sep-2026 (`estado/handoff.md`). La tercera
+> quedó aplazada y **su texto no quedó registrado en ningún documento ni en el
+> historial de git**: se formuló en conversación. Por eliminación frente a la lista de
+> arriba, trataba de una de dos cosas: las transiciones y la reasignación entre áreas, o
+> el significado de `respuesta_final` y `calificacion`. Las dos afectan a §4 y §6.
+>
+> **Se decide no esperarla.** El modelo de eventos se construye suponiendo que el
+> legacy **no tiene más reglas que las leídas** en `legacy/reglas-negocio-powerapps.md`
+> §2 y §6–§8, y que lo que haya que añadir después será una transición, un tipo de
+> evento o un permiso nuevo: un cambio que se suma al catálogo, no la reescritura de lo
+> construido. Si aparece una regla que invalide esta suposición, se registra aquí con
+> fecha y se decide en ese momento, no se absorbe en silencio.
+
 ## 3. Decisión central
 
 **Todo cambio de estado nace como evento, y el estado del ticket es una proyección de
@@ -86,6 +100,20 @@ el log manda.
 > interno que abrió el caso para sí mismo. De ahí el nombre `ESPERANDO_SOLICITANTE`
 > abajo, coherente con `id_solicitante`/`id_cliente_contai` que ya distingue §7.1.
 
+> **`DECISIÓN` (24-sep-2026): la v1 es fiel al proceso del legacy, no a sus defectos.**
+> Sustituye en parte la ratificación anterior. La v1 reproduce lo que las personas hacen
+> hoy en PowerApps (`legacy/reglas-negocio-powerapps.md` §2, §6–§8): responder cierra el
+> ticket, no hay reapertura, la reasignación queda dentro del área y la calificación es
+> opcional. **No** reproduce cómo está construido: el permiso por correo quemado, la
+> consulta sin restricción, el correo enviado antes de guardar y `Estado` como texto
+> libre (§10 de ese documento) se corrigen desde el principio.
+>
+> En consecuencia, **`EN_PROCESO` y `RESUELTO` quedan fuera de la v1.** Cinco estados:
+> `ABIERTO`, `ASIGNADO`, `ESPERANDO_SOLICITANTE`, `CERRADO` y `RECHAZADO`. Que alguien
+> ya empezó a trabajar un ticket se deduce de sus eventos, sin estado propio. Añadir
+> cualquiera de los dos después es un `INSERT` en `dim_estado` más sus transiciones
+> (recuadro al final de esta sección), no una migración de tipo.
+
 Los tres estados actuales **no alcanzan** para operar una mesa de ayuda. Con
 `ABIERTO / CERRADO / RECHAZADO` no se puede distinguir un ticket que nadie ha mirado de
 uno que alguien está atendiendo, ni representar la espera de información de quien lo
@@ -95,10 +123,10 @@ radicó. Faltan, como mínimo:
 |---|---|---|
 | `ABIERTO` | Radicado, sin área ni responsable | Ya existe |
 | `ASIGNADO` | Tiene área y responsable; nadie ha empezado | Separa la cola de reparto del trabajo real |
-| `EN_PROCESO` | Alguien lo está atendiendo | Sin él, «abierto» mezcla lo abandonado con lo activo |
+| `EN_PROCESO` | Alguien lo está atendiendo | **Fuera de v1.** Sin él, «abierto» mezcla lo abandonado con lo activo |
 | `ESPERANDO_SOLICITANTE` | Falta información de quien radicó el ticket — cliente externo o empleado interno | **Reinicia el plazo de respuesta al salir** (§5) |
-| `RESUELTO` | Hay respuesta; falta confirmación o plazo | Permite reapertura sin resucitar un cerrado |
-| `CERRADO` | Terminal por confirmación o por plazo | Ya existe |
+| `RESUELTO` | Hay respuesta; falta confirmación o plazo | **Fuera de v1.** Permite reapertura sin resucitar un cerrado |
+| `CERRADO` | Terminal. En v1, se llega respondiendo, como en el legacy | Ya existe |
 | `RECHAZADO` | Terminal sin atención, con motivo | Ya existe |
 
 **Un solo vocabulario para la vista interna y para el portal del cliente.** Vocabularios
@@ -111,6 +139,38 @@ otro estado.
 > costo real está en otra parte: cada estado nuevo tiene que tener **una transición que
 > lo alcance, una que lo abandone y un permiso que lo autorice**, o se convierte en un
 > estado en el que los tickets entran y se quedan.
+
+### 4.1 `DECISIÓN` (24-sep-2026) Transiciones de la v1
+
+Cada transición la autoriza una acción del catálogo de `specs/permisos.md` §3, evaluada
+con su alcance (§4 de ese documento). La columna «Plazo» aplica el reloj por turno de §5.
+
+| # | Transición | Acción del catálogo | Plazo | Base |
+|---|---|---|---|---|
+| T1 | (nuevo) → `ABIERTO` | Crear / Crear en nombre de un cliente | Ninguno | Portal de clientes, o ninguna regla de enrutamiento resuelve área y responsable |
+| T2 | (nuevo) → `ASIGNADO` | Crear | Empieza el de la firma | `routing_rule` resuelve área y responsable. Es el caso normal: en el legacy, `Recibe` queda fijado al crear |
+| T3 | `ABIERTO` → `ASIGNADO` | Redirigir / clasificar | Empieza el de la firma. En tickets de clientes, **aquí y no antes** | El `/redireccion` actual |
+| T4 | `ASIGNADO` → `ASIGNADO`, otra persona de la misma área | Asignar responsable | **Se conserva** | Legacy §6: el destino se limita al área de quien asigna, y reasignar no reinicia el SLA |
+| T5 | `ASIGNADO` → `ESPERANDO_SOLICITANTE` | Responder al cliente | Se detiene el de la firma | Pedir información sale de la firma |
+| T6 | `ESPERANDO_SOLICITANTE` → `ASIGNADO` | **Pendiente** (abajo) | Se **reinicia completo** el de la firma | El solicitante aporta lo pedido |
+| T7 | `ASIGNADO` → `CERRADO` | Responder al cliente | Termina | Legacy §7: responder y cerrar son un solo paso |
+| T8 | `ABIERTO` / `ASIGNADO` / `ESPERANDO_SOLICITANTE` → `RECHAZADO` | Rechazar, con motivo obligatorio | Termina | Nunca usado en los datos reales (V9), pero está en el catálogo |
+
+`CERRADO` y `RECHAZADO` son **terminales**: la v1 no tiene reapertura, igual que el
+legacy. Si un problema vuelve después del cierre, se abre un ticket nuevo. Registrar
+una nota interna, añadir un observador, solicitar validación y calificar **no cambian
+el estado**. Solicitar validación **no bloquea** el avance del ticket (§11, decidido el
+24-sep-2026).
+
+No hay redirección a otra área desde un ticket ya asignado, porque el legacy no la
+permite. Si hace falta, se añade como transición nueva.
+
+> **`PENDIENTE` Quién ejecuta T6.** Para un solicitante interno, podría hacerlo él
+> mismo desde la aplicación. Un cliente externo no tiene acceso hasta
+> `specs/acceso-clientes.md`, así que su respuesta la registra el responsable. El
+> catálogo de `permisos.md` §3 no tiene una acción para «el solicitante aporta
+> información». Se decide junto con el actor del evento (§6), porque es la misma
+> pregunta: quién puede ser autor de un evento.
 
 ## 5. SLA
 
@@ -139,6 +199,35 @@ Tres defectos del modelo actual, ninguno hipotético:
 > SLA reporta, y ningún ticket que pase por esta rotación incumple nunca formalmente.
 > Se acepta así, con el riesgo declarado — no es un descuido, es la decisión tomada
 > conociendo la alternativa de pausa-y-reanuda.
+
+> **`DECISIÓN` (24-sep-2026): el reloj mide a quién le toca actuar, no cuántas veces
+> cambió el estado.** Generaliza la decisión anterior sin contradecirla. El plazo se
+> reinicia solo cuando el turno pasa de la firma al solicitante y vuelve. Los cambios
+> internos —reasignar, escribir notas, pedir validación— **conservan** el plazo que
+> corre. Si no fuera así, quien debe cumplir el plazo tendría en sus manos lo que lo
+> reinicia. En la v1 el único cambio de turno es `ESPERANDO_SOLICITANTE` (§4.1, T5 y
+> T6), así que el efecto es el de la decisión del 03-sep. La regla queda escrita por
+> turno para que ningún estado que se añada después la rompa.
+>
+> - **Tickets internos:** el plazo sale de la prioridad que elige quien radica, como en
+>   el legacy (`BAJA` 5 días, `MEDIA` 3 días hábiles). Se revisa con datos de uso, no se
+>   cambia de entrada.
+> - **Tickets de clientes (Coraje): 3 días hábiles fijos**, sin prioridad elegible, y el
+>   plazo **empieza al redirigir** (T3), no al radicar. Requisito de la firma.
+> - **Se miden, sin plazo:** el tiempo total desde que se radicó el ticket, el número de
+>   idas y vueltas con el solicitante y el tiempo en `ABIERTO` antes de redirigir. Todo
+>   sale de los eventos, sin columnas nuevas. Es la mitigación del `RIESGO` de arriba:
+>   el SLA por turno no muestra quién alarga un ticket con preguntas, y estas tres
+>   medidas sí.
+
+> **`PENDIENTE` Festivo de la Ley 2578 de 2026.** Crea el festivo de Nuestra Señora del
+> Rosario de Chiquinquirá: 9 de julio, trasladable al lunes por Ley Emiliani (en 2026
+> fue el lunes 13 de julio). `core.is_colombia_holiday` (`sql/db/02_functions.sql`)
+> calcula los festivos por regla y **no lo incluye**. Hay que añadirlo solo para años
+> `>= 2026`, sin alterar años anteriores. No es urgente: el de 2026 ya pasó y el próximo
+> cae en julio de 2027. Va en la unidad del reloj de SLA (§9, entrega 7), como
+> migración Prisma. **Hay una demanda de inconstitucionalidad en curso**: la ley sigue
+> vigente mientras la Corte Constitucional no decida. Si la tumba, se retira la regla.
 
 **Los escalados y avisos por SLA son consultas contra PostgreSQL disparadas por un
 scheduler.** La ventana se cierra sola y el tiempo no llama a nadie, así que n8n aporta
@@ -348,12 +437,9 @@ respuesta de aprobar/rechazar**, solo el registro de la solicitud.
   audita como excepción. Esto es un paso *ordinario* del flujo normal de un ticket:
   pedirle a alguien más que confirme algo antes de seguir. No confundas ambos
   mecanismos al construir.
-- **`DECISIÓN` pendiente al construir, no asumida aquí:** si la solicitud debe
-  **bloquear** el avance del ticket hasta que el destinatario responda (una máquina de
-  estados de aprobación real), o si es solo una notificación dirigida que queda en el
-  historial sin efecto sobre el estado — el prototipo, tal como está, es lo segundo.
-  Decidir cuál se construye es trabajo de la unidad que lo implemente, no de este
-  documento.
+- **`DECISIÓN` (24-sep-2026): no bloquea.** La solicitud es una notificación dirigida
+  que queda en el historial sin efecto sobre el estado, igual que en el prototipo. No
+  hay estado de aprobación ni respuesta de aprobar/rechazar en la v1 (§4.1).
 - Mismo destinatario dirigido a persona real, misma dependencia del catálogo de
   personas/roles que Observadores.
 
@@ -402,3 +488,9 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   con una copia sin el fix) y ejecuta la ingesta de punta a punta: 155 → 165 tickets del
   buzón compartido, todos en el marcador histórico. Detalle completo en
   `docs/estado/handoff.md` §4.
+- 24-sep-2026 — U6, punto 1. §2 declara como suposición la pregunta 3 de U0, cuyo texto
+  no quedó registrado. §4 decide una v1 fiel al proceso del legacy y no a sus defectos:
+  cinco estados, sin `EN_PROCESO` ni `RESUELTO`. Nueva §4.1 con las transiciones de la
+  v1, sin reapertura; queda pendiente quién ejecuta T6. §5 generaliza el reloj a «por
+  turno», fija 3 días desde la redirección para clientes y registra como pendiente el
+  festivo de la Ley 2578 de 2026. §11: la solicitud de validación no bloquea.
