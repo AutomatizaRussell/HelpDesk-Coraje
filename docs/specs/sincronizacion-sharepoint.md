@@ -34,8 +34,9 @@ mecanismos distintos, madurez distinta y un punto de colisión que §4 desarroll
 
 - El payload crudo se conserva por `sp_id` en `staging.sp_*_raw`. Permite reprocesar sin
   volver a consultar la fuente y sin depender de nadie para reconstruir.
-- La transformación ocurre **en PostgreSQL**, en `sql/elt/`. n8n transporta; no
-  transforma.
+- La transformación ocurre **en PostgreSQL**. Su SQL vive en los nodos
+  `PG - Transform NN` del workflow de ingesta (`n8n/`), única copia desde el
+  24-sep-2026. n8n envía el SQL y transporta; no transforma.
 - La identidad canónica se resuelve contra `helpdesk.ticket_legacy_sharepoint_ref`: si
   el `sp_id` ya tiene ticket, se reutiliza su `id_ticket`; si no, se genera uno nuevo.
   **La idempotencia no depende del identificador de SharePoint**, depende del mapa.

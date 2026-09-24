@@ -53,40 +53,30 @@ git diff --check
 > **No existen `pnpm typecheck` ni `pnpm test`.** No hay ninguna prueba automatizada en
 > el repositorio. Cuando exista la primera, este bloque cambia con ella.
 
-## Esquema de la base
+## Esquema de la base y transformaciones
 
-**Decisión 03-sep-2026 (`contexto-canonico.md` §4, D1): el esquema se gestiona con
-migraciones Prisma**, versionadas en el repositorio y aplicadas con `migrate deploy` al
-desplegar — igual que Impulsa. Se abandona SQL a mano como fuente del esquema.
+**El esquema se gestiona con migraciones Prisma** (`contexto-canonico.md` §4, D1),
+versionadas en `coraje-web/prisma/migrations/`. La primera,
+`20260910000000_baseline`, se escribió a mano contra la base viva y se adoptó con
+`prisma migrate resolve --applied`, sin ejecutar DDL (U2, 11-sep-2026). Conserva los
+`CHECK`, los índices parciales, las funciones y los triggers que el DSL de
+`schema.prisma` no representa: **antes de correr `migrate dev` o `diff`, léela**, o
+esos objetos parecerán sobrantes.
 
-**Estado real de este corte: decidido, no construido.** Hoy el esquema sigue siendo SQL
-a mano, aplicado en orden manual:
+Disparo: commit + push a `main` → Coolify redespliega → el servicio `migrate`, de un
+solo disparo, corre `prisma migrate deploy` como `coraje_migrator` y **bloquea el
+arranque de `web`** hasta terminar bien. Nadie corre `migrate deploy` a mano. Si una
+migración falla, `web` no arranca: toda migración que haga `CREATE OR REPLACE` o
+`ALTER` sobre un objeto existente exige verificar antes, contra la base real, que su
+dueño es `coraje_migrator`.
 
-```
-sql/db/00_extensions.sql → 01_schemas → 02_functions → 03_staging
-   → 04_core → 05_helpdesk_dimensions → 06_helpdesk_facts → 07_seed → 08_helpers
-sql/elt/*.sql        → transformaciones del pipeline SharePoint → PostgreSQL. Quedan
-                        fuera de esta decisión: siguen siendo SQL a mano — es un
-                        problema distinto de cómo se versiona el DDL del esquema
-sql/checks/*.sql     → verificaciones de desarrollo
-```
-
-hasta que U2 (`estado/plan-ejecucion.md`) construya el baseline de migración Prisma
-sobre la base viva (2.313 tickets, 439 eventos reales — no se recrea el esquema desde
-cero) y fije cómo sobreviven a `migrate dev`/`diff` los `CHECK`, `UNIQUE NULLS NOT
-DISTINCT` e índices parciales que el esquema ya usa, sin que alguien sin este contexto
-los borre por no reconocerlos en el DSL de `schema.prisma`.
-
-> **`RIESGO` vigente mientras dure la transición.** Hasta que U2 cierre, sigue sin haber
-> historial versionado de cambios de esquema ni aplicación automática al desplegar. Un
-> cambio aplicado a mano en un entorno y no en otro **no deja rastro**.
-
-> **Cuando U2 construya el servicio `migrate`:** el disparador es siempre commit + push
-> a `main`. Push → Coolify redespliega → el servicio `migrate` de un disparo corre
-> `prisma migrate deploy` y **bloquea el arranque de `web`** hasta terminar bien (`depends_on:
-> condition: service_completed_successfully`, igual que Impulsa) → si termina bien, `web`
-> arranca con el esquema ya al día. No hay un paso manual intermedio: nadie corre
-> `migrate deploy` a mano en ningún entorno.
+**Las transformaciones de la ingesta viven solo en los nodos `PG - Transform NN` del
+workflow `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`.** Se
+ejecutan en PostgreSQL; n8n solo envía el SQL. La carpeta `sql/` se retiró el
+24-sep-2026: su DDL estaba sustituido por el baseline y sus copias de las
+transformaciones ya no coincidían con lo que corre (02, 03 y 05 diferían en lógica). Un
+cambio en una transformación se hace en el workflow, se exporta desde la instancia y
+se versiona como bloque. Para revisar el SQL, se extrae del JSON.
 
 ## Consultas SQL directas contra la base (diagnóstico, no despliegue)
 

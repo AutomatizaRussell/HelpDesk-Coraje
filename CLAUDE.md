@@ -145,9 +145,10 @@ sostiene esta decisión ya existe y gatea el arranque de `web` desde U2 (ver
 - **Prisma** es acceso a datos de la aplicación **y, desde el 03-sep-2026, también
   dueño del esquema** (§ Nombres en el esquema): sus migraciones versionadas reemplazan
   al SQL a mano como fuente del DDL. No confundir con las transformaciones **analíticas
-  y de migración de datos** del ELT (staging → core → helpdesk), que siguen viviendo en
-  SQL a mano dentro de `sql/elt/` — es un problema distinto de cómo se versiona el
-  esquema.
+  y de migración de datos** del ELT (staging → core → helpdesk): son SQL que se ejecuta
+  en PostgreSQL y vive **solo** en los nodos `PG - Transform NN` del workflow de ingesta
+  de `n8n/`. La carpeta `sql/` se retiró el 24-sep-2026 porque sus copias ya no
+  coincidían con lo que corre.
 - **SharePoint** es el sistema legacy. Sigue vivo **únicamente** porque la app de
   PowerApps lo consume. No es fuente de verdad para nada nuevo.
 - **Microsoft Entra ID** es el proveedor de identidad de los empleados. La aplicación
@@ -162,8 +163,8 @@ sostiene esta decisión ya existe y gatea el arranque de `web` desde U2 (ver
 **Inspecciona solo los archivos de la unidad de trabajo actual.** No recorras el árbol
 completo, no leas archivos "por contexto" y no ejecutes búsquedas sin acotar directorio.
 
-- Antes de buscar, acota: `coraje-web/src/`, `coraje-web/prisma/schema.prisma`, `sql/`,
-  la ruta concreta.
+- Antes de buscar, acota: `coraje-web/src/`, `coraje-web/prisma/schema.prisma`,
+  `coraje-web/prisma/migrations/`, `n8n/`, la ruta concreta.
 - Prefiere `grep` con patrón específico sobre lectura de archivos completos.
 - Nunca leas ni recorras: `node_modules/`, `.next/`, `src/generated/prisma/`, `dist/`,
   `build/`, lockfiles, `.copilot-export/`.
@@ -189,24 +190,15 @@ historial del chat.
 
 ### Nombres en el esquema
 
-**Decisión tomada el 03-sep-2026 (`docs/contexto-canonico.md` §4, D1): el esquema se
-gestiona con migraciones Prisma, igual que Impulsa.** Se abandona SQL a mano como fuente
-del DDL. **Estado real: decidido, no construido** — hasta que `docs/estado/plan-ejecucion.md`
-U2 genere el baseline sobre la base viva, el esquema hoy sigue siendo el de siempre:
+**El esquema se gestiona con migraciones Prisma, igual que Impulsa** (decisión D1 del
+03-sep-2026, `docs/contexto-canonico.md` §4; construida en U2, 11-sep-2026). La fuente
+del DDL es `coraje-web/prisma/migrations/`, empezando por el baseline escrito a mano
+contra la base viva. Ver `docs/estado/operacion.md` antes de correr `migrate dev` o
+`diff`.
 
-- `sql/db/*.sql` sigue siendo, por ahora, la fuente del esquema — en `snake_case`, con
-  esquemas `staging`, `core` y `helpdesk`. `sql/elt/*.sql` queda fuera de esta decisión:
-  son transformaciones de datos del ELT, no definición de esquema.
-- `coraje-web/prisma/schema.prisma` sigue siendo, por ahora, el resultado de
-  `prisma db pull` sobre esa base — modelos `snake_case`, sin `@@map`.
-
-**D1' resuelta (03-sep-2026): `PascalCase` con `@@map` a `snake_case`, igual que
-Impulsa.** Las tablas físicas de `staging`, `core` y `helpdesk` no cambian de nombre —
-`@@map`/`@map` desacoplan el nombre del modelo Prisma del nombre físico, así que
-`sql/elt/*.sql` sigue leyendo las mismas columnas de siempre. Pendiente de construir en
-U2: mapear cada tabla y columna de las tres schemas. Hasta que U2 cierre, el
-`schema.prisma` real sigue siendo el `snake_case` sin mapear de hoy — no escribas código
-nuevo asumiendo la convención resuelta antes de que exista.
+**Modelos en `PascalCase` con `@@map`/`@map` a `snake_case`** (D1'). Las tablas físicas
+de `staging`, `core` y `helpdesk` conservan su nombre, así que el SQL de la ingesta sigue
+leyendo las mismas columnas de siempre.
 
 ### Mensajes de commit
 

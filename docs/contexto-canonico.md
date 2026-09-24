@@ -174,7 +174,9 @@ pérdida sería irrecuperable o visible para terceros:
    cargados y conciliados desde SharePoint. No son datos de prueba.
 2. **Las listas de SharePoint**, que la aplicación de PowerApps consume en producción
    hoy, con personas trabajando sobre ellas.
-3. **El pipeline de ingesta de n8n** y el SQL de `sql/`, que sostienen la convivencia.
+3. **El pipeline de ingesta de n8n**, con el SQL de transformación embebido en sus
+   nodos, que sostiene la convivencia. (La carpeta `sql/` se retiró el 24-sep-2026: era
+   una copia desactualizada, no la fuente.)
 4. **La evidencia empírica de `docs/legacy/`**: hallazgos, reglas de reclasificación y
    baseline conciliado. Es medición, no intención.
 

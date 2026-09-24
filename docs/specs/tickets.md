@@ -106,9 +106,10 @@ leen el código fuente. Le basta porque todo lo que escribe pasa por su aplicaci
 existe un segundo escritor, la ingesta SQL que corre desde n8n con `coraje_etl`, y
 ninguna prueba sobre `src/` lo ve.
 
-**La ingesta legacy también escribe el evento.** Hoy
-`sql/elt/06_transform_ticket.sql` sobrescribe `id_estado` en cada ejecución y en cada
-ticket, cambie o no, y `07_transform_ticket_evento.sql` solo produce `COMENTARIO`. Con
+**La ingesta legacy también escribe el evento.** Hoy la transformación 06 (nodo
+`PG - Transform 06 Tickets Legacy` del workflow de ingesta en `n8n/`) sobrescribe
+`id_estado` en cada ejecución y en cada ticket, cambie o no, y la 07 solo produce
+`COMENTARIO`. Con
 esta decisión la ingesta solo toca el estado cuando cambia, y lo hace a través del
 escritor único. **Qué sistema gana cuando SharePoint y la plataforma no coinciden sigue
 siendo U9** (`specs/sincronizacion-sharepoint.md` §4.1). Esto solo fija que ningún
@@ -121,14 +122,14 @@ ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial, idempo
 > **`RIESGO` Orden de despliegue obligatorio.** Primero la ingesta nueva, versionada
 > como bloque en `n8n/` y verificada en una ejecución real; después, el retiro del
 > privilegio. En el orden inverso, la siguiente ingesta falla y la base deja de recibir
-> lo que el equipo sigue haciendo en PowerApps, sin que nada lo avise: hoy no existe
-> workflow de error en n8n (`specs/sincronizacion-sharepoint.md`, V10).
+> lo que el equipo sigue haciendo en PowerApps. Desde el 24-sep-2026 el fallo avisa en
+> Teams (`n8n/Alertas de errores a Teams.json`); del 14 al 24-sep-2026 pasó 22 veces sin
+> que nadie se enterara.
 >
 > **`DEPENDENCIA`** El estado inicial de ese evento tiene que ser correcto antes de
-> escribirse, porque el log solo admite añadir filas. Hoy
-> `06_transform_ticket.sql` convierte el `Reasignado` de SharePoint en `ABIERTO`: no
-> tiene fila en `dim_estado` y cae en el valor por defecto. Esa traducción se corrige
-> antes de crear los eventos de migración.
+> escribirse, porque el log solo admite añadir filas. Hoy la transformación 06 convierte
+> el `Reasignado` de SharePoint en `ABIERTO`: no tiene fila en `dim_estado` y cae en el
+> valor por defecto. La traducción correcta está en §4.2.
 
 ## 4. Vocabulario de estados
 
@@ -211,6 +212,37 @@ permite. Si hace falta, se añade como transición nueva.
 > información». Se decide junto con el actor del evento (§6), porque es la misma
 > pregunta: quién puede ser autor de un evento.
 
+### 4.2 `DECISIÓN` (24-sep-2026) Traducción de los estados legacy
+
+El evento `MIGRACION_LEGACY` de cada ticket (§3.1) registra el estado según los
+**datos** del ticket, no según el texto de SharePoint:
+
+| `Estado` en SharePoint | Estado en la v1 |
+|---|---|
+| `Cerrado` | `CERRADO` |
+| `Abierto` o `Reasignado`, con área y responsable | `ASIGNADO` |
+| `Abierto` o `Reasignado`, sin área o sin responsable | `ABIERTO` |
+
+- **El responsable es `AsignadoA` y, si está vacío, `Recibe`.** En el legacy, `Recibe`
+  queda fijado al crear el ticket y esa persona responde o reasigna
+  (`legacy/reglas-negocio-powerapps.md` §6). La ingesta actual solo copia `AsignadoA` a
+  `id_asignado` y no guarda `Recibe` en ninguna parte.
+- **El estado inicial sale de SharePoint (`staging.sp_helpdesk_raw`), no de
+  `fact_ticket`.** SharePoint es hoy quien manda sobre los tickets legacy, y
+  `fact_ticket` puede ir por detrás de él: del 14 al 24-sep-2026 la ingesta estuvo
+  detenida y 20 tickets cerrados seguían en `ABIERTO`.
+- **El evento guarda el texto original** (`Abierto`, `Reasignado`, `Cerrado`), para que
+  la traducción se pueda revisar sin volver a staging.
+
+**Datos reales, 24-sep-2026:** en staging hay `Cerrado`=2.838, `Reasignado`=30 y
+`Abierto`=24. De los tickets no cerrados que no tienen `AsignadoA`, 25 tienen `Recibe` y
+resuelven contra `core.dim_personal`; uno no tiene ninguno de los dos y queda en
+`ABIERTO`. El único ticket sin referencia a SharePoint es de `PORTAL_CLIENTE`, creado el
+11-sep-2026 sin área ni código; **no recibe evento de migración** hasta decidir qué es.
+
+Requiere añadir `ASIGNADO` y `ESPERANDO_SOLICITANTE` a `helpdesk.dim_estado`, con una
+migración Prisma que solo inserta filas en el catálogo.
+
 ## 5. SLA
 
 `fecha_limite` se calcula al crear, sumando `dias_sla` de la prioridad en **días hábiles
@@ -261,7 +293,7 @@ Tres defectos del modelo actual, ninguno hipotético:
 
 > **`PENDIENTE` Festivo de la Ley 2578 de 2026.** Crea el festivo de Nuestra Señora del
 > Rosario de Chiquinquirá: 9 de julio, trasladable al lunes por Ley Emiliani (en 2026
-> fue el lunes 13 de julio). `core.is_colombia_holiday` (`sql/db/02_functions.sql`)
+> fue el lunes 13 de julio). `core.is_colombia_holiday` (baseline, `coraje-web/prisma/migrations/`)
 > calcula los festivos por regla y **no lo incluye**. Hay que añadirlo solo para años
 > `>= 2026`, sin alterar años anteriores. No es urgente: el de 2026 ya pasó y el próximo
 > cae en julio de 2027. Va en la unidad del reloj de SLA (§9, entrega 7), como
@@ -291,6 +323,12 @@ Le faltan tres campos, y cada ausencia bloquea una capacidad concreta:
 tabla, dos proyecciones por filtro.** El equipo ve `INTERNO` y `AMBOS`; el cliente,
 `CLIENTE` y `AMBOS`. Es exactamente la nota interna frente a la respuesta pública, sin
 duplicar nada.
+
+> **`DECISIÓN` (24-sep-2026): los eventos legacy son `INTERNO`.** Los 532 eventos
+> existentes son todos `COMENTARIO`, derivados de cuatro columnas de SharePoint (V11), y
+> ninguno se escribió para un cliente: en el legacy no había acceso externo. Mostrar por
+> error una observación interna es peor que ocultar una nota antigua. Los eventos
+> `MIGRACION_LEGACY` de §3.1 también nacen `INTERNO`.
 
 > El tipo de evento es `VARCHAR(50)` con un `CHECK` de lista cerrada. Funciona, pero un
 > valor nuevo exige alterar el constraint. Si el modelo de esquema pasa a migraciones
@@ -428,7 +466,7 @@ inmediata.
 > de eventos no debería cerrarse sin saber cuál de los dos números es el real y por qué
 > difieren. V11 sigue requiriendo consulta.
 
-| V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `sql/db` | **Sin verificar** — no construido |
+| V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `prisma/migrations/` | **Sin verificar** — no construido |
 | V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem | **Sin verificar** — no construido |
 
 ## 11. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
