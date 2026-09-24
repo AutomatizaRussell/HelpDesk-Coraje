@@ -164,7 +164,23 @@ escenarios ejercitados contra `https://conecta.rbgct.cloud/helpdesk`. Publicado 
 > el único sitio donde están escritas enteras la resolución del encargado y la forma
 > del registro del outbox.
 
-### U5 · Contrato de diseño ejecutable y primera vista — **cabeza de la cola**
+### ~~U5 · Contrato de diseño ejecutable y primera vista~~ — cerrada 24-sep-2026, ya no es cabeza de la cola
+
+**Cierre real (24-sep-2026):** las dos condiciones cumplidas y verificadas. El barrido de
+`design-system/contract.test.mts` recorre todo `src/` con diez detectores, y el
+validador falla ante divergencia entre adaptadores, demostrado forzándola a mano. Los
+dos modos de entrada y el shell de Conecta los ejercitó el usuario en producción.
+Publicado en `463f8d0`, `d145679`, `47886bd` y `ed0bd1d`. **U6 pasa a ser la cabeza.**
+
+**Lo que la unidad decidió y no estaba escrito, por decisión del usuario:**
+
+- **Diseño propio.** De Impulsa se toma solo lo conceptual; de Conecta, solo el shell.
+  La marca la fija el Manual de Marca Corporativa.
+- **Dos modos de entrada** (`specs/integracion-conecta.md`, nueva). Desde Conecta se
+  entra sin clics y dentro de su shell; directo, eligiendo cuenta y con barra propia.
+- **El acceso a HelpDesk en Conecta irá en la vista «Auto gestión»**, no en su menú.
+  Se construye cuando HelpDesk esté listo.
+
 
 **Objetivo:** fundamentos, tema, validador de coherencia entre los dos adaptadores, y la
 primera vista nueva construida **consumiendo el contrato desde el inicio**.
@@ -181,7 +197,7 @@ Impulsa), y sigue pendiente replicar el shell de Conecta dentro de HelpDesk, inc
 enlace de vuelta desde el sidebar de Conecta como `<a href>` y no como `navigate()` de
 su router.
 
-### U6 · Modelo de eventos del ticket
+### U6 · Modelo de eventos del ticket — **cabeza de la cola**
 
 **Objetivo:** los tres campos ausentes (`specs/tickets.md` §6), el escritor único y la
 proyección transaccional.
@@ -266,3 +282,9 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   automático) y el servicio `migrate` desplegado de verdad, con su gate confirmado en
   un deploy real de Coolify. Evidencia completa en `estado/handoff.md` (cortes 6-8).
   **U3 pasa a ser la cabeza de la cola.**
+- 24-sep-2026 — U5 cierra: contrato de diseño ejecutable, shell de Conecta y dos modos
+  de entrada, con el shell y los modos ejercitados en producción por el usuario.
+  Evidencia en `estado/handoff.md` (corte 14). Quedan registradas como posibilidades no
+  comprometidas, y no como unidades: un panel de administración propio, el endpoint de
+  Conecta para «Formación» y el acceso desde «Auto gestión». **U6 pasa a ser la
+  cabeza de la cola.**

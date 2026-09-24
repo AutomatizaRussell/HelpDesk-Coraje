@@ -1,10 +1,46 @@
 # Handoff técnico
 
 ```
-CORTE:   23-sep-2026 (corte 13, U4 CERRADA)
-HEAD:    `1937589` — más la documentación de este corte, que se publica encima
+CORTE:   24-sep-2026 (corte 14, U5 CERRADA)
+HEAD:    `ed0bd1d` — más la documentación de este corte, que se publica encima
 RAMA:    main
-UNIDAD:  U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las dos
+UNIDAD:  U5 · CONTRATO DE DISEÑO EJECUTABLE Y PRIMERA VISTA — **CERRADA.** Las
+         dos condiciones de cierre de `plan-ejecucion.md` §U5 se cumplen y
+         están verificadas: la vista no contiene un solo valor visual local
+         (barrido de `design-system/contract.test.mts` sobre todo `src/`), y el
+         validador falla si los dos adaptadores divergen (demostrado forzando a
+         mano un valor distinto, una variable huérfana y una clase prohibida).
+
+         **Construido:** contrato en `coraje-web/src/design-system/`
+         (fundamentos de marca con tintas calculadas, Lato 400/700/900, tema,
+         recetas, componentes y patrones) más `:root` y `@theme inline` en
+         `globals.css`, que **anula la paleta, los pesos, los tamaños, los
+         radios y las sombras por defecto de Tailwind**. Marca tomada del
+         Manual de Marca Corporativa: logotipo e isotipo oficiales.
+
+         **La unidad creció más allá de lo previsto, por decisión del usuario**,
+         y conviene saberlo antes de leer el código:
+         - **Dos modos de entrada** (`specs/integracion-conecta.md`, nueva). Con
+           sesión de Conecta en el navegador (`gct_empleado` en `localStorage`,
+           mismo origen), se entra sin clics y sin selector de cuenta
+           (`login_hint`) dentro del shell replicado de Conecta. Sin ella, se
+           entra por `/login` eligiendo cuenta (`prompt=select_account`), con
+           barra propia. La nueva puerta pública es `/ingreso`.
+         - **Réplica del shell de Conecta** tomada de RBGCT-REACT `cb06681` (con
+           acceso de lectura concedido el 24-sep): columna replegada con
+           isotipo, topbar, sidebar superpuesto y menú del empleado con «Mis
+           clientes» según permisos SQF. Navegación propia de HelpDesk en
+           pestañas.
+         - **`zod` instalado**: primera entrada externa validada con schema.
+
+         **Evidencia:** 62/62 pruebas; `tsc --noEmit`, `eslint` y `next build`
+         limpios; utilidades con nombre comprobadas en el CSS compilado. **Contra
+         el despliegue, reportado por el usuario el 24-sep:** los dos modos de
+         entrada, el shell de Conecta, `/login` y Esc para cerrar el sidebar en
+         móvil y escritorio. **Sin ejercitar:** la corrección del foco con Tab
+         (`ed0bd1d`), publicada después de la última prueba del usuario.
+
+CORTE ANTERIOR (23-sep-2026, corte 13): U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las dos
          condiciones de cierre de `plan-ejecucion.md` §U4 se cumplen y están
          verificadas: una prueba enumera las páginas de `src/app` y exige que
          cada una fuera de los prefijos públicos resuelva identidad, y el
@@ -64,7 +100,7 @@ UNIDAD:  U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las d
          lleva **acento visual propio**, no el de Impulsa—. Qué acento
          exactamente es trabajo de U5, no consulta.
 
-CORTE ANTERIOR (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
+CORTE DOS ANTES (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
          DESPLIEGUE REAL.** Los ocho escenarios mínimos de `plan-ejecucion.md`
          §U3 quedan resueltos: **seis ejercitados de punta a punta el
          22-sep-2026** contra `https://conecta.rbgct.cloud/helpdesk`, y dos
@@ -133,7 +169,7 @@ CORTE ANTERIOR (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRA
          sin efecto, destino de retorno saneado, y el enlace del sujeto
          inmutable confirmado en `core.dim_personal`. Detalle en §4.
 
-CORTE DOS ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
+CORTE TRES ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
          prefijo cambia de `/app/HelpDesk` a `/helpdesk` (`cfce427`), tras
          confirmar por lectura del repositorio real de Conecta que `/app` es su
          propio portal de empleados —no un path libre del dominio— y que un
@@ -142,7 +178,7 @@ CORTE DOS ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y 
          sin layout de servidor donde inyectar un fragmento; el shell se
          replica dentro de HelpDesk (`U5`).
 
-CORTE TRES ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
+CORTE CUATRO ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          mínimos de `plan-ejecucion.md` cerrados y verificados: baseline
          adoptado (corte 6) · credenciales separadas, incluida la corrida real
          de n8n con `coraje_etl` (corte 7) · servicio `migrate` desplegado y
@@ -151,7 +187,7 @@ CORTE TRES ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          usuario creó un ticket real desde el portal y probó la redirección.
          **U3 pasó a ser la cabeza de `plan-ejecucion.md`.**
 
-CORTE CUATRO ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
+CORTE CINCO ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
          revela que `coraje_app` era superusuario y el único rol de aplicación del
          clúster — se amplía F6 para retirarlo también de n8n. Creados
          `coraje_migrator`, `coraje_runtime`, `coraje_etl`; `coraje_app` rotado y
@@ -162,7 +198,7 @@ CORTE CUATRO ANTES (11-sep-2026, corte 7): verificación previa a escribir el `G
          más (ownership de `staging`, `CREATE INDEX` embebido contra `core`),
          corregidos. Detalle completo en el changelog.
 
-CORTE CINCO ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
+CORTE SEIS ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
          `20260910000000_baseline/migration.sql`, se migran 20 archivos de
          aplicación a `camelCase`, y se adopta la migración contra producción con
@@ -174,7 +210,7 @@ LINT:    limpio (`eslint`, sin reglas nuevas). `tsc --noEmit` y `next build`
          11.2.2, no solo por inspección. Sin `DATABASE_URL` real disponible desde
          este entorno, `next build` corrió con el mismo dummy que usa la etapa
          `builder` del `Dockerfile`
-PRUEBAS: 42/42 (`pnpm test`). Al borrar rutas hay que **regenerar `.next`** antes
+PRUEBAS: 62/62 (`pnpm test`). Al borrar rutas hay que **regenerar `.next`** antes
          de `tsc --noEmit`: los tipos de ruta que Next deja en `.next/types`
          siguen apuntando a las páginas eliminadas y producen errores que no
          existen en el código
@@ -208,7 +244,14 @@ credencial—, y con ellas la única superficie del proyecto que leía datos de 
 escribía tickets sin saber quién lo pedía. En la misma sesión se retiró el frontend
 heredado completo: la aplicación tiene hoy cinco rutas y ni un valor visual escrito.
 
-**Salvedades sobre lo que parece cerrado.** Cinco, ninguna cosmética:
+**Lo que cambió con U5:** la aplicación tiene cara, y la tiene por construcción, no por
+disciplina. Un valor visual escrito fuera del contrato hace fallar la suite, y una clase
+de la paleta por defecto de Tailwind no genera CSS. Quien entra desde Conecta no nota
+que cambió de aplicación: mismo shell, su nombre, su área y su menú, y sin pantalla de
+cuenta aunque tenga varias abiertas. Quien entra directo ve HelpDesk solo, con su marca.
+Sigue sin haber funcionalidad de tickets: hay dónde ponerla, no qué mostrar.
+
+**Salvedades sobre lo que parece cerrado.** Ocho, ninguna cosmética:
 
 1. **Dos de las cuatro causas de rechazo siguen sin prueba real.** `NOT_REGISTERED`
    exige una cuenta del tenant ausente de `dim_personal`, y `EMAIL_INVALID` un
@@ -228,14 +271,24 @@ heredado completo: la aplicación tiene hoy cinco rutas y ni un valor visual esc
    escenarios contra el dominio y ninguno falló, pero un caso que dependa de esa
    diferencia podría no haberse tocado. La forma de que deje de importar es que ninguna
    ruta futura dependa del prefijo, no una prueba más.
-5. **Con el frontend retirado, la aplicación no hace nada todavía.** Entrar es todo lo
-   que se puede hacer: no hay bandeja, ni ficha, ni forma de clasificar un ticket. Es
-   deliberado —lo que había era del proyecto anterior y se rehace desde el contrato de
-   diseño (`U5`)— pero conviene decirlo sin adornos: el proyecto retrocedió en
-   funcionalidad visible a cambio de no construir sobre una base que iba a tirarse.
+5. **La aplicación sigue sin hacer nada de una mesa de ayuda.** U5 le dio contrato
+   visual, shell y navegación, pero entrar sigue siendo todo lo que se puede hacer: no
+   hay bandeja, ni ficha, ni forma de clasificar un ticket. La vista de inicio lo dice
+   y manda a PowerApps. La bandeja es `U7`.
+6. **El modo «desde Conecta» depende de una clave interna de Conecta**
+   (`gct_empleado`). Si su equipo la renombra o cambia su forma, HelpDesk no se rompe:
+   falla cerrado a sus propios datos. Pero se pierde en silencio el ingreso sin selector
+   y el menú personalizado. Ninguna alarma lo avisaría.
+7. **El shell replica solo el menú del empleado.** A administradores, editores y
+   superadministradores Conecta les muestra otro. El usuario plantea un panel de
+   administración propio en HelpDesk; queda como posibilidad, no comprometida.
+8. **La corrección del foco con teclado (`ed0bd1d`) no está ejercitada.** Antes de ella
+   el anillo no se veía en ninguna parte (defecto de Tailwind 4 descrito en
+   `recipes/interaction.ts`). Ahora hay una prueba que lo impide, pero nadie lo ha visto
+   funcionar en el navegador.
 
-Contrato de diseño y ciclo de vida del ticket siguen sin existir, y escribir la
-especificación no adelanta la implementación. Tres de las cinco specs están además
+El ciclo de vida del ticket sigue sin existir, y escribir la especificación no adelanta
+la implementación. Tres de las cinco specs están además
 **bloqueadas por hechos que nadie ha medido**, no por trabajo pendiente: sin el
 levantamiento de PowerApps (U0), lo que se construya será diseño por analogía.
 
@@ -247,16 +300,42 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
 | Portal de clientes | `RETIRADO, SIN SUSTITUTO` | Eliminado el 22-sep-2026 (U4, `735be57`): las tres páginas, la API de clientes, la cookie de cliente y `features/portal/`. **HelpDesk no tiene hoy canal externo de recepción**; construirlo es `U8`, bloqueado por D2/D3/D4 |
 | Redirección interna | `RETIRADA` | La clave compartida y su pantalla se eliminaron (`735be57`); las dos vistas cayeron con el frontend heredado (`1937589`). La lógica —resolución del encargado y escritura en el outbox— se conservó sin pantalla en `features/redireccion/`, como referencia para `U7` |
-| Perímetro de acceso | `CONSTRUIDO Y EJERCITADO` | *Deny-by-default* en `src/proxy.ts` con lista pública de dos entradas. 42 pruebas, ocho ejecutando `proxy()`; cuatro escenarios contra el despliegue el 22-sep-2026. **No verificado:** el tratamiento del prefijo `/helpdesk` dentro del proxy real (§1, salvedad 4) |
-| Frontend | `VACÍO A PROPÓSITO` | Retirado el heredado (`1937589`). Cinco rutas —`/`, `/login` y las tres de auth—, sin `AppShell`, sin tokens en `globals.css`, sin tipografía impuesta. `U5` empieza en blanco |
-| Identidad de empleados | `EJERCITADA DE PUNTA A PUNTA` | Ingreso real, cierre de sesión, expulsión por desactivación, rechazo por rol ausente, cookie de sesión manipulada sin efecto y destino de retorno saneado — **todo contra el despliegue, 22-sep-2026** (§4). `NOT_REGISTERED` y `EMAIL_INVALID` quedan con cobertura unitaria únicamente |
+| Perímetro de acceso | `CONSTRUIDO Y EJERCITADO` | *Deny-by-default* en `src/proxy.ts`, con lista pública de tres entradas desde U5 (`/login`, `/ingreso`, `/api/auth/microsoft`); la navegación sin sesión va a `/ingreso`. 42 pruebas, ocho ejecutando `proxy()`; cuatro escenarios contra el despliegue el 22-sep-2026. **No verificado:** el tratamiento del prefijo `/helpdesk` dentro del proxy real (§1, salvedad 4) |
+| Frontend | `DESPLEGADO; SHELL EJERCITADO` | Seis rutas: `/` (dos modos), `/login`, `/ingreso` y las tres de auth. Shell de Conecta, barra propia y pestañas de HelpDesk vistos en producción por el usuario el 24-sep-2026. Sin funcionalidad de tickets |
+| Identidad de empleados | `EJERCITADA DE PUNTA A PUNTA` | **U5:** dos modos de entrada (desde Conecta sin selector; directo con `select_account`) ejercitados por el usuario el 24-sep-2026 (`specs/integracion-conecta.md`). **U3:** Ingreso real, cierre de sesión, expulsión por desactivación, rechazo por rol ausente, cookie de sesión manipulada sin efecto y destino de retorno saneado — **todo contra el despliegue, 22-sep-2026** (§4). `NOT_REGISTERED` y `EMAIL_INVALID` quedan con cobertura unitaria únicamente |
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
-| Sistema de diseño | `NO EXISTE` | Contrato escrito |
+| Sistema de diseño | `CONSTRUIDO Y DESPLEGADO` | `coraje-web/src/design-system/` y `globals.css`; validador de adaptadores y barrido de valores en `pnpm test` (U5). Sin validación de lector de pantalla; foco con Tab corregido y sin ejercitar |
 | Observabilidad | `NO EXISTE` | Ni alertas, ni reconciliación, ni correlación |
 | Documentación | `CERRADA en este corte` | Este conjunto |
 
 ## 3. Capacidades publicadas en esta unidad
+
+### U5 — contrato de diseño, shell de Conecta y modos de entrada (`463f8d0` → `ed0bd1d`)
+
+- **Contrato de diseño ejecutable** (`src/design-system/`, `app/globals.css`): tema TS y
+  `:root` CSS como dos adaptadores de una decisión, más `@theme inline`, que anula los
+  valores por defecto de Tailwind. Solo existen las clases del contrato.
+- **Validador** (`design-system/contract.test.mts`, 9 pruebas):
+  - igualdad de claves y de valores entre los dos adaptadores;
+  - ninguna `var(--hd-…)` sin declarar;
+  - tintas contra valores de referencia y pesos de Lato cargados contra el contrato;
+  - barrido de todo `src/` con 10 detectores (hex, px, clases arbitrarias, paleta por
+    defecto, pesos sin corte, `font: inherit`, estilo en línea…), cada uno con su
+    prueba;
+  - anillos de foco con estilo declarado.
+- **Marca oficial:** imagotipo azul y blanco e isotipo blanco del paquete de marca,
+  recortados solo del margen transparente. Lato 400/700/900. Acento Sky Blue, solo como
+  marca; navy para acción y foco.
+- **Shell de Conecta** (`patterns/conecta-shell/`), réplica de RBGCT-REACT `cb06681`, y
+  **barra propia** (`patterns/app-shell/`) para la entrada directa. Navegación de
+  HelpDesk en pestañas (`patterns/module-nav/`) y menú de usuario (`patterns/user-menu/`),
+  compartidos por los dos. `features/shell/AppFrame.tsx` elige el shell.
+- **Modos de entrada** (`/ingreso`, `server/auth/entry-context.ts`, `entry-cookie.ts`,
+  `authorization-start.ts`): perfil de Conecta validado con `zod`, atado a la identidad
+  admitida, sellado en cookie y usado solo para mostrar. Tres modos de autorización:
+  `silent`, `hinted` y `select`.
+- **20 pruebas nuevas** (62 en total).
 
 ### U4 — perímetro, retiro de la clave y del frontend heredado (`735be57`, `1937589`)
 
@@ -343,6 +422,9 @@ persona habilitada y la ruta pública sirviendo tráfico:
 
 | `tsc --noEmit`/`eslint`/`next build` + 42 pruebas unitarias, 22-sep-2026, en local con FNM (Node 24.16.0) | Que el código de U4 tipa, construye —el build reconoce el proxy— y que `proxy()` clasifica y responde como la spec exige sobre peticiones fabricadas, incluida una ruta inexistente | Que el proxy se comporte igual dentro del despliegue: **ninguna prueba demuestra cómo llega el prefijo `/helpdesk` al pathname en ejecución**, solo que las dos formas se clasifican igual |
 | **Ejercicio de U4 contra el despliegue real, 22-sep-2026** — navegador sobre `https://conecta.rbgct.cloud/helpdesk`, más la pantalla de variables de Coolify | Cuatro escenarios, tabla más abajo | Que el 401 de API sin sesión, el paso del asset público o el trato de las peticiones `RSC` se comporten en producción como en la suite — ninguno se tocó a mano |
+| `tsc --noEmit`/`eslint`/`next build` + 62 pruebas unitarias, 24-sep-2026, en local con FNM (Node 24.16.0), HEAD `ed0bd1d` | Que el contrato tipa y construye; que los adaptadores coinciden y el validador falla ante divergencia (forzada a mano con tres casos); que el perfil de Conecta falla cerrado y se ata a la identidad; que `select` nunca envía pista; que el perímetro manda a `/ingreso` | Nada del comportamiento en navegador ni contra Entra real |
+| Lectura de RBGCT-REACT `cb06681` y de los archivos JS/CSS servidos por `https://conecta.rbgct.cloud`, 24-sep-2026 (solo lectura, acceso Read) | Que la réplica sale del código desplegado: el fragmento de producción trae los mismos valores (`text-[13px]`, `w-56 md:w-64 lg:w-72 xl:w-80`, `acceso_sqf`); el formato de `gct_empleado`; la barra de desplazamiento | Que Conecta no cambie mañana: la réplica y la lectura de `gct_empleado` quedan acopladas a su código sin aviso |
+| **Ejercicio de U5 contra el despliegue, 23 y 24-sep-2026**, reportado por el usuario con capturas (HEAD `47886bd`) | Entrada desde Conecta sin selector de cuenta, con nombre corto, área y «Mis clientes»; entrada directa con `/login`, selector y barra propia; `/login` con Lato y logotipo; Esc cierra el sidebar en móvil y escritorio | El foco con Tab tras `ed0bd1d`; lector de pantalla; la matriz completa de resoluciones de `sistema-helpdesk.md` §7 |
 
 **U4 — escenarios ejercitados contra el despliegue, 22-sep-2026** (reportados por el
 usuario; no hay captura ni log archivado de cada uno):
@@ -474,12 +556,19 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~**La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía**~~ — **cerrado 22-sep-2026:** declarada en Traefik de Coolify, sin *strip prefix* (los assets de Next.js cargan y el preflight de Tailwind se aplica), redirect URI de Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`, y `https://conecta.rbgct.cloud/app` sigue sirviendo el SPA de Conecta — la regla no se comió el dominio. Al ejercitarla apareció un defecto que solo el despliegue podía revelar (`Location` absoluto derivado de `request.url`, que resolvía a `0.0.0.0:3000`), corregido en `306d286`. Texto original: (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
 | **El perímetro no está verificado en ejecución sobre el punto que más podría fallar.** Ninguna prueba demuestra cómo llega el prefijo `/helpdesk` al pathname dentro del proxy real; lo que hay es una normalización que clasifica igual en los dos casos | Si esa suposición fuera falsa **y** la normalización se retirara o se rompiera, el perímetro clasificaría mal en bloque: o deja pasar todo como público, o deniega todo incluido `/login`. No es un fallo parcial ni ruidoso | No tocar `normalizeAppPathname` sin ejercitar después contra el despliegue. La salida ante un fallo total es `git revert` del commit del perímetro y redesplegar: no hay riesgo para los datos |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
+| **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, pendiente de aprobación |
+| **Compartir origen con Conecta** (D7) expone a cada app lo que la otra guarda en el navegador, incluidos los tokens de sesión de Conecta | Un XSS en cualquiera de las dos compromete a ambas | Disciplina contra XSS (sin `dangerouslySetInnerHTML` ni HTML de terceros), y una política de seguridad de contenido antes de renderizar contenido de clientes (`integracion-conecta.md` §6) |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `1937589` | **Corte vigente.** Retira el frontend heredado del Coraje anterior: vistas de redirección, `AppShell`, tablas, formulario, `features/tickets/`, tokens de `globals.css` y fuentes del layout. Nada se sustituye: los valores visuales son `U5` |
+| `ed0bd1d` | **Corte vigente.** Hace visible el foco con teclado (`outline-solid`, defecto de Tailwind 4), replica la barra de desplazamiento de Conecta y marca «Auto gestión» como ítem activo |
+| `47886bd` | Distingue la entrada desde Conecta de la entrada directa: `/ingreso`, `login_hint` y `select_account`, perfil de Conecta con `zod`, isotipo en la columna, barra propia y pestañas de HelpDesk |
+| `d145679` | Replica el shell de Conecta desde la rama desplegada (sidebar navy, logotipo blanco) |
+| `463f8d0` | **U5.** Construye el contrato de diseño ejecutable y el primer shell de Conecta; logotipo oficial |
+| `640370c` | Resuelve D5 con acento visual propio para HelpDesk |
+| `1937589` | Retira el frontend heredado del Coraje anterior: vistas de redirección, `AppShell`, tablas, formulario, `features/tickets/`, tokens de `globals.css` y fuentes del layout. Nada se sustituye: los valores visuales son `U5` |
 | `735be57` | **U4.** Perímetro *deny-by-default* (`src/proxy.ts`), retiro de `REDIRECCION_PASSWORD` y del portal de clientes completo |
 | `306d286` | Emite las redirecciones internas con `Location` relativo: detrás del proxy, `request.url` resolvía a `0.0.0.0:3000` |
 | `cfce427` | Mueve HelpDesk de `/app/HelpDesk` a `/helpdesk` (D7) |
@@ -577,44 +666,50 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U5, contrato de diseño ejecutable y primera vista
+## Acción inmediata para la siguiente sesión — U6, modelo de eventos del ticket
 
-**U4 queda cerrada. La cabeza de `plan-ejecucion.md` pasa a ser U5**, sin desviación.
+**U5 queda cerrada. La cabeza de `plan-ejecucion.md` pasa a ser U6**, sin desviación.
 
-**Objetivo (`plan-ejecucion.md` §U5):** fundamentos, tema, validador de coherencia entre
-los dos adaptadores, y la primera vista nueva construida consumiendo el contrato desde
-el inicio.
+**Objetivo (`plan-ejecucion.md` §U6):** los tres campos ausentes de `specs/tickets.md`
+§6, el escritor único y la proyección transaccional. El estado del ticket se deriva de
+sus eventos; nadie lo escribe a mano (`specs/tickets.md` §3).
 
-**Criterio de cierre, tal como el plan lo define:** la vista no contiene un solo valor
-visual local, y el validador falla si los dos adaptadores divergen.
+**Escenarios mínimos, tal como el plan los define:**
+- ningún camino cambia estado sin evento, **con prueba negativa**;
+- la historia de estados se puede reconstruir;
+- un evento interno es invisible en el portal, **con prueba negativa**;
+- reprocesar la ingesta legacy no duplica eventos.
 
-**El punto de partida cambió, y a favor.** No hay frontend que desmontar ni con el que
-convivir: `globals.css` no declara un solo valor, el layout raíz no impone tipografía,
-y `/` y `/login` se dibujan sin estilo. Es la condición que
-`design/sistema-helpdesk.md` §1 daba por necesaria al descartar una fase de
-centralización posterior. La contrapartida es que **la aplicación no hace nada
-visible**: entrar es todo lo que se puede hacer.
+**Dependencias:** U2 está cerrada. U0 está **parcial**: cuatro de sus cinco preguntas
+se cerraron el 03-sep-2026, y la pregunta 3 sigue aplazada por decisión previa. **Lo
+primero de la sesión es confirmar si la pregunta 3 afecta al vocabulario de estados o
+de eventos.** Si lo afecta, U6 se construye sobre una suposición y hay que nombrarla.
 
-**Lo que hay que inspeccionar antes de escribir, no después:** `src/design-system/` de
-Impulsa —fundamentos, tema, recetas, componentes, patrones— y sus vistas `/clientes` y
-`/clientes/[clienteId]`. Sus archivos llevan comentarios que explican por qué cada
-decisión es como es, incluida la razón por la que la alternativa obvia falla. La carga
-de la prueba es de quien se aparte de cómo lo resuelven esas vistas.
+**Lo que hay que leer antes de escribir:**
+- `specs/tickets.md` §3, §4 y §6, con su bloque de estado y su tabla de verificación;
+- el modelo `FactTicketEvento` o equivalente en `coraje-web/prisma/schema.prisma`;
+- `sql/elt/06_transform_ticket.sql`, porque la ingesta ya escribe eventos legacy;
+- cómo lo resuelve Impulsa (`src/server/revision/*event*`), recordando que en diseño
+  visual Impulsa no es referencia, pero en modelo de datos sí.
 
-**D5 quedó resuelta el 23-sep-2026, así que U5 arranca sin decisión pendiente de
-usuario: HelpDesk lleva acento visual propio.** Lo que sigue abierto es cuál, y eso es
-trabajo de la unidad, no consulta: dentro de la paleta corporativa, sin chocar con el
-navy sobre el que se apoya el shell de Conecta, y sin competir con la señal de urgencia
-de la bandeja — en una mesa de ayuda esa señal es información, no adorno
-(`design/sistema-helpdesk.md` §2, §5).
+**Cuidado, esta unidad toca datos reales:** 2.313 tickets y 439 eventos migrados, y la
+ingesta sigue corriendo. Toda migración nueva pasa por el servicio `migrate` y se
+revisa contra la base real antes de publicar. La autorización destructiva no alcanza
+`core` ni `helpdesk`.
 
-**Lo que U5 arrastra además, y conviene no descubrir a mitad:** replicar el shell de
-Conecta dentro de HelpDesk (sidebar y topbar) es parte de esta unidad, no de otra — la
-composición en tiempo de request se descartó con evidencia en el corte 11, porque la
-interfaz de Conecta es un SPA sin layout de servidor. Y `public/rb-logo.png` es hoy el
-único asset del proyecto: lo dejó en pie el perímetro, con una entrada en la lista
-exacta de `public-assets.ts`, precisamente porque la pantalla de acceso va a necesitarlo
-sin sesión en cuanto tenga estilo.
+**Posibilidades registradas y no comprometidas**, para que no se pierdan sin
+convertirse en tareas implícitas:
+- **Panel de administración propio en HelpDesk**, para quienes en Conecta ven el
+  «Panel Administrativo». Hoy el shell replica solo el menú del empleado.
+- **Endpoint de Conecta** para «Formación» (`specs/integracion-conecta.md` §5). Está
+  diseñado con sus controles, y tocar RBGCT-REACT exige aprobación explícita (rama
+  `lulox`).
+- **Acceso a HelpDesk desde Conecta**, en la vista «Auto gestión», no en el menú. Se
+  construye cuando HelpDesk esté listo. Debe ser una navegación real (`<a href>`,
+  misma pestaña), nunca `navigate()` de su router.
+- **Retirar la topbar** en modo Conecta (`design/sistema-helpdesk.md` §2).
+- **Ejercitar el foco con Tab** tras `ed0bd1d`. Es una comprobación de minutos, no una
+  unidad.
 
 ### Lo que NO hace falta repetir
 
@@ -631,13 +726,11 @@ de restauración debe fijar las dos columnas a la vez**: durante este corte se p
 acceso dos veces por revertir solo una, y no hay una segunda cuenta con rol que pueda
 entrar a arreglarlo desde la aplicación — la salida es siempre por `psql`.
 
-### Lo que queda del lado de Conecta, y ahora sí entra en alcance
+### Lo que queda del lado de Conecta
 
-El SPA de Conecta no tiene hoy ningún enlace a HelpDesk. Cuando `U5` lo añada al
-sidebar, **debe ser un enlace de navegación real (`<a href>`), nunca `navigate()` de su
-router**: una navegación de cliente la resuelve React Router dentro de Conecta, que no
-conoce la ruta y redirige a su raíz. Es el único cambio que D7 exige en el repositorio
-de Conecta.
+Nada en esta etapa. El acceso a HelpDesk irá en la vista «Auto gestión» de Conecta, y no
+en su menú, cuando HelpDesk esté listo (decisión del 24-sep-2026). En RBGCT-REACT no se
+cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulox`.
 
 ### Higiene registrada, sin acción asignada
 
@@ -673,10 +766,10 @@ de Conecta.
 | SSO silencioso con `prompt=none` para eliminar la fricción del botón | Ídem §4 | **Construida (U3, corte 9):** `/api/auth/microsoft/start`, con cookie anti-bucle de un solo uso. Sin ejercitar contra el tenant real |
 | El acceso de clientes se ancla al cliente, no al ticket | `specs/acceso-clientes.md` §3 | Decidida, no construida |
 | Estado del ticket derivado de eventos, con escritor único | `specs/tickets.md` §3 | Decidida, no construida |
-| Rediseño visual completo, sin fase de centralización posterior | `design/sistema-helpdesk.md` §1 | Decidida, no construida |
-| Tipografía Lato, con pesos reales 400/500/600/700 | Ídem §2 | Decidida, no construida |
-| D5: acento visual propio de HelpDesk, distinto del teal de Impulsa | Ídem §2 | **Decidida el 23-sep-2026**, no construida. Fija que el acento es propio, no cuál: la elección concreta es de `U5`, acotada por la paleta corporativa, el navy del shell de Conecta y la señal de urgencia de la bandeja |
-| HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | Decidida, no construida |
+| Rediseño visual completo, sin fase de centralización posterior | `design/sistema-helpdesk.md` §1 | **Construida (U5, 24-sep-2026):** la primera vista nació consumiendo el contrato; un valor fuera de él rompe `pnpm test` |
+| Tipografía Lato, pesos 400/700/900 (corregida: Lato no tiene 500/600) | Ídem §2 | **Construida (U5):** `layout.tsx` y una prueba que cruza sus pesos con el contrato |
+| D5: acento visual propio de HelpDesk, distinto del teal de Impulsa | Ídem §2 | **Construida (U5):** Sky Blue como `PROPUESTA` materializada en el tema, solo como marca. La premisa «teal de Impulsa» era falsa, porque su acento es naranja, y se corrigió en §2 |
+| HelpDesk se lee como parte de Conecta: su sidebar, su URL, sin enlace de vuelta | `contexto-canonico.md` §1.1 | **Construida y ejercitada (U5, 24-sep-2026)** en modo «desde Conecta». Sin Conecta, barra propia (`specs/integracion-conecta.md`) |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
 | Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Construida por completo (corte 8):** baseline adoptado, y el servicio `migrate` ya automatiza cada deploy futuro |
 | Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | Decidida, no construida |
@@ -1138,3 +1231,23 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   perdiendo algo: no. Registrado en `acceso-clientes.md` §1 como criterio para
   construir ese contrato sin buscar compatibilidad con un comportamiento anterior que
   nunca fue correcto.
+- 24-sep-2026 — **corte 14, U5 CERRADA.** *Estado previo:* frontend vacío a propósito,
+  contrato de diseño solo escrito. *Cambio:* contrato ejecutable con dos adaptadores y
+  validador; marca oficial (manual inspeccionado); shell de Conecta replicado desde
+  RBGCT-REACT `cb06681`; dos modos de entrada con `/ingreso`, `login_hint` y
+  `select_account`; navegación propia en pestañas; `zod`. *Evidencia:* 62/62 pruebas,
+  `tsc`, `eslint` y `build` limpios; divergencia forzada a mano; los dos modos, el shell
+  y Esc ejercitados por el usuario en producción. *Incidencias y resolución:*
+  - la primera réplica usó un `main` antiguo de Conecta (`e27662b`, reescrito con
+    *force push*); se rehizo cuando el usuario dio acceso de lectura;
+  - dos premisas de `sistema-helpdesk.md` eran falsas (acento «teal» de Impulsa, pesos
+    500/600 de Lato) y se corrigieron;
+  - varias cuentas abiertas forzaban el selector de Microsoft; se resolvió con
+    `login_hint`;
+  - el foco con teclado no se veía en ninguna parte (Tailwind 4); corregido en
+    `ed0bd1d`, sin ejercitar.
+
+  *Decisión:* cerrada. *Commits:* `463f8d0`, `d145679`, `47886bd`, `ed0bd1d`.
+  *Documentación:* `design/sistema-helpdesk.md`, nueva `specs/integracion-conecta.md`,
+  `specs/acceso-empleados.md` §4, `CLAUDE.md`, este handoff y `plan-ejecucion.md`.
+  **U6 pasa a ser la cabeza.**

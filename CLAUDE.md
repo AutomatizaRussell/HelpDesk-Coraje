@@ -232,6 +232,33 @@ descriptivo, ≤ 72 caracteres, sin punto final, sin mayúscula inicial tras los
 decisiones sostiene. Cierra declarando la evidencia (`tsc --noEmit`, `lint`, `build`,
 pruebas ejecutadas) y **lo que quedó sin verificar**.
 
+## Conecta — solo lectura (regla dura)
+
+Conecta (`C:\Users\daniellopera\apps\RBGCT-REACT`, remoto
+`AutomatizaRussell/RBGCT-REACT`) es de otro equipo, está en producción y la usa toda la
+firma. **Desde aquí se lee; nunca se escribe por iniciativa propia.**
+
+- **Sin preguntar:** `git fetch`, alinear la copia local con el remoto, `git show`, leer
+  archivos, descargar lo que sirve públicamente `conecta.rbgct.cloud`.
+- **Con aprobación explícita del usuario, cambio por cambio:** commit, push, checkout de
+  trabajo, tocar la configuración de la copia local, o cualquier escritura contra su API
+  o su base. Primero se presenta el diff concreto; aprobar uno no aprueba el siguiente.
+- **Un cambio aprobado va solo en la rama `lulox`**, nunca en `main` ni en `stiben`.
+  Coolify despliega Conecta desde `main`, a mano: eso es trabajo de su equipo.
+- `Daniezen` tiene acceso **Read** (24-sep-2026). Si un push funcionara, el permiso está
+  mal: se avisa, no se aprovecha.
+
+**Qué integra HelpDesk con Conecta y cómo**: `docs/specs/integracion-conecta.md`.
+- **Parte 1, construida:** se lee `gct_empleado` del `localStorage` compartido por
+  origen. Solo sirve para mostrar y para sugerir la cuenta, nunca para autorizar.
+- **Parte 2, solo diseñada:** endpoint en Conecta para «Formación», con controles
+  obligatorios en su §5.1. Las API keys actuales de Conecta dan poder de SuperAdmin en
+  todas sus rutas: no se reutilizan.
+
+La réplica del shell y la lectura de `gct_empleado` dependen del código de Conecta sin
+que su equipo lo sepa. Al tocar el shell, **revisa primero RBGCT-REACT actualizado**, no
+una copia vieja: la primera réplica salió de un `main` reescrito después con *force push*.
+
 ## Gotchas
 
 - **La identidad de empleados existe, es obligatoria y está ejercitada** (U3 y U4,

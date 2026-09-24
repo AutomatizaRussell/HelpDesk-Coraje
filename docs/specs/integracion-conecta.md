@@ -1,14 +1,16 @@
 # Integración con Conecta
 
 ```
-ESTADO:      §2-§4 construidos (U5), cambios locales sin publicar al escribir este
-             corte. §5 (endpoint en Conecta) diseñado, NO construido: pendiente
-             de aprobación explícita del usuario para tocar RBGCT-REACT (rama
-             `lulox`).
+ESTADO:      Opción 3 elegida (§1.1). Parte 1 (§2-§4) construida, publicada
+             (`47886bd`) y ejercitada. Parte 2 (§5, endpoint en Conecta)
+             diseñada, NO construida: pendiente de aprobación explícita del
+             usuario para tocar RBGCT-REACT (rama `lulox`, §1.2)
 CORTE:       24-sep-2026
-EVIDENCIA:   `pnpm test` 61/61 (entry-context, login-hint, proxy, perímetro),
-             `tsc --noEmit`, `eslint` y `next build` limpios. Nada ejercitado
-             todavía contra el despliegue ni contra Entra ID real.
+EVIDENCIA:   `pnpm test` 62/62 (entry-context, login-hint, proxy, perímetro),
+             `tsc --noEmit`, `eslint` y `next build` limpios. **Ejercitado por el
+             usuario contra el despliegue, 24-sep-2026:** entrada desde Conecta
+             sin selector de cuenta, con nombre corto, área y «Mis clientes»;
+             entrada directa con `/login`, selector y barra propia
 ```
 
 **Autoridad:** decisiones del usuario del 23 y 24-sep-2026 recogidas aquí. Complementa
@@ -37,6 +39,44 @@ replica el menú de Conecta, pero dibujarlo igual exige datos que solo Conecta t
 
 HelpDesk tiene `nombre_completo` en una sola cadena. No se puede partir en «primer
 nombre + primer apellido» sin equivocarse con los nombres compuestos.
+
+## 1.1 `DECISIÓN` Opción 3: navegador ahora, endpoint después (24-sep-2026, usuario)
+
+Se evaluaron tres formas de obtener los datos de §1:
+
+| Opción | Qué es | Cubre | No cubre | Riesgo nuevo |
+|---|---|---|---|---|
+| 1 · Navegador | Leer `gct_empleado` del `localStorage` que Conecta comparte por origen (§3) | Sugerir la cuenta a Microsoft (sin selector), detectar si se viene de Conecta, nombre corto, área, «Mis clientes» | «Formación»; personas que nunca abrieron Conecta en ese navegador; datos si Conecta cambia su clave interna | Ninguno de seguridad (§4); acoplamiento a una clave interna de Conecta |
+| 2 · Endpoint | El servidor de HelpDesk pregunta al backend de Conecta (§5) | Nombre, área, «Mis clientes» y «Formación», oficiales y siempre al día | **El selector de cuenta** (el servidor solo pregunta *después* de saber quién es la persona) y **la detección del modo** (solo la conoce el navegador) | **Sí**: una credencial nueva hacia Conecta y un directorio consultable (§5.1) |
+| **3 · Ambas** | 1 ahora, 2 más adelante y solo para lo que 1 no da | Todo | — | El de 2, acotado por los controles de §5.1 |
+
+**Elegida la opción 3.** La opción 2 no sustituye a la 1: no resuelve las dos molestias
+observadas, el selector y el modo de entrada. La 1 resuelve ambas hoy sin tocar Conecta
+ni crear accesos nuevos. La parte 2 queda como `PROPUESTA` (§5) con **todos** los
+controles de §5.1 como condición. El usuario pidió «el mayor cuidado del mundo» con ella:
+no se construye sin su aprobación explícita del diff concreto.
+
+**Estado de cada parte:**
+- parte 1: construida y ejercitada (§2-§4);
+- parte 2: diseñada, no construida (§5);
+- «Formación» no aparece hasta que exista la parte 2.
+
+## 1.2 `INVARIANTE` Conecta no se toca sin permiso
+
+**RBGCT-REACT es de otro equipo, está en producción y la usa toda la firma.** Desde
+HelpDesk se lee; nunca se escribe por iniciativa propia.
+
+- Permitido sin preguntar: `git fetch`, alinear la copia local con el remoto, `git show`,
+  leer archivos y descargar los archivos públicos que sirve el sitio.
+- **Todo lo demás exige aprobación explícita del usuario**: commit, push, checkout de
+  trabajo, cambio de configuración de la copia local, o cualquier petición que escriba
+  en Conecta (su API, su base). La aprobación vale para el cambio concreto presentado,
+  no para los siguientes.
+- Un cambio aprobado va **solo** en la rama `lulox` (la del usuario), nunca en `main` ni
+  en `stiben`. Coolify despliega Conecta desde `main`, a mano: llevarlo ahí es trabajo del
+  equipo de Conecta.
+- `Daniezen` tiene acceso **Read** al repositorio (24-sep-2026). Si un push de esa cuenta
+  llegara a funcionar, el permiso estaría mal configurado: avisar, no aprovecharlo.
 
 ## 2. Dos modos de entrada
 
@@ -162,7 +202,7 @@ contenido de clientes.
 | I4 | El perfil de Conecta se valida con esquema y falla cerrado | `entry-context.ts`, `entry-context.test.mts` | Verificado (prueba) |
 | I5 | El perfil solo se conserva si su correo es el de la cuenta admitida | `callback/route.ts`, `bindProfileToIdentity` | Verificado (prueba de la función; el callback sin ejercitar) |
 | I6 | Solo viajan los nueve campos, por POST | `EntryHandoff.tsx` | Inspección; sin ejercitar |
-| I7 | Con sesión de Conecta se entra sin selector aunque haya varias cuentas | Despliegue + Entra real | **Pendiente** |
+| I7 | Con sesión de Conecta se entra sin selector aunque haya varias cuentas | Despliegue + Entra real | **Ejercitado** por el usuario, 24-sep-2026 |
 | I8 | Cerrar sesión borra el modo de entrada | `sign-out-action.ts`, `logout/route.ts` | Inspección; sin ejercitar |
 | I9 | Endpoint de Conecta con los controles de §5.1 | RBGCT-REACT | **No construido** |
 
