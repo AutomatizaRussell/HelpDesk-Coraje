@@ -1,0 +1,65 @@
+{
+  "name": "Alertas de errores a Teams",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a2f748cc-c486-4600-bc2c-45395e37cc5d",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://default89fdd17b658f4c11aa8f1094e5d93d.91.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/98dc7225f29b4e03974e1c1ebd0aec60/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'message', attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: { type: 'AdaptiveCard', $schema: 'http://adaptivecards.io/schemas/adaptive-card.json', version: '1.4', body: [ { type: 'TextBlock', text: 'Error en ' + ($json.workflow?.name ?? 'workflow desconocido'), weight: 'Bolder', size: 'Medium', color: 'Attention', wrap: true }, { type: 'FactSet', facts: [ { title: 'Nodo:', value: String($json.execution?.lastNodeExecuted ?? $json.trigger?.error?.node?.name ?? 'desconocido') }, { title: 'Error:', value: String($json.execution?.error?.message ?? $json.trigger?.error?.message ?? 'sin mensaje') }, { title: 'Ejecución:', value: String($json.execution?.id ?? 'sin ejecución') } ] }, { type: 'TextBlock', text: $json.execution?.url ? '[Ver ejecución](' + $json.execution.url + ')' : 'Falló el disparador del workflow: no hay ejecución que abrir.', wrap: true } ] } }] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        96
+      ],
+      "id": "22769220-d409-46d8-8e4c-ce7320a10b50",
+      "name": "HTTP - Enviar alerta a Teams",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Enviar alerta a Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
+  },
+  "nodeGroups": [],
+  "id": "A10yl90Zh5otaSlJ",
+  "tags": []
+}
