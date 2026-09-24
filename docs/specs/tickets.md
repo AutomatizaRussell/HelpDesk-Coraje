@@ -91,6 +91,45 @@ cada consulta convierte cada listado en una agregación. La proyección es un ca
 integridad transaccional, no una segunda fuente de verdad: si diverge, es un defecto, y
 el log manda.
 
+### 3.1 `DECISIÓN` (24-sep-2026) Dónde se hace cumplir, y la ingesta legacy
+
+**El escritor único vive en PostgreSQL, no en la aplicación.** Es una función
+`SECURITY DEFINER` que escribe el evento y la proyección en la misma transacción. A
+`coraje_runtime` y a `coraje_etl` se les retira el privilegio de `UPDATE` sobre la
+columna `id_estado` de `helpdesk.fact_ticket`. Un `UPDATE` directo con cualquiera de los
+dos roles falla con *permission denied*: esa es la prueba negativa de §8, y se ejercita
+contra la base desplegada.
+
+**Por qué no como Impulsa.** Impulsa sostiene su escritor único
+(`src/server/revision/review-event.service.ts`) con código TypeScript y pruebas que
+leen el código fuente. Le basta porque todo lo que escribe pasa por su aplicación. Aquí
+existe un segundo escritor, la ingesta SQL que corre desde n8n con `coraje_etl`, y
+ninguna prueba sobre `src/` lo ve.
+
+**La ingesta legacy también escribe el evento.** Hoy
+`sql/elt/06_transform_ticket.sql` sobrescribe `id_estado` en cada ejecución y en cada
+ticket, cambie o no, y `07_transform_ticket_evento.sql` solo produce `COMENTARIO`. Con
+esta decisión la ingesta solo toca el estado cuando cambia, y lo hace a través del
+escritor único. **Qué sistema gana cuando SharePoint y la plataforma no coinciden sigue
+siendo U9** (`specs/sincronizacion-sharepoint.md` §4.1). Esto solo fija que ningún
+cambio de estado queda sin su evento, venga de donde venga.
+
+**La historia de los tickets existentes se completa con un evento por ticket.** Cada
+ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial, idempotente por
+`event_hash`. Son solo `INSERT`: nada existente se modifica ni se borra.
+
+> **`RIESGO` Orden de despliegue obligatorio.** Primero la ingesta nueva, versionada
+> como bloque en `n8n/` y verificada en una ejecución real; después, el retiro del
+> privilegio. En el orden inverso, la siguiente ingesta falla y la base deja de recibir
+> lo que el equipo sigue haciendo en PowerApps, sin que nada lo avise: hoy no existe
+> workflow de error en n8n (`specs/sincronizacion-sharepoint.md`, V10).
+>
+> **`DEPENDENCIA`** El estado inicial de ese evento tiene que ser correcto antes de
+> escribirse, porque el log solo admite añadir filas. Hoy
+> `06_transform_ticket.sql` convierte el `Reasignado` de SharePoint en `ABIERTO`: no
+> tiene fila en `dim_estado` y cae en el valor por defecto. Esa traducción se corrige
+> antes de crear los eventos de migración.
+
 ## 4. Vocabulario de estados
 
 > **`RATIFICADO` (03-sep-2026), salvo lo que sigue marcado aparte.** El usuario confirmó
@@ -494,3 +533,6 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   v1, sin reapertura; queda pendiente quién ejecuta T6. §5 generaliza el reloj a «por
   turno», fija 3 días desde la redirección para clientes y registra como pendiente el
   festivo de la Ley 2578 de 2026. §11: la solicitud de validación no bloquea.
+- 24-sep-2026 (mismo día) — U6, punto 2. Nueva §3.1: el escritor único vive en
+  PostgreSQL con privilegios por columna, la ingesta legacy también escribe el evento y
+  cada ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial.
