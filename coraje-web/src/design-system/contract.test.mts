@@ -239,6 +239,24 @@ test("ningún archivo de interfaz escribe valores visuales fuera del contrato", 
   assert.deepEqual(offenders, [], "Valores visuales fuera del contrato");
 });
 
+test("todo anillo de foco declara su estilo de contorno", () => {
+  // En Tailwind 4, `outline-hidden` fija --tw-outline-style: none y
+  // `outline-2` reutiliza esa variable: sin `outline-solid` el anillo existe
+  // pero no se ve. Defecto real observado en el despliegue (24-sep-2026).
+  const offenders: string[] = [];
+  for (const file of listSourceFiles(SRC_DIR)) {
+    if (file.endsWith(".test.mts")) continue;
+    stripComments(readFileSync(file, "utf8"))
+      .split("\n")
+      .forEach((line, index) => {
+        if (/focus-visible:outline-\d/.test(line) && !/focus-visible:outline-solid/.test(line)) {
+          offenders.push(`${path.relative(SRC_DIR, file)} línea ${index + 1}`);
+        }
+      });
+  }
+  assert.deepEqual(offenders, [], "Anillo de foco sin outline-solid: no se vería");
+});
+
 function listSourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {

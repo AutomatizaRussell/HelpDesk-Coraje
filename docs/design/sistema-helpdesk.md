@@ -101,7 +101,14 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 >   (`specs/integracion-conecta.md` §5).
 > - No se replican la campana, el botón flotante de sugerencias ni el pie de
 >   contactos: son funciones de Conecta, no del shell.
-> - HelpDesk figura en «Recursos» como ítem activo.
+> - Barra de desplazamiento: la de Conecta (6 px, pulgar `#cbd5e1`), en toda la app.
+> - El ítem activo es «Auto gestión»: el acceso a HelpDesk irá en esa vista de Conecta,
+>   no en su menú. Se construye cuando HelpDesk esté listo (decisión del 24-sep-2026).
+> - **El foco con teclado se ve**, en blanco sobre el navy. Los ítems de Conecta llevan
+>   `focus:outline-none` sin reemplazo, un defecto de accesibilidad (WCAG 2.4.7) que no
+>   se replica. Solo aparece al usar el teclado, así que con el ratón no cambia nada.
+> - `ABIERTO`: se replica solo el menú del **empleado**. Conecta muestra otro distinto a
+>   administradores, editores y superadministradores (`sidebarConfig.js`).
 
 **Marca corporativa.** La fuente de verdad es el *Manual de Marca Corporativa* de
 Russell Bedford (inspeccionado el 23-sep-2026). Lo que obliga a este contrato:

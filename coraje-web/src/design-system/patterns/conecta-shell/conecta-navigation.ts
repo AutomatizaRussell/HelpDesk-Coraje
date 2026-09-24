@@ -6,7 +6,6 @@ import {
   ExternalLink,
   FileSpreadsheet,
   LayoutDashboard,
-  LifeBuoy,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -29,8 +28,9 @@ import {
  *   en el backend de Conecta y no está en el navegador, así que hoy no aparece
  *   (specs/integracion-conecta.md §5, pendiente).
  *
- * Diferencia deliberada: **HelpDesk** figura en «Recursos» como ítem activo.
- * Conecta todavía no tiene esa entrada (D7, `contexto-canonico.md` §1.1).
+ * Ítem activo: **Auto gestión**. El acceso a HelpDesk desde Conecta irá en esa
+ * vista, no en el menú (decisión del usuario, 24-sep-2026; se construye cuando
+ * HelpDesk esté listo), así que el menú no gana ninguna entrada «HelpDesk».
  *
  * Las rutas son del dominio de Conecta, fuera del `basePath` de HelpDesk: el
  * shell las pinta con `<a>` y nunca con `<Link>`, que les antepondría
@@ -90,7 +90,6 @@ export function conectaNavigation({ sqfAccess }: ConectaNavVisibility): ConectaN
       items: [
         { kind: "link", label: "Reglamento", href: "/app/comunicados", icon: BookOpen },
         { kind: "link", label: "Herramientas", href: "/app/utilidades", icon: Wrench },
-        { kind: "link", label: "HelpDesk", href: "/helpdesk", icon: LifeBuoy, current: true },
       ],
     },
     {

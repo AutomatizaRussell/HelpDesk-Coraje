@@ -62,6 +62,7 @@ export const helpdeskTheme = {
     surface: "10px",
     pill: "999px",
     shellItem: "8px", // réplica de Conecta (`rounded-lg` de sus ítems)
+    scrollbar: "3px", // réplica de Conecta (::-webkit-scrollbar-thumb)
   },
   shadow: {
     overlay: "0 16px 48px rgba(0, 24, 113, 0.18)",
@@ -103,6 +104,7 @@ export const helpdeskTheme = {
     logoSidebarXl: "190px",
     logoAccess: "200px",
     stripe: "4px",
+    scrollbar: "6px", // réplica de Conecta (::-webkit-scrollbar)
     rail: "80px",
     accessPanel: "400px",
     contentMax: "1440px",
@@ -159,6 +161,11 @@ export const helpdeskTheme = {
     menuDangerInk: "#ef4444",
     menuDangerHoverInk: "#dc2626",
     menuDangerHoverSurface: "#fef2f2",
+
+    // Barra de desplazamiento de Conecta, global en su index.css: fina, carril
+    // transparente, pulgar gris que se oscurece al pasar el ratón.
+    scrollbarThumb: "#cbd5e1",
+    scrollbarThumbHover: "#94a3b8",
   },
 
   /**

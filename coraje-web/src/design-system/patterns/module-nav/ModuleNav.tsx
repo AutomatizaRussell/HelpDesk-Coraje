@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { colorTransition, focusRing } from "../../recipes/interaction";
+import { colorTransition, focusRingInset } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 
 /**
@@ -39,7 +39,7 @@ export function ModuleNav({ items }: { items: readonly ModuleNavItem[] }) {
                 className={cn(
                   "flex items-center whitespace-nowrap border-b-2 px-1 text-base",
                   colorTransition,
-                  focusRing,
+                  focusRingInset,
                   current
                     ? "border-accent font-bold text-heading"
                     : "border-transparent text-ink-muted hover:text-heading",

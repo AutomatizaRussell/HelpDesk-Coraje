@@ -53,6 +53,7 @@
   --hd-radius-surface: 10px;
   --hd-radius-pill: 999px;
   --hd-radius-shell-item: 8px;
+  --hd-radius-scrollbar: 3px;
 
   --hd-shadow-overlay: 0 16px 48px rgba(0, 24, 113, 0.18);
 
@@ -77,6 +78,7 @@
   --hd-size-logo-sidebar-xl: 190px;
   --hd-size-logo-access: 200px;
   --hd-size-stripe: 4px;
+  --hd-size-scrollbar: 6px;
   --hd-size-rail: 80px;
   --hd-size-access-panel: 400px;
   --hd-size-content-max: 1440px;
@@ -112,6 +114,8 @@
   --hd-shell-menu-danger-ink: #ef4444;
   --hd-shell-menu-danger-hover-ink: #dc2626;
   --hd-shell-menu-danger-hover-surface: #fef2f2;
+  --hd-shell-scrollbar-thumb: #cbd5e1;
+  --hd-shell-scrollbar-thumb-hover: #94a3b8;
 
   --hd-stripe-0: #001871;
   --hd-stripe-1: #981d97;
@@ -285,6 +289,26 @@
   body {
     font-size: var(--hd-type-base-size);
     line-height: var(--hd-type-base-line-height);
+  }
+
+  /* Barra de desplazamiento de Conecta, en toda la aplicación, para que pasar
+     de un módulo al otro no cambie ni ese detalle. Solo la sintaxis
+     ::-webkit-scrollbar, como Conecta: si se declarara también scrollbar-width
+     o scrollbar-color, los navegadores Chromium ignorarían esta. Firefox usa
+     la suya, igual que en Conecta. */
+  ::-webkit-scrollbar {
+    width: var(--hd-size-scrollbar);
+    height: var(--hd-size-scrollbar);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--hd-shell-scrollbar-thumb);
+    border-radius: var(--hd-radius-scrollbar);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--hd-shell-scrollbar-thumb-hover);
   }
 
   /* La preferencia de movimiento reducido siempre gana. */
