@@ -1,10 +1,41 @@
 # Handoff técnico
 
 ```
-CORTE:   24-sep-2026 (corte 14, U5 CERRADA)
-HEAD:    `ed0bd1d` — más la documentación de este corte, que se publica encima
+CORTE:   24-sep-2026 (corte 15, U6 EN CURSO — solo decisiones; incidencia de ingesta cerrada)
+HEAD:    `9e2c322` — más la documentación de este corte, que se publica encima
 RAMA:    main
-UNIDAD:  U5 · CONTRATO DE DISEÑO EJECUTABLE Y PRIMERA VISTA — **CERRADA.** Las
+UNIDAD:  U6 · MODELO DE EVENTOS DEL TICKET — **EN CURSO, SIN CÓDIGO.** Esta sesión
+         tomó las decisiones de diseño y las escribió en `specs/tickets.md`; no hay
+         una sola línea de U6 construida. Decidido (todo en `tickets.md`):
+         - **§2:** la pregunta 3 de U0 se declara `SUPOSICIÓN` explícita. Su texto
+           nunca quedó escrito en ningún documento ni en git.
+         - **§4 y §4.1:** v1 fiel al *proceso* del legacy, no a sus defectos. Cinco
+           estados (`EN_PROCESO` y `RESUELTO` fuera de v1), transiciones T1–T8, sin
+           reapertura, responder = cerrar. Pendiente: qué acción autoriza T6.
+         - **§5:** el reloj mide **a quién le toca actuar**, no los cambios de
+           estado. Clientes: 3 días hábiles fijos que empiezan al redirigir.
+           Pendiente: festivo de la Ley 2578 de 2026, no incluido en
+           `core.is_colombia_holiday`.
+         - **§3.1:** escritor único **en PostgreSQL** (`SECURITY DEFINER` y retiro
+           del `UPDATE` sobre `id_estado` a `coraje_runtime`/`coraje_etl`); la
+           ingesta también escribe el evento; un `MIGRACION_LEGACY` por ticket.
+         - **§4.2:** traducción de estados legacy por datos del ticket, responsable
+           = `AsignadoA` o, si falta, `Recibe`, estado inicial desde staging.
+         - **§6:** eventos legacy `INTERNO`. **§11:** la validación no bloquea.
+
+         **Incidencia descubierta y cerrada en la misma sesión — la ingesta llevaba
+         11 días detenida sin que nadie lo supiera** (F13, §5): 22 ejecuciones
+         fallidas del 14 al 24-sep por colisión de `codigo_ticket`. Corregida por
+         migración (`8cef4bf`) y **ejercitada**: la ingesta volvió a correr, +61
+         tickets (2.835 → 2.896), 0 tickets desfasados frente a SharePoint, y cada
+         contador subió exactamente un número por ticket nuevo. **V10 cerrado**:
+         workflow de error asignado a la ingesta y a la salida, con alerta a Teams
+         probada de punta a punta (`319cd42`, `eaef12b`). **`sql/` retirada**
+         (`9e2c322`): las transformaciones viven solo en los nodos del workflow.
+
+LOCAL:   limpio tras publicar este corte.
+
+CORTE ANTERIOR (24-sep-2026, corte 14): U5 · CONTRATO DE DISEÑO EJECUTABLE Y PRIMERA VISTA — **CERRADA.** Las
          dos condiciones de cierre de `plan-ejecucion.md` §U5 se cumplen y
          están verificadas: la vista no contiene un solo valor visual local
          (barrido de `design-system/contract.test.mts` sobre todo `src/`), y el
@@ -40,7 +71,7 @@ UNIDAD:  U5 · CONTRATO DE DISEÑO EJECUTABLE Y PRIMERA VISTA — **CERRADA.** L
          móvil y escritorio. **Sin ejercitar:** la corrección del foco con Tab
          (`ed0bd1d`), publicada después de la última prueba del usuario.
 
-CORTE ANTERIOR (23-sep-2026, corte 13): U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las dos
+CORTE DOS ANTES (23-sep-2026, corte 13): U4 · PERÍMETRO Y RETIRO DE LA CLAVE COMPARTIDA — **CERRADA.** Las dos
          condiciones de cierre de `plan-ejecucion.md` §U4 se cumplen y están
          verificadas: una prueba enumera las páginas de `src/app` y exige que
          cada una fuera de los prefijos públicos resuelva identidad, y el
@@ -100,7 +131,7 @@ CORTE ANTERIOR (23-sep-2026, corte 13): U4 · PERÍMETRO Y RETIRO DE LA CLAVE CO
          lleva **acento visual propio**, no el de Impulsa—. Qué acento
          exactamente es trabajo de U5, no consulta.
 
-CORTE DOS ANTES (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
+CORTE TRES ANTES (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERRADA Y EJERCITADA CONTRA EL
          DESPLIEGUE REAL.** Los ocho escenarios mínimos de `plan-ejecucion.md`
          §U3 quedan resueltos: **seis ejercitados de punta a punta el
          22-sep-2026** contra `https://conecta.rbgct.cloud/helpdesk`, y dos
@@ -169,7 +200,7 @@ CORTE DOS ANTES (22-sep-2026, corte 12): U3 · IDENTIDAD DE EMPLEADOS — **CERR
          sin efecto, destino de retorno saneado, y el enlace del sujeto
          inmutable confirmado en `core.dim_personal`. Detalle en §4.
 
-CORTE TRES ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
+CORTE CUATRO ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y el
          prefijo cambia de `/app/HelpDesk` a `/helpdesk` (`cfce427`), tras
          confirmar por lectura del repositorio real de Conecta que `/app` es su
          propio portal de empleados —no un path libre del dominio— y que un
@@ -178,7 +209,7 @@ CORTE TRES ANTES (18-sep-2026, corte 11): se resuelve D7 en sus tres preguntas y
          sin layout de servidor donde inyectar un fragmento; el shell se
          replica dentro de HelpDesk (`U5`).
 
-CORTE CUATRO ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
+CORTE CINCO ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenarios
          mínimos de `plan-ejecucion.md` cerrados y verificados: baseline
          adoptado (corte 6) · credenciales separadas, incluida la corrida real
          de n8n con `coraje_etl` (corte 7) · servicio `migrate` desplegado y
@@ -187,7 +218,7 @@ CORTE CUATRO ANTES (11-sep-2026, corte 8): **U2 cierra** con los cuatro escenari
          usuario creó un ticket real desde el portal y probó la redirección.
          **U3 pasó a ser la cabeza de `plan-ejecucion.md`.**
 
-CORTE CINCO ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
+CORTE SEIS ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GRANT`
          revela que `coraje_app` era superusuario y el único rol de aplicación del
          clúster — se amplía F6 para retirarlo también de n8n. Creados
          `coraje_migrator`, `coraje_runtime`, `coraje_etl`; `coraje_app` rotado y
@@ -198,7 +229,7 @@ CORTE CINCO ANTES (11-sep-2026, corte 7): verificación previa a escribir el `GR
          más (ownership de `staging`, `CREATE INDEX` embebido contra `core`),
          corregidos. Detalle completo en el changelog.
 
-CORTE SEIS ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
+CORTE SIETE ANTES (11-sep-2026, corte 6, publicado en `1e4a6a8`): se escribe
          `schema.prisma` (14 modelos `PascalCase`+`@@map`) y la migración a mano
          `20260910000000_baseline/migration.sql`, se migran 20 archivos de
          aplicación a `camelCase`, y se adopta la migración contra producción con
@@ -522,11 +553,13 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~F4~~ | ~~Posible duplicado por eco~~ — **cerrado 10-sep-2026**: el workflow sí escribe la referencia legacy antes de marcar `SENT`. Resuelto en diseño; sigue sin ejercitarse con un ticket real | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §4.2 |
 | ~~F10~~ | ~~`core.dim_personal` tenía dos filas con el mismo `correo_corporativo`~~ — **cerrado 10-sep-2026, con ejecución real.** `recepcion.gct@rbcol.co` tenía `ccb2a1de...` (activa) y `ef1e69e7...` (fantasma). Esquema aplicado (`es_responsable_historico_no_identificado`, índice único parcial) y la ingesta corrió de punta a punta sin error: 2.559 → 2.825 tickets, 155 → 165 atribuidos al marcador histórico, ninguno a la ocupante actual (§4). El primer intento falló porque n8n tenía publicada la copia sin el fix (confusión de nombres, ver F11) — resuelto reimportando el archivo correcto | ~~Alta~~ | `core.dim_personal`; `specs/tickets.md` §7.3 |
 | ~~F11~~ | ~~`sql/elt/06_transform_ticket.sql` y el nodo `PG - Transform 06 Tickets Legacy` de n8n tenían lógica distinta para clasificar `tipo_requerimiento`/`categoria_1`/`categoria_2` legacy~~ — **cerrado 10-sep-2026 (corte 4), decisión del usuario: gana n8n.** Reconciliado: el bloque del repositorio se reemplaza por la lógica de n8n. Hallazgo real, más grave que la descripción original: la versión del repositorio no "cubría menos casos" — no cubría ninguno. Comparaba contra literales en MAYÚSCULAS que `core.norm_text()` (siempre minúsculas) nunca podía igualar, así que el bloque completo caía al `ELSE` en cualquier ejecución sobre ese archivo. La copia de n8n, la única que corre en producción, usa minúsculas y es la que clasificó correctamente los 2.825 tickets ingeridos hasta hoy. Sin cambio de comportamiento en producción — n8n ya tenía la versión correcta | ~~Media~~ | `sql/elt/06_transform_ticket.sql` vs. `n8n/CORAJE - INCREMENTAL COMPLETO...json` |
-| ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` y un subsistema de identidad sin rastro en el repositorio~~ — **cerrado de verdad, 10-sep-2026 (corte 5).** El primer cierre (corte 4) estaba mal: se apoyó solo en `git log`, nunca en la base real. Investigado a fondo: `codigo_ticket` confirmado como el mecanismo real y correcto (trigger + contador por área/año, con guarda idempotente) — el baseline lo captura tal cual. `identidad_correo`/`resolucion_*` (y, descubierto después, cuatro columnas `*_snapshot` más en `fact_ticket` con la misma data) confirmados como el mismo problema que ya resuelve `sql/elt/04_transform_personal_historico.sql`, abandonados desde jul-2026, sin nada que dim_personal no tuviera ya — retirados de la base real, con lo rescatable en `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral: el backfill de F10 estaba incompleto (solo un correo de varios) — cerrado con un `UPDATE` de 72 filas. `fact_ticket` verificado con exactamente las 18 columnas de `sql/db/06_helpdesk_facts.sql` | ~~Alta~~ | `docs/legacy/identidad-correo-2026-07.md`; consultas de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026, columnas/índices/CHECK/triggers/funciones de `core`+`helpdesk`+`staging` completas |
+| ~~F12~~ | ~~El comentario de n8n sobre `codigo_ticket` y un subsistema de identidad sin rastro en el repositorio~~ — **cerrado de verdad, 10-sep-2026 (corte 5).** El primer cierre (corte 4) estaba mal: se apoyó solo en `git log`, nunca en la base real. Investigado a fondo: `codigo_ticket` confirmado como el mecanismo real y correcto (trigger + contador por área/año, con guarda idempotente) — **corregido el 24-sep-2026: no era correcto, ver F13** — el baseline lo captura tal cual. `identidad_correo`/`resolucion_*` (y, descubierto después, cuatro columnas `*_snapshot` más en `fact_ticket` con la misma data) confirmados como el mismo problema que ya resuelve `sql/elt/04_transform_personal_historico.sql`, abandonados desde jul-2026, sin nada que dim_personal no tuviera ya — retirados de la base real, con lo rescatable en `docs/legacy/identidad-correo-2026-07.md`. Efecto colateral: el backfill de F10 estaba incompleto (solo un correo de varios) — cerrado con un `UPDATE` de 72 filas. `fact_ticket` verificado con exactamente las 18 columnas de `sql/db/06_helpdesk_facts.sql` | ~~Alta~~ | `docs/legacy/identidad-correo-2026-07.md`; consultas de solo lectura contra `coraje_postgres`/`coraje`, 10-sep-2026, columnas/índices/CHECK/triggers/funciones de `core`+`helpdesk`+`staging` completas |
 | ~~F5~~ | ~~El workflow de salida no está commiteado~~ — **cerrado 10-sep-2026**: commiteado con nombre correcto (`n8n/CORAJE - SALIDA - PostgreSQL to SharePoint.json`, commit `1de8641`) y **confirmado activo en la instancia viva de n8n** (el usuario lo confirmó al cerrar esta unidad). Sigue sin ejercitarse con un ticket real — el outbox tiene 0 filas (U1 §5), nadie ha radicado desde el portal todavía | ~~Alta~~ | `specs/sincronizacion-sharepoint.md` §2.2 |
 | ~~F6~~ | ~~Una sola credencial de base para migrar y para servir~~ — **cerrado 11-sep-2026, más grave de lo descrito: `coraje_app` resultó ser además superusuario y el único rol de aplicación del clúster.** Creados `coraje_migrator` (dueño de `core`+`helpdesk`), `coraje_runtime` (DML, usa `web`) y `coraje_etl` (dueño de `staging`, DML sobre `core`+`helpdesk`, usa n8n); `coraje_app` retirado de todo uso automático, contraseña rotada, queda solo para emergencias humanas. **Corrida real de n8n con `coraje_etl` confirmada de punta a punta** tras corregir dos huecos que el `GRANT` inicial no cubría: `staging` sin transferir a `coraje_etl`, y un `CREATE UNIQUE INDEX` que n8n traía embebido contra `core.dim_cliente_contai` — ya redundante y contrario a D1, retirado del workflow (vivo y committeado). **`coraje_runtime` confirmado con una escritura real** (ticket creado desde el portal, corte 8) | ~~Media~~ | `estado/operacion.md` |
 | F7 | `.env.example` declara **una** variable (`DATABASE_URL`) de las ocho que el código lee: las cuatro de Entra (`ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`), `HELPDESK_TOKEN_ENCRYPTION_KEY` y las dos del webhook de n8n. Todas puestas en Coolify, ninguna documentada. Un despliegue nuevo arranca y falla en el primer ingreso, no al arrancar. Las dos de n8n solo las lee la acción de redirección, hoy sin pantalla que la invoque | Baja | `estado/operacion.md` |
-| F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` | Media | `specs/tickets.md` §5 |
+| ~~F13~~ | ~~La ingesta falló en cada ejecución del 14 al 24-sep-2026 (22 veces) con `duplicate key … fact_ticket_codigo_ticket_key (ADM-2026-1064)`, sin avisar a nadie~~ — **cerrado 24-sep-2026, ejercitado.** Dos defectos del mecanismo que F12 había declarado «correcto»: (1) `trg_set_codigo_ticket` es `BEFORE INSERT` y PostgreSQL lo ejecuta antes de resolver `ON CONFLICT`; la ingesta reenvía todo staging en cada ejecución, así que cada ticket existente gastaba un número (en 2024 y 2025 cada contador valía exactamente 10× sus tickets); (2) `LPAD(n, 4, '0')` trunca: al pasar ADM/2026 de 9.999, el 10641 dio `'1064'`, ya emitido. El fallo revertía el contador y la colisión se repetía siempre. Migración `20260924120000_corregir_codigo_ticket` (`8cef4bf`): el trigger no genera código para un `id_ticket` existente, `LPAD` no trunca, y cada contador vuelve al mayor número emitido. Verificado antes: dueño `coraje_migrator`, un solo trigger, `codigo_area` única. Después: migración aplicada, ingesta 2.835 → 2.896 tickets, 0 desfasados, contadores +61 en total = tickets nuevos. Ningún código emitido se modificó (quedan huecos y números inflados, únicos) | ~~Alta~~ | `coraje-web/prisma/migrations/20260924120000_corregir_codigo_ticket/` |
+| ~~V10~~ | ~~No existía workflow de error en n8n~~ — **cerrado 24-sep-2026.** `n8n/Alertas de errores a Teams.json`, genérico para cualquier workflow de la instancia, asignado a la ingesta y a la salida (`settings.errorWorkflow`). El que existía antes no lo usaba nadie, interpolaba el mensaje sin escapar (los errores de PostgreSQL traen comillas y rompen el JSON) y filtraba por `execution.mode = "production"`. Envía a un flujo propio de Power Automate, *Alertas de n8n a Equipo Desarrollo*, separado del de Coolify; el `sig` va en una credencial *Query Auth*. Probado con un workflow temporal: la tarjeta llegó con comillas intactas. **Sin ejercitar con un fallo real** de estos dos workflows. **No cubre** que n8n esté caído o la programación desactivada: eso sigue en U10 | ~~Alta~~ | `n8n/` |
+| F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` — **decidido el 24-sep-2026, no construido:** reloj por turno, prioridad del legacy para internos, 3 días fijos para clientes (`specs/tickets.md` §5) | Media | `specs/tickets.md` §5 |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
 
 > **F12 reabierto — la consulta que se marcó "opcional, de prioridad baja" en corte 4
@@ -550,7 +583,9 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza~~ — **resuelto 11-sep-2026 (corte 8)**: servicio `migrate` desplegado, gate `depends_on: service_completed_successfully` confirmado en un deploy real de Coolify (logs: `No pending migrations to apply.` antes de que `web` arrancara) | ~~Sin el servicio, no había forma documentada de verificar comportamiento — ni local, ni por push~~ | ~~Cerrado~~ |
 | ~~La contraseña real de `coraje_app` se pegó en texto plano en esta conversación~~ — **resuelto 11-sep-2026**: rotada al cerrar F6, con `\password` interactivo (no vuelve a aparecer en texto). `coraje_app` además dejó de ser la credencial de cualquier sistema automático | ~~Si el historial de esta sesión quedaba expuesto, exponía con él la credencial de base de producción~~ | ~~Cerrado~~ |
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
-| El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
+| **Credenciales de SharePoint y de Teams a nombre de personas.** La salida usa «Cuenta edwin»; la ingesta pasó el 24-sep a «Microsoft SharePoint account», sin confirmar de quién es. El flujo de Power Automate de Coolify publica y registra con conexiones de `johngarcia@rbcol.co` | El día que una de esas cuentas se desactive o cambie de contraseña, la integración deja de funcionar. Con el workflow de error, la ingesta y la salida ya avisan; el flujo de Coolify no | Confirmar el dueño de cada credencial y mover las personales a una cuenta de servicio. Sin urgencia mientras las cuentas sigan activas |
+| **La ingesta reescribe los ~2.800 tickets en cada ejecución**, dos veces al día, aunque no hayan cambiado: toda la tabla recibe `ultima_actualizacion = NOW()` | Carga constante contra el objetivo de economía de recursos, y `ultima_actualizacion` no dice cuándo cambió de verdad un ticket | Se corrige con la reescritura de la ingesta decidida en U6 (`specs/tickets.md` §3.1: tocar solo lo que cambia) |
+| ~~El workflow de ingesta committeado embebe su propia copia de cada query SQL, no la lee de `sql/elt/`~~ — **resuelto 24-sep-2026 retirando la segunda copia**: `sql/` se eliminó (`9e2c322`) tras comprobar que 02, 03 y 05 ya diferían en lógica de lo que corre. **Lo que sigue siendo cierto:** ningún commit cambia lo que ejecuta n8n. Un cambio al workflow del repositorio no está aplicado hasta que se importa en la instancia y se confirma con una ejecución; y un cambio hecho en la instancia no está versionado hasta que se exporta. Texto original: El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 | ~~La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo`~~ — **descartado como causa real (17-sep-2026)**: la consulta de verificación devolvió 0 filas, ningún duplicado. El deploy sí falló, pero por otra razón — ver fila siguiente | ~~El `CREATE UNIQUE INDEX` fallaría al desplegar si hubiera un duplicado~~ | ~~Verificado y descartado~~ |
 | ~~**El primer deploy de U3 falló.**~~ — **resuelto 18-sep-2026, con evidencia completa.** `coraje_migrator` (dueño de `core`/`helpdesk` desde F6) nunca recibió el privilegio `CREATE` sobre la base de datos completa — crear un schema nuevo (`app`) lo exige, ser dueño de schemas existentes no alcanza. Error real: `permission denied for database coraje` (SQLSTATE 42501), `applied_steps_count: 0`. Reparado: `GRANT CREATE ON DATABASE coraje TO coraje_migrator` → `prisma migrate resolve --rolled-back` (confirmado por `rolled_back_at` poblado) → redeploy → columnas `rol_aplicacion`/`entra_object_id` confirmadas existentes → `UPDATE` exitoso sobre `daniellopera@rbcol.co` | ~~Bloqueaba por completo el arranque de `web` — el gate de U2 hizo justo lo que debía~~ | ~~Cerrado, con evidencia de cada paso~~ |
 | ~~**La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía**~~ — **cerrado 22-sep-2026:** declarada en Traefik de Coolify, sin *strip prefix* (los assets de Next.js cargan y el preflight de Tailwind se aplica), redirect URI de Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`, y `https://conecta.rbgct.cloud/app` sigue sirviendo el SPA de Conecta — la regla no se comió el dominio. Al ejercitarla apareció un defecto que solo el despliegue podía revelar (`Location` absoluto derivado de `request.url`, que resolvía a `0.0.0.0:3000`), corregido en `306d286`. Texto original: (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
@@ -563,7 +598,14 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
-| `ed0bd1d` | **Corte vigente.** Hace visible el foco con teclado (`outline-solid`, defecto de Tailwind 4), replica la barra de desplazamiento de Conecta y marca «Auto gestión» como ítem activo |
+| `9e2c322` | **Corte vigente.** Retira `sql/` y fija la traducción de estados legacy (`tickets.md` §4.2) y la visibilidad `INTERNO` de los eventos legacy |
+| `eaef12b` | Asigna el workflow de error a la ingesta y a la salida (exportaciones de la instancia viva) |
+| `319cd42` | Versiona el workflow genérico de alertas de errores a Teams |
+| `8cef4bf` | **F13.** Corrige la generación de `codigo_ticket` que tenía detenida la ingesta desde el 14-sep |
+| `efec608` | Registra V11 y los estados legacy en SharePoint |
+| `2ded4ae` | U6, punto 2: escritor único de eventos en PostgreSQL (`tickets.md` §3.1) |
+| `d2405d6` | U6, punto 1: transiciones de la v1 y reloj por turno (`tickets.md` §4.1, §5) |
+| `ed0bd1d` | Hace visible el foco con teclado (`outline-solid`, defecto de Tailwind 4), replica la barra de desplazamiento de Conecta y marca «Auto gestión» como ítem activo |
 | `47886bd` | Distingue la entrada desde Conecta de la entrada directa: `/ingreso`, `login_hint` y `select_account`, perfil de Conecta con `zod`, isotipo en la columna, barra propia y pestañas de HelpDesk |
 | `d145679` | Replica el shell de Conecta desde la rama desplegada (sidebar navy, logotipo blanco) |
 | `463f8d0` | **U5.** Construye el contrato de diseño ejecutable y el primer shell de Conecta; logotipo oficial |
@@ -666,36 +708,50 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U6, modelo de eventos del ticket
+## Acción inmediata para la siguiente sesión — U6, punto 4: actor del evento y T6
 
-**U5 queda cerrada. La cabeza de `plan-ejecucion.md` pasa a ser U6**, sin desviación.
+**U6 sigue siendo la cabeza de `plan-ejecucion.md`**, sin desviación. La sesión del
+24-sep tomó las decisiones de los puntos 1, 2 y 6 y resolvió una incidencia (F13) que
+bloqueaba el punto 6. Todo está escrito en `specs/tickets.md`; **nada de U6 está
+construido**.
 
-**Objetivo (`plan-ejecucion.md` §U6):** los tres campos ausentes de `specs/tickets.md`
-§6, el escritor único y la proyección transaccional. El estado del ticket se deriva de
-sus eventos; nadie lo escribe a mano (`specs/tickets.md` §3).
+**Lo primero: decidir el punto 4, quién puede ser autor de un evento.** Es una sola
+pregunta con dos caras:
+- **el actor** (`tickets.md` §6): hoy `id_autor` solo referencia `core.dim_personal`.
+  Opciones: modelar ya un actor genérico (empleado / cliente / sistema, con `CHECK`),
+  como `EventActor` de Impulsa (`src/server/revision/review-event.service.ts`), o solo
+  empleado y sistema, dejando al cliente como cambio aditivo mientras U8 siga
+  bloqueada;
+- **qué acción del catálogo autoriza T6** (`tickets.md` §4.1, recuadro `PENDIENTE`):
+  el solicitante que aporta información, interno desde la aplicación o registrado por el
+  responsable cuando es cliente.
 
-**Escenarios mínimos, tal como el plan los define:**
-- ningún camino cambia estado sin evento, **con prueba negativa**;
-- la historia de estados se puede reconstruir;
-- un evento interno es invisible en el portal, **con prueba negativa**;
-- reprocesar la ingesta legacy no duplica eventos.
+**Después, en este orden, y cada uno como decisión antes de escribir código:**
+- **punto 5:** el catálogo de tipos de evento de U6 (hoy el `CHECK` vivo solo admite
+  `COMENTARIO`, `REASIGNACION`, `CAMBIO_ESTADO` y `MIGRACION_LEGACY`), y si se pasa de
+  `CHECK` a `enum`;
+- **el ticket de `PORTAL_CLIENTE` sin código** (`tickets.md` §4.2): prueba del portal
+  retirado o dato real. No recibe evento de migración hasta que se decida.
 
-**Dependencias:** U2 está cerrada. U0 está **parcial**: cuatro de sus cinco preguntas
-se cerraron el 03-sep-2026, y la pregunta 3 sigue aplazada por decisión previa. **Lo
-primero de la sesión es confirmar si la pregunta 3 afecta al vocabulario de estados o
-de eventos.** Si lo afecta, U6 se construye sobre una suposición y hay que nombrarla.
+**Luego se construye, respetando el orden de despliegue de `tickets.md` §3.1:** filas de
+`dim_estado` y campos del evento (migración Prisma) → escritor único → ingesta reescrita
+e importada en n8n, verificada con una ejecución real → eventos `MIGRACION_LEGACY` →
+retiro del privilegio `UPDATE` sobre `id_estado`, con la prueba negativa contra la base
+desplegada.
 
-**Lo que hay que leer antes de escribir:**
-- `specs/tickets.md` §3, §4 y §6, con su bloque de estado y su tabla de verificación;
-- el modelo `FactTicketEvento` o equivalente en `coraje-web/prisma/schema.prisma`;
-- `sql/elt/06_transform_ticket.sql`, porque la ingesta ya escribe eventos legacy;
-- cómo lo resuelve Impulsa (`src/server/revision/*event*`), recordando que en diseño
-  visual Impulsa no es referencia, pero en modelo de datos sí.
+**Lo que hay que leer antes de escribir código:**
+- `specs/tickets.md` §3.1, §4.1, §4.2, §5 y §6;
+- el SQL de las transformaciones **dentro de los nodos del workflow**
+  `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` — `sql/` ya no
+  existe. Para revisarlo, extraerlo del JSON (`parameters.query` de cada nodo
+  `PG - Transform NN`);
+- la migración `20260924120000_corregir_codigo_ticket`: toda escritura nueva en
+  `fact_ticket` pasa por ese trigger.
 
-**Cuidado, esta unidad toca datos reales:** 2.313 tickets y 439 eventos migrados, y la
-ingesta sigue corriendo. Toda migración nueva pasa por el servicio `migrate` y se
-revisa contra la base real antes de publicar. La autorización destructiva no alcanza
-`core` ni `helpdesk`.
+**Cuidado, esta unidad toca datos reales:** 2.896 tickets y 532 eventos al 24-sep-2026,
+y la ingesta corre dos veces al día. Toda migración que haga `CREATE OR REPLACE` o
+`ALTER` sobre un objeto existente exige comprobar antes que su dueño es
+`coraje_migrator`: si falla, `web` no arranca.
 
 **Decidido y pendiente de construir, fuera de la cabeza de la cola:**
 - **U5.2, endpoint de Conecta** (`specs/integracion-conecta.md` §5): la parte 2 de la
@@ -1257,3 +1313,27 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   *Documentación:* `design/sistema-helpdesk.md`, nueva `specs/integracion-conecta.md`,
   `specs/acceso-empleados.md` §4, `CLAUDE.md`, este handoff y `plan-ejecucion.md`.
   **U6 pasa a ser la cabeza.**
+- 24-sep-2026 (corte 15) — **U6 en curso, solo decisiones; incidencia de ingesta
+  descubierta y cerrada.**
+  *Estado previo:* U6 cabeza de la cola, sin empezar; la ingesta llevaba desde el 14-sep
+  fallando en silencio, sin que ningún documento lo supiera.
+  *Cambio:* decisiones de U6 escritas en `specs/tickets.md` §2, §3.1, §4, §4.1, §4.2, §5,
+  §6 y §11, y en `permisos.md` §3 (Reabrir fuera de v1). Diagnóstico por consultas de
+  solo lectura contra la VPS: colisión de `codigo_ticket` por trigger `BEFORE INSERT`
+  más `LPAD` que trunca (F13), corregida por migración. Workflow de error genérico,
+  alerta a Teams por un flujo propio de Power Automate, asignado a ingesta y salida
+  (V10). `sql/` retirada: sus copias de las transformaciones ya no coincidían con n8n.
+  *Evidencia:* migración aplicada (`_prisma_migrations`), ingesta 2.835 → 2.896 tickets,
+  0 desfasados, contadores +61 = tickets nuevos; tarjeta de prueba recibida en Teams con
+  comillas intactas; exportaciones de n8n comparadas nodo por nodo con el repositorio.
+  *Incidencias:* el primer diagnóstico de F13 (códigos copiados del legacy) era
+  incorrecto y lo desmintieron los datos; el `sig` de la URL de Power Automate de
+  Coolify quedó expuesto en la conversación y el usuario decidió no rotarlo.
+  *Corrección documental:* F12 declaraba correcto el mecanismo de `codigo_ticket`, y
+  `legacy/reglas-negocio-powerapps.md` §13.3 declaraba la colisión «no reproducible»;
+  ambos quedan corregidos.
+  *Decisión:* U6 **parcial** (sin código); F13 y V10 **cerrados**.
+  *Commits:* `d2405d6`, `2ded4ae`, `efec608`, `8cef4bf`, `319cd42`, `eaef12b`, `9e2c322`.
+  *Documentación:* `specs/tickets.md`, `specs/permisos.md`, `specs/sincronizacion-sharepoint.md`,
+  `contexto-canonico.md`, `estado/operacion.md`, `CLAUDE.md`,
+  `legacy/reglas-negocio-powerapps.md` y este handoff.

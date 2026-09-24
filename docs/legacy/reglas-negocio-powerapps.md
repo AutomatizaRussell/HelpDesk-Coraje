@@ -217,6 +217,10 @@ hacia `TareasLegal`/oportunidapp, o queda fuera de alcance?
    genera `codigo_ticket` como `HD-<año>-<secuencial>` (`helpdesk.next_codigo_ticket()`,
    secuencia de PostgreSQL + `UNIQUE`), sin derivar prefijo del área destino. La
    colisión `ADM-` del legacy no es reproducible en este diseño.
+   **Corregido el 24-sep-2026: la conclusión era falsa.** Se apoyó en
+   `sql/db/02_functions.sql`, que ya no era la versión viva. La función real genera
+   `<área>-<año>-<número>` con un contador por área y año, y **sí colisionó**: detuvo la
+   ingesta del 14 al 24-sep-2026 (`estado/handoff.md`, F13). Corregida por migración.
 4. **`HdLegal` → `TareasLegal`/oportunidapp (§11):** fuera de alcance de HelpDesk.
 5. **Excepción hardcodeada de `PROYECTOS Y TI` (§5):** se conserva como comportamiento,
    pero no como código quemado — el ticket de esa combinación sigue enrutando a Alex
