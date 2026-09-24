@@ -419,7 +419,7 @@ inmediata.
 | V8 | El SLA se calcula al crear y no se recalcula ni se pausa | `src/app/portal/tickets/nuevo/actions.ts` | **Verificado** 03-sep-2026 |
 | V9 | Estados reales usados por los tickets migrados | Consulta a `helpdesk.fact_ticket` agrupando por estado | **Verificado** 10-sep-2026, contra la VPS real — pero el total ya no es 2.313: son **2.559**. Solo `ABIERTO` y `CERRADO` tienen filas; `RECHAZADO` no se ha usado nunca (`handoff.md` §4) |
 | V10 | Distribución real de prioridades en los datos migrados | Ídem | **Verificado** 10-sep-2026: `BAJA`=645, `MEDIA`=1911, sin prioridad=3 (coincide con `baseline-calidad.md`). Cero `ALTA`, consistente con V2 |
-| V11 | Cuántos eventos legacy quedarían como `INTERNO` al añadir visibilidad | Consulta por `tipo_evento` | **Sin verificar** — decide el valor por defecto de la migración |
+| V11 | Cuántos eventos legacy quedarían como `INTERNO` al añadir visibilidad | Consulta por `tipo_evento` | **Verificado** 24-sep-2026, contra la VPS real: 532 eventos, **todos `COMENTARIO`**, derivados de cuatro columnas legacy (`07_transform_ticket_evento.sql`). No existe ningún evento de estado. En la misma consulta, `staging.sp_helpdesk_raw` tiene `Cerrado`=2.838, `Reasignado`=30 y `Abierto`=24 |
 
 > **Lectura del conjunto.** Diez de trece afirmaciones están verificadas contra el árbol
 > o contra la base real. V9 y V10 confirman el vocabulario de estados propuesto en §4,
