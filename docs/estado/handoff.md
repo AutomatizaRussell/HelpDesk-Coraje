@@ -1,39 +1,42 @@
 # Handoff técnico
 
 ```
-CORTE:   24-sep-2026 (corte 15, U6 EN CURSO — solo decisiones; incidencia de ingesta cerrada)
-HEAD:    `9e2c322` — más la documentación de este corte, que se publica encima
+CORTE:   25-sep-2026 (corte 16, U6 EN CURSO — fase 1 construida, SIN DESPLEGAR)
+SOBRE:   `546e06b`
 RAMA:    main
-UNIDAD:  U6 · MODELO DE EVENTOS DEL TICKET — **EN CURSO, SIN CÓDIGO.** Esta sesión
-         tomó las decisiones de diseño y las escribió en `specs/tickets.md`; no hay
-         una sola línea de U6 construida. Decidido (todo en `tickets.md`):
-         - **§2:** la pregunta 3 de U0 se declara `SUPOSICIÓN` explícita. Su texto
-           nunca quedó escrito en ningún documento ni en git.
-         - **§4 y §4.1:** v1 fiel al *proceso* del legacy, no a sus defectos. Cinco
-           estados (`EN_PROCESO` y `RESUELTO` fuera de v1), transiciones T1–T8, sin
-           reapertura, responder = cerrar. Pendiente: qué acción autoriza T6.
-         - **§5:** el reloj mide **a quién le toca actuar**, no los cambios de
-           estado. Clientes: 3 días hábiles fijos que empiezan al redirigir.
-           Pendiente: festivo de la Ley 2578 de 2026, no incluido en
-           `core.is_colombia_holiday`.
-         - **§3.1:** escritor único **en PostgreSQL** (`SECURITY DEFINER` y retiro
-           del `UPDATE` sobre `id_estado` a `coraje_runtime`/`coraje_etl`); la
-           ingesta también escribe el evento; un `MIGRACION_LEGACY` por ticket.
-         - **§4.2:** traducción de estados legacy por datos del ticket, responsable
-           = `AsignadoA` o, si falta, `Recibe`, estado inicial desde staging.
-         - **§6:** eventos legacy `INTERNO`. **§11:** la validación no bloquea.
+UNIDAD:  U6 · MODELO DE EVENTOS DEL TICKET — todas las decisiones tomadas
+         (`specs/tickets.md` §3.1, §4, §4.1, §4.2, §5, §6) y **fase 1 construida**:
+         - migración `20260925120000_modelo_eventos_ticket`: fila `ASIGNADO`,
+           `enum` de tipo/actor/visibilidad, `estado_anterior`/`estado_nuevo`,
+           `CHECK` del actor, FK de eventos a `RESTRICT`, índice por ticket y
+           el escritor único `helpdesk.registrar_evento_ticket`;
+         - ingesta: transformaciones 06 y 07 reescritas en el workflow versionado
+           (06 ya no escribe `id_estado`, responsable = `AsignadoA` o `Recibe`,
+           solo reescribe tickets que cambian; 07 escribe todo por el escritor);
+         - `event-model.contract.test.mts` (8 pruebas).
+         **Fase 2, pendiente:** migración que retira privilegios y quita los
+         `DEFAULT` temporales, más las pruebas negativas contra la base. Solo se
+         publica después de verificar la ingesta nueva con una ejecución real.
 
-         **Incidencia descubierta y cerrada en la misma sesión — la ingesta llevaba
-         11 días detenida sin que nadie lo supiera** (F13, §5): 22 ejecuciones
-         fallidas del 14 al 24-sep por colisión de `codigo_ticket`. Corregida por
-         migración (`8cef4bf`) y **ejercitada**: la ingesta volvió a correr, +61
-         tickets (2.835 → 2.896), 0 tickets desfasados frente a SharePoint, y cada
-         contador subió exactamente un número por ticket nuevo. **V10 cerrado**:
-         workflow de error asignado a la ingesta y a la salida, con alerta a Teams
-         probada de punta a punta (`319cd42`, `eaef12b`). **`sql/` retirada**
-         (`9e2c322`): las transformaciones viven solo en los nodos del workflow.
+         Evidencia: `tsc`, `lint`, `pnpm test` 70/70, `build`, `prisma validate`;
+         SQL de la migración y de las dos transformaciones parseado con el parser
+         de PostgreSQL (`libpg-query`), con controles negativos. **Sin ejercitar**:
+         nada ha corrido contra la base; errores semánticos (columnas, tipos,
+         privilegios) solo aparecen al aplicar la migración.
 
-LOCAL:   limpio tras publicar este corte.
+         Regla nueva: una unidad = un commit con implementación y documentación;
+         nunca commits de solo documentación (§8, `CLAUDE.md`).
+
+         Comprobaciones previas contra la base (25-sep-2026, solo lectura):
+         `coraje_migrator` es dueño de `helpdesk`/`core` con `CREATE` y de las tres
+         tablas alteradas; 538 eventos, todos `COMENTARIO`, ninguno con autor; sin
+         `ASIGNADO`; los tres roles existen.
+
+LOCAL:   limpio tras publicar este corte (commit con la línea `Corte 16`).
+
+CORTE ANTERIOR (24-sep-2026, corte 15): U6 en curso, solo decisiones. Incidencia F13
+         (ingesta detenida 11 días por colisión de `codigo_ticket`) corregida y
+         ejercitada en `8cef4bf`; V10 cerrado (alertas a Teams); `sql/` retirada.
 
 CORTE ANTERIOR (24-sep-2026, corte 14): U5 · CONTRATO DE DISEÑO EJECUTABLE Y PRIMERA VISTA — **CERRADA.** Las
          dos condiciones de cierre de `plan-ejecucion.md` §U5 se cumplen y
@@ -708,50 +711,33 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U6, punto 4: actor del evento y T6
+## Acción inmediata para la siguiente sesión — U6: desplegar la fase 1 y verificar la ingesta
 
-**U6 sigue siendo la cabeza de `plan-ejecucion.md`**, sin desviación. La sesión del
-24-sep tomó las decisiones de los puntos 1, 2 y 6 y resolvió una incidencia (F13) que
-bloqueaba el punto 6. Todo está escrito en `specs/tickets.md`; **nada de U6 está
-construido**.
+**U6 sigue siendo la cabeza de `plan-ejecucion.md`.** Fase 1 construida y sin
+desplegar (cabecera). Orden obligatorio (`tickets.md` §3.1):
 
-**Lo primero: decidir el punto 4, quién puede ser autor de un evento.** Es una sola
-pregunta con dos caras:
-- **el actor** (`tickets.md` §6): hoy `id_autor` solo referencia `core.dim_personal`.
-  Opciones: modelar ya un actor genérico (empleado / cliente / sistema, con `CHECK`),
-  como `EventActor` de Impulsa (`src/server/revision/review-event.service.ts`), o solo
-  empleado y sistema, dejando al cliente como cambio aditivo mientras U8 siga
-  bloqueada;
-- **qué acción del catálogo autoriza T6** (`tickets.md` §4.1, recuadro `PENDIENTE`):
-  el solicitante que aporta información, interno desde la aplicación o registrado por el
-  responsable cuando es cliente.
+1. ~~Comprobaciones previas~~ y publicación de la fase 1: hechas (cabecera).
+2. **Confirmar que `migrate` aplicó la migración y que `web` arrancó.** Hasta importar
+   el workflow, la ingesta antigua sigue funcionando gracias a los `DEFAULT`
+   temporales de actor y visibilidad.
+3. **Importar el workflow de ingesta en n8n y ejecutarlo a mano dos veces.** Primera:
+   un `MIGRACION_LEGACY` por ticket legacy (≈2.900), ningún ticket sin evento de
+   inicio, estados según §4.2 (los `Reasignado` con área y responsable pasan a
+   `ASIGNADO`). Segunda: cero eventos nuevos, que demuestra la idempotencia.
+4. **Fase 2:** migración que retira `UPDATE` sobre `id_estado` (retirando el `UPDATE`
+   de tabla y concediéndolo por columna: un `REVOKE` de columna no anula un permiso de
+   tabla), `INSERT`/`UPDATE`/`DELETE` sobre `fact_ticket_evento` y `DELETE` sobre
+   `fact_ticket` a `coraje_runtime` y `coraje_etl`, y quita los `DEFAULT` temporales.
+   Después, pruebas negativas con `SET ROLE` contra la base. `ALTER DEFAULT PRIVILEGES`
+   concede DML completo en cada tabla nueva: el retiro es explícito por tabla.
 
-**Después, en este orden, y cada uno como decisión antes de escribir código:**
-- **punto 5:** el catálogo de tipos de evento de U6 (hoy el `CHECK` vivo solo admite
-  `COMENTARIO`, `REASIGNACION`, `CAMBIO_ESTADO` y `MIGRACION_LEGACY`), y si se pasa de
-  `CHECK` a `enum`;
-- **el ticket de `PORTAL_CLIENTE` sin código** (`tickets.md` §4.2): prueba del portal
-  retirado o dato real. No recibe evento de migración hasta que se decida.
+**Conocido y sin resolver en U6:** un `INSERT` en `fact_ticket` puede fijar el estado
+inicial sin evento. La ingesta lo cubre con `MIGRACION_LEGACY` en la misma ejecución;
+la creación desde la aplicación (U7) tiene que pasar por una función que inserte el
+ticket y su `CREACION` juntos.
 
-**Luego se construye, respetando el orden de despliegue de `tickets.md` §3.1:** filas de
-`dim_estado` y campos del evento (migración Prisma) → escritor único → ingesta reescrita
-e importada en n8n, verificada con una ejecución real → eventos `MIGRACION_LEGACY` →
-retiro del privilegio `UPDATE` sobre `id_estado`, con la prueba negativa contra la base
-desplegada.
-
-**Lo que hay que leer antes de escribir código:**
-- `specs/tickets.md` §3.1, §4.1, §4.2, §5 y §6;
-- el SQL de las transformaciones **dentro de los nodos del workflow**
-  `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` — `sql/` ya no
-  existe. Para revisarlo, extraerlo del JSON (`parameters.query` de cada nodo
-  `PG - Transform NN`);
-- la migración `20260924120000_corregir_codigo_ticket`: toda escritura nueva en
-  `fact_ticket` pasa por ese trigger.
-
-**Cuidado, esta unidad toca datos reales:** 2.896 tickets y 532 eventos al 24-sep-2026,
-y la ingesta corre dos veces al día. Toda migración que haga `CREATE OR REPLACE` o
-`ALTER` sobre un objeto existente exige comprobar antes que su dueño es
-`coraje_migrator`: si falla, `web` no arranca.
+**Datos reales:** ≈2.900 tickets y 538 eventos al 25-sep; la ingesta corre dos veces al
+día.
 
 **Decidido y pendiente de construir, fuera de la cabeza de la cola:**
 - **U5.2, endpoint de Conecta** (`specs/integracion-conecta.md` §5): la parte 2 de la
@@ -840,7 +826,7 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 | Observadores (watchers de solo lectura) van en v1, a partir del prototipo `helpdesk_santi/` | `specs/tickets.md` §11, `specs/permisos.md` §10 | Decidida, no construida — depende del catálogo de personas/roles todavía `ABIERTO` |
 | Solicitud de validación dirigida a persona va en v1, distinta de la autorización excepcional | Ídem | Decidida, no construida — sin decidir aún si bloquea el avance del ticket |
 | D8: `sql/elt/*.sql` sigue existiendo como texto de referencia legible, sin que n8n lo lea — no se construye ahora un mecanismo para que n8n consuma el archivo del repositorio (p. ej. leerlo de GitHub) en vez de su copia embebida | `docs/estado/handoff.md` §5 (F11, F12), §6 (riesgo de divergencia) | **Diferida deliberadamente (10-sep-2026):** no vale la pena esa robustez con nada más construido todavía (sin auth, sin ciclo de vida del ticket). Mitigación mientras tanto: disciplina de proceso, no de infraestructura — confirmar explícitamente el reimport a n8n en cada cambio a un archivo que un nodo embeba (regla ya en §6). Condición de revisión: si la divergencia entre `sql/elt/` y n8n se repite una tercera vez, o al llegar al final de la cola de `plan-ejecucion.md` |
-| U0 pregunta 1 (¿espera al cliente?): sí hace falta un estado, generalizado a `ESPERANDO_SOLICITANTE`; el SLA se **reinicia completo** al salir, no se pausa — riesgo aceptado explícitamente | `specs/tickets.md` §4, §5 | Decidida, no construida |
+| U0 pregunta 1 (¿espera al cliente?): sí hace falta un estado, generalizado a `ESPERANDO_SOLICITANTE`; el SLA se **reinicia completo** al salir, no se pausa — riesgo aceptado explícitamente | `specs/tickets.md` §4, §5 | **Aplazada fuera de v1** el 25-sep-2026: no está en el legacy ni en el prototipo. Se conserva como diseño para cuando se añada |
 | U0 pregunta 4: la excepción de `alexbolanos@rbcol.co` para `PROYECTOS Y TI` sigue vigente | `legacy/reglas-negocio-powerapps.md` §5, §13.5 | Confirmada por el usuario. Ya decidido normalizarla como fila de tabla, no como código quemado |
 | U0 pregunta 2: Jimena Tejeiro no tiene nada especial en su rol frente a Legal — es exactamente el mismo caso que Alex para Proyectos y TI, la responsable normal del área. Quitando la pantalla fusionada (interfaz, no se replica) y el puente a `TareasLegal` (aplazado), no queda ninguna regla de negocio distinta que conservar | `legacy/reglas-negocio-powerapps.md` §11 | Cerrada. Legal se enruta igual que cualquier otra área en la tabla de enrutamiento, sin comparación de identidad en el código |
 | U0 pregunta 5: no requiere ningún mecanismo de producto. Reportar y cerrar con las acciones realizadas es responsabilidad de quien resuelve o de quien radicó, no algo que la aplicación pueda detectar | — | Cerrada, sin acción de diseño |
@@ -884,9 +870,23 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 
 ## 8. Procedimiento de actualización (durable)
 
+**Una unidad se publica en un único commit** que contiene la implementación y toda su
+documentación: spec, plan y este documento. No hay commits de solo documentación, ni
+para el cierre ni para decisiones sin código todavía: estas esperan en local hasta que
+se publique la implementación que las usa (decisión del 25-sep-2026, igual que Impulsa).
+
+Un commit no puede contener su propio hash. Por eso este documento **nunca escribe el
+hash del commit que lo publica**:
+
+- La cabecera registra `SOBRE: <hash>`, el HEAD de `origin/main` sobre el que se
+  construyó la unidad, que ya se conoce al escribirla.
+- El cuerpo del commit incluye la línea `Corte N`. El hash se recupera con
+  `git log --grep "Corte N"`.
+- §7 recibe el hash de la unidad **en el corte siguiente**, que ya lo conoce.
+
 Al cerrar cada unidad de trabajo, reemplazar la instantánea conservando esta estructura:
 
-1. **Cabecera** — corte, HEAD, rama, unidad, cambios locales no incluidos.
+1. **Cabecera** — corte, `SOBRE`, rama, unidad, cambios locales no incluidos.
 2. **§1 Veredicto** — qué está cerrado, qué no, y las salvedades sobre lo aparentemente
    cerrado.
 3. **§2 Estado por fase** — actualizar solo las filas que cambiaron, **con evidencia**.
@@ -895,7 +895,7 @@ Al cerrar cada unidad de trabajo, reemplazar la instantánea conservando esta es
    cortes ni de un entorno a otro.
 6. **§5–6 Fallos y riesgos** — retirar los cerrados **con evidencia**, añadir los nuevos.
    Los retirados se tachan con su fecha y su razón; no se borran.
-7. **§7 Commits** — añadir el commit de la unidad.
+7. **§7 Commits** — añadir el commit de la unidad anterior, localizado por su `Corte N`.
 8. **Acción inmediata** — **una sola**. Debe ser la cabeza de la cola de
    `estado/plan-ejecucion.md`, o declarar explícitamente que se desvía y por qué.
 

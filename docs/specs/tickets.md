@@ -23,7 +23,7 @@ vocabulario de estados y su registro de eventos. El acceso externo vive en
 | Pieza | Estado real |
 |---|---|
 | `helpdesk.fact_ticket` | Existe, poblada, con `CHECK` de origen, fechas y calificación |
-| `helpdesk.fact_ticket_evento` | Existe, con seis tipos de evento y `event_hash` para idempotencia |
+| `helpdesk.fact_ticket_evento` | Existe, con cuatro tipos de evento (V3) y `event_hash` para idempotencia |
 | `helpdesk.dim_estado` | Existe, **con tres filas**: `ABIERTO`, `CERRADO`, `RECHAZADO` |
 | `helpdesk.dim_prioridad` | Existe, **con dos filas**: `BAJA` (5 días) y `MEDIA` (3 días) |
 | `helpdesk.routing_rule` | Existe: resuelve encargado por tipo de requerimiento |
@@ -115,6 +115,43 @@ escritor único. **Qué sistema gana cuando SharePoint y la plataforma no coinci
 siendo U9** (`specs/sincronizacion-sharepoint.md` §4.1). Esto solo fija que ningún
 cambio de estado queda sin su evento, venga de donde venga.
 
+**El registro de eventos también se protege por privilegios** (decidido el 25-sep-2026).
+A `coraje_runtime` y a `coraje_etl` se les retira `UPDATE` y `DELETE` sobre
+`helpdesk.fact_ticket_evento`, con prueba negativa contra la base desplegada. Es la
+regla 1 de §3 hecha cumplir por la base, y no solo por convención. Hoy la ingesta la
+rompe: sus cuatro `INSERT` de la transformación 07 terminan en
+`ON CONFLICT (event_hash) DO UPDATE SET contenido, fecha_registro`. Como el contenido
+forma parte del hash, lo único que cambia es `fecha_registro`, que se toma del
+`Modified` del ticket. Así, la fecha de cada evento legacy es la última modificación del
+ticket, no el momento del comentario, y se mueve en cada ejecución. La ingesta reescrita
+usa `DO NOTHING`. **Los 532 eventos existentes conservan la fecha que tengan al
+desplegar**: corregirla exigiría el `UPDATE` que esta regla prohíbe, y SharePoint no
+guarda la fecha real del comentario. El retiro sigue el mismo orden de despliegue que el
+de `id_estado` (recuadro de abajo).
+
+**Tampoco se borra un ticket con historial** (decidido el 25-sep-2026). Las tres tablas
+que dependen de `fact_ticket` (eventos, salida a SharePoint y referencia legacy) tienen
+`ON DELETE CASCADE`, y `coraje_runtime` y `coraje_etl` tienen `DELETE` sobre
+`fact_ticket`. PostgreSQL ejecuta la cascada con los permisos del dueño de la tabla, así
+que borrar un ticket se llevaría sus eventos aunque nadie tuviera `DELETE` sobre
+`fact_ticket_evento`. Por eso:
+
+- a `coraje_runtime` y `coraje_etl` se les retira `DELETE` sobre `fact_ticket`. Nada lo
+  usa: la aplicación no toca la tabla, y el único `DELETE` de los workflows de `n8n/` es
+  sobre `staging`. En la v1 un ticket no se borra: se rechaza (T8);
+- la clave foránea de `fact_ticket_evento` hacia `fact_ticket` pasa a
+  `ON DELETE RESTRICT`. Incluso un borrado de emergencia con `coraje_app` falla si el
+  ticket tiene eventos.
+
+**Al construir (25-sep-2026) salieron dos precisiones:**
+- **Se retira también `INSERT` sobre `fact_ticket_evento`.** Es la regla 2 de §3: si
+  los roles pudieran insertar directamente, un evento podría declarar un cambio de
+  estado que la proyección no tuvo. Todo evento nace en el escritor.
+- **Un `REVOKE UPDATE (id_estado)` no basta.** En PostgreSQL, el `UPDATE` concedido
+  sobre la tabla cubre todas sus columnas y un `REVOKE` de columna no lo anula. Hay que
+  retirar el `UPDATE` de tabla y concederlo columna por columna, sin `id_estado`. Una
+  columna nueva de `fact_ticket` no será actualizable por esos roles hasta concederla.
+
 **La historia de los tickets existentes se completa con un evento por ticket.** Cada
 ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial, idempotente por
 `event_hash`. Son solo `INSERT`: nada existente se modifica ni se borra.
@@ -148,11 +185,21 @@ ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial, idempo
 > consulta sin restricción, el correo enviado antes de guardar y `Estado` como texto
 > libre (§10 de ese documento) se corrigen desde el principio.
 >
-> En consecuencia, **`EN_PROCESO` y `RESUELTO` quedan fuera de la v1.** Cinco estados:
-> `ABIERTO`, `ASIGNADO`, `ESPERANDO_SOLICITANTE`, `CERRADO` y `RECHAZADO`. Que alguien
-> ya empezó a trabajar un ticket se deduce de sus eventos, sin estado propio. Añadir
+> En consecuencia, **`EN_PROCESO` y `RESUELTO` quedan fuera de la v1.** Que alguien ya
+> empezó a trabajar un ticket se deduce de sus eventos, sin estado propio. Añadir
 > cualquiera de los dos después es un `INSERT` en `dim_estado` más sus transiciones
 > (recuadro al final de esta sección), no una migración de tipo.
+
+> **`DECISIÓN` (25-sep-2026): `ESPERANDO_SOLICITANTE` también queda fuera de la v1.**
+> Revierte para la v1 la ratificación del 03-sep de arriba. El estado no existe en el
+> legacy de PowerApps (`legacy/reglas-negocio-powerapps.md`) ni en lo que quedó
+> documentado del prototipo `helpdesk_santi/` (§11), y la v1 no añade a lo que hay en
+> esas dos fuentes. Como hoy, la información que falta se pide por fuera y el ticket
+> sigue en `ASIGNADO` con el plazo corriendo. El costo es aceptar en la v1 el defecto 1
+> de §5. Añadirlo después es una fila en `dim_estado` y dos transiciones, más la acción
+> del catálogo que autorice salir de la espera, que tampoco existe.
+>
+> **La v1 tiene cuatro estados:** `ABIERTO`, `ASIGNADO`, `CERRADO` y `RECHAZADO`.
 
 Los tres estados actuales **no alcanzan** para operar una mesa de ayuda. Con
 `ABIERTO / CERRADO / RECHAZADO` no se puede distinguir un ticket que nadie ha mirado de
@@ -164,7 +211,7 @@ radicó. Faltan, como mínimo:
 | `ABIERTO` | Radicado, sin área ni responsable | Ya existe |
 | `ASIGNADO` | Tiene área y responsable; nadie ha empezado | Separa la cola de reparto del trabajo real |
 | `EN_PROCESO` | Alguien lo está atendiendo | **Fuera de v1.** Sin él, «abierto» mezcla lo abandonado con lo activo |
-| `ESPERANDO_SOLICITANTE` | Falta información de quien radicó el ticket — cliente externo o empleado interno | **Reinicia el plazo de respuesta al salir** (§5) |
+| `ESPERANDO_SOLICITANTE` | Falta información de quien radicó el ticket — cliente externo o empleado interno | **Fuera de v1** (25-sep-2026). Reiniciaría el plazo de respuesta al salir (§5) |
 | `RESUELTO` | Hay respuesta; falta confirmación o plazo | **Fuera de v1.** Permite reapertura sin resucitar un cerrado |
 | `CERRADO` | Terminal. En v1, se llega respondiendo, como en el legacy | Ya existe |
 | `RECHAZADO` | Terminal sin atención, con motivo | Ya existe |
@@ -191,10 +238,11 @@ con su alcance (§4 de ese documento). La columna «Plazo» aplica el reloj por 
 | T2 | (nuevo) → `ASIGNADO` | Crear | Empieza el de la firma | `routing_rule` resuelve área y responsable. Es el caso normal: en el legacy, `Recibe` queda fijado al crear |
 | T3 | `ABIERTO` → `ASIGNADO` | Redirigir / clasificar | Empieza el de la firma. En tickets de clientes, **aquí y no antes** | El `/redireccion` actual |
 | T4 | `ASIGNADO` → `ASIGNADO`, otra persona de la misma área | Asignar responsable | **Se conserva** | Legacy §6: el destino se limita al área de quien asigna, y reasignar no reinicia el SLA |
-| T5 | `ASIGNADO` → `ESPERANDO_SOLICITANTE` | Responder al cliente | Se detiene el de la firma | Pedir información sale de la firma |
-| T6 | `ESPERANDO_SOLICITANTE` → `ASIGNADO` | **Pendiente** (abajo) | Se **reinicia completo** el de la firma | El solicitante aporta lo pedido |
 | T7 | `ASIGNADO` → `CERRADO` | Responder al cliente | Termina | Legacy §7: responder y cerrar son un solo paso |
-| T8 | `ABIERTO` / `ASIGNADO` / `ESPERANDO_SOLICITANTE` → `RECHAZADO` | Rechazar, con motivo obligatorio | Termina | Nunca usado en los datos reales (V9), pero está en el catálogo |
+| T8 | `ABIERTO` / `ASIGNADO` → `RECHAZADO` | Rechazar, con motivo obligatorio | Termina | Nunca usado en los datos reales (V9), pero está en el catálogo |
+
+T5 (entrar en `ESPERANDO_SOLICITANTE`) y T6 (salir de él) se retiraron con ese estado
+el 25-sep-2026 (§4). Los demás números se conservan para no romper las referencias.
 
 `CERRADO` y `RECHAZADO` son **terminales**: la v1 no tiene reapertura, igual que el
 legacy. Si un problema vuelve después del cierre, se abre un ticket nuevo. Registrar
@@ -205,12 +253,9 @@ el estado**. Solicitar validación **no bloquea** el avance del ticket (§11, de
 No hay redirección a otra área desde un ticket ya asignado, porque el legacy no la
 permite. Si hace falta, se añade como transición nueva.
 
-> **`PENDIENTE` Quién ejecuta T6.** Para un solicitante interno, podría hacerlo él
-> mismo desde la aplicación. Un cliente externo no tiene acceso hasta
-> `specs/acceso-clientes.md`, así que su respuesta la registra el responsable. El
-> catálogo de `permisos.md` §3 no tiene una acción para «el solicitante aporta
-> información». Se decide junto con el actor del evento (§6), porque es la misma
-> pregunta: quién puede ser autor de un evento.
+Ninguna transición de la v1 la ejecuta el solicitante ni un cliente: todas las autoriza
+una acción del catálogo que tiene un empleado. Por eso el catálogo de `permisos.md` §3
+no necesita acciones nuevas para la v1.
 
 ### 4.2 `DECISIÓN` (24-sep-2026) Traducción de los estados legacy
 
@@ -237,11 +282,11 @@ El evento `MIGRACION_LEGACY` de cada ticket (§3.1) registra el estado según lo
 **Datos reales, 24-sep-2026:** en staging hay `Cerrado`=2.838, `Reasignado`=30 y
 `Abierto`=24. De los tickets no cerrados que no tienen `AsignadoA`, 25 tienen `Recibe` y
 resuelven contra `core.dim_personal`; uno no tiene ninguno de los dos y queda en
-`ABIERTO`. El único ticket sin referencia a SharePoint es de `PORTAL_CLIENTE`, creado el
-11-sep-2026 sin área ni código; **no recibe evento de migración** hasta decidir qué es.
+`ABIERTO`. El único ticket sin referencia a SharePoint, de `PORTAL_CLIENTE`, era una
+prueba y se borró (25-sep-2026).
 
-Requiere añadir `ASIGNADO` y `ESPERANDO_SOLICITANTE` a `helpdesk.dim_estado`, con una
-migración Prisma que solo inserta filas en el catálogo.
+Requiere añadir `ASIGNADO` a `helpdesk.dim_estado`, con una migración Prisma que solo
+inserta filas en el catálogo.
 
 ## 5. SLA
 
@@ -276,9 +321,11 @@ Tres defectos del modelo actual, ninguno hipotético:
 > reinicia solo cuando el turno pasa de la firma al solicitante y vuelve. Los cambios
 > internos —reasignar, escribir notas, pedir validación— **conservan** el plazo que
 > corre. Si no fuera así, quien debe cumplir el plazo tendría en sus manos lo que lo
-> reinicia. En la v1 el único cambio de turno es `ESPERANDO_SOLICITANTE` (§4.1, T5 y
-> T6), así que el efecto es el de la decisión del 03-sep. La regla queda escrita por
-> turno para que ningún estado que se añada después la rompa.
+> reinicia. **En la v1 no hay ningún cambio de turno**, porque `ESPERANDO_SOLICITANTE`
+> quedó fuera (§4, 25-sep-2026): el plazo corre desde que empieza hasta el cierre o el
+> rechazo, como en el legacy, y el defecto 1 de la tabla de arriba se acepta. La regla
+> queda escrita por turno, y la decisión del 03-sep de reiniciar completo, para cuando
+> ese estado se añada.
 >
 > - **Tickets internos:** el plazo sale de la prioridad que elige quien radica, como en
 >   el legacy (`BAJA` 5 días, `MEDIA` 3 días hábiles). Se revisa con datos de uso, no se
@@ -307,9 +354,11 @@ vencido.
 
 ## 6. Registro de eventos: lo que le falta al modelo actual
 
-`fact_ticket_evento` tiene seis tipos —`CREACION`, `COMENTARIO`, `REASIGNACION`,
-`CAMBIO_ESTADO`, `CANCELACION_CLIENTE`, `MIGRACION_LEGACY`— y `event_hash` para
-idempotencia del ETL, que es un acierto y se conserva.
+`fact_ticket_evento` admite cuatro tipos —`COMENTARIO`, `REASIGNACION`,
+`CAMBIO_ESTADO` y `MIGRACION_LEGACY`, según el `CHECK` de la migración baseline— y
+tiene `event_hash` para idempotencia del ETL, que es un acierto y se conserva. El SQL
+anterior a Prisma listaba además `CREACION` y `CANCELACION_CLIENTE`; la base viva no
+los admite.
 
 Le faltan tres campos, y cada ausencia bloquea una capacidad concreta:
 
@@ -330,11 +379,60 @@ duplicar nada.
 > error una observación interna es peor que ocultar una nota antigua. Los eventos
 > `MIGRACION_LEGACY` de §3.1 también nacen `INTERNO`.
 
-> El tipo de evento es `VARCHAR(50)` con un `CHECK` de lista cerrada. Funciona, pero un
-> valor nuevo exige alterar el constraint. Si el modelo de esquema pasa a migraciones
-> Prisma (`contexto-canonico.md` §4), este es un candidato natural a `enum` — con la
-> precaución conocida: `ALTER TYPE … ADD VALUE` **debe ir sola en su propio archivo de
-> migración**, porque Prisma envuelve cada archivo en una transacción.
+> **`DECISIÓN` (25-sep-2026): en la v1 el autor de un evento es un empleado o el
+> sistema.** Se añade `tipo_actor` (`EMPLEADO` / `SISTEMA`) con un `CHECK` que lo ata a
+> `id_autor`: `EMPLEADO` exige `id_autor`, y `SISTEMA` lo exige vacío.
+>
+> - **Son `SISTEMA`:** los 532 eventos legacy, los `MIGRACION_LEGACY` y todo cambio de
+>   estado que escriba la ingesta. La ingesta nunca ha llenado `id_autor` (sus
+>   `INSERT` no incluyen la columna), y SharePoint no guarda quién cambió el estado de un
+>   ticket: atribuir ese cambio a una persona sería inventar el dato.
+> - **El cliente no es actor en la v1.** No existe dónde referenciarlo mientras
+>   `specs/acceso-clientes.md` siga bloqueado, y ninguna transición de la v1 la ejecuta
+>   él (§4.1). Añadirlo es aditivo: `CLIENTE` en el `enum` (decisión siguiente), una
+>   columna nueva que acepte vacío con su clave foránea, ampliar el `CHECK`, y recrear la función del escritor único (§3.1),
+>   cuya firma cambia y por eso no admite `CREATE OR REPLACE`.
+> - **Diferencia con Impulsa:** su `EventActor` guarda el tipo y una columna por actor,
+>   pero en sus migraciones no aparece un `CHECK` que ate el tipo a su columna. Aquí se
+>   exige desde el principio.
+
+> **`DECISIÓN` (25-sep-2026): catálogo de tipos de evento de la v1.** Un tipo por cada
+> acción con transición decidida en §4.1; lo que aún no tiene diseño no entra.
+>
+> | Tipo | Cuándo | Origen |
+> |---|---|---|
+> | `CREACION` | T1, T2 | Nuevo |
+> | `REDIRECCION` | T3: fija área y responsable, empieza el plazo | Nuevo |
+> | `REASIGNACION` | T4: otra persona de la misma área | Existente |
+> | `RESPUESTA` | T7: responder cierra el ticket | Nuevo |
+> | `RECHAZO` | T8, con motivo | Nuevo |
+> | `COMENTARIO` | Nota interna, sin cambio de estado | Existente, 532 filas legacy |
+> | `MIGRACION_LEGACY` | Estado inicial de cada ticket migrado (§3.1) | Existente |
+> | `SINCRONIZACION_LEGACY` | La ingesta observa en SharePoint un cambio de estado. Siempre `SISTEMA` | Nuevo; deja de escribirse al retirar SharePoint |
+>
+> - **Se retira `CAMBIO_ESTADO`.** El cambio queda en `estado_anterior` / `estado_nuevo`,
+>   y el tipo dice qué acto lo produjo. No tiene filas (V11); la migración lo comprueba
+>   antes de quitarlo y falla si encuentra alguna.
+> - **No se renombra ningún tipo con filas.** Hacerlo sería un `UPDATE` sobre el
+>   registro de eventos (§3, regla 1).
+> - **Se añaden con su entrega, no ahora:** observadores y solicitud de validación (§11)
+>   y calificación. Están en la v1, pero su diseño sigue pendiente.
+
+> **`DECISIÓN` (25-sep-2026): los vocabularios cerrados del evento son `enum` de
+> Prisma**, no `CHECK`: `tipo_evento`, `tipo_actor` y `visibilidad`. Quedan visibles en
+> `schema.prisma`, que es dueño del esquema desde D1, y tipados en TypeScript, igual que
+> `RolAplicacion` y que Impulsa. Dos precauciones:
+>
+> - `ALTER TYPE … ADD VALUE` **va sola en su propio archivo de migración**, porque
+>   Prisma envuelve cada archivo en una transacción. Quitar un valor exige recrear el
+>   tipo y la función del escritor único que lo usa.
+> - La ingesta actual inserta `'COMENTARIO'` como literal en un `INSERT … SELECT`, que
+>   PostgreSQL convierte al tipo de la columna. **Es una inferencia sin ejercitar**: la
+>   ingesta reescrita lleva el cast explícito al `enum`, y la conversión de la columna se
+>   verifica con una ejecución real de la ingesta.
+>
+> El `CHECK` que ata `tipo_actor` a `id_autor` (decisión anterior) sigue siendo un
+> `CHECK`: relaciona dos columnas, y eso un `enum` no lo expresa.
 
 ## 7. `RIESGO` Tres restricciones del esquema que hay que revisar antes de construir
 
@@ -421,7 +519,16 @@ inmediata.
 - El vocabulario de estados es **uno solo**; una prueba verifica que no exista una
   segunda lista.
 - Reintentar la ingesta legacy **no duplica** eventos: `event_hash` lo impide.
-- El tiempo en espera del cliente **no** consume SLA.
+- Reintentar la ingesta **no modifica** eventos ya escritos, y un `UPDATE` o `DELETE`
+  sobre `fact_ticket_evento` con `coraje_runtime` o `coraje_etl` falla, con prueba
+  negativa (§3.1).
+- Un `DELETE` sobre `fact_ticket` con `coraje_runtime` o `coraje_etl` falla, y borrar
+  con `coraje_app` un ticket que tiene eventos también falla, con prueba negativa
+  (§3.1).
+- ~~El tiempo en espera del cliente **no** consume SLA.~~ Fuera de la v1 junto con
+  `ESPERANDO_SOLICITANTE` (§4, 25-sep-2026).
+- Un evento de `SISTEMA` no tiene `id_autor` y uno de `EMPLEADO` sí, con prueba negativa
+  contra el `CHECK` (§6).
 - Un ticket no puede quedar en un estado sin transición de salida.
 - Un observador ve el ticket y su historial visible según `visibilidad` (§6), y **no
   puede ejecutar ninguna acción del catálogo** — ver §11.
@@ -438,7 +545,7 @@ inmediata.
 | 4 | Escritor único de eventos con proyección transaccional | 3 |
 | 5 | Bandeja interna, asignación y respuesta | 4, `specs/permisos.md` |
 | 6 | Observadores y solicitud de validación (§11) | 4, `specs/permisos.md` |
-| 7 | Reloj de SLA con reinicio al salir de `ESPERANDO_SOLICITANTE`, y escalado | 4 |
+| 7 | Reloj de SLA y escalado. El reinicio al salir de `ESPERANDO_SOLICITANTE` queda fuera de la v1 (§4) | 4 |
 | 8 | Vista del ticket en el portal del cliente | 4, `specs/acceso-clientes.md` |
 
 ---
@@ -449,7 +556,7 @@ inmediata.
 |---|---|---|---|
 | V1 | `dim_estado` tiene exactamente tres filas | `sql/db/07_seed.sql` | **Verificado** 03-sep-2026 |
 | V2 | `dim_prioridad` no tiene `ALTA` | `sql/db/07_seed.sql` | **Verificado** 03-sep-2026 |
-| V3 | Los seis tipos de evento y su `CHECK` | `sql/db/06_helpdesk_facts.sql` | **Verificado** 03-sep-2026 |
+| V3 | Los tipos de evento y su `CHECK` | `coraje-web/prisma/migrations/20260910000000_baseline/migration.sql` (`chk_fact_ticket_evento_tipo`) | **Corregido** 25-sep-2026: son **cuatro**, no seis. El veredicto del 03-sep se leyó en `sql/`, que no coincidía con la base viva y se retiró el 24-sep |
 | V4 | `fact_ticket_evento` no tiene visibilidad ni estados anterior/nuevo | Ídem | **Verificado** 03-sep-2026 |
 | V5 | `id_autor` solo referencia `core.dim_personal` | Ídem | **Verificado** 03-sep-2026 |
 | V6 | El `CHECK` de origen exclusivo impide cliente y solicitante juntos | Ídem | **Verificado** 03-sep-2026 |
@@ -468,6 +575,9 @@ inmediata.
 
 | V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `prisma/migrations/` | **Sin verificar** — no construido |
 | V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem | **Sin verificar** — no construido |
+| V14 | Modelo de eventos de §6 y escritor único de §3.1 | `prisma/migrations/20260925120000_modelo_eventos_ticket` | **Construido, sin desplegar** (25-sep-2026). Contrato en `src/server/tickets/event-model.contract.test.mts` |
+| V15 | La ingesta escribe estado y eventos solo por el escritor | Nodos `PG - Transform 06` y `07` del workflow de ingesta | **Construido en la copia versionada, sin importar** (25-sep-2026) |
+| V16 | Privilegios retirados, con prueba negativa (§8) | Migración de la fase 2 | **No construido**: depende de verificar V15 con una ejecución real |
 
 ## 11. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
 
@@ -574,3 +684,20 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
 - 24-sep-2026 (mismo día) — U6, punto 2. Nueva §3.1: el escritor único vive en
   PostgreSQL con privilegios por columna, la ingesta legacy también escribe el evento y
   cada ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial.
+- 25-sep-2026 — U6, punto 3: queda resuelto por el punto 2. El escritor vive en SQL
+  porque la regla la hace cumplir PostgreSQL; su firma y la llamada desde Prisma
+  (`$queryRaw` en transacción) son trabajo de construcción.
+- 25-sep-2026 — U6, punto 4. §4 saca `ESPERANDO_SOLICITANTE` de la v1: no está en el
+  legacy ni en el prototipo. Quedan cuatro estados, se retiran T5 y T6 (§4.1), y el
+  defecto 1 del SLA se acepta en la v1 (§5). §6: el actor es `EMPLEADO` o `SISTEMA`, con
+  un `CHECK` que ata el tipo a `id_autor`. Se corrige V3: la base admite cuatro tipos de
+  evento, no seis.
+- 25-sep-2026 — U6, punto 5. §6: catálogo de ocho tipos para la v1, sin
+  `CAMBIO_ESTADO` y con `SINCRONIZACION_LEGACY`; `tipo_evento`, `tipo_actor` y
+  `visibilidad` pasan a `enum` de Prisma. §3.1: la ingesta reescribía `fecha_registro`
+  de los eventos legacy en cada ejecución; pasa a `DO NOTHING`, y se retiran `UPDATE` y
+  `DELETE` sobre `fact_ticket_evento` a `coraje_runtime` y `coraje_etl`.
+- 25-sep-2026 — U6, última decisión. §3.1: la cascada `ON DELETE CASCADE` de `fact_ticket` dejaba
+  borrar eventos por la vía del ticket; se retira `DELETE` sobre `fact_ticket` a
+  `coraje_runtime` y `coraje_etl`, y la clave foránea de eventos pasa a
+  `ON DELETE RESTRICT`.

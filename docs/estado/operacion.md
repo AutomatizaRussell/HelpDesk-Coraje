@@ -50,8 +50,8 @@ pnpm build
 git diff --check
 ```
 
-> **No existen `pnpm typecheck` ni `pnpm test`.** No hay ninguna prueba automatizada en
-> el repositorio. Cuando exista la primera, este bloque cambia con ella.
+> **`pnpm test` existe desde U3** (pruebas unitarias sin base de datos); `pnpm
+> typecheck` no.
 
 ## Esquema de la base y transformaciones
 

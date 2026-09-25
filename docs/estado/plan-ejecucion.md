@@ -227,11 +227,15 @@ HelpDesk entra igual.
 
 ### U6 · Modelo de eventos del ticket — **cabeza de la cola, en curso**
 
-> **Estado al 24-sep-2026: decisiones tomadas, nada construido.** Transiciones, reloj
-> por turno, escritor único en PostgreSQL, traducción de estados legacy y visibilidad
-> están en `specs/tickets.md` (§3.1, §4.1, §4.2, §5, §6). Falta decidir el actor del
-> evento, la acción que autoriza T6 y el catálogo de tipos de evento. Orden de
-> construcción y de despliegue: `estado/handoff.md`, «Acción inmediata».
+> **Estado al 25-sep-2026: fase 1 construida, sin desplegar** (modelo, escritor
+> único, ingesta reescrita); fase 2 (retiro de privilegios y pruebas negativas)
+> pendiente de verificar la ingesta. Decisiones: Transiciones (cuatro
+> estados, sin `ESPERANDO_SOLICITANTE`), reloj por turno, escritor único en PostgreSQL,
+> traducción de estados legacy, visibilidad, actor (`EMPLEADO` / `SISTEMA`), catálogo de
+> tipos de evento como `enum` y registro protegido por privilegios están en
+> `specs/tickets.md` (§3.1, §4, §4.1, §4.2, §5, §6). **No queda ninguna decisión
+> pendiente.** Orden de construcción y de
+> despliegue: `estado/handoff.md`, «Acción inmediata».
 
 **Objetivo:** los tres campos ausentes (`specs/tickets.md` §6), el escritor único y la
 proyección transaccional.

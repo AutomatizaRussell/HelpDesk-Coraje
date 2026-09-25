@@ -171,9 +171,16 @@ completo, no leas archivos "por contexto" y no ejecutes búsquedas sin acotar di
 - Si una salida puede ser extensa, guárdala en archivo y muestra ruta, resumen y
   extractos.
 
-Una conversación por unidad de trabajo. Al cerrarla, actualiza
+Una conversación por unidad de trabajo. Antes de hacer el commit, actualiza
 `docs/estado/handoff.md` siguiendo su §8: la continuidad vive en el documento, no en el
 historial del chat.
+
+**La implementación y su documentación van en el mismo commit** (spec, plan, handoff).
+**Nunca publiques un commit de solo documentación**, ni para registrar un cierre, ni
+para anotar hashes, ni para dejar por escrito decisiones que todavía no tienen código:
+esas decisiones esperan en local y se publican junto con la implementación. El handoff
+no escribe el hash de su propio commit: registra `SOBRE: <HEAD previo>`, y el cuerpo del
+commit lleva la línea `Corte N`, con la que se localiza (§8).
 
 ## Convenciones
 
@@ -218,7 +225,7 @@ descriptivo, ≤ 72 caracteres, sin punto final, sin mayúscula inicial tras los
 |---|---|
 | `feat(portal): el cliente ya no tiene que elegirse a sí mismo` | `feat(portal): exigir invitación individual para crear un ticket` |
 | `fix(redireccion): la contraseña compartida se va` | `fix(redireccion): sustituir la clave compartida por sesión de Entra ID` |
-| `docs(estado): el corte apunta a a5d8347` | `docs(estado): actualizar el corte del handoff a a5d8347` |
+| `feat(tickets): el log por fin manda` | `feat(tickets): añadir el escritor único de eventos del ticket` |
 
 **Cuerpo:** prosa técnica y factual — qué cambió, por qué, y qué invariantes o
 decisiones sostiene. Cierra declarando la evidencia (`tsc --noEmit`, `lint`, `build`,

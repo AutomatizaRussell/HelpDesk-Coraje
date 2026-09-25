@@ -173,12 +173,53 @@ model EmployeeSession {
 // HELPDESK — dimensiones, hechos y reglas
 // =====================================================================
 
+/// Catálogo de estados. v1: ABIERTO, ASIGNADO, CERRADO, RECHAZADO
+/// (docs/specs/tickets.md §4). Un estado nuevo es un INSERT más sus
+/// transiciones en helpdesk.registrar_evento_ticket.
 model DimEstado {
   idEstado      String        @id @default(dbgenerated("gen_random_uuid()")) @map("id_estado") @db.Uuid
   nombreEstado  String        @unique @map("nombre_estado") @db.VarChar(50)
   factTicket    FactTicket[]
+  eventosDesde  FactTicketEvento[] @relation("EventoEstadoAnterior")
+  eventosHacia  FactTicketEvento[] @relation("EventoEstadoNuevo")
 
   @@map("dim_estado")
+  @@schema("helpdesk")
+}
+
+// Vocabularios cerrados del evento del ticket (docs/specs/tickets.md §6).
+// Un valor nuevo va con ALTER TYPE ... ADD VALUE en su propio archivo de
+// migración, y un tipo de evento nuevo exige además su rama en
+// helpdesk.registrar_evento_ticket: sin ella, la función falla con
+// CASE_NOT_FOUND al recibirlo.
+enum TipoEventoTicket {
+  CREACION
+  REDIRECCION
+  REASIGNACION
+  RESPUESTA
+  RECHAZO
+  COMENTARIO
+  MIGRACION_LEGACY
+  SINCRONIZACION_LEGACY
+
+  @@map("tipo_evento_ticket")
+  @@schema("helpdesk")
+}
+
+enum TipoActorEvento {
+  EMPLEADO
+  SISTEMA
+
+  @@map("tipo_actor_evento")
+  @@schema("helpdesk")
+}
+
+enum VisibilidadEvento {
+  INTERNO
+  CLIENTE
+  AMBOS
+
+  @@map("visibilidad_evento")
   @@schema("helpdesk")
 }
 
@@ -262,24 +303,35 @@ model FactTicket {
   @@schema("helpdesk")
 }
 
-/// chk_fact_ticket_evento_tipo vive hoy MÁS ANGOSTO que sql/db/06_helpdesk_facts.sql:
-/// permite COMENTARIO/REASIGNACION/CAMBIO_ESTADO/MIGRACION_LEGACY, no CREACION ni
-/// CANCELACION_CLIENTE. Sin investigar por qué diverge — el ELT actual
-/// (sql/elt/07_transform_ticket_evento.sql) solo inserta COMENTARIO, así que hoy no
-/// tiene efecto práctico. El baseline captura la versión angosta, real; ampliarla es
-/// decisión de U6 (modelo de eventos del ticket), no de esta unidad.
+/// Registro de eventos del ticket: solo INSERT, y solo a través de
+/// helpdesk.registrar_evento_ticket (docs/specs/tickets.md §3, §3.1). Nunca
+/// escribir esta tabla con el cliente de Prisma: el escritor único valida la
+/// transición y escribe la proyección en fact_ticket en la misma transacción.
+/// Se llama con $queryRaw dentro de la transacción de la acción.
+///
+/// No representable en el DSL: chk_fact_ticket_evento_actor (EMPLEADO exige
+/// idAutor, SISTEMA lo exige vacío). Los DEFAULT de tipoActor y visibilidad
+/// son temporales y los retira la migración de retiro de privilegios; no
+/// dependas de ellos.
 model FactTicketEvento {
-  idEvento      String        @id @default(dbgenerated("gen_random_uuid()")) @map("id_evento") @db.Uuid
-  spEventId     Int?          @unique @map("sp_event_id")
-  eventHash     String?       @unique @map("event_hash")
-  idTicket      String        @map("id_ticket") @db.Uuid
-  idAutor       String?       @map("id_autor") @db.Uuid
-  tipoEvento    String        @map("tipo_evento") @db.VarChar(50)
-  contenido     String
-  fechaRegistro DateTime      @default(now()) @map("fecha_registro") @db.Timestamptz(6)
-  dimPersonal   DimPersonal?  @relation(fields: [idAutor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
-  factTicket    FactTicket    @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction)
+  idEvento          String            @id @default(dbgenerated("gen_random_uuid()")) @map("id_evento") @db.Uuid
+  spEventId         Int?              @unique @map("sp_event_id")
+  eventHash         String?           @unique @map("event_hash")
+  idTicket          String            @map("id_ticket") @db.Uuid
+  idAutor           String?           @map("id_autor") @db.Uuid
+  tipoEvento        TipoEventoTicket  @map("tipo_evento")
+  tipoActor         TipoActorEvento   @default(SISTEMA) @map("tipo_actor")
+  visibilidad       VisibilidadEvento @default(INTERNO)
+  idEstadoAnterior  String?           @map("id_estado_anterior") @db.Uuid
+  idEstadoNuevo     String?           @map("id_estado_nuevo") @db.Uuid
+  contenido         String
+  fechaRegistro     DateTime          @default(now()) @map("fecha_registro") @db.Timestamptz(6)
+  dimPersonal       DimPersonal?      @relation(fields: [idAutor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  factTicket        FactTicket        @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  estadoAnterior    DimEstado?        @relation("EventoEstadoAnterior", fields: [idEstadoAnterior], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
+  estadoNuevo       DimEstado?        @relation("EventoEstadoNuevo", fields: [idEstadoNuevo], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([idTicket, fechaRegistro], map: "ix_fact_ticket_evento_ticket_fecha")
   @@map("fact_ticket_evento")
   @@schema("helpdesk")
 }
