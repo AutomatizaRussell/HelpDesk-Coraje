@@ -45,6 +45,18 @@ const RUTAS_DECLARADAS: Record<string, { publica: boolean; razon: string }> = {
     publica: true,
     razon: "La puerta. Se dibuja sin sesión por definición",
   },
+  "/tickets": {
+    publica: false,
+    razon: "Bandeja de empleados; lo que lista lo acota el autorizador",
+  },
+  "/tickets/nuevo": {
+    publica: false,
+    razon: "Radicar un ticket propio exige sesión y el permiso ticket.crear",
+  },
+  "/tickets/[idTicket]": {
+    publica: false,
+    razon: "Detalle de un ticket dentro del alcance de ticket.consultar",
+  },
   "/ingreso": {
     publica: true,
     razon: "Detecta en el navegador si hay sesión de Conecta y elige el modo de entrada",

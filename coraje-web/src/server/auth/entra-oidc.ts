@@ -124,6 +124,10 @@ export function createAuthorizationRequest(options: {
 
 export interface EntraTokenSet {
   idToken: string;
+  /** Presente si Entra concedió `offline_access`. Se custodia en graph-grant.ts. */
+  refreshToken: string | null;
+  /** Permisos que Entra concedió de verdad, que pueden ser menos que los pedidos. */
+  scope: string;
 }
 
 export async function exchangeAuthorizationCode(params: {
@@ -159,18 +163,83 @@ export async function exchangeAuthorizationCode(params: {
     );
   }
 
-  // La respuesta también trae `refresh_token` y `access_token` (por
-  // offline_access y el scope de Graph) — se ignoran deliberadamente aquí:
-  // el envío de correo como el empleado (D6) todavía no tiene el mecanismo
-  // de custodia (cifrado, renovación, revocación) que ese refresh_token
-  // necesitaría para guardarse con seguridad. Pedir el consentimiento ya no
-  // implica construir el resto en esta unidad.
-  const payload = (await response.json()) as { id_token?: string };
+  // El `refresh_token` (por offline_access) se devuelve para que el callback
+  // lo custodie sellado (graph-grant.ts, D6). El `access_token` se ignora: el
+  // envío de correo pide uno fresco con el refresh_token cuando lo necesita,
+  // y guardar este no aportaría nada más que otro secreto que proteger.
+  const payload = (await response.json()) as { id_token?: string; refresh_token?: string; scope?: string };
   if (!payload.id_token) {
     throw new Error("La respuesta de token de Entra ID no incluyó id_token.");
   }
 
-  return { idToken: payload.id_token };
+  return { idToken: payload.id_token, refreshToken: payload.refresh_token ?? null, scope: payload.scope ?? "" };
+}
+
+/** Permisos para el canje del refresh_token: solo lo que el envío de correo usa. */
+const GRAPH_MAIL_SCOPES = "offline_access https://graph.microsoft.com/Mail.Send";
+
+/** Marca con la que `redeemRefreshToken` señala una autorización muerta. */
+const GRANT_REVOKED_MARKER = "GRANT_REVOKED: ";
+
+export interface GraphAccessToken {
+  accessToken: string;
+  /** Entra rota el refresh_token: el nuevo sustituye al anterior, que deja de valer. */
+  refreshToken: string | null;
+  expiresIn: number;
+  scope: string;
+}
+
+/**
+ * Canjea un refresh_token por un access_token de Graph para enviar correo.
+ *
+ * `invalid_grant` significa que la autorización murió (cambio de contraseña,
+ * sesiones revocadas, acceso condicional): no se reintenta, y el llamador lo
+ * distingue de un fallo pasajero con `isRevokedGrantError`.
+ */
+export async function redeemRefreshToken(refreshToken: string): Promise<GraphAccessToken> {
+  const config = resolveConfig();
+  const body = new URLSearchParams({
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+    scope: GRAPH_MAIL_SCOPES,
+  });
+
+  const response = await fetch(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  const payload = (await response.json().catch(() => null)) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    scope?: string;
+    error?: string;
+    error_description?: string;
+  } | null;
+
+  if (!response.ok || !payload?.access_token) {
+    const marker = payload?.error === "invalid_grant" ? GRANT_REVOKED_MARKER : "";
+    // error_description no lleva el token; se recorta igual, porque termina en
+    // una columna de 300 caracteres y en los registros.
+    const description = (payload?.error_description ?? response.statusText).slice(0, 250);
+    throw new Error(`${marker}Entra ID rechazó la autorización de correo (${response.status}): ${description}`);
+  }
+
+  return {
+    accessToken: payload.access_token,
+    refreshToken: payload.refresh_token ?? null,
+    expiresIn: Number(payload.expires_in ?? 0),
+    scope: payload.scope ?? "",
+  };
+}
+
+export function isRevokedGrantError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith(GRANT_REVOKED_MARKER);
 }
 
 export interface EntraIdTokenClaims {

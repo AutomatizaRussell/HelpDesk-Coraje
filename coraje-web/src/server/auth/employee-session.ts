@@ -36,7 +36,7 @@ const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
 const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 
 export type IssueSessionResult =
-  | { admitted: true; token: string }
+  | { admitted: true; token: string; idPersonal: string; subject: string }
   | { admitted: false; reason: EmployeeAdmissionRejection };
 
 /**
@@ -84,7 +84,7 @@ export async function issueEmployeeSession(params: {
     });
   });
 
-  return { admitted: true, token };
+  return { admitted: true, token, idPersonal: admission.employee.idPersonal, subject: identity.subject };
 }
 
 export interface EmployeeSessionContext {

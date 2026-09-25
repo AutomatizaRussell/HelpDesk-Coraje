@@ -7,14 +7,21 @@ import { colorTransition, focusRing } from "./interaction";
  * acción sin dejar de ser un enlace.
  *
  * Jerarquía: `primary` es la única acción principal de una vista; `secondary`
- * acompaña sin competir. El peso es `bold` (700): Lato no tiene intermedios.
+ * acompaña sin competir; `danger` declara un efecto que no se deshace
+ * (rechazar) y nunca recibe el foco inicial. El peso es `bold` (700): Lato no
+ * tiene intermedios.
+ *
+ * `disabled` se ve apagado y no reacciona al pasar el ratón: un botón que
+ * cambia de color sin poder usarse invita a insistir.
  */
 const variants = {
   primary: "bg-action text-on-action hover:bg-action-hover",
   secondary: "border border-line-strong bg-surface text-heading hover:bg-surface-sunken",
+  danger: "border border-danger bg-surface text-danger hover:bg-danger-surface",
 } as const;
 
 const sizes = {
+  sm: "h-8 px-3 text-sm",
   md: "h-10 px-4 text-base",
   lg: "h-11 px-5 text-base",
 } as const;
@@ -33,6 +40,7 @@ export function buttonRecipe({
     focusRing,
     variants[variant],
     sizes[size],
+    "disabled:pointer-events-none disabled:opacity-60",
     fullWidth && "w-full",
   );
 }

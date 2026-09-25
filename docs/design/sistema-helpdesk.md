@@ -4,9 +4,9 @@
 ESTADO:      contrato ejecutable construido (U5). `coraje-web/src/design-system/`
              (fundamentos, tema, recetas, componentes y patrones: shell de
              Conecta, barra propia, navegación de HelpDesk, menú de usuario) y el
-             adaptador CSS en `src/app/globals.css`. Consumidores: `/` en sus dos
-             modos de entrada, y `/login`. La bandeja y el detalle del ticket no
-             existen (U7)
+             adaptador CSS en `src/app/globals.css`. Consumidores: `/login`, y desde
+             U7 (corte 18, sin desplegar) la bandeja, la creación y el detalle del
+             ticket, con recetas de campo, superficie e insignia
 CORTE:       24-sep-2026
 EVIDENCIA:   `pnpm test` 61/61 (8 del contrato, que fallan al forzar divergencia
              entre adaptadores y una clase prohibida), `tsc --noEmit`, `eslint` y
@@ -300,9 +300,9 @@ Estado al 23-sep-2026 (U5, cambios locales sin publicar). «Verificado» signifi
 | V2 | Existe contrato ejecutable con capas separadas | `coraje-web/src/design-system/` | **Verificado:** `foundations/`, `themes/`, `recipes/`, `components/`, `patterns/`, `utilities/` |
 | V3 | No hay valores quemados en vistas | Barrido de `contract.test.mts` sobre todo `src/` | **Verificado:** 10 detectores (hex, funciones de color, px, clases arbitrarias, z/duración numéricos, paleta por defecto, pesos, `font: inherit`, tamaño de icono, `style` en línea), cada uno con su prueba positiva y negativa; comprobado además forzando una violación en `page.tsx` |
 | V4 | Los dos adaptadores del tema no divergen | `contract.test.mts` | **Verificado:** igualdad de claves y de valores; falla al forzar un valor distinto y una variable solo en CSS. Además, toda `var(--hd-…)` del código debe existir |
-| V5 | El color de estado se resuelve desde una sola autoridad | Módulo de traducción estado→token | Pendiente: no hay vista con estados (U7) |
+| V5 | El color de estado se resuelve desde una sola autoridad | Módulo de traducción estado→token | **Construido** (corte 18): `patterns/ticket-status/ticket-status.ts`, un `Record` exhaustivo por estado, plazo y correo. Solo pintan las insignias de `TicketStatusBadges.tsx` |
 | V6 | Ningún control usa `font: inherit` | Detector del barrido | **Verificado** |
-| V7 | La nota interna y la respuesta al cliente son inequívocas | Validación visual del detalle del ticket | Pendiente (U7) |
+| V7 | La nota interna y la respuesta al cliente son inequívocas | Validación visual del detalle del ticket | **Construido, sin validar en navegador** (corte 18): rótulo en texto, icono distinto y forma distinta (fondo hundido con borde discontinuo) en `TicketHistory.tsx`. Además, quien solo radicó el ticket no recibe las notas internas |
 | V8 | El portal es operable en móvil, teclado y lector de pantalla | Validación real, no inspección | Pendiente: no hay portal (U8) |
 
 **Changelog:** 03-sep-2026 — línea base. Declara el rediseño completo y la ausencia de

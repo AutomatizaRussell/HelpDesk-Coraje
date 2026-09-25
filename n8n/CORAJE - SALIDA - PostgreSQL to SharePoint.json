@@ -97,8 +97,8 @@
       "retryOnFail": false,
       "credentials": {
         "microsoftSharePointOAuth2Api": {
-          "id": "0SXzHMvQl5qCO5AN",
-          "name": "Cuenta edwin"
+          "id": "CMvf9g4hz3B0CE2C",
+          "name": "Microsoft SharePoint account"
         }
       },
       "onError": "continueRegularOutput"

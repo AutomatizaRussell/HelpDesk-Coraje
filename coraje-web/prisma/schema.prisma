@@ -118,6 +118,9 @@ model DimPersonal {
   // historial de otra persona.
   entraObjectId                          String?              @unique @map("entra_object_id") @db.VarChar(64)
   employeeSession                        EmployeeSession[]
+  employeeGraphGrant                     EmployeeGraphGrant?
+  notificacionesEnviadas                 TicketNotificacion[] @relation("NotificacionRemitente")
+  notificacionesRecibidas                TicketNotificacion[] @relation("NotificacionDestinatario")
   dimArea                                DimArea?             @relation(fields: [idArea], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
   factTicketAsignado                     FactTicket[]         @relation("FactTicketAsignado")
   factTicketSolicitante                  FactTicket[]         @relation("FactTicketSolicitante")
@@ -166,6 +169,69 @@ model EmployeeSession {
   @@index([idPersonal, expiresAt], map: "ix_employee_session_personal_expires")
   @@index([expiresAt], map: "ix_employee_session_expires")
   @@map("employee_session")
+  @@schema("app")
+}
+
+/// Autorización delegada de Microsoft Graph de un empleado (D6,
+/// specs/acceso-empleados.md §9): el refresh_token del ingreso, sellado con
+/// AES-256-GCM (secret-box.ts). Única función que escribe filas nuevas:
+/// recordGraphGrant (src/server/auth/graph-grant.ts), desde el callback de
+/// ingreso. Cerrar sesión no la borra.
+model EmployeeGraphGrant {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPersonal         String      @unique @map("id_personal") @db.Uuid
+  refreshTokenSealed String      @map("refresh_token_sealed")
+  grantedScope       String      @map("granted_scope") @db.VarChar(1000)
+  identityTenantId   String      @map("identity_tenant_id") @db.VarChar(64)
+  identitySubject    String      @map("identity_subject") @db.VarChar(255)
+  obtainedAt         DateTime    @default(now()) @map("obtained_at") @db.Timestamptz(6)
+  lastRefreshedAt    DateTime?   @map("last_refreshed_at") @db.Timestamptz(6)
+  // invalid_grant de Entra: la autorización murió y solo un nuevo ingreso la revive.
+  revokedAt          DateTime?   @map("revoked_at") @db.Timestamptz(6)
+  revokedReason      String?     @map("revoked_reason") @db.VarChar(300)
+  dimPersonal        DimPersonal @relation(fields: [idPersonal], references: [idPersonal], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("employee_graph_grant")
+  @@schema("app")
+}
+
+/// Sobre qué tickets vale una regla (specs/permisos.md §4). Su significado
+/// exacto por acción vive en un solo sitio: src/server/authorization/scope.ts.
+enum AlcancePermiso {
+  PROPIO
+  AREA
+  TOTAL
+
+  @@map("alcance_permiso")
+  @@schema("app")
+}
+
+/// Catálogo de acciones (specs/permisos.md §3). PostgreSQL es la única fuente
+/// operativa: el código consulta la regla y nunca compara roles. Se siembra y
+/// se cambia por migración; coraje_runtime solo tiene SELECT.
+model PermisoAccion {
+  codigo      String         @id @db.VarChar(80)
+  nombre      String         @db.VarChar(150)
+  descripcion String
+  activo      Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  reglas      PermisoRegla[]
+
+  @@map("permiso_accion")
+  @@schema("app")
+}
+
+/// Una fila por rol y acción. Sin fila, la acción está denegada para ese rol.
+model PermisoRegla {
+  rol          RolAplicacion
+  codigoAccion String         @map("codigo_accion") @db.VarChar(80)
+  alcance      AlcancePermiso
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  accion       PermisoAccion  @relation(fields: [codigoAccion], references: [codigo], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([rol, codigoAccion])
+  @@map("permiso_regla")
   @@schema("app")
 }
 
@@ -293,6 +359,7 @@ model FactTicket {
   factTicketEvento     FactTicketEvento[]
   ticketLegacySharepointRef TicketLegacySharepointRef?
   ticketSyncOutbox     TicketSyncOutbox[]
+  ticketNotificacion   TicketNotificacion[]
 
   // Sin índices sobre las FK (id_cliente_contai, id_solicitante, id_area_destino,
   // id_asignado, id_estado, id_prioridad, id_tipo_req): sql/db/06_helpdesk_facts.sql
@@ -331,6 +398,7 @@ model FactTicketEvento {
   factTicket        FactTicket        @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
   estadoAnterior    DimEstado?        @relation("EventoEstadoAnterior", fields: [idEstadoAnterior], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   estadoNuevo       DimEstado?        @relation("EventoEstadoNuevo", fields: [idEstadoNuevo], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
+  ticketNotificacion TicketNotificacion[]
 
   @@index([idTicket, fechaRegistro], map: "ix_fact_ticket_evento_ticket_fecha")
   @@map("fact_ticket_evento")
@@ -387,6 +455,36 @@ model TicketLegacySharepointRef {
   // en sql/db/06_helpdesk_facts.sql, sin existir contra la base real (10-sep-2026) —
   // mismo patrón que fact_ticket. El baseline no los recrea.
   @@map("ticket_legacy_sharepoint_ref")
+  @@schema("helpdesk")
+}
+
+/// Un correo producido por una acción del ticket (D6). Nace PENDIENTE en la
+/// transacción del evento y se envía después del commit, sin worker
+/// (src/server/notifications/ticket-notifications.ts). CHECK no representables:
+/// chk_ticket_notificacion_estado (PENDIENTE, ENVIANDO, ENVIADO, FALLIDO) e
+/// _intentos (>= 0). coraje_runtime no tiene DELETE: lo enviado es evidencia.
+model TicketNotificacion {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idTicket           String           @map("id_ticket") @db.Uuid
+  idEvento           String           @map("id_evento") @db.Uuid
+  idRemitente        String           @map("id_remitente") @db.Uuid
+  idDestinatario     String           @map("id_destinatario") @db.Uuid
+  destinatarioCorreo String           @map("destinatario_correo") @db.VarChar(150)
+  asunto             String           @db.VarChar(300)
+  cuerpoHtml         String           @map("cuerpo_html")
+  estado             String           @default("PENDIENTE") @db.VarChar(20)
+  intentos           Int              @default(0)
+  ultimoError        String?          @map("ultimo_error") @db.VarChar(1000)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  enviadoAt          DateTime?        @map("enviado_at") @db.Timestamptz(6)
+  factTicket         FactTicket       @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  factTicketEvento   FactTicketEvento @relation(fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
+  remitente          DimPersonal      @relation("NotificacionRemitente", fields: [idRemitente], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  destinatario       DimPersonal      @relation("NotificacionDestinatario", fields: [idDestinatario], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([idTicket, createdAt], map: "ix_ticket_notificacion_ticket")
+  @@map("ticket_notificacion")
   @@schema("helpdesk")
 }
 

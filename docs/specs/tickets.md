@@ -1,11 +1,11 @@
 # Ciclo de vida del ticket
 
 ```
-ESTADO:      parcial — existe el modelo de datos y está poblado con 2.313 tickets
-             reales; NO existe el ciclo de vida. El único tránsito implementado es
-             crear y redirigir. Este documento propone el contrato objetivo y nombra
-             lo que el esquema actual no puede sostener
-CORTE:       03-sep-2026
+ESTADO:      modelo de eventos y escritor único desplegados y ejercitados (U6). Ciclo
+             interno (T2, T4, T7, T8, nota interna) construido, sin desplegar (U7,
+             corte 18). Las secciones fechadas antes del 24-sep son antecedente: §1
+             describe el estado del 03-sep
+CORTE:       26-sep-2026
 EVIDENCIA:   lectura directa de `sql/db/06_helpdesk_facts.sql`, `sql/db/07_seed.sql` y
              `coraje-web/prisma/schema.prisma` en este corte. Los conteos vienen de
              `docs/legacy/baseline-calidad.md`, conciliados en su momento
@@ -338,14 +338,23 @@ Tres defectos del modelo actual, ninguno hipotético:
 >   el SLA por turno no muestra quién alarga un ticket con preguntas, y estas tres
 >   medidas sí.
 
-> **`PENDIENTE` Festivo de la Ley 2578 de 2026.** Crea el festivo de Nuestra Señora del
-> Rosario de Chiquinquirá: 9 de julio, trasladable al lunes por Ley Emiliani (en 2026
-> fue el lunes 13 de julio). `core.is_colombia_holiday` (baseline, `coraje-web/prisma/migrations/`)
-> calcula los festivos por regla y **no lo incluye**. Hay que añadirlo solo para años
-> `>= 2026`, sin alterar años anteriores. No es urgente: el de 2026 ya pasó y el próximo
-> cae en julio de 2027. Va en la unidad del reloj de SLA (§9, entrega 7), como
-> migración Prisma. **Hay una demanda de inconstitucionalidad en curso**: la ley sigue
-> vigente mientras la Corte Constitucional no decida. Si la tumba, se retira la regla.
+> **Construido (corte 18, sin ejercitar): calendario de festivos corregido.** Migración
+> `20260926120000_corregir_calendario_festivos`. Al añadir el festivo de la Ley 2578 de
+> 2026 (9 de julio, trasladable, solo desde 2026) salieron tres defectos del calendario
+> del baseline:
+> - `core.next_monday` solo movía el domingo, cuando la Ley Emiliani traslada al lunes
+>   todo festivo que no cae en lunes;
+> - Ascensión y Corpus se contaban también en jueves;
+> - faltaba el Sagrado Corazón.
+>
+> Solo afecta a los plazos que se calculen desde ahora: la fecha límite de los tickets
+> legacy viene de SharePoint. **Hay una demanda de inconstitucionalidad contra la Ley
+> 2578**: si la Corte la tumba, se retira su línea con otra migración.
+>
+> **Plazo de un ticket interno (T2):** lo fija `helpdesk.crear_ticket_interno` al crear.
+> Son los días hábiles de la prioridad, desde hoy en Bogotá, y vence al final de ese día.
+> La bandeja marca «Vencido» y «Por vencer» (menos de un día) comparando al consultar,
+> sin ningún proceso que recorra tickets.
 
 **Los escalados y avisos por SLA son consultas contra PostgreSQL disparadas por un
 scheduler.** La ventana se cierra sola y el tiempo no llama a nadie, así que n8n aporta
@@ -378,6 +387,14 @@ duplicar nada.
 > ninguno se escribió para un cliente: en el legacy no había acceso externo. Mostrar por
 > error una observación interna es peor que ocultar una nota antigua. Los eventos
 > `MIGRACION_LEGACY` de §3.1 también nacen `INTERNO`.
+
+> **`DECISIÓN` (25-sep-2026): quién ve qué en la v1 interna.** El solicitante de un
+> ticket interno es un empleado, y en la práctica es el «cliente» de ese ticket. Quien
+> solo lo radicó ve `AMBOS`, nunca `INTERNO`. El responsable, su área y quien tenga
+> alcance `TOTAL` ven `INTERNO` y `AMBOS` (`src/server/authorization/scope.ts`,
+> `historyProjection`). El filtro va en la consulta. `CREACION`, `RESPUESTA` y `RECHAZO`
+> son `AMBOS`. `REASIGNACION` y la nota interna (`COMENTARIO`) son `INTERNO`: el
+> solicitante ve en la ficha quién es el responsable vigente.
 
 > **`DECISIÓN` (25-sep-2026): en la v1 el autor de un evento es un empleado o el
 > sistema.** Se añade `tipo_actor` (`EMPLEADO` / `SISTEMA`) con un `CHECK` que lo ata a
@@ -577,7 +594,11 @@ inmediata.
 | V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem | **Sin verificar** — no construido |
 | V14 | Modelo de eventos de §6 y escritor único de §3.1 | `prisma/migrations/20260925120000_modelo_eventos_ticket` | **Desplegado** (25-sep-2026). Contrato en `src/server/tickets/event-model.contract.test.mts` |
 | V15 | La ingesta escribe estado y eventos solo por el escritor | Nodos `PG - Transform 06` y `07` del workflow de ingesta | **Ejercitado** (25-sep-2026), dos ejecuciones: 2.898 `MIGRACION_LEGACY`, 0 tickets sin inicio, 0 desfasados, segunda ejecución sin eventos nuevos |
-| V16 | Privilegios retirados, con prueba negativa (§8) | `prisma/migrations/20260925180000_proteger_estado_y_eventos` | **Construido, sin ejercitar**: falta la prueba negativa contra la base |
+| V16 | Privilegios retirados, con prueba negativa (§8) | `prisma/migrations/20260925180000_proteger_estado_y_eventos` | **Ejercitado** (25-sep-2026): `SET LOCAL ROLE` sobre la base desplegada, 7/7 por rol; `RESTRICT` frena a `coraje_app`; ingesta posterior al retiro en *Success* |
+| V17 | La aplicación crea el ticket y su `CREACION` juntos, y no puede insertar tickets por su cuenta | `prisma/migrations/20260926100000_permisos_y_creacion_ticket`, `ticket-lifecycle.contract.test.mts` | **Construido, sin ejercitar**: falta la prueba negativa del `INSERT` contra la base |
+| V18 | Crear, reasignar, responder, rechazar y la nota interna pasan por el escritor único, autorizados dentro de su transacción | `src/server/tickets/ticket-commands.ts` | **Construido, sin ejercitar** |
+| V19 | Solo los tickets creados en HelpDesk se operan desde HelpDesk hasta U9 | `ticket-state.ts`, `isOperableInHelpDesk` | **Construido**: los legacy se consultan, no se operan |
+| V20 | Un único vocabulario de estados en `src/` (§8) | `ticket-lifecycle.contract.test.mts` | **Verificado por prueba**. Encontró una segunda lista real en la nota interna al construir |
 
 ## 11. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
 

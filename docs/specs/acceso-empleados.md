@@ -271,10 +271,12 @@ corporativa.
   consentimiento por empleado el día que el envío se construya. **Lo que sigue sin
   construirse es el mecanismo mismo**: Impulsa lo resuelve con un *grant* delegado
   cifrado (`graph-grant.ts`) porque despacha correo horas después y sin sesión activa
-  — HelpDesk necesitará el mismo patrón, adaptado, cuando se construya el envío real
-  (probablemente junto al ciclo del ticket, `U7`). Hasta entonces, el intercambio de
-  código recibe el `refresh_token` en la respuesta y lo descarta sin persistirlo — ver
-  comentario en `exchangeAuthorizationCode`.
+  — HelpDesk necesitará el mismo patrón, adaptado, cuando se construya el envío real.
+  **Construido en U7 (corte 18), sin ejercitar:** el callback guarda el
+  `refresh_token` sellado en `app.employee_graph_grant` (`src/server/auth/graph-grant.ts`),
+  solo si Entra concedió `Mail.Send`. Un fallo al guardarlo no impide el ingreso. Cerrar
+  sesión no lo borra. Quien entró antes del despliegue tiene que volver a entrar para que
+  se guarde.
   - **Pendiente, no decidido:** si además hará falta `Mail.Send.Shared` para un
     escenario de correo desde un buzón compartido de la firma (el dominio ya tiene ese
     patrón — F10, `es_responsable_historico_no_identificado`), en vez de siempre desde
@@ -342,7 +344,7 @@ respalda cada una.
 | V7 | `prompt=none` protegido contra bucle por marca de un solo uso | `/api/auth/microsoft/start` | **Construido**, verificado por inspección (cookie `helpdesk_oidc_silent_attempted`). Sin ejercitar contra el proveedor real |
 | V8 | No queda ninguna referencia a `REDIRECCION_PASSWORD` | `grep` sobre `src/` y sobre las variables de entorno | **Verificado (U4).** No es un `grep` manual: una prueba de la suite recorre `src/` y falla si el nombre reaparece, así que la propiedad se mantiene sola. La pantalla de acceso con clave y su cookie se eliminaron; la variable se retiró del servicio en Coolify, confirmado por el usuario |
 | V9 | Pruebas negativas por cada causa de rechazo | `employee-admission.test.mts` | **Verificado por test**: las cuatro causas, más una prueba explícita de que ninguna combinación admite por defecto |
-| V10 | Ninguna comparación de rol fuera del autorizador | `grep` de comparaciones de rol en componentes y handlers | **Verificado por inspección**: `grep` no encuentra ninguna comparación de `rolAplicacion` fuera de `evaluateAdmissionRules` — no hay autorizador de rol+acción todavía (`specs/permisos.md`, `U7`), solo la puerta binaria de admisión |
+| V10 | Ninguna comparación de rol fuera del autorizador | `grep` de comparaciones de rol en componentes y handlers | **Verificado por prueba** (corte 18): `authorization/catalog.test.mts` falla si aparece una comparación de rol fuera de la admisión y del autorizador (`specs/permisos.md` §4.1) |
 
 **Changelog:** 03-sep-2026 — línea base. Descarta el traspaso de token desde Conecta con
 sus tres razones y la evidencia del modelo desacoplado ya vigente en Impulsa (§2);

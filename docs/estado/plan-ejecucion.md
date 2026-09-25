@@ -225,11 +225,11 @@ y el despliegue de otro equipo), igual que U0. No bloquea U6 ni la bloquea U6.
 muestra «Formación» a quien tiene cursos y no a quien no los tiene. Con Conecta caído,
 HelpDesk entra igual.
 
-### U6 · Modelo de eventos del ticket — **cabeza de la cola, en curso**
+### U6 · Modelo de eventos del ticket — **cerrada**
 
-> **Estado al 25-sep-2026: fase 1 desplegada y ejercitada** (modelo, escritor único,
-> ingesta reescrita); **fase 2 construida** (retiro de privilegios), falta la prueba
-> negativa contra la base para cerrar. Decisiones: Transiciones (cuatro
+> **CERRADA el 25-sep-2026.** Fases 1 y 2 desplegadas y ejercitadas: prueba negativa
+> superada e ingesta posterior al retiro de privilegios en *Success*. **U7 pasa a ser
+> la cabeza.** Decisiones: Transiciones (cuatro
 > estados, sin `ESPERANDO_SOLICITANTE`), reloj por turno, escritor único en PostgreSQL,
 > traducción de estados legacy, visibilidad, actor (`EMPLEADO` / `SISTEMA`), catálogo de
 > tipos de evento como `enum` y registro protegido por privilegios están en
@@ -246,15 +246,36 @@ negativa · reprocesar la ingesta legacy no duplica eventos.
 
 **Depende de:** U0, U2.
 
-### U7 · Ciclo interno del ticket
+### U7 · Ciclo interno del ticket — **cabeza de la cola, en curso**
 
-Bandeja, asignación, respuesta, cierre, rechazo y reapertura, cada acción conectada al
-autorizador. Reloj de SLA con pausa. **Depende de:** U6, `specs/permisos.md`.
+Crear, bandeja, reasignar, responder (que cierra) y rechazar, más la nota interna,
+cada acción conectada al autorizador. Plazo por días hábiles, sin pausa. Correo como
+quien actúa (D6) y adjuntos. **Depende de:** U6, `specs/permisos.md`.
+
+> **Corregido el 25-sep-2026.** Este texto decía «reapertura» y «reloj de SLA con
+> pausa». En la v1 no hay ninguna de las dos (`specs/tickets.md` §4.1, §5), y manda la
+> spec. Redirigir (T3) sale de U7: solo lo producen los tickets de clientes, y pasa a U8.
+>
+> **Decisiones del 25-sep-2026:** U7 se prueba solo con tickets creados en HelpDesk y
+> no se usa de verdad hasta U9. Los tickets legacy se consultan, no se operan. El correo
+> lleva un enlace al ticket, no adjuntos. Sin worker para los correos: se envían tras el
+> commit y se reenvían a mano. Los adjuntos siguen el modelo del buzón de sugerencias de
+> Impulsa.
+>
+> **Estado (corte 18):** todo construido salvo los adjuntos, sin desplegar. Los
+> adjuntos esperan los permisos de Graph y el destino de almacenamiento
+> (`estado/handoff.md`, «Acción inmediata»).
+>
+> **Cierre:** el ciclo completo ejercitado con tickets de prueba en el despliegue, con
+> sus correos enviados; prueba negativa del `INSERT` directo; calendario de 2026
+> verificado contra los festivos oficiales; adjuntos construidos y ejercitados.
 
 ### U8 · Acceso de clientes
 
-Implementa `specs/acceso-clientes.md` y retira `/portal` actual. **Depende de:** la
-decisión de alcance de su §3.1, la del remitente de correo de su §11, y U3.
+Implementa `specs/acceso-clientes.md` y retira `/portal` actual. Incluye redirigir
+(T3), que solo producen los tickets de clientes, con su permiso y el rol que lo tenga.
+**Depende de:** la decisión de alcance de su §3.1, la del remitente de correo de su §11,
+y U3.
 
 ### U9 · Regla de precedencia con SharePoint
 

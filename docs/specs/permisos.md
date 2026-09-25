@@ -1,12 +1,13 @@
 # Permisos ejecutables
 
 ```
-ESTADO:      no implementado — no existe autorización de ninguna clase en el código
-             publicado. La única barrera vigente es una contraseña compartida sobre
-             una ruta, que no distingue personas
-CORTE:       03-sep-2026
-EVIDENCIA:   ninguna sobre HelpDesk. El modelo se adopta de `plataforma-impulsa`,
-             cuyo catálogo y autorizador sí están publicados y verificados por lectura
+ESTADO:      construido, sin desplegar (corte 18, 26-sep-2026): catálogo en
+             `app.permiso_accion` / `app.permiso_regla`, autorizador en
+             `src/server/authorization/`, cada acción del ticket conectada en su
+             comando. Falta la autorización excepcional (§5) y la consola (§8)
+CORTE:       26-sep-2026
+EVIDENCIA:   `tsc`, `lint`, `pnpm test` (alcance, catálogo sembrado y consultado,
+             sin comparaciones de rol). Sin ejercitar contra la base
 BLOQUEO:     parcialmente levantado (03-sep-2026) — el usuario confirmó directamente,
              sin levantamiento formal, que no hay rol adicional detrás de las dos
              únicas excepciones hardcodeadas del legacy (§6). Sigue sin construirse la
@@ -80,6 +81,30 @@ evalúan, y el segundo es el que se olvida.
 **La interfaz solo presenta como efectiva una combinación de permiso y estado cuando el
 servicio aplica la misma frontera.** Si difieren, la interfaz miente y el usuario
 descubre el límite al chocar contra él.
+
+### 4.1 `DECISIÓN` (25-sep-2026) Catálogo y alcances de la v1
+
+El alcance de cada regla es `PROPIO`, `AREA` o `TOTAL`. Cada uno incluye al anterior.
+Su significado vive en un solo sitio, `src/server/authorization/scope.ts`:
+
+- **`PROPIO`**: para actuar, ser el responsable del ticket (como en el legacy, §6 de
+  `legacy/reglas-negocio-powerapps.md`). Para consultar, también haberlo radicado.
+- **`AREA`**: `PROPIO` más los tickets cuya área destino es la de la persona.
+- **`TOTAL`**: cualquier ticket. Ningún rol lo tiene en la v1.
+
+| Acción | `AGENTE` |
+|---|---|
+| `ticket.consultar` | `AREA` |
+| `ticket.crear` | `PROPIO` (a nombre propio) |
+| `ticket.reasignar` | `PROPIO`, a otra persona activa con rol de **su** área |
+| `ticket.responder` | `PROPIO` |
+| `ticket.rechazar` | `PROPIO` |
+| `ticket.nota_interna` | `AREA` |
+| `ticket.notificacion.reenviar` | `PROPIO`: solo quien envió el correo, porque sale de su buzón |
+
+Quien solo radicó un ticket ve su historia sin las notas internas (`specs/tickets.md`
+§6). **Redirigir (T3) no está en el catálogo de la v1 interna**: solo lo producen los
+tickets de clientes y llega con U8, con el rol que lo tenga.
 
 ## 5. Autorización excepcional
 
@@ -159,18 +184,16 @@ hay evidencia, la única real.**
 
 ## 9. Verificación contra código
 
-Sin implementación; la tabla queda escrita para la unidad que la construya.
-
-| # | Afirmación a verificar | Dónde comprobarlo |
-|---|---|---|
-| V1 | No hay comparaciones de rol fuera del autorizador | `grep` sobre componentes, handlers y servicios |
-| V2 | Cada acción del catálogo se consulta en servidor antes de ejecutar | Guards de cada servicio |
-| V3 | Pruebas negativas por frontera de rol | Tests de autorización |
-| V4 | La justificación se exige antes de ejecutar, no después | Orden de validación en el handler excepcional |
-| V5 | La auditoría registra los siete campos de §5 | Modelo y escritura |
-| V6 | La interfaz y el servicio comparten frontera de estados | Comparar condición de la vista con la del servicio |
-| V7 | Un observador no puede ejecutar ninguna acción del catálogo | Guard del servicio + prueba negativa |
-| V8 | Solicitar validación no exige la justificación obligatoria de §5 | Comparar los dos handlers |
+| # | Afirmación a verificar | Dónde comprobarlo | Veredicto (26-sep-2026) |
+|---|---|---|---|
+| V1 | No hay comparaciones de rol fuera del autorizador | `grep` sobre componentes, handlers y servicios | **Verificado por prueba**: `authorization/catalog.test.mts` |
+| V2 | Cada acción del catálogo se consulta en servidor antes de ejecutar | Guards de cada servicio | **Verificado por prueba**: cada código se consulta en algún servicio; los comandos autorizan dentro de su transacción, con la fila bloqueada |
+| V3 | Pruebas negativas por frontera de rol | Tests de autorización | **Parcial**: `scope.test.mts` prueba las fronteras de alcance sin base. Sin ejercitar contra la base |
+| V4 | La justificación se exige antes de ejecutar, no después | Orden de validación en el handler excepcional | Sin construir (§5) |
+| V5 | La auditoría registra los siete campos de §5 | Modelo y escritura | Sin construir (§5) |
+| V6 | La interfaz y el servicio comparten frontera de estados | Comparar condición de la vista con la del servicio | **Por inspección**: `getTicketDetail` usa las mismas reglas de alcance y de estado que los comandos |
+| V7 | Un observador no puede ejecutar ninguna acción del catálogo | Guard del servicio + prueba negativa | Sin construir |
+| V8 | Solicitar validación no exige la justificación obligatoria de §5 | Comparar los dos handlers | Sin construir |
 
 ## 10. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
 

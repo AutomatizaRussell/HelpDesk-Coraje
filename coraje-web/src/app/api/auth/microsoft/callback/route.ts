@@ -15,6 +15,7 @@ import {
   SESSION_TTL_SECONDS,
 } from "@/server/auth/employee-session";
 import { bindProfileToIdentity, type EntryContext } from "@/server/auth/entry-context";
+import { recordGraphGrant } from "@/server/auth/graph-grant";
 import { ENTRY_COOKIE_NAME, sealEntryContext } from "@/server/auth/entry-cookie";
 import { sanitizeLoginHint } from "@/server/auth/login-hint";
 import { STATE_COOKIE_NAME, type SealedOidcState } from "@/server/auth/oidc-state";
@@ -107,6 +108,21 @@ export async function GET(request: NextRequest) {
 
     if (!result.admitted) {
       return redirectToLogin(result.reason);
+    }
+
+    // Custodia de la autorización de correo (D6), solo para quien ya fue
+    // admitido. Un fallo aquí no le cierra la puerta a nadie: sin ella, lo
+    // único que no funciona es el envío de correo, y el ticket lo muestra.
+    try {
+      await recordGraphGrant({
+        idPersonal: result.idPersonal,
+        refreshToken: tokenSet.refreshToken,
+        grantedScope: tokenSet.scope,
+        tenantId: claims.tid,
+        subject: result.subject,
+      });
+    } catch (error) {
+      console.error("No se pudo guardar la autorización de correo del empleado:", error);
     }
 
     // Se sanea de nuevo aquí, no solo al sellar en /start: el sellado prueba

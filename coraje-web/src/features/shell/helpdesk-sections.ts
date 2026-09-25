@@ -3,11 +3,11 @@ import type { ModuleNavItem } from "@/design-system/patterns/module-nav/ModuleNa
 /**
  * Secciones de HelpDesk en su navegación propia (`ModuleNav`), en orden.
  *
- * Hoy solo existe «Inicio». Cada sección nueva se añade aquí cuando su vista
- * exista —la bandeja llega con U7—, no antes: una pestaña que lleva a una
- * pantalla vacía le promete a la persona algo que la aplicación no hace.
+ * Cada sección se añade aquí cuando su vista existe, no antes: una pestaña que
+ * lleva a una pantalla vacía le promete a la persona algo que la aplicación no
+ * hace. La bandeja cubre también el detalle y la creación (`/tickets/…`).
  *
  * Cuando una sección dependa de un permiso, se filtrará con el autorizador
  * ejecutable (specs/permisos.md), nunca comparando roles aquí.
  */
-export const HELPDESK_SECTIONS: readonly ModuleNavItem[] = [{ label: "Inicio", href: "/" }];
+export const HELPDESK_SECTIONS: readonly ModuleNavItem[] = [{ label: "Tickets", href: "/tickets" }];

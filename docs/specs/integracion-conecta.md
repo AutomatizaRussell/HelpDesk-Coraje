@@ -219,6 +219,7 @@ contenido de clientes.
 | I6 | Solo viajan los nueve campos, por POST | `EntryHandoff.tsx` | Inspección; sin ejercitar |
 | I7 | Con sesión de Conecta se entra sin selector aunque haya varias cuentas | Despliegue + Entra real | **Ejercitado** por el usuario, 24-sep-2026 |
 | I8 | Cerrar sesión borra el modo de entrada | `sign-out-action.ts`, `logout/route.ts` | Inspección; sin ejercitar |
+| I9 | Cerrar sesión en HelpDesk lleva a Conecta (`/app`) en los dos modos de entrada, sin cerrar la sesión de Conecta (decisión del 25-sep-2026) | `server/auth/conecta-return.ts` | Construido (corte 18); sin ejercitar |
 | I9 | Endpoint de Conecta con los controles de §5.1 | RBGCT-REACT | **Decidido, pendiente de construir** (U5.2) |
 
 **Changelog:**

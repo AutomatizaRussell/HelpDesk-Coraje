@@ -1,7 +1,33 @@
 # Handoff técnico
 
 ```
-CORTE:   25-sep-2026 (corte 17, U6 — fase 2 construida, SIN DESPLEGAR)
+CORTE:   26-sep-2026 (corte 18, U7 — ciclo interno construido, SIN DESPLEGAR)
+SOBRE:   `8eff969` (corte 17)
+RAMA:    main
+UNIDAD:  U7 · CICLO INTERNO DEL TICKET. Incluye además el cierre documental de U6
+         (pruebas negativas y la ingesta posterior al retiro, ejercitadas el 25-sep).
+         Construido:
+         - migración `20260926100000_permisos_y_creacion_ticket`: catálogo
+           `app.permiso_accion` / `app.permiso_regla` (7 acciones, rol `AGENTE`) y
+           `helpdesk.crear_ticket_interno` (inserta ticket y `CREACION` juntos);
+           `coraje_runtime` pierde el `INSERT` directo sobre `fact_ticket`;
+         - migración `20260926110000_correo_delegado` (D6): custodia sellada del
+           `refresh_token` (`app.employee_graph_grant`) y registro de correos
+           (`helpdesk.ticket_notificacion`), enviados tras el commit, sin worker;
+         - migración `20260926120000_corregir_calendario_festivos`: Ley Emiliani,
+           Ascensión/Corpus en lunes, Sagrado Corazón y Ley 2578;
+         - autorizador (`src/server/authorization/`), comandos y consultas
+           (`src/server/tickets/`), correo (`src/server/notifications/`), vistas
+           `/tickets`, `/tickets/nuevo`, `/tickets/[idTicket]`;
+         - cerrar sesión lleva a Conecta (`https://conecta.rbgct.cloud/app`);
+         - salida de n8n con la credencial «Microsoft SharePoint account» en vez de
+           «Cuenta edwin» (archivo versionado; **sin importar en la instancia**).
+         Evidencia: `prisma generate`, `tsc`, `eslint`, `pnpm test` 96/96,
+         `next build`. **Sin ejercitar**: ninguna migración aplicada, ningún correo
+         enviado, ninguna vista abierta en el navegador.
+         **No construido en U7:** adjuntos (bloqueados, ver «Acción inmediata»).
+
+--- Corte 17, para contexto:
 SOBRE:   `96d0860` (corte 16, fase 1)
 FASE 2:  migración `20260925180000_proteger_estado_y_eventos`: retira a
          `coraje_runtime`/`coraje_etl` el `UPDATE` sobre `id_estado` (retirando el de
@@ -48,7 +74,7 @@ UNIDAD:  U6 · MODELO DE EVENTOS DEL TICKET — todas las decisiones tomadas
          tablas alteradas; 538 eventos, todos `COMENTARIO`, ninguno con autor; sin
          `ASIGNADO`; los tres roles existen.
 
-LOCAL:   limpio tras publicar el corte 17 (commit con la línea `Corte 17`).
+LOCAL:   limpio tras publicar el corte 18 (commit con la línea `Corte 18`).
 
 CORTE ANTERIOR (24-sep-2026, corte 15): U6 en curso, solo decisiones. Incidencia F13
          (ingesta detenida 11 días por colisión de `codigo_ticket`) corregida y
@@ -578,7 +604,8 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | F7 | `.env.example` declara **una** variable (`DATABASE_URL`) de las ocho que el código lee: las cuatro de Entra (`ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`), `HELPDESK_TOKEN_ENCRYPTION_KEY` y las dos del webhook de n8n. Todas puestas en Coolify, ninguna documentada. Un despliegue nuevo arranca y falla en el primer ingreso, no al arrancar. Las dos de n8n solo las lee la acción de redirección, hoy sin pantalla que la invoque | Baja | `estado/operacion.md` |
 | ~~F13~~ | ~~La ingesta falló en cada ejecución del 14 al 24-sep-2026 (22 veces) con `duplicate key … fact_ticket_codigo_ticket_key (ADM-2026-1064)`, sin avisar a nadie~~ — **cerrado 24-sep-2026, ejercitado.** Dos defectos del mecanismo que F12 había declarado «correcto»: (1) `trg_set_codigo_ticket` es `BEFORE INSERT` y PostgreSQL lo ejecuta antes de resolver `ON CONFLICT`; la ingesta reenvía todo staging en cada ejecución, así que cada ticket existente gastaba un número (en 2024 y 2025 cada contador valía exactamente 10× sus tickets); (2) `LPAD(n, 4, '0')` trunca: al pasar ADM/2026 de 9.999, el 10641 dio `'1064'`, ya emitido. El fallo revertía el contador y la colisión se repetía siempre. Migración `20260924120000_corregir_codigo_ticket` (`8cef4bf`): el trigger no genera código para un `id_ticket` existente, `LPAD` no trunca, y cada contador vuelve al mayor número emitido. Verificado antes: dueño `coraje_migrator`, un solo trigger, `codigo_area` única. Después: migración aplicada, ingesta 2.835 → 2.896 tickets, 0 desfasados, contadores +61 en total = tickets nuevos. Ningún código emitido se modificó (quedan huecos y números inflados, únicos) | ~~Alta~~ | `coraje-web/prisma/migrations/20260924120000_corregir_codigo_ticket/` |
 | ~~V10~~ | ~~No existía workflow de error en n8n~~ — **cerrado 24-sep-2026.** `n8n/Alertas de errores a Teams.json`, genérico para cualquier workflow de la instancia, asignado a la ingesta y a la salida (`settings.errorWorkflow`). El que existía antes no lo usaba nadie, interpolaba el mensaje sin escapar (los errores de PostgreSQL traen comillas y rompen el JSON) y filtraba por `execution.mode = "production"`. Envía a un flujo propio de Power Automate, *Alertas de n8n a Equipo Desarrollo*, separado del de Coolify; el `sig` va en una credencial *Query Auth*. Probado con un workflow temporal: la tarjeta llegó con comillas intactas. **Sin ejercitar con un fallo real** de estos dos workflows. **No cubre** que n8n esté caído o la programación desactivada: eso sigue en U10 | ~~Alta~~ | `n8n/` |
-| F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` — **decidido el 24-sep-2026, no construido:** reloj por turno, prioridad del legacy para internos, 3 días fijos para clientes (`specs/tickets.md` §5) | Media | `specs/tickets.md` §5 |
+| F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` — **decidido el 24-sep-2026:** reloj por turno, prioridad del legacy para internos, 3 días fijos para clientes (`specs/tickets.md` §5). **Corte 18:** el plazo de los tickets internos se calcula al crear, y el calendario de festivos se corrigió (Ley Emiliani, lunes de Ascensión/Corpus, Sagrado Corazón, Ley 2578). Sin ejercitar. Los 3 días de clientes esperan a U8 | Media | `specs/tickets.md` §5 |
+| F14 | El envío de correo depende de la autorización delegada de cada persona. Una contraseña cambiada o sesiones revocadas la matan, y hasta que esa persona vuelva a entrar sus correos fallan | Baja | `src/server/auth/graph-grant.ts`. Mitigado: el correo queda `FALLIDO` en el ticket, con el motivo y la opción de reenviar |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
 
 > **F12 reabierto — la consulta que se marcó "opcional, de prioridad baja" en corte 4
@@ -602,7 +629,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~Se retiró el ciclo local antes de que exista el servicio `migrate` gateado que lo reemplaza~~ — **resuelto 11-sep-2026 (corte 8)**: servicio `migrate` desplegado, gate `depends_on: service_completed_successfully` confirmado en un deploy real de Coolify (logs: `No pending migrations to apply.` antes de que `web` arrancara) | ~~Sin el servicio, no había forma documentada de verificar comportamiento — ni local, ni por push~~ | ~~Cerrado~~ |
 | ~~La contraseña real de `coraje_app` se pegó en texto plano en esta conversación~~ — **resuelto 11-sep-2026**: rotada al cerrar F6, con `\password` interactivo (no vuelve a aparecer en texto). `coraje_app` además dejó de ser la credencial de cualquier sistema automático | ~~Si el historial de esta sesión quedaba expuesto, exponía con él la credencial de base de producción~~ | ~~Cerrado~~ |
 | ~~`n8n/` tiene tres archivos sin commit~~ — **cerrado por completo 10-sep-2026**: el consumidor del outbox quedó renombrado, commiteado (`1de8641`) y confirmado activo; cuál copia de la ingesta es la real quedó confirmado por ejecución (la del archivo commiteado, `e3b95a1`, tras corregir una confusión real donde se publicó primero la copia sin fix); `V2` y `V2.1` quedaron borradas del disco de la VPS y de n8n, confirmado por el usuario | ~~Confusión futura si alguien reactivaba la copia equivocada~~ | ~~Cerrado~~ |
-| **Credenciales de SharePoint y de Teams a nombre de personas.** La salida usa «Cuenta edwin»; la ingesta pasó el 24-sep a «Microsoft SharePoint account», sin confirmar de quién es. El flujo de Power Automate de Coolify publica y registra con conexiones de `johngarcia@rbcol.co` | El día que una de esas cuentas se desactive o cambie de contraseña, la integración deja de funcionar. Con el workflow de error, la ingesta y la salida ya avisan; el flujo de Coolify no | Confirmar el dueño de cada credencial y mover las personales a una cuenta de servicio. Sin urgencia mientras las cuentas sigan activas |
+| **Credenciales de SharePoint y de Teams a nombre de personas.** Desde el corte 18 las dos usan «Microsoft SharePoint account» (la salida usaba «Cuenta edwin»; falta importarla en la instancia). La lista `HelpDeskBd` misma vive en el OneDrive personal de Edwin (`legacy/reglas-negocio-powerapps.md` §1): si esa cuenta se desactiva, cae la lista, no solo la credencial. El flujo de Power Automate de Coolify publica y registra con conexiones de `johngarcia@rbcol.co` | El día que una de esas cuentas se desactive o cambie de contraseña, la integración deja de funcionar. Con el workflow de error, la ingesta y la salida ya avisan; el flujo de Coolify no | Confirmar el dueño de cada credencial y mover las personales a una cuenta de servicio. Sin urgencia mientras las cuentas sigan activas |
 | **La ingesta reescribe los ~2.800 tickets en cada ejecución**, dos veces al día, aunque no hayan cambiado: toda la tabla recibe `ultima_actualizacion = NOW()` | Carga constante contra el objetivo de economía de recursos, y `ultima_actualizacion` no dice cuándo cambió de verdad un ticket | Se corrige con la reescritura de la ingesta decidida en U6 (`specs/tickets.md` §3.1: tocar solo lo que cambia) |
 | ~~El workflow de ingesta committeado embebe su propia copia de cada query SQL, no la lee de `sql/elt/`~~ — **resuelto 24-sep-2026 retirando la segunda copia**: `sql/` se eliminó (`9e2c322`) tras comprobar que 02, 03 y 05 ya diferían en lógica de lo que corre. **Lo que sigue siendo cierto:** ningún commit cambia lo que ejecuta n8n. Un cambio al workflow del repositorio no está aplicado hasta que se importa en la instancia y se confirma con una ejecución; y un cambio hecho en la instancia no está versionado hasta que se exporta. Texto original: El workflow de ingesta committeado embebe su propia copia de cada query SQL — **no la lee de `sql/elt/`**. **Materializado, no solo teórico:** el primer intento de correr la ingesta en esta unidad falló porque se publicó una copia de n8n sin el fix; se resolvió reimportando el archivo correcto. Ningún commit, por sí solo, cambia lo que n8n ejecuta — sigue siendo cierto para el próximo fix | Repetir el mismo incidente en la próxima corrección: escribir el fix en `sql/elt/`, olvidar reimportarlo a n8n, y que la instancia viva siga corriendo la versión vieja sin que nada lo avise | Antes de dar por aplicado cualquier cambio a `sql/elt/06_transform_ticket.sql` (o cualquier archivo que un nodo de este workflow embeba), confirmar explícitamente que se reimportó a la instancia viva — no asumir por el nombre o la fecha del archivo local; ver F11 sobre la divergencia de `tipo_legacy` entre ambas copias, que ningún reimport futuro corrige por sí solo |
 | ~~La migración de U3 crea `ux_dim_personal_correo_activo`, único parcial sobre `correo_corporativo`~~ — **descartado como causa real (17-sep-2026)**: la consulta de verificación devolvió 0 filas, ningún duplicado. El deploy sí falló, pero por otra razón — ver fila siguiente | ~~El `CREATE UNIQUE INDEX` fallaría al desplegar si hubiera un duplicado~~ | ~~Verificado y descartado~~ |
@@ -617,7 +644,9 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
-| `9e2c322` | **Corte vigente.** Retira `sql/` y fija la traducción de estados legacy (`tickets.md` §4.2) y la visibilidad `INTERNO` de los eventos legacy |
+| `8eff969` | **Corte 17.** U6 fase 2: retira los privilegios que eluden el escritor único |
+| `96d0860` | Corte 16. U6 fase 1: modelo de eventos, escritor único e ingesta reescrita |
+| `9e2c322` | Retira `sql/` y fija la traducción de estados legacy (`tickets.md` §4.2) y la visibilidad `INTERNO` de los eventos legacy |
 | `eaef12b` | Asigna el workflow de error a la ingesta y a la salida (exportaciones de la instancia viva) |
 | `319cd42` | Versiona el workflow genérico de alertas de errores a Teams |
 | `8cef4bf` | **F13.** Corrige la generación de `codigo_ticket` que tenía detenida la ingesta desde el 14-sep |
@@ -727,25 +756,72 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U6: pruebas negativas y cierre
+## Acción inmediata para la siguiente sesión — U7: desplegar y ejercitar el corte 18
 
-**U6 sigue siendo la cabeza de `plan-ejecucion.md`.** Fase 1 desplegada y ejercitada;
-fase 2 publicada con el corte 17. Falta:
+**U7 sigue siendo la cabeza de `plan-ejecucion.md`.** El corte 18 está construido y sin
+desplegar. Lo que falta, en orden:
 
-1. **Confirmar que `migrate` aplicó `20260925180000_proteger_estado_y_eventos`.**
-2. **Pruebas negativas con `SET LOCAL ROLE`**, dentro de una transacción revertida, para
-   `coraje_runtime` y `coraje_etl`: `UPDATE` de `id_estado`, `DELETE` de ticket e
-   `INSERT`/`UPDATE`/`DELETE` de eventos fallan con *permission denied*; `UPDATE` de
-   otra columna y la llamada al escritor funcionan. Con `coraje_app`, borrar un ticket
-   con eventos falla por la FK `RESTRICT`.
-3. **La siguiente ingesta programada termina sin error** con los privilegios
-   retirados.
-4. Con eso, **U6 se cierra** y U7 pasa a la cabeza de la cola.
+0. **Antes de publicar**, confirmar que `coraje_migrator` es dueño de
+   `core.next_monday` y `core.is_colombia_holiday`. El baseline se adoptó sin
+   ejecutarse y esto no está verificado. El usuario lo corre en la VPS, con el patrón de
+   `estado/operacion.md`:
 
-**Conocido y sin resolver en U6:** un `INSERT` en `fact_ticket` puede fijar el estado
-inicial sin evento. La ingesta lo cubre con `MIGRACION_LEGACY` en la misma ejecución;
-la creación desde la aplicación (U7) tiene que pasar por una función que inserte el
-ticket y su `CREACION` juntos.
+   ```bash
+   docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+   SELECT p.oid::regprocedure AS funcion,
+          pg_get_userbyid(p.proowner) AS dueno,
+          pg_get_userbyid(p.proowner) = 'coraje_migrator' AS migracion_puede_reemplazarla
+   FROM pg_proc p
+   JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'core'
+     AND p.proname IN ('next_monday', 'is_colombia_holiday');
+   "
+   ```
+
+   Si alguna fila da `f`, antes de publicar se ejecuta `ALTER FUNCTION … OWNER TO
+   coraje_migrator` con el mismo patrón. Si no, la migración del calendario aborta con
+   ese mensaje y `web` no arranca.
+1. **Confirmar que `migrate` aplicó las tres migraciones** del corte
+   (`_prisma_migrations`).
+2. **Prueba negativa del `INSERT`**, con `SET LOCAL ROLE coraje_runtime` dentro de una
+   transacción revertida: un `INSERT` en `helpdesk.fact_ticket` falla con
+   *permission denied*. El comando se entrega con el patrón de `estado/operacion.md`.
+3. **Calendario**: los festivos de 2026 según `core.is_colombia_holiday` tienen que ser
+   los 19 oficiales, incluidos el 12 de enero, el 18 de mayo, el 8 y el 15 de junio y el
+   13 de julio. No deben aparecer el 6 de enero, el 14 de mayo ni el 4 de junio. El
+   comando se entrega con el mismo patrón.
+4. **Ciclo completo con tickets de prueba**, en el navegador: crear (le llega el correo
+   a quien recibe) → reasignar a otra persona del área (le llega el correo a esa persona
+   y a quien radicó) → responder (le llega a quien radicó, el ticket queda `CERRADO`).
+   Crear otro y rechazarlo. Una nota interna no aparece al solicitante. **Antes, cerrar
+   sesión y volver a entrar:** la autorización de correo solo se guarda en un ingreso
+   posterior al despliegue. **Condición:** el área de prueba necesita un responsable de
+   recepción con `rol_aplicacion`, y la reasignación, una segunda persona con rol en la
+   misma área.
+5. **Importar la salida de n8n** con la credencial nueva y confirmar en la instancia que
+   el nodo HTTP usa «Microsoft SharePoint account».
+
+**Adjuntos, bloqueados por dos datos del usuario:** los permisos de Microsoft Graph de la
+App Registration de Conecta y de la que hay detrás de «Microsoft SharePoint account»
+(tipo delegado o de aplicación, y si tienen consentimiento de administrador), y el sitio
+o biblioteca donde se guardarán los archivos. El diseño será el del buzón de sugerencias
+de Impulsa (sesión de carga de Graph creada por n8n; el navegador sube directo; en
+PostgreSQL solo el manifiesto).
+
+Cierre de U6 (25-sep-2026): fase 2 desplegada y con prueba negativa superada: migración
+aplicada; con `SET LOCAL ROLE`, `coraje_runtime` y `coraje_etl` tienen denegados
+`UPDATE` de `id_estado`, `DELETE` de ticket e `INSERT`/`UPDATE`/`DELETE` de eventos, y
+permitidos `UPDATE` de otra columna y el escritor único (7/7 cada uno). Con
+`coraje_app`, borrar un ticket con eventos falla por `RESTRICT` (`restrict_violation`,
+23001). Todo dentro de una transacción revertida.
+
+Ingesta posterior al retiro (14:41, 25-sep): *Success* en n8n, sin alerta en Teams,
+escritura en `fact_ticket` a las 14:41:18; `legacy_sin_inicio = 0`, `desfasados = 0`.
+
+**Resuelto en el corte 18 para la aplicación:** un `INSERT` en `fact_ticket` podía fijar
+el estado inicial sin evento. `coraje_runtime` ya no tiene `INSERT` y crea por
+`helpdesk.crear_ticket_interno`. `coraje_etl` lo conserva: la ingesta lo cubre con
+`MIGRACION_LEGACY` en la misma ejecución, y ese camino muere con SharePoint.
 
 **Datos reales:** ≈2.900 tickets y 538 eventos al 25-sep; la ingesta corre dos veces al
 día.
@@ -831,7 +907,7 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 | Integración con Conecta por la opción 3: navegador (`gct_empleado`) **y** endpoint en Conecta, con todos los controles de seguridad de §5.1 | `specs/integracion-conecta.md` §1.1, §5 | **Parte 1 construida y ejercitada (U5). Parte 2 decidida, pendiente de construir (U5.2)**; su diff en RBGCT-REACT se presenta al usuario antes de escribirlo (§1.2, rama `lulox`) |
 | Economía de recursos de la VPS como criterio permanente de diseño | Ídem §1.2 | Decidida, sin línea base medida |
 | Modelo de esquema: migraciones Prisma completas, se abandona SQL a mano (D1) | `contexto-canonico.md` §4 | **Construida por completo (corte 8):** baseline adoptado, y el servicio `migrate` ya automatiza cada deploy futuro |
-| Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | Decidida, no construida |
+| Consulta de tickets se acota por permiso, no queda sin restricción como en el legacy | `legacy/reglas-negocio-powerapps.md` §13.6 | **Construida (corte 18), sin ejercitar:** alcance `AREA` de `ticket.consultar`, filtrado en la consulta SQL (`specs/permisos.md` §4) |
 | Se retira del runbook el ciclo de desarrollo local; la verificación funcional es siempre vía commit + push a lo desplegado | `estado/operacion.md` | **Construida (corte 8):** el servicio `migrate` que la sostenía ya existe y quedó confirmado en un deploy real |
 | Convención de nombres del modelo Prisma: `PascalCase` con `@@map` a `snake_case`, igual que Impulsa (D1') | `contexto-canonico.md` §4 | **Construida (corte 6):** las 14 tablas de `core`+`helpdesk` mapeadas en `schema.prisma`; `staging` queda deliberadamente fuera de Prisma (es dominio del ELT) |
 | Observadores (watchers de solo lectura) van en v1, a partir del prototipo `helpdesk_santi/` | `specs/tickets.md` §11, `specs/permisos.md` §10 | Decidida, no construida — depende del catálogo de personas/roles todavía `ABIERTO` |
@@ -842,7 +918,7 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 | U0 pregunta 2: Jimena Tejeiro no tiene nada especial en su rol frente a Legal — es exactamente el mismo caso que Alex para Proyectos y TI, la responsable normal del área. Quitando la pantalla fusionada (interfaz, no se replica) y el puente a `TareasLegal` (aplazado), no queda ninguna regla de negocio distinta que conservar | `legacy/reglas-negocio-powerapps.md` §11 | Cerrada. Legal se enruta igual que cualquier otra área en la tabla de enrutamiento, sin comparación de identidad en el código |
 | U0 pregunta 5: no requiere ningún mecanismo de producto. Reportar y cerrar con las acciones realizadas es responsabilidad de quien resuelve o de quien radicó, no algo que la aplicación pueda detectar | — | Cerrada, sin acción de diseño |
 | Modelo de buzón compartido (F10): columna `es_responsable_historico_no_identificado` en `core.dim_personal` (no rango de fechas — sin evidencia de cuándo cambió de manos el buzón), resuelto por `LEFT JOIN LATERAL` con prioridad a la fila histórica. **Bajo ninguna circunstancia** los 155 (hoy 165) tickets históricos quedan a nombre de Eilyn (la ocupante actual) | `specs/tickets.md` §7.3 | **Construida y ejercitada contra la base real** (10-sep-2026): ingesta corrida de punta a punta sin error, 155 → 165 tickets confirmados en el marcador histórico |
-| D6: HelpDesk enviará correo al cliente desde la cuenta de quien responde el ticket; `Mail.Send`/`offline_access` se piden desde el primer consentimiento para no exigir una segunda ronda por empleado | `specs/acceso-empleados.md` §9 | **Consentimiento construido (corte 9, 17-sep-2026):** `entra-oidc.ts` ya los incluye en el `scope`. **El mecanismo de envío no** — falta el *grant* delegado cifrado (equivalente a `graph-grant.ts` de Impulsa), sin fecha, probablemente junto a `U7`. `Mail.Send.Shared` (buzón compartido de la firma) sigue sin decidir |
+| D6: HelpDesk enviará correo al cliente desde la cuenta de quien responde el ticket; `Mail.Send`/`offline_access` se piden desde el primer consentimiento para no exigir una segunda ronda por empleado | `specs/acceso-empleados.md` §9 | **Consentimiento construido (corte 9, 17-sep-2026).** **Envío construido (corte 18), sin ejercitar:** `graph-grant.ts` custodia el `refresh_token` sellado, y cada acción del ticket envía su correo como quien actúa, con enlace al ticket y sin adjuntos. `Mail.Send.Shared` sigue sin decidir |
 
 ## Decisiones que faltan y bloquean
 
