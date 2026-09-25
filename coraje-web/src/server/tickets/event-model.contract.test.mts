@@ -114,6 +114,41 @@ test("el escritor único es SECURITY DEFINER con search_path fijado", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Privilegio de UPDATE por columna sobre fact_ticket
+// ---------------------------------------------------------------------------
+
+/** Columnas físicas de un modelo: campos escalares, con su @map si lo tienen. */
+function prismaColumns(model: string): string[] {
+  const match = SCHEMA.match(new RegExp(`model ${model} \\{([\\s\\S]*?)\\n\\}`));
+  assert.ok(match, `schema.prisma debe declarar model ${model}`);
+  const scalar = /^\s*(\w+)\s+(String|Int|BigInt|DateTime|Boolean|Decimal|Float|Json)\??\s*(.*)$/;
+  return match[1]
+    .split("\n")
+    .map((line) => line.match(scalar))
+    .filter((m): m is RegExpMatchArray => m !== null)
+    .map((m) => m[3].match(/@map\("([^"]+)"\)/)?.[1] ?? m[1]);
+}
+
+/** Columnas de la última concesión de UPDATE por columna sobre fact_ticket. */
+function grantedUpdateColumns(): string[] {
+  const grants = [
+    ...migrationsSql.matchAll(/GRANT UPDATE \(([\s\S]*?)\) ON "helpdesk"\."fact_ticket" TO/g),
+  ];
+  assert.ok(grants.length > 0, "una migración debe conceder UPDATE por columna sobre fact_ticket");
+  return [...grants[grants.length - 1][1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
+}
+
+test("los roles de servicio pueden actualizar toda columna de fact_ticket salvo id_estado", () => {
+  // Un REVOKE de columna no anula un UPDATE de tabla, así que la protección de
+  // id_estado es una lista explícita de columnas concedidas. Una columna nueva
+  // obliga a decidir si se concede: esta prueba falla hasta que se decida.
+  const expected = prismaColumns("FactTicket").filter((column) => column !== "id_estado").sort();
+  const granted = grantedUpdateColumns();
+  assert.ok(!granted.includes("id_estado"), "id_estado no puede estar en la concesión de UPDATE");
+  assert.deepEqual([...granted].sort(), expected);
+});
+
+// ---------------------------------------------------------------------------
 // La ingesta versionada no escribe el registro ni el estado por su cuenta
 // ---------------------------------------------------------------------------
 

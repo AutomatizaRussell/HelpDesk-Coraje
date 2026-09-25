@@ -575,9 +575,9 @@ inmediata.
 
 | V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `prisma/migrations/` | **Sin verificar** — no construido |
 | V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem | **Sin verificar** — no construido |
-| V14 | Modelo de eventos de §6 y escritor único de §3.1 | `prisma/migrations/20260925120000_modelo_eventos_ticket` | **Construido, sin desplegar** (25-sep-2026). Contrato en `src/server/tickets/event-model.contract.test.mts` |
-| V15 | La ingesta escribe estado y eventos solo por el escritor | Nodos `PG - Transform 06` y `07` del workflow de ingesta | **Construido en la copia versionada, sin importar** (25-sep-2026) |
-| V16 | Privilegios retirados, con prueba negativa (§8) | Migración de la fase 2 | **No construido**: depende de verificar V15 con una ejecución real |
+| V14 | Modelo de eventos de §6 y escritor único de §3.1 | `prisma/migrations/20260925120000_modelo_eventos_ticket` | **Desplegado** (25-sep-2026). Contrato en `src/server/tickets/event-model.contract.test.mts` |
+| V15 | La ingesta escribe estado y eventos solo por el escritor | Nodos `PG - Transform 06` y `07` del workflow de ingesta | **Ejercitado** (25-sep-2026), dos ejecuciones: 2.898 `MIGRACION_LEGACY`, 0 tickets sin inicio, 0 desfasados, segunda ejecución sin eventos nuevos |
+| V16 | Privilegios retirados, con prueba negativa (§8) | `prisma/migrations/20260925180000_proteger_estado_y_eventos` | **Construido, sin ejercitar**: falta la prueba negativa contra la base |
 
 ## 11. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
 

@@ -1,7 +1,23 @@
 # Handoff técnico
 
 ```
-CORTE:   25-sep-2026 (corte 16, U6 EN CURSO — fase 1 construida, SIN DESPLEGAR)
+CORTE:   25-sep-2026 (corte 17, U6 — fase 2 construida, SIN DESPLEGAR)
+SOBRE:   `96d0860` (corte 16, fase 1)
+FASE 2:  migración `20260925180000_proteger_estado_y_eventos`: retira a
+         `coraje_runtime`/`coraje_etl` el `UPDATE` sobre `id_estado` (retirando el de
+         tabla y concediendo las demás columnas una a una), `DELETE`/`TRUNCATE` sobre
+         `fact_ticket` e `INSERT`/`UPDATE`/`DELETE`/`TRUNCATE` sobre
+         `fact_ticket_evento`, y quita los `DEFAULT` temporales. Nueva prueba: la
+         concesión por columna cubre toda columna de `FactTicket` salvo `id_estado`.
+         Precondición cumplida: fase 1 **desplegada y ejercitada** — migración
+         aplicada, workflow importado y ejecutado dos veces (2.898 `MIGRACION_LEGACY`,
+         0 sin inicio, 0 desfasados, 56 `ASIGNADO`, 1 `ABIERTO`, segunda ejecución
+         idéntica; 65 tickets reescritos frente a ~2.900 antes).
+         Evidencia fase 2: `tsc`, `lint`, `pnpm test` 71/71, `prisma validate`, SQL
+         parseado; la prueba nueva falla si se concede `id_estado`. **Sin ejercitar**:
+         el retiro y las pruebas negativas contra la base.
+
+--- Corte 16 (fase 1), para contexto:
 SOBRE:   `546e06b`
 RAMA:    main
 UNIDAD:  U6 · MODELO DE EVENTOS DEL TICKET — todas las decisiones tomadas
@@ -32,7 +48,7 @@ UNIDAD:  U6 · MODELO DE EVENTOS DEL TICKET — todas las decisiones tomadas
          tablas alteradas; 538 eventos, todos `COMENTARIO`, ninguno con autor; sin
          `ASIGNADO`; los tres roles existen.
 
-LOCAL:   limpio tras publicar este corte (commit con la línea `Corte 16`).
+LOCAL:   limpio tras publicar el corte 17 (commit con la línea `Corte 17`).
 
 CORTE ANTERIOR (24-sep-2026, corte 15): U6 en curso, solo decisiones. Incidencia F13
          (ingesta detenida 11 días por colisión de `codigo_ticket`) corregida y
@@ -711,25 +727,20 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U6: desplegar la fase 1 y verificar la ingesta
+## Acción inmediata para la siguiente sesión — U6: pruebas negativas y cierre
 
-**U6 sigue siendo la cabeza de `plan-ejecucion.md`.** Fase 1 construida y sin
-desplegar (cabecera). Orden obligatorio (`tickets.md` §3.1):
+**U6 sigue siendo la cabeza de `plan-ejecucion.md`.** Fase 1 desplegada y ejercitada;
+fase 2 publicada con el corte 17. Falta:
 
-1. ~~Comprobaciones previas~~ y publicación de la fase 1: hechas (cabecera).
-2. **Confirmar que `migrate` aplicó la migración y que `web` arrancó.** Hasta importar
-   el workflow, la ingesta antigua sigue funcionando gracias a los `DEFAULT`
-   temporales de actor y visibilidad.
-3. **Importar el workflow de ingesta en n8n y ejecutarlo a mano dos veces.** Primera:
-   un `MIGRACION_LEGACY` por ticket legacy (≈2.900), ningún ticket sin evento de
-   inicio, estados según §4.2 (los `Reasignado` con área y responsable pasan a
-   `ASIGNADO`). Segunda: cero eventos nuevos, que demuestra la idempotencia.
-4. **Fase 2:** migración que retira `UPDATE` sobre `id_estado` (retirando el `UPDATE`
-   de tabla y concediéndolo por columna: un `REVOKE` de columna no anula un permiso de
-   tabla), `INSERT`/`UPDATE`/`DELETE` sobre `fact_ticket_evento` y `DELETE` sobre
-   `fact_ticket` a `coraje_runtime` y `coraje_etl`, y quita los `DEFAULT` temporales.
-   Después, pruebas negativas con `SET ROLE` contra la base. `ALTER DEFAULT PRIVILEGES`
-   concede DML completo en cada tabla nueva: el retiro es explícito por tabla.
+1. **Confirmar que `migrate` aplicó `20260925180000_proteger_estado_y_eventos`.**
+2. **Pruebas negativas con `SET LOCAL ROLE`**, dentro de una transacción revertida, para
+   `coraje_runtime` y `coraje_etl`: `UPDATE` de `id_estado`, `DELETE` de ticket e
+   `INSERT`/`UPDATE`/`DELETE` de eventos fallan con *permission denied*; `UPDATE` de
+   otra columna y la llamada al escritor funcionan. Con `coraje_app`, borrar un ticket
+   con eventos falla por la FK `RESTRICT`.
+3. **La siguiente ingesta programada termina sin error** con los privilegios
+   retirados.
+4. Con eso, **U6 se cierra** y U7 pasa a la cabeza de la cola.
 
 **Conocido y sin resolver en U6:** un `INSERT` en `fact_ticket` puede fijar el estado
 inicial sin evento. La ingesta lo cubre con `MIGRACION_LEGACY` en la misma ejecución;

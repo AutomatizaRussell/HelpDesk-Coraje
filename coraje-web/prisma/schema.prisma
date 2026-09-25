@@ -310,9 +310,10 @@ model FactTicket {
 /// Se llama con $queryRaw dentro de la transacción de la acción.
 ///
 /// No representable en el DSL: chk_fact_ticket_evento_actor (EMPLEADO exige
-/// idAutor, SISTEMA lo exige vacío). Los DEFAULT de tipoActor y visibilidad
-/// son temporales y los retira la migración de retiro de privilegios; no
-/// dependas de ellos.
+/// idAutor, SISTEMA lo exige vacío). coraje_runtime y coraje_etl no tienen
+/// INSERT, UPDATE ni DELETE sobre esta tabla (migración
+/// 20260925180000_proteger_estado_y_eventos): un intento directo falla con
+/// permission denied.
 model FactTicketEvento {
   idEvento          String            @id @default(dbgenerated("gen_random_uuid()")) @map("id_evento") @db.Uuid
   spEventId         Int?              @unique @map("sp_event_id")
@@ -320,8 +321,8 @@ model FactTicketEvento {
   idTicket          String            @map("id_ticket") @db.Uuid
   idAutor           String?           @map("id_autor") @db.Uuid
   tipoEvento        TipoEventoTicket  @map("tipo_evento")
-  tipoActor         TipoActorEvento   @default(SISTEMA) @map("tipo_actor")
-  visibilidad       VisibilidadEvento @default(INTERNO)
+  tipoActor         TipoActorEvento   @map("tipo_actor")
+  visibilidad       VisibilidadEvento
   idEstadoAnterior  String?           @map("id_estado_anterior") @db.Uuid
   idEstadoNuevo     String?           @map("id_estado_nuevo") @db.Uuid
   contenido         String

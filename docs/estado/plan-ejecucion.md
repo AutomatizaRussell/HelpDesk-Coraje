@@ -227,9 +227,9 @@ HelpDesk entra igual.
 
 ### U6 · Modelo de eventos del ticket — **cabeza de la cola, en curso**
 
-> **Estado al 25-sep-2026: fase 1 construida, sin desplegar** (modelo, escritor
-> único, ingesta reescrita); fase 2 (retiro de privilegios y pruebas negativas)
-> pendiente de verificar la ingesta. Decisiones: Transiciones (cuatro
+> **Estado al 25-sep-2026: fase 1 desplegada y ejercitada** (modelo, escritor único,
+> ingesta reescrita); **fase 2 construida** (retiro de privilegios), falta la prueba
+> negativa contra la base para cerrar. Decisiones: Transiciones (cuatro
 > estados, sin `ESPERANDO_SOLICITANTE`), reloj por turno, escritor único en PostgreSQL,
 > traducción de estados legacy, visibilidad, actor (`EMPLEADO` / `SISTEMA`), catálogo de
 > tipos de evento como `enum` y registro protegido por privilegios están en
