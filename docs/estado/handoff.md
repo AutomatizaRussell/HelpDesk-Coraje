@@ -1,7 +1,9 @@
 # Handoff técnico
 
 ```
-CORTE:   26-sep-2026 (corte 18, U7 — ciclo interno construido, SIN DESPLEGAR)
+CORTE:   26-sep-2026 (corte 18, U7 — ciclo interno publicado en `987107c`, despliegue SIN
+         CONFIRMAR. Después, un commit de solo documentación por excepción autorizada:
+         cambio de PC, ver `CLAUDE.md`, «Proyecto hermano»)
 SOBRE:   `8eff969` (corte 17)
 RAMA:    main
 UNIDAD:  U7 · CICLO INTERNO DEL TICKET. Incluye además el cierre documental de U6
@@ -761,10 +763,10 @@ llega ningún tráfico.
 **U7 sigue siendo la cabeza de `plan-ejecucion.md`.** El corte 18 está construido y sin
 desplegar. Lo que falta, en orden:
 
-0. **Antes de publicar**, confirmar que `coraje_migrator` es dueño de
-   `core.next_monday` y `core.is_colombia_holiday`. El baseline se adoptó sin
-   ejecutarse y esto no está verificado. El usuario lo corre en la VPS, con el patrón de
-   `estado/operacion.md`:
+0. ~~Antes de publicar, confirmar que `coraje_migrator` es dueño de
+   `core.next_monday` y `core.is_colombia_holiday`.~~ **Hecho el 26-sep-2026:** las dos
+   ya eran suyas, sin ningún cambio. Después se publicó `987107c`, pendiente de
+   comprobar que se desplegó. Comando usado, con el patrón de `estado/operacion.md`:
 
    ```bash
    docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "

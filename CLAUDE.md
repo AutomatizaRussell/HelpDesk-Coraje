@@ -78,6 +78,13 @@ Reglas al traer algo de Impulsa:
 > conservando su barra lateral y colgando de su URL. Cualquier patrón de integración
 > copiado de Impulsa apunta al modelo equivocado (`docs/contexto-canonico.md` §1.1).
 >
+> **Excepción: en infraestructura, tampoco se comparte nada.** HelpDesk corre en
+> **otra VPS**, con **su propia instancia de n8n** y sus propias credenciales. Un patrón
+> de Impulsa que dependa de su n8n o de sus credenciales, como el broker de sesiones de
+> carga de Graph de los adjuntos, no existe aquí hasta que se cree. Al 26-sep-2026, el
+> n8n de HelpDesk tiene credenciales `microsoftSharePointOAuth2Api` (API REST de
+> SharePoint), de PostgreSQL y de webhook, y **ninguna de Microsoft Graph**.
+>
 > **Excepción: en consumo de recursos, tampoco.** Impulsa corre app, worker de
 > reintentos, servicio de migración y navegador para PDF. HelpDesk tiene el objetivo
 > explícito de pesar lo menos posible en la VPS (§ siguiente).
