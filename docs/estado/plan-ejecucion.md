@@ -314,12 +314,12 @@ ELT ajustado a ella. Un ticket del portal conserva su origen tras una pasada de 
 > **Se vuelve urgente en el momento en que empiece U7**, no antes. Pero U7 sin esto
 > produce trabajo que la siguiente ingesta borra.
 
-### U10 · Observabilidad — **construida el 28-sep-2026 (corte 21), sin desplegar**
+### U10 · Observabilidad — **desplegada el 28-sep-2026 (corte 21), sin ejercitar**
 
 > **Construida sobre el diseño de abajo**, con las decisiones O1-O6 cerradas y los
 > ajustes aprobados por el usuario. El contrato vigente es `specs/observabilidad.md`;
 > esta sección queda como la preparación. **Sin cerrar:** el guion de cierre exige
-> desplegar los cortes 19-21 y ejercitarlo (`estado/handoff.md`, «Acción inmediata»).
+> ejercitarla (`estado/handoff.md`, «Acción inmediata»).
 
 Alerta de outbox envejecido · workflow de error en n8n · reconciliación de conteos ·
 identificador de correlación de punta a punta · logs estructurados sin secretos.
@@ -403,6 +403,27 @@ Respeta la economía de recursos de `CLAUDE.md`: **ningún proceso nuevo en la V
 5. Registrar en el handoff el antes, la acción y el después, con las consultas y sus
    resultados.
 
+### U11 · Seguimiento del ticket (prototipo de TI) — **construida el 28-sep-2026 (corte 22), sin desplegar**
+
+**Objetivo:** construir lo que el prototipo `helpdesk_santi/` de la persona encargada
+de TI trae y es compatible con las decisiones vigentes, para que lo corrija usándolo
+y no leyendo una spec. Decisión del usuario del 28-sep-2026: «que solo sea correr
+pruebas y corregir, no implementar nada nuevo».
+
+**Construido** (`specs/tickets.md` §11.1, `specs/permisos.md` §4.4): observadores,
+solicitud de validación, comentario del solicitante, y en la bandeja la vista «Que
+sigo», búsqueda, filtro por estado y contadores con vencidos.
+
+**Fuera, a propósito, hasta hablarlo con TI:** estado «En Proceso», cierre por el
+solicitante, «Crear tarea» y «Agregar solución», prioridad y tipo elegidos por el
+solicitante, «SLA cumplido» como cerrados entre total, respuesta del validador. La
+propuesta del usuario es resolverlos tomando lo del prototipo; se decide después de
+probar. Los adjuntos siguen bloqueados en U7.
+
+**Condición de cierre:** la persona de TI prueba el flujo en el despliegue (`estado/
+handoff.md`, «Acción inmediata», G) y sus correcciones quedan decididas: construidas o
+descartadas con motivo.
+
 ---
 
 ## Riesgos y controles
@@ -456,3 +477,7 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   con Teams limitado a lo crítico nuevo o peor por condición del usuario. Sale junto
   con los cortes 19 y 20. **La cabeza de la cola sigue siendo desplegar y ejercitar
   U7-U10** (pruebas A-E y guion de cierre de U10).
+- 28-sep-2026 — los cortes 19, 20 y 21 se publican y despliegan juntos (U8, U9 y
+  U10). U11 construida (corte 22), sin desplegar: lo compatible del prototipo de TI.
+  En el mismo corte se corrige el 500 del perímetro para quien llega sin sesión.
+  **La cabeza de la cola sigue siendo ejercitar U7-U11** (pruebas B-G del handoff).

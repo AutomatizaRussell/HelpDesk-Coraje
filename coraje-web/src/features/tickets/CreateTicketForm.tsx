@@ -6,11 +6,14 @@ import { useActionState } from "react";
 import { buttonRecipe } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { notice, surface } from "@/design-system/recipes/surface";
-import type { CreationCatalog } from "@/server/tickets/ticket-queries";
+import { focusRing } from "@/design-system/recipes/interaction";
+import { cn } from "@/design-system/utilities/cn";
+import type { CreationCatalog, FollowCandidate } from "@/server/tickets/ticket-queries";
 
 import { IDLE_FORM_STATE } from "./action-state";
 import { createTicketAction } from "./actions";
 import { formatPriority } from "./format";
+import { PeoplePicker } from "./PeoplePicker";
 import { TipoRequerimientoFields } from "./TipoRequerimientoFields";
 
 /**
@@ -23,8 +26,20 @@ import { TipoRequerimientoFields } from "./TipoRequerimientoFields";
  *
  * Si la creación falla, el formulario vuelve con lo que se había elegido y
  * escrito.
+ *
+ * Los observadores (U11) van plegados: son opcionales, y la mayoría de los
+ * tickets no los necesita. Si el intento fallido traía alguno, el panel se
+ * abre para que se vea lo que se había elegido.
  */
-export function CreateTicketForm({ catalog }: { catalog: CreationCatalog }) {
+export function CreateTicketForm({
+  catalog,
+  followCandidates,
+  maxObservers,
+}: {
+  catalog: CreationCatalog;
+  followCandidates: readonly FollowCandidate[];
+  maxObservers: number;
+}) {
   const [state, formAction, pending] = useActionState(createTicketAction, IDLE_FORM_STATE);
   const failed = state.status === "error" ? state : null;
 
@@ -80,6 +95,27 @@ export function CreateTicketForm({ catalog }: { catalog: CreationCatalog }) {
             <p id="descripcion-hint" className={fieldHint}>Qué necesitas y cualquier dato que ayude a resolverlo.</p>
           )}
         </div>
+
+        <details
+          className="rounded-control border border-line px-4 py-3"
+          open={Boolean(failed?.values.idObservadores || failed?.fieldErrors.idObservadores)}
+        >
+          <summary className={cn("cursor-pointer rounded-control font-bold text-heading", focusRing)}>
+            Observadores (opcional)
+          </summary>
+          <div className="mt-3">
+            <PeoplePicker
+              name="idObservadores"
+              label="Personas que deben seguir este ticket"
+              hint="Lo podrán consultar y recibirán aviso al crearlo y cuando se responda o se rechace. No lo atienden."
+              candidates={followCandidates}
+              mode="multiple"
+              max={maxObservers}
+              initialSelected={failed?.values.idObservadores ? failed.values.idObservadores.split(",") : []}
+              error={failed?.fieldErrors.idObservadores}
+            />
+          </div>
+        </details>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
           <button type="submit" className={buttonRecipe({ variant: "primary" })} disabled={pending}>

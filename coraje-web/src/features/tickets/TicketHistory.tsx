@@ -31,6 +31,10 @@ const EVENT_TITLE: Record<string, string> = {
   COMENTARIO: "Nota",
   MIGRACION_LEGACY: "Traído desde PowerApps",
   SINCRONIZACION_LEGACY: "Cambio registrado en PowerApps",
+  OBSERVADOR_AGREGADO: "Observadores añadidos",
+  OBSERVADOR_RETIRADO: "Observador retirado",
+  SOLICITUD_VALIDACION: "Validación solicitada",
+  COMENTARIO_SOLICITANTE: "Comentario del solicitante",
 };
 
 export function TicketHistory({ entries }: { entries: TicketHistoryEntry[] }) {
@@ -63,7 +67,7 @@ export function TicketHistory({ entries }: { entries: TicketHistoryEntry[] }) {
             </div>
             <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-ink-muted">
               <Icon aria-hidden className="size-3.5" strokeWidth={iconStroke.regular} />
-              {internal ? "Nota interna · el solicitante no la ve" : "Visible para el solicitante"}
+              {internal ? "Interno · el solicitante no lo ve" : "Visible para el solicitante"}
             </p>
             <p className="mt-2 whitespace-pre-wrap break-words text-base text-ink">{entry.contenido}</p>
           </li>

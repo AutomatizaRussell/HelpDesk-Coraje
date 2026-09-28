@@ -87,7 +87,7 @@ test("la auditoría del portal solo crece", () => {
 
 test("un ticket sin clasificar solo lo cubre el alcance TOTAL de ticket.redirigir", () => {
   const actor = { idPersonal: "p", idArea: "a" };
-  const ticket = { idSolicitante: null, idAsignado: null, idAreaDestino: null };
+  const ticket = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idObservadores: [] };
   const action = TICKET_ACTIONS.redirigir;
   assert.equal(isTicketWithinScope({ alcance: "PROPIO", action, actor, ticket }), false);
   assert.equal(isTicketWithinScope({ alcance: "AREA", action, actor, ticket }), false);

@@ -137,6 +137,9 @@ model DimPersonal {
   portalInvitacionesEmitidas             PortalInvitacion[]
   portalAuditoria                        PortalAuditoria[]
   divergenciasRevisadas                  SyncDivergencia[]
+  ticketsObservados                      TicketObservador[]   @relation("ObservadorPersona")
+  observadoresAgregados                  TicketObservador[]   @relation("ObservadorAgregadoPor")
+  validacionesRecibidas                  TicketValidacion[]
 
   // Como máximo un marcador histórico por correo compartido — protege la regla
   // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
@@ -446,6 +449,11 @@ enum TipoEventoTicket {
   COMENTARIO
   MIGRACION_LEGACY
   SINCRONIZACION_LEGACY
+  // U11 (tickets.md §11): seguimiento del ticket. Ninguno cambia el estado.
+  OBSERVADOR_AGREGADO
+  OBSERVADOR_RETIRADO
+  SOLICITUD_VALIDACION
+  COMENTARIO_SOLICITANTE
 
   @@map("tipo_evento_ticket")
   @@schema("helpdesk")
@@ -549,6 +557,8 @@ model FactTicket {
   ticketSyncOutbox     TicketSyncOutbox[]
   ticketNotificacion   TicketNotificacion[]
   syncDivergencia      SyncDivergencia[]
+  observadores         TicketObservador[]
+  validaciones         TicketValidacion[]
 
   // Sin índices sobre las FK (id_cliente_contai, id_solicitante, id_area_destino,
   // id_asignado, id_estado, id_prioridad, id_tipo_req): sql/db/06_helpdesk_facts.sql
@@ -591,9 +601,46 @@ model FactTicketEvento {
   estadoAnterior    DimEstado?        @relation("EventoEstadoAnterior", fields: [idEstadoAnterior], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   estadoNuevo       DimEstado?        @relation("EventoEstadoNuevo", fields: [idEstadoNuevo], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   ticketNotificacion TicketNotificacion[]
+  ticketValidacion  TicketValidacion?
 
   @@index([idTicket, fechaRegistro], map: "ix_fact_ticket_evento_ticket_fecha")
   @@map("fact_ticket_evento")
+  @@schema("helpdesk")
+}
+
+/// Personas que siguen un ticket sin atenderlo (tickets.md §11, U11). Estado
+/// vigente, no historia: quién añadió y quién retiró a cada una está en los
+/// eventos OBSERVADOR_AGREGADO / OBSERVADOR_RETIRADO, escritos en la misma
+/// transacción que la fila. coraje_runtime tiene SELECT, INSERT y DELETE,
+/// nunca UPDATE (migración 20260928150000_seguimiento_ticket).
+model TicketObservador {
+  idTicket    String      @map("id_ticket") @db.Uuid
+  idPersonal  String      @map("id_personal") @db.Uuid
+  agregadoPor String      @map("agregado_por") @db.Uuid
+  agregadoAt  DateTime    @default(now()) @map("agregado_at") @db.Timestamptz(6)
+  factTicket  FactTicket  @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  persona     DimPersonal @relation("ObservadorPersona", fields: [idPersonal], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+  agregador   DimPersonal @relation("ObservadorAgregadoPor", fields: [agregadoPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([idTicket, idPersonal])
+  @@index([idPersonal], map: "ix_ticket_observador_persona")
+  @@map("ticket_observador")
+  @@schema("helpdesk")
+}
+
+/// A quién se dirigió cada solicitud de validación (U11). Una fila por evento
+/// SOLICITUD_VALIDACION; solo crece (SELECT e INSERT para coraje_runtime).
+model TicketValidacion {
+  idEvento       String           @id @map("id_evento") @db.Uuid
+  idTicket       String           @map("id_ticket") @db.Uuid
+  idDestinatario String           @map("id_destinatario") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  evento         FactTicketEvento @relation(fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
+  factTicket     FactTicket       @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  destinatario   DimPersonal      @relation(fields: [idDestinatario], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([idDestinatario, createdAt(sort: Desc)], map: "ix_ticket_validacion_destinatario")
+  @@map("ticket_validacion")
   @@schema("helpdesk")
 }
 

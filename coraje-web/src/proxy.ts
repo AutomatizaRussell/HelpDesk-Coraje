@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { redirectWithinApp } from "@/server/auth/app-redirect";
+import { redirectFromProxy } from "@/server/auth/app-redirect";
 import { SESSION_COOKIE_NAME } from "@/server/auth/session-cookie";
 import { PORTAL_DEVICE_COOKIE } from "@/server/portal/portal-cookie";
 import { isPublicAssetPath } from "@/server/security/public-assets";
@@ -84,7 +84,7 @@ export function proxy(request: NextRequest) {
         { status: 401, headers: { "Cache-Control": "no-store" } },
       );
     }
-    return redirectWithinApp("/portal/ingreso", undefined, 303);
+    return redirectFromProxy(request.url, "/portal/ingreso");
   }
 
   if (request.cookies.get(SESSION_COOKIE_NAME)?.value) {
@@ -109,13 +109,13 @@ export function proxy(request: NextRequest) {
     ? "/ingreso"
     : "/login";
 
-  // Redirección con `Location` relativo, no absoluto: detrás del proxy de
+  // Al navegador le llega un `Location` relativo: detrás del proxy de
   // Coolify el host que ve el servidor de Next es el interno del contenedor,
-  // y una URL construida a partir de él manda al navegador a una dirección
-  // que no puede resolver. Es el defecto que corrigió `306d286`, y la razón
-  // por la que aquí no se usa `NextResponse.redirect()` — que además de
-  // exigir URL absoluta, es lo que empuja a cometerlo.
-  return redirectWithinApp(target, { destino }, 303);
+  // y una URL construida a partir de él lo manda a una dirección que no
+  // puede resolver (el defecto que corrigió `306d286`). Por dentro la URL
+  // es absoluta, porque el adaptador de Next la exige y él mismo la vuelve
+  // relativa: `redirectFromProxy` explica el 500 que causaba lo contrario.
+  return redirectFromProxy(request.url, target, { destino });
 }
 
 /**

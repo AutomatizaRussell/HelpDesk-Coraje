@@ -8,12 +8,13 @@ import { logEvent } from "@/server/observability/log";
 import { recordPortalAudit } from "@/server/portal/portal-audit";
 import type { PortalAccess } from "@/server/portal/portal-access";
 
+import { FOLLOWER_WHERE, MAX_OBSERVERS_PER_ACTION } from "./follow-rules";
 import { TicketDomainError, translateCreationFailure } from "./ticket-errors";
-import { TICKET_STATES, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
+import { OPEN_STATES, TICKET_STATES, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
 
 /**
  * Comandos del ciclo del ticket (specs/tickets.md §4.1: T1 y T3 desde U8;
- * T2, T4, T7, T8 y la nota interna desde U7).
+ * T2, T4, T7, T8 y la nota interna desde U7; seguimiento desde U11, §11).
  *
  * Todos siguen el mismo orden, y el orden es la garantía:
  * 1. Bloquear la fila del ticket (`FOR UPDATE`) dentro de la transacción.
@@ -50,6 +51,8 @@ interface LockedTicket {
   idAreaDestino: string | null;
   origenSistema: string;
   estado: TicketState;
+  /** Quienes siguen el ticket (U11). Entra en el alcance de consulta. */
+  idObservadores: string[];
 }
 
 const DENIED_MESSAGE = "No tienes permiso para hacer esto en este ticket.";
@@ -64,6 +67,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
       id_area_destino: string | null;
       origen_sistema: string;
       nombre_estado: string;
+      id_observadores: string[];
     }[]
   >`
     SELECT ticket.id_ticket::text,
@@ -72,7 +76,12 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
            ticket.id_asignado::text,
            ticket.id_area_destino::text,
            ticket.origen_sistema,
-           estado.nombre_estado
+           estado.nombre_estado,
+           ARRAY(
+               SELECT observador.id_personal::text
+               FROM helpdesk.ticket_observador AS observador
+               WHERE observador.id_ticket = ticket.id_ticket
+           ) AS id_observadores
     FROM helpdesk.fact_ticket AS ticket
     JOIN helpdesk.dim_estado AS estado
         ON estado.id_estado = ticket.id_estado
@@ -94,6 +103,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
     idAreaDestino: row.id_area_destino,
     origenSistema: row.origen_sistema,
     estado: row.nombre_estado,
+    idObservadores: row.id_observadores,
   };
 }
 
@@ -144,7 +154,15 @@ async function writeEvent(
   tx: Tx,
   params: {
     idTicket: string;
-    tipo: "REASIGNACION" | "RESPUESTA" | "RECHAZO" | "COMENTARIO";
+    tipo:
+      | "REASIGNACION"
+      | "RESPUESTA"
+      | "RECHAZO"
+      | "COMENTARIO"
+      | "OBSERVADOR_AGREGADO"
+      | "OBSERVADOR_RETIRADO"
+      | "SOLICITUD_VALIDACION"
+      | "COMENTARIO_SOLICITANTE";
     idAutor: string;
     visibilidad: "INTERNO" | "AMBOS";
     contenido: string;
@@ -184,6 +202,77 @@ function requesterDelivery(
   return null;
 }
 
+/** Un aviso por observador, para las acciones que terminan el ticket (U11). */
+function observerDeliveries(ticket: LockedTicket, kind: TicketMailKind): MailDelivery[] {
+  return ticket.idObservadores.map((idPersonal) => ({ kind, destinatario: { tipo: "EMPLEADO", idPersonal } }));
+}
+
+/**
+ * Añade observadores a un ticket ya bloqueado, con su evento y sus avisos, en
+ * la transacción de quien llama. Lo usan la creación (quien radica elige a
+ * quién involucrar) y la acción de añadir observadores.
+ *
+ * Descarta en silencio a quien ya ve el ticket por otra vía —quien lo radicó,
+ * su responsable, quien ya lo sigue—: seguir lo que ya se atiende no añade
+ * nada. Rechaza, en cambio, a quien no puede seguirlo (`FOLLOWER_WHERE`): es
+ * un formulario manipulado o un directorio que cambió, y la persona debe
+ * saberlo.
+ *
+ * Un solo evento por operación, con todos los nombres: añadir tres personas
+ * de una vez es un acto, no tres.
+ *
+ * @returns el evento y los correos creados, o `null` si no quedó nadie que
+ * añadir.
+ */
+async function addObserversInTx(
+  tx: Tx,
+  params: { ticket: LockedTicket; idAutor: string; idPersonas: readonly string[] },
+): Promise<{ idEvento: string; mailIds: string[] } | null> {
+  const { ticket } = params;
+  const yaLoVen = new Set([ticket.idSolicitante, ticket.idAsignado, ...ticket.idObservadores]);
+  const nuevos = [...new Set(params.idPersonas)].filter((id) => !yaLoVen.has(id));
+  if (nuevos.length === 0) return null;
+  if (nuevos.length > MAX_OBSERVERS_PER_ACTION) {
+    throw new TicketDomainError("DESTINO_INVALIDO", `Puedes añadir hasta ${MAX_OBSERVERS_PER_ACTION} personas de una vez.`);
+  }
+
+  const personas = await tx.dimPersonal.findMany({
+    where: { idPersonal: { in: nuevos }, ...FOLLOWER_WHERE },
+    orderBy: { nombreCompleto: "asc" },
+    select: { idPersonal: true, nombreCompleto: true },
+  });
+  if (personas.length !== nuevos.length) {
+    throw new TicketDomainError("DESTINO_INVALIDO", "Solo puedes añadir personas activas que tengan acceso a HelpDesk.");
+  }
+
+  await tx.ticketObservador.createMany({
+    data: personas.map((persona) => ({ idTicket: ticket.idTicket, idPersonal: persona.idPersonal, agregadoPor: params.idAutor })),
+  });
+
+  const idEvento = await writeEvent(tx, {
+    idTicket: ticket.idTicket,
+    tipo: "OBSERVADOR_AGREGADO",
+    idAutor: params.idAutor,
+    visibilidad: "INTERNO",
+    contenido: `Sigue${personas.length > 1 ? "n" : ""} el ticket: ${personas.map((persona) => persona.nombreCompleto).join(", ")}.`,
+    estadoNuevo: null,
+  });
+
+  const mailIds = await enqueueTicketMail(tx, {
+    idTicket: ticket.idTicket,
+    idEvento,
+    idRemitente: params.idAutor,
+    texto: null,
+    deliveries: personas.map((persona) => ({
+      kind: "OBSERVADOR_AGREGADO" as const,
+      destinatario: { tipo: "EMPLEADO" as const, idPersonal: persona.idPersonal },
+    })),
+  });
+
+  ticket.idObservadores.push(...personas.map((persona) => persona.idPersonal));
+  return { idEvento, mailIds };
+}
+
 // ---------------------------------------------------------------------------
 // T2 · Crear
 // ---------------------------------------------------------------------------
@@ -195,12 +284,18 @@ function requesterDelivery(
  *
  * El solicitante es siempre `idPersonal`, nunca un dato del formulario: es lo
  * que significa el alcance `PROPIO` de `ticket.crear`.
+ *
+ * Quien radica puede elegir observadores (U11, como en el prototipo de TI).
+ * Es parte de radicar, bajo `ticket.crear`, y no de
+ * `ticket.observador.gestionar`: quien pide ayuda decide a quién le interesa
+ * enterarse, y después de crear ya no gestiona el ticket.
  */
 export async function createInternalTicket(params: {
   idPersonal: string;
   idTipoReq: string;
   prioridad: string;
   descripcion: string;
+  idObservadores: readonly string[];
 }): Promise<{ idTicket: string; codigoTicket: string | null; mailIds: string[] }> {
   try {
     await requireGrant(params.idPersonal, TICKET_ACTIONS.crear);
@@ -242,6 +337,12 @@ export async function createInternalTicket(params: {
             ],
           })
         : [];
+
+      if (params.idObservadores.length > 0) {
+        const ticket = await lockTicket(tx, row.id_ticket);
+        const observers = await addObserversInTx(tx, { ticket, idAutor: params.idPersonal, idPersonas: params.idObservadores });
+        if (observers) mailIds.push(...observers.mailIds);
+      }
 
       return { idTicket: row.id_ticket, codigoTicket: row.codigo_ticket, mailIds };
     });
@@ -516,15 +617,13 @@ export async function respondTicket(params: {
     });
 
     const delivery = requesterDelivery(ticket, "RESPUESTA_SOLICITANTE", "RESPUESTA_CLIENTE");
-    const mailIds = delivery
-      ? await enqueueTicketMail(tx, {
-          idTicket: ticket.idTicket,
-          idEvento,
-          idRemitente: params.idPersonal,
-          texto: params.respuesta,
-          deliveries: [delivery],
-        })
-      : [];
+    const mailIds = await enqueueTicketMail(tx, {
+      idTicket: ticket.idTicket,
+      idEvento,
+      idRemitente: params.idPersonal,
+      texto: params.respuesta,
+      deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RESPUESTA_OBSERVADOR")],
+    });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };
   });
@@ -570,15 +669,13 @@ export async function rejectTicket(params: {
     });
 
     const delivery = requesterDelivery(ticket, "RECHAZO_SOLICITANTE", "RECHAZO_CLIENTE");
-    const mailIds = delivery
-      ? await enqueueTicketMail(tx, {
-          idTicket: ticket.idTicket,
-          idEvento,
-          idRemitente: params.idPersonal,
-          texto: params.motivo,
-          deliveries: [delivery],
-        })
-      : [];
+    const mailIds = await enqueueTicketMail(tx, {
+      idTicket: ticket.idTicket,
+      idEvento,
+      idRemitente: params.idPersonal,
+      texto: params.motivo,
+      deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RECHAZO_OBSERVADOR")],
+    });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };
   });
@@ -619,5 +716,197 @@ export async function addInternalNote(params: {
 
     // Una nota interna no avisa a nadie: es constancia, no conversación.
     return { idTicket: ticket.idTicket, idEvento, mailIds: [] };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Seguimiento (U11, tickets.md §11)
+// ---------------------------------------------------------------------------
+
+/**
+ * Añade personas que siguen el ticket sin atenderlo. Solo en un ticket
+ * abierto: seguir algo terminado no tiene nada que avisar.
+ */
+export async function addObservers(params: {
+  idPersonal: string;
+  idTicket: string;
+  idObservadores: readonly string[];
+}): Promise<TicketEventResult> {
+  return prisma.$transaction(async (tx) => {
+    const { ticket } = await lockAndAuthorize({
+      tx,
+      idTicket: params.idTicket,
+      idPersonal: params.idPersonal,
+      action: TICKET_ACTIONS.gestionarObservadores,
+      allowedStates: OPEN_STATES,
+      stateMessage: "Solo se añaden observadores a un ticket abierto.",
+    });
+
+    const added = await addObserversInTx(tx, { ticket, idAutor: params.idPersonal, idPersonas: params.idObservadores });
+    if (!added) {
+      throw new TicketDomainError("DESTINO_INVALIDO", "Esas personas ya siguen el ticket, lo radicaron o lo atienden.");
+    }
+    return { idTicket: ticket.idTicket, idEvento: added.idEvento, mailIds: added.mailIds };
+  });
+}
+
+/**
+ * Retira a una persona del seguimiento. No le avisa: dejar de recibir correos
+ * de un ticket no necesita otro correo.
+ */
+export async function removeObserver(params: {
+  idPersonal: string;
+  idTicket: string;
+  idObservador: string;
+}): Promise<TicketEventResult> {
+  return prisma.$transaction(async (tx) => {
+    const { ticket } = await lockAndAuthorize({
+      tx,
+      idTicket: params.idTicket,
+      idPersonal: params.idPersonal,
+      action: TICKET_ACTIONS.gestionarObservadores,
+      allowedStates: OPEN_STATES,
+      stateMessage: "Solo se retiran observadores de un ticket abierto.",
+    });
+
+    if (!ticket.idObservadores.includes(params.idObservador)) {
+      throw new TicketDomainError("DESTINO_INVALIDO", "Esa persona ya no sigue el ticket.");
+    }
+
+    const [, persona] = await Promise.all([
+      tx.ticketObservador.delete({
+        where: { idTicket_idPersonal: { idTicket: ticket.idTicket, idPersonal: params.idObservador } },
+      }),
+      tx.dimPersonal.findUniqueOrThrow({ where: { idPersonal: params.idObservador }, select: { nombreCompleto: true } }),
+    ]);
+
+    const idEvento = await writeEvent(tx, {
+      idTicket: ticket.idTicket,
+      tipo: "OBSERVADOR_RETIRADO",
+      idAutor: params.idPersonal,
+      visibilidad: "INTERNO",
+      contenido: `Deja de seguir el ticket: ${persona.nombreCompleto}.`,
+      estadoNuevo: null,
+    });
+
+    return { idTicket: ticket.idTicket, idEvento, mailIds: [] };
+  });
+}
+
+/**
+ * Pide a una persona concreta que confirme algo del ticket. **No bloquea**:
+ * el ticket sigue su curso, y la solicitud queda en la historia y en la
+ * bandeja de quien la recibe (decisión del 24-sep-2026). No es la
+ * autorización excepcional de permisos.md §5: no exige justificación ni se
+ * audita como excepción.
+ *
+ * Quien la recibe pasa a seguir el ticket si no lo veía ya: sin eso, el
+ * correo le llevaría a un ticket que no puede abrir. Esa incorporación no
+ * escribe un evento propio; el de la solicitud ya dice por qué está ahí.
+ */
+export async function requestValidation(params: {
+  idPersonal: string;
+  idTicket: string;
+  idDestinatario: string;
+  comentario: string;
+}): Promise<TicketEventResult> {
+  return prisma.$transaction(async (tx) => {
+    const { ticket } = await lockAndAuthorize({
+      tx,
+      idTicket: params.idTicket,
+      idPersonal: params.idPersonal,
+      action: TICKET_ACTIONS.solicitarValidacion,
+      allowedStates: OPEN_STATES,
+      stateMessage: "Solo se pide validación en un ticket abierto.",
+    });
+
+    if (params.idDestinatario === params.idPersonal) {
+      throw new TicketDomainError("DESTINO_INVALIDO", "No puedes pedirte la validación a ti.");
+    }
+    const destinatario = await tx.dimPersonal.findFirst({
+      where: { idPersonal: params.idDestinatario, ...FOLLOWER_WHERE },
+      select: { idPersonal: true, nombreCompleto: true },
+    });
+    if (!destinatario) {
+      throw new TicketDomainError("DESTINO_INVALIDO", "Solo puedes pedir validación a una persona activa con acceso a HelpDesk.");
+    }
+
+    const idEvento = await writeEvent(tx, {
+      idTicket: ticket.idTicket,
+      tipo: "SOLICITUD_VALIDACION",
+      idAutor: params.idPersonal,
+      visibilidad: "INTERNO",
+      contenido: `Validación solicitada a ${destinatario.nombreCompleto}.\n\n${params.comentario}`,
+      estadoNuevo: null,
+    });
+    await tx.ticketValidacion.create({
+      data: { idEvento, idTicket: ticket.idTicket, idDestinatario: destinatario.idPersonal },
+    });
+
+    const yaLoVe = [ticket.idSolicitante, ticket.idAsignado, ...ticket.idObservadores].includes(destinatario.idPersonal);
+    if (!yaLoVe) {
+      await tx.ticketObservador.create({
+        data: { idTicket: ticket.idTicket, idPersonal: destinatario.idPersonal, agregadoPor: params.idPersonal },
+      });
+    }
+
+    const mailIds = await enqueueTicketMail(tx, {
+      idTicket: ticket.idTicket,
+      idEvento,
+      idRemitente: params.idPersonal,
+      texto: params.comentario,
+      deliveries: [{ kind: "SOLICITUD_VALIDACION", destinatario: { tipo: "EMPLEADO", idPersonal: destinatario.idPersonal } }],
+    });
+
+    return { idTicket: ticket.idTicket, idEvento, mailIds };
+  });
+}
+
+/**
+ * El empleado que radicó el ticket escribe en él sin cerrarlo: aclarar algo,
+ * añadir un dato, preguntar cómo va. Lo ve el equipo y el propio
+ * solicitante, y la persona responsable recibe aviso. En el prototipo de TI
+ * es el «Responder» de la vista del solicitante.
+ *
+ * No cambia el estado ni el plazo: en la v1 no hay espera del solicitante
+ * (tickets.md §4, decisión del 25-sep-2026).
+ */
+export async function commentAsRequester(params: {
+  idPersonal: string;
+  idTicket: string;
+  comentario: string;
+}): Promise<TicketEventResult> {
+  return prisma.$transaction(async (tx) => {
+    const { ticket } = await lockAndAuthorize({
+      tx,
+      idTicket: params.idTicket,
+      idPersonal: params.idPersonal,
+      action: TICKET_ACTIONS.comentarSolicitante,
+      allowedStates: OPEN_STATES,
+      stateMessage: "Este ticket ya terminó. Si el problema sigue, radica uno nuevo.",
+    });
+
+    const idEvento = await writeEvent(tx, {
+      idTicket: ticket.idTicket,
+      tipo: "COMENTARIO_SOLICITANTE",
+      idAutor: params.idPersonal,
+      visibilidad: "AMBOS",
+      contenido: params.comentario,
+      estadoNuevo: null,
+    });
+
+    const mailIds = ticket.idAsignado
+      ? await enqueueTicketMail(tx, {
+          idTicket: ticket.idTicket,
+          idEvento,
+          idRemitente: params.idPersonal,
+          texto: params.comentario,
+          deliveries: [
+            { kind: "COMENTARIO_SOLICITANTE_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: ticket.idAsignado } },
+          ],
+        })
+      : [];
+
+    return { idTicket: ticket.idTicket, idEvento, mailIds };
   });
 }

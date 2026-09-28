@@ -5,7 +5,8 @@ ESTADO:      construido, sin desplegar (corte 18, 26-sep-2026): catálogo en
              `app.permiso_accion` / `app.permiso_regla`, autorizador en
              `src/server/authorization/`, cada acción del ticket conectada en su
              comando. Falta la autorización excepcional (§5) y la consola (§8).
-             Corte 21 (U10): acciones `salud.*` para `ADMIN` (§4.3)
+             Corte 21 (U10): acciones `salud.*` para `ADMIN` (§4.3). Corte 22
+             (U11): observadores, validación y comentario del solicitante (§4.4)
 CORTE:       28-sep-2026
 EVIDENCIA:   `tsc`, `lint`, `pnpm test` (alcance, catálogo sembrado y consultado,
              sin comparaciones de rol). Sin ejercitar contra la base
@@ -148,6 +149,31 @@ Construido en `20260928130000_observabilidad`, sin desplegar.
   `coraje_runtime` no tiene `UPDATE` sobre `sync_divergencia` (`specs/observabilidad.md`
   §4).
 
+### 4.4 `DECISIÓN` (28-sep-2026, U11) Seguimiento del ticket
+
+Construido en `20260928150000_seguimiento_ticket`, sin desplegar. Las tres acciones
+se siembran igual para los tres roles (copia, no herencia: §4.2).
+
+| Acción | `AGENTE`, `CLASIFICADOR` y `ADMIN` |
+|---|---|
+| `ticket.observador.gestionar` | `AREA` |
+| `ticket.validacion.solicitar` | `AREA` |
+| `ticket.solicitante.comentar` | `PROPIO` |
+
+- **Ser observador amplía una sola cosa: consultar.** `scope.ts` lo cuenta como
+  «propio» para `ticket.consultar` y para nada más, y le da la historia del equipo
+  (`EQUIPO`), como pide `specs/tickets.md` §11. `scope.test.mts` recorre el catálogo
+  entero sobre un ticket que la persona solo sigue: ninguna acción (V7).
+- **`PROPIO` de `ticket.solicitante.comentar` es haberlo radicado**, la única acción
+  cuyo «propio» no es ser el responsable. La base lo vuelve a exigir en el escritor.
+- **Solicitar validación no pasa por la autorización excepcional** (§5): sin
+  justificación obligatoria ni auditoría de excepción. Es un comando ordinario con su
+  propia acción (V8).
+- **Elegir observadores al crear va bajo `ticket.crear`**, no bajo gestionar: quien
+  pide ayuda decide a quién le interesa, y después de radicar no gestiona el ticket.
+- Solo personas activas con rol pueden seguir o validar (`follow-rules.ts`): sin rol
+  no pueden entrar. Se comprueba que el rol exista, no cuál es.
+
 ## 5. Autorización excepcional
 
 Una acción fuera del alcance ordinario —intervención administrativa, acceso
@@ -234,10 +260,10 @@ hay evidencia, la única real.**
 | V4 | La justificación se exige antes de ejecutar, no después | Orden de validación en el handler excepcional | Sin construir (§5) |
 | V5 | La auditoría registra los siete campos de §5 | Modelo y escritura | Sin construir (§5) |
 | V6 | La interfaz y el servicio comparten frontera de estados | Comparar condición de la vista con la del servicio | **Por inspección**: `getTicketDetail` usa las mismas reglas de alcance y de estado que los comandos |
-| V7 | Un observador no puede ejecutar ninguna acción del catálogo | Guard del servicio + prueba negativa | Sin construir |
-| V8 | Solicitar validación no exige la justificación obligatoria de §5 | Comparar los dos handlers | Sin construir |
+| V7 | Un observador no puede ejecutar ninguna acción del catálogo | Guard del servicio + prueba negativa | **Verificado por prueba** (corte 22): `scope.test.mts`, «seguir un ticket no da ninguna acción sobre él». Sin ejercitar contra la base |
+| V8 | Solicitar validación no exige la justificación obligatoria de §5 | Comparar los dos handlers | **Por inspección** (corte 22): `requestValidation` es un comando ordinario; §5 sigue sin construir |
 
-## 10. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
+## 10. `DECISIÓN` Observadores y solicitud de validación — construidos (§4.4)
 
 ```
 FUENTE:  prototipo funcional (`helpdesk_santi/`), confirmado por el usuario para v1
@@ -276,3 +302,6 @@ están bloqueados por el levantamiento de PowerApps y que no se importan los de 
   excepciones del legacy (Alex, Jimena) no cargan ningún rol adicional — son
   `encargado_interno` de su área, sin más. Queda declarado qué tanto puede sostener esta
   confirmación y qué no.
+- 28-sep-2026 — U11 (corte 22). §4.4: tres acciones de seguimiento para los tres
+  roles; ser observador amplía solo la consulta. V7 verificado por prueba y V8 por
+  inspección. §10 pasa de propuesta a decisión construida.

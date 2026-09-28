@@ -4,7 +4,8 @@ import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { resolveGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
-import { getCreationCatalog } from "@/server/tickets/ticket-queries";
+import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
+import { getCreationCatalog, listFollowCandidates } from "@/server/tickets/ticket-queries";
 
 /**
  * Radicar un ticket propio (T2). La vista consulta el mismo permiso que
@@ -19,7 +20,12 @@ export default async function NewTicketPage() {
     <AppFrame employee={employee} title="Nuevo ticket">
       <div className="max-w-2xl">
         {grant ? (
-          <CreateTicketForm catalog={await getCreationCatalog()} />
+          <CreateTicketForm
+            catalog={await getCreationCatalog()}
+            // Quien radica ya ve su ticket: no se ofrece a sí mismo.
+            followCandidates={await listFollowCandidates({ excludeIdPersonal: [employee.idPersonal] })}
+            maxObservers={MAX_OBSERVERS_PER_ACTION}
+          />
         ) : (
           <p className={notice("warning")}>No tienes permiso para crear tickets.</p>
         )}

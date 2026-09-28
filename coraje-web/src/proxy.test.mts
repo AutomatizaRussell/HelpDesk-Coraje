@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { getRelativeURL } from "next/dist/shared/lib/router/utils/relativize-url.js";
 
 import { proxy } from "./proxy";
 import { SESSION_COOKIE_NAME } from "./server/auth/session-cookie";
@@ -38,6 +39,25 @@ function peticion(
   return new NextRequest(new URL(`${ORIGEN}${ruta}`), { method: metodo, headers });
 }
 
+/**
+ * El `Location` que recibe el navegador.
+ *
+ * El proxy devuelve una URL absoluta sobre el host de la petición, porque el
+ * adaptador de Next la lee con `new NextURL(location)`, sin base: una
+ * relativa lanzaba y la respuesta era un 500 (producción, 28-sep-2026;
+ * `redirectFromProxy` en `app-redirect.ts`). El mismo adaptador la vuelve
+ * relativa antes de responder cuando el host coincide. Aquí se hacen los dos
+ * pasos con las mismas piezas, así que cada caso prueba las dos cosas: que el
+ * adaptador puede leerla y que al navegador le llega relativa.
+ */
+function ubicacion(respuesta: Response): string {
+  const location = respuesta.headers.get("location");
+  if (!location) return "";
+  const absoluta = new URL(location);
+  assert.equal(absoluta.origin, ORIGEN, `El Location debe construirse sobre el host de la petición: ${location}`);
+  return getRelativeURL(location, ORIGEN);
+}
+
 /** `NextResponse.next()` se reconoce por este encabezado interno de Next. */
 function dejaPasar(respuesta: Response): boolean {
   return respuesta.headers.get("x-middleware-next") === "1";
@@ -47,13 +67,14 @@ test("una navegación sin sesión a ruta privada va a la detección de la entrad
   const respuesta = proxy(peticion("/helpdesk/tickets"));
 
   assert.equal(respuesta.status, 303);
-  const location = respuesta.headers.get("location") ?? "";
+  const location = ubicacion(respuesta);
   assert.ok(
     location.startsWith("/helpdesk/ingreso"),
     `Esperaba /ingreso, no ${location}`,
   );
-  // Relativo, nunca absoluto: detrás del proxy de Coolify una URL absoluta
-  // se construiría con el host interno del contenedor (defecto de `306d286`).
+  // Al navegador le llega relativo, nunca absoluto: detrás del proxy de
+  // Coolify una URL absoluta llevaría el host interno del contenedor
+  // (defecto de `306d286`).
   assert.ok(!location.includes("://"), `Location absoluto: ${location}`);
   assert.ok(
     location.includes(encodeURIComponent("/tickets")),
@@ -67,7 +88,7 @@ test("la petición interna de React no dispara el flujo OIDC", () => {
   const request = peticion("/helpdesk/tickets");
   request.headers.set("rsc", "1");
 
-  const location = proxy(request).headers.get("location") ?? "";
+  const location = ubicacion(proxy(request));
   assert.ok(location.startsWith("/helpdesk/login"), location);
 });
 
@@ -99,7 +120,7 @@ test("el logotipo de la lista exacta pasa sin sesión, y nada más de public/", 
 });
 
 test("la raíz sin sesión también pasa por la detección de la entrada", () => {
-  const location = proxy(peticion("/helpdesk")).headers.get("location") ?? "";
+  const location = ubicacion(proxy(peticion("/helpdesk")));
   assert.ok(location.startsWith("/helpdesk/ingreso"), location);
 });
 
@@ -117,7 +138,7 @@ test("una ruta que no existe tampoco se filtra: deniega por defecto", () => {
 test("sin navegador recordado, el portal manda a su propio ingreso, no al de empleados", () => {
   const respuesta = proxy(peticion("/helpdesk/portal/tickets/nuevo"));
   assert.equal(respuesta.status, 303);
-  const location = respuesta.headers.get("location") ?? "";
+  const location = ubicacion(respuesta);
   assert.ok(location.startsWith("/helpdesk/portal/ingreso"), location);
   assert.ok(!location.includes("://"), `Location absoluto: ${location}`);
 });
@@ -136,9 +157,9 @@ test("una credencial no abre la clase de la otra", () => {
   // La sesión de un empleado no entra al portal…
   const empleadoEnPortal = proxy(peticion("/helpdesk/portal", { conSesion: true }));
   assert.equal(empleadoEnPortal.status, 303);
-  assert.ok((empleadoEnPortal.headers.get("location") ?? "").startsWith("/helpdesk/portal/ingreso"));
+  assert.ok(ubicacion(empleadoEnPortal).startsWith("/helpdesk/portal/ingreso"));
   // …y la cookie de un cliente no entra a la bandeja interna.
   const clienteEnBandeja = proxy(peticion("/helpdesk/tickets", { conPortal: true }));
   assert.equal(clienteEnBandeja.status, 303);
-  assert.ok((clienteEnBandeja.headers.get("location") ?? "").startsWith("/helpdesk/ingreso"));
+  assert.ok(ubicacion(clienteEnBandeja).startsWith("/helpdesk/ingreso"));
 });

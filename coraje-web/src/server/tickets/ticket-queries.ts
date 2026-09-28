@@ -10,8 +10,9 @@ import {
   type HistoryProjection,
 } from "@/server/authorization/scope";
 
+import { FOLLOWER_WHERE } from "./follow-rules";
 import { slaStatus, type SlaStatus } from "./sla";
-import { OPEN_STATES, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
+import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
 
 /**
  * Lecturas del ciclo del ticket. Toda consulta pasa por el alcance de
@@ -34,8 +35,10 @@ import { OPEN_STATES, isOperableInHelpDesk, isTicketState, type TicketState } fr
  * - `radicados`: los que abrí yo, en cualquier estado.
  * - `area`: los abiertos de mi área, para ver la carga del equipo.
  * - `terminados`: los cerrados o rechazados dentro de mi alcance.
+ * - `siguiendo` (U11): los que sigo como observador, incluidos aquellos en
+ *   los que me pidieron una validación. Abiertos primero.
  */
-export const INBOX_VIEWS = ["pendientes", "radicados", "area", "terminados"] as const;
+export const INBOX_VIEWS = ["pendientes", "radicados", "area", "siguiendo", "terminados"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
 
 export function isInboxView(value: string | undefined): value is InboxView {
@@ -59,13 +62,40 @@ export interface InboxRow {
   fechaLimite: Date | null;
   sla: SlaStatus | null;
   operable: boolean;
+  /** Alguien me pidió validar algo de este ticket (U11). */
+  validacionParaMi: boolean;
 }
+
+/**
+ * Filtros de la bandeja (U11, prototipo de TI): texto y estado. Se combinan
+ * con AND con la vista y con el alcance, así que nunca amplían lo que se ve.
+ */
+export interface InboxFilters {
+  /** Busca en el código, la descripción y el nombre de quien radicó. */
+  texto: string | null;
+  estado: TicketState | null;
+}
+
+/** Longitud máxima del texto de búsqueda. Más largo no es una búsqueda. */
+export const INBOX_SEARCH_MAX = 100;
 
 export interface InboxPage {
   rows: InboxRow[];
   total: number;
   page: number;
   pageCount: number;
+}
+
+/**
+ * Conteo de los tickets de mi alcance por estado, más los vencidos (U11).
+ * Es lo que el prototipo de TI pone en tarjetas arriba de la bandeja, con una
+ * diferencia a propósito: el prototipo llamaba «SLA cumplido» a cerrados
+ * entre total, que no mide el plazo. Aquí se cuentan los **vencidos** con la
+ * misma regla de `slaStatus` (abiertos con la fecha límite ya pasada).
+ */
+export interface InboxCounts {
+  porEstado: Record<TicketState, number>;
+  vencidos: number;
 }
 
 const TERMINAL_STATES = ["CERRADO", "RECHAZADO"] as const;
@@ -82,7 +112,34 @@ function viewCondition(view: InboxView, idPersonal: string, idArea: string | nul
       return idArea === null ? { idTicket: { in: [] } } : { idAreaDestino: idArea, ...open };
     case "terminados":
       return { dimEstado: { nombreEstado: { in: [...TERMINAL_STATES] } } };
+    case "siguiendo":
+      return { observadores: { some: { idPersonal } } };
   }
+}
+
+/**
+ * Filtro de texto: `ILIKE '%…%'` sobre pocas columnas. Sin índice de
+ * trigramas a propósito: el alcance de una persona son unos miles de tickets
+ * (2.313 migrados más los nuevos), y un recorrido de esa tabla dentro del
+ * filtro de alcance cuesta menos que mantener un índice que casi nadie usa
+ * (CLAUDE.md, economía de recursos). Si la bandeja se vuelve lenta, se mide
+ * antes de añadirlo.
+ */
+function filterConditions(filters: InboxFilters): Prisma.FactTicketWhereInput[] {
+  const conditions: Prisma.FactTicketWhereInput[] = [];
+  if (filters.texto) {
+    const contains = { contains: filters.texto, mode: "insensitive" } as const;
+    conditions.push({
+      OR: [
+        { codigoTicket: contains },
+        { descripcionProblema: contains },
+        { dimPersonalSolicitante: { nombreCompleto: contains } },
+        { portalContacto: { nombre: contains } },
+      ],
+    });
+  }
+  if (filters.estado) conditions.push({ dimEstado: { nombreEstado: filters.estado } });
+  return conditions;
 }
 
 /**
@@ -92,18 +149,29 @@ function viewCondition(view: InboxView, idPersonal: string, idArea: string | nul
  * Orden: los abiertos por vencimiento (lo más urgente arriba); los terminados
  * y los radicados, del más reciente al más antiguo.
  */
-export async function listInbox(params: { idPersonal: string; view: InboxView; page: number }): Promise<InboxPage | null> {
+export async function listInbox(params: {
+  idPersonal: string;
+  view: InboxView;
+  page: number;
+  filters: InboxFilters;
+}): Promise<InboxPage | null> {
   const grant = await resolveGrant(params.idPersonal, TICKET_ACTIONS.consultar);
   if (!grant) return null;
 
   const scope = consultScopeConditions(grant.alcance, grant.actor);
   const where: Prisma.FactTicketWhereInput = {
-    AND: [scope === null ? {} : { OR: scope }, viewCondition(params.view, params.idPersonal, grant.actor.idArea)],
+    AND: [
+      scope === null ? {} : { OR: scope },
+      viewCondition(params.view, params.idPersonal, grant.actor.idArea),
+      ...filterConditions(params.filters),
+    ],
   };
   const orderBy: Prisma.FactTicketOrderByWithRelationInput[] =
     params.view === "pendientes" || params.view === "area"
       ? [{ fechaLimite: { sort: "asc", nulls: "last" } }, { fechaCreacion: "asc" }]
-      : [{ fechaCreacion: "desc" }];
+      : params.view === "siguiendo"
+        ? [{ fechaResolucion: { sort: "desc", nulls: "first" } }, { fechaCreacion: "desc" }]
+        : [{ fechaCreacion: "desc" }];
 
   const [total, tickets] = await Promise.all([
     prisma.factTicket.count({ where }),
@@ -125,6 +193,7 @@ export async function listInbox(params: { idPersonal: string; view: InboxView; p
         dimTipoRequerimiento: { select: { tipoRequerimiento: true } },
         ...REQUESTER_SELECT,
         dimPersonalAsignado: { select: { nombreCompleto: true } },
+        validaciones: { where: { idDestinatario: params.idPersonal }, select: { idEvento: true }, take: 1 },
       },
     }),
   ]);
@@ -146,6 +215,7 @@ export async function listInbox(params: { idPersonal: string; view: InboxView; p
       fechaLimite: ticket.fechaLimite,
       sla: slaStatus({ state: estado, fechaLimite: ticket.fechaLimite, now }),
       operable: isOperableInHelpDesk(ticket.origenSistema),
+      validacionParaMi: ticket.validaciones.length > 0,
     };
   });
 
@@ -155,6 +225,40 @@ export async function listInbox(params: { idPersonal: string; view: InboxView; p
     page: params.page,
     pageCount: Math.max(1, Math.ceil(total / INBOX_PAGE_SIZE)),
   };
+}
+
+/**
+ * Los contadores de arriba de la bandeja, sobre **todo** mi alcance de
+ * consulta, no sobre la vista ni los filtros: responden «cómo está lo mío»,
+ * y cambiar de pestaña no debe cambiarlos. Dos consultas agregadas en la
+ * base, sin traer tickets a memoria.
+ *
+ * `null` si la persona no puede consultar tickets.
+ */
+export async function countInbox(idPersonal: string): Promise<InboxCounts | null> {
+  const grant = await resolveGrant(idPersonal, TICKET_ACTIONS.consultar);
+  if (!grant) return null;
+
+  const scope = consultScopeConditions(grant.alcance, grant.actor);
+  const where: Prisma.FactTicketWhereInput = scope === null ? {} : { OR: scope };
+
+  const [grupos, estados, vencidos] = await Promise.all([
+    prisma.factTicket.groupBy({ by: ["idEstado"], where, _count: { _all: true } }),
+    prisma.dimEstado.findMany({ select: { idEstado: true, nombreEstado: true } }),
+    prisma.factTicket.count({
+      where: {
+        AND: [where, { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } }, { fechaLimite: { lt: new Date() } }],
+      },
+    }),
+  ]);
+
+  const nombre = new Map(estados.map((estado) => [estado.idEstado, estado.nombreEstado]));
+  const porEstado = Object.fromEntries(TICKET_STATES.map((state) => [state, 0])) as Record<TicketState, number>;
+  for (const grupo of grupos) {
+    const estado = nombre.get(grupo.idEstado);
+    if (estado && isTicketState(estado)) porEstado[estado] += grupo._count._all;
+  }
+  return { porEstado, vencidos };
 }
 
 /**
@@ -204,6 +308,12 @@ export interface TicketCapabilities {
   responder: boolean;
   rechazar: boolean;
   notaInterna: boolean;
+  /** U11: añadir y retirar observadores. */
+  gestionarObservadores: boolean;
+  /** U11: pedir validación a una persona. */
+  solicitarValidacion: boolean;
+  /** U11: quien radicó escribe en su ticket abierto sin cerrarlo. */
+  comentarSolicitante: boolean;
 }
 
 export interface TicketDetail {
@@ -217,6 +327,8 @@ export interface TicketDetail {
   categoria1: string | null;
   categoria2: string | null;
   solicitante: string | null;
+  /** Empleado que lo radicó; `null` en los tickets del portal y los legacy de cliente. */
+  idSolicitante: string | null;
   idAsignado: string | null;
   responsable: string | null;
   fechaCreacion: Date;
@@ -227,6 +339,8 @@ export interface TicketDetail {
   projection: HistoryProjection;
   history: TicketHistoryEntry[];
   capabilities: TicketCapabilities;
+  /** Quienes siguen el ticket (U11). Los ve cualquiera que pueda consultarlo. */
+  observadores: { idPersonal: string; nombre: string }[];
 }
 
 /**
@@ -257,6 +371,10 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       dimTipoRequerimiento: { select: { tipoRequerimiento: true, categoria1: true, categoria2: true } },
       ...REQUESTER_SELECT,
       dimPersonalAsignado: { select: { nombreCompleto: true } },
+      observadores: {
+        orderBy: { persona: { nombreCompleto: "asc" } },
+        select: { idPersonal: true, persona: { select: { nombreCompleto: true } } },
+      },
     },
   });
   if (!ticket) return null;
@@ -265,6 +383,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     idSolicitante: ticket.idSolicitante,
     idAsignado: ticket.idAsignado,
     idAreaDestino: ticket.idAreaDestino,
+    idObservadores: ticket.observadores.map((observador) => observador.idPersonal),
   };
   if (!isTicketWithinScope({ alcance: grant.alcance, action: TICKET_ACTIONS.consultar, actor: grant.actor, ticket: scopeTicket })) {
     return null;
@@ -297,6 +416,9 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     TICKET_ACTIONS.responder,
     TICKET_ACTIONS.rechazar,
     TICKET_ACTIONS.notaInterna,
+    TICKET_ACTIONS.gestionarObservadores,
+    TICKET_ACTIONS.solicitarValidacion,
+    TICKET_ACTIONS.comentarSolicitante,
   ]);
   const can = (action: TicketAction) => {
     const granted = grants.get(action);
@@ -309,11 +431,15 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
 
   // La misma condición de estado que aplican los comandos (ticket-commands.ts):
   // la vista no ofrece lo que el servicio va a rechazar.
+  const open = isOpenState(estado);
   const capabilities: TicketCapabilities = {
     reasignar: operable && reasignar && estado === "ASIGNADO",
     responder: operable && responder && estado === "ASIGNADO",
     rechazar: operable && rechazar && (estado === "ABIERTO" || estado === "ASIGNADO"),
     notaInterna: operable && notaInterna,
+    gestionarObservadores: operable && open && can(TICKET_ACTIONS.gestionarObservadores),
+    solicitarValidacion: operable && open && can(TICKET_ACTIONS.solicitarValidacion),
+    comentarSolicitante: operable && open && can(TICKET_ACTIONS.comentarSolicitante),
   };
 
   return {
@@ -327,6 +453,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     categoria1: ticket.dimTipoRequerimiento?.categoria1 ?? null,
     categoria2: ticket.dimTipoRequerimiento?.categoria2 ?? null,
     solicitante: requesterLabel(ticket),
+    idSolicitante: ticket.idSolicitante,
     idAsignado: ticket.idAsignado,
     responsable: ticket.dimPersonalAsignado?.nombreCompleto ?? null,
     fechaCreacion: ticket.fechaCreacion,
@@ -346,6 +473,10 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       estadoNuevo: evento.estadoNuevo && isTicketState(evento.estadoNuevo.nombreEstado) ? evento.estadoNuevo.nombreEstado : null,
     })),
     capabilities,
+    observadores: ticket.observadores.map((observador) => ({
+      idPersonal: observador.idPersonal,
+      nombre: observador.persona.nombreCompleto,
+    })),
   };
 }
 
@@ -371,6 +502,34 @@ export async function listReassignCandidates(params: { idPersonal: string; exclu
     orderBy: { nombreCompleto: "asc" },
     select: { idPersonal: true, nombreCompleto: true },
   });
+}
+
+/** Una persona que se puede elegir para seguir un ticket o validar algo. */
+export interface FollowCandidate {
+  idPersonal: string;
+  nombre: string;
+  /** Para distinguir a dos personas con el mismo nombre. */
+  area: string | null;
+}
+
+/**
+ * Personas que pueden seguir un ticket o recibir una solicitud de validación,
+ * de cualquier área: se involucra a quien hace falta, no solo a los
+ * compañeros. Misma condición que aplican los comandos (`FOLLOWER_WHERE`),
+ * sin las que ya ven el ticket por otra vía.
+ */
+export async function listFollowCandidates(params: { excludeIdPersonal: readonly (string | null)[] }): Promise<FollowCandidate[]> {
+  const exclude = params.excludeIdPersonal.filter((id): id is string => id !== null);
+  const personas = await prisma.dimPersonal.findMany({
+    where: { ...FOLLOWER_WHERE, ...(exclude.length > 0 ? { idPersonal: { notIn: exclude } } : {}) },
+    orderBy: { nombreCompleto: "asc" },
+    select: { idPersonal: true, nombreCompleto: true, dimArea: { select: { nombreArea: true } } },
+  });
+  return personas.map((persona) => ({
+    idPersonal: persona.idPersonal,
+    nombre: persona.nombreCompleto,
+    area: persona.dimArea?.nombreArea ?? null,
+  }));
 }
 
 // ---------------------------------------------------------------------------

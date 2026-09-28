@@ -24,6 +24,13 @@ export interface ScopeTicket {
   idSolicitante: string | null;
   idAsignado: string | null;
   idAreaDestino: string | null;
+  /**
+   * Quienes siguen el ticket (U11, tickets.md §11). Obligatorio a propósito:
+   * quien construya un ticket para evaluarlo tiene que decir quién lo sigue,
+   * o un observador quedaría fuera de su propio ticket sin que el compilador
+   * lo note.
+   */
+  idObservadores: readonly string[];
 }
 
 /**
@@ -31,6 +38,11 @@ export interface ScopeTicket {
  *
  * - Consultar: haberlo radicado o ser su responsable. Quien radica tiene que
  *   poder seguir su propio ticket.
+ * - Consultar, además: seguirlo como observador (U11). Es lo único que da
+ *   ser observador: ninguna otra acción lo mira (tickets.md §11).
+ * - Comentar como solicitante (U11): haberlo radicado, y nada más. Es la
+ *   única acción cuyo «propio» no es ser el responsable, porque es la voz de
+ *   quien pidió, no de quien atiende.
  * - Todo lo demás: ser su responsable. Es la regla del legacy
  *   (reglas-negocio-powerapps.md §6): quien recibe el ticket es quien actúa
  *   sobre él. Radicarlo no da derecho a responderlo ni a rechazarlo.
@@ -48,7 +60,10 @@ export interface ScopeTicket {
 function isOwnTicket(action: TicketAction, actor: ScopeActor, ticket: ScopeTicket): boolean {
   const isResponsable = ticket.idAsignado === actor.idPersonal;
   if (action === TICKET_ACTIONS.consultar) {
-    return isResponsable || ticket.idSolicitante === actor.idPersonal;
+    return isResponsable || ticket.idSolicitante === actor.idPersonal || ticket.idObservadores.includes(actor.idPersonal);
+  }
+  if (action === TICKET_ACTIONS.comentarSolicitante) {
+    return ticket.idSolicitante === actor.idPersonal;
   }
   return isResponsable;
 }
@@ -87,13 +102,15 @@ export function isTicketWithinScope(params: {
 export type ConsultScopeCondition =
   | { idSolicitante: string }
   | { idAsignado: string }
-  | { idAreaDestino: string };
+  | { idAreaDestino: string }
+  | { observadores: { some: { idPersonal: string } } };
 
 export function consultScopeConditions(alcance: Alcance, actor: ScopeActor): ConsultScopeCondition[] | null {
   if (alcance === "TOTAL") return null;
   const conditions: ConsultScopeCondition[] = [
     { idSolicitante: actor.idPersonal },
     { idAsignado: actor.idPersonal },
+    { observadores: { some: { idPersonal: actor.idPersonal } } },
   ];
   if (alcance === "AREA" && actor.idArea !== null) {
     conditions.push({ idAreaDestino: actor.idArea });
@@ -104,8 +121,11 @@ export function consultScopeConditions(alcance: Alcance, actor: ScopeActor): Con
 /**
  * Qué parte de la historia ve quien consulta (specs/tickets.md §6).
  *
- * - `EQUIPO`: el responsable y su área, o quien tiene alcance total. Ven las
- *   notas internas (`INTERNO`) y lo que ve el solicitante (`AMBOS`).
+ * - `EQUIPO`: el responsable y su área, quien tiene alcance total y quien
+ *   sigue el ticket como observador. Ven las notas internas (`INTERNO`) y lo
+ *   que ve el solicitante (`AMBOS`). El observador está aquí por decisión de
+ *   tickets.md §11: ve «lo mismo que vería un agente interno», no una vista
+ *   recortada.
  * - `SOLICITANTE`: quien solo radicó el ticket. Ve `AMBOS`, nunca `INTERNO`.
  *   Es lo que hace que una nota interna signifique algo: si quien radicó la
  *   viera, no sería interna.
@@ -123,6 +143,7 @@ export function historyProjection(params: {
   const { alcance, actor, ticket } = params;
   if (alcance === "TOTAL") return "EQUIPO";
   if (ticket.idAsignado === actor.idPersonal) return "EQUIPO";
+  if (ticket.idObservadores.includes(actor.idPersonal)) return "EQUIPO";
   if (alcance === "AREA" && isAreaTicket(actor, ticket)) return "EQUIPO";
   return "SOLICITANTE";
 }

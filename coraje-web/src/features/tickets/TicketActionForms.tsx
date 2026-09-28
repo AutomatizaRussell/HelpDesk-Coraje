@@ -6,14 +6,21 @@ import { buttonRecipe, type ButtonVariant } from "@/design-system/recipes/button
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { FormFeedback } from "@/features/forms/FormFeedback";
 
+import type { FollowCandidate } from "@/server/tickets/ticket-queries";
+
 import { IDLE_FORM_STATE, type TicketFormState } from "./action-state";
 import {
   addInternalNoteAction,
+  addObserversAction,
+  commentAsRequesterAction,
   reassignTicketAction,
   rejectTicketAction,
+  removeObserverAction,
+  requestValidationAction,
   resendTicketMailAction,
   respondTicketAction,
 } from "./actions";
+import { PeoplePicker } from "./PeoplePicker";
 
 /**
  * Formularios de las acciones sobre un ticket. Solo se dibujan los que el
@@ -179,6 +186,109 @@ export function RejectForm({ idTicket }: { idTicket: string }) {
         state={state}
       />
       <Submit pending={pending} variant="danger">Rechazar ticket</Submit>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Seguimiento (U11)
+// ---------------------------------------------------------------------------
+
+/** Lo que se eligió en un intento fallido, para no perderlo (actions.ts, `formValues`). */
+function previousSelection(state: TicketFormState, name: string): string[] {
+  const value = state.status === "error" ? state.values[name] : undefined;
+  return value ? value.split(",") : [];
+}
+
+export function AddObserversForm({
+  idTicket,
+  candidates,
+  max,
+}: {
+  idTicket: string;
+  candidates: readonly FollowCandidate[];
+  max: number;
+}) {
+  const { state, formAction, pending, formKey } = useTicketForm(addObserversAction);
+  return (
+    <form key={formKey} action={formAction} className="space-y-3">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      <FormFeedback state={state} />
+      <PeoplePicker
+        name="idObservadores"
+        label="Personas que seguirán el ticket"
+        hint="Lo verán y recibirán aviso cuando se responda o se rechace. No podrán actuar sobre él."
+        candidates={candidates}
+        mode="multiple"
+        max={max}
+        initialSelected={previousSelection(state, "idObservadores")}
+        error={state.status === "error" ? state.fieldErrors.idObservadores : undefined}
+      />
+      <Submit pending={pending} variant="secondary">Añadir observadores</Submit>
+    </form>
+  );
+}
+
+/** Retirar a una persona: un botón junto a su nombre. */
+export function RemoveObserverForm({ idTicket, idObservador, nombre }: { idTicket: string; idObservador: string; nombre: string }) {
+  const [state, formAction, pending] = useActionState(removeObserverAction, IDLE_FORM_STATE);
+  return (
+    <form action={formAction} className="space-y-1">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      <input type="hidden" name="idObservador" value={idObservador} />
+      {state.status === "error" && <FormFeedback state={state} />}
+      <button
+        type="submit"
+        className={buttonRecipe({ variant: "secondary", size: "sm" })}
+        disabled={pending}
+        aria-label={`Retirar a ${nombre} del seguimiento`}
+      >
+        {pending ? "Retirando…" : "Retirar"}
+      </button>
+    </form>
+  );
+}
+
+export function RequestValidationForm({ idTicket, candidates }: { idTicket: string; candidates: readonly FollowCandidate[] }) {
+  const { state, formAction, pending, formKey } = useTicketForm(requestValidationAction);
+  return (
+    <form key={formKey} action={formAction} className="space-y-3">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      <FormFeedback state={state} />
+      <PeoplePicker
+        name="idDestinatario"
+        label="Persona que debe validar"
+        hint="Si todavía no ve el ticket, pasa a seguirlo para poder abrirlo."
+        candidates={candidates}
+        mode="single"
+        initialSelected={previousSelection(state, "idDestinatario")}
+        error={state.status === "error" ? state.fieldErrors.idDestinatario : undefined}
+      />
+      <TextField
+        name="comentario"
+        label="Qué necesitas que valide"
+        hint="Solo lo ve el equipo. El ticket no se detiene mientras tanto."
+        state={state}
+      />
+      <Submit pending={pending} variant="secondary">Solicitar validación</Submit>
+    </form>
+  );
+}
+
+/** Quien radicó escribe en su ticket abierto, sin cerrarlo. */
+export function RequesterCommentForm({ idTicket }: { idTicket: string }) {
+  const { state, formAction, pending, formKey } = useTicketForm(commentAsRequesterAction);
+  return (
+    <form key={formKey} action={formAction} className="space-y-3">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      <FormFeedback state={state} />
+      <TextField
+        name="comentario"
+        label="Escribe en tu ticket"
+        hint="Lo ve el equipo que lo atiende, y la persona responsable recibe un aviso. El ticket sigue abierto."
+        state={state}
+      />
+      <Submit pending={pending} variant="primary">Enviar comentario</Submit>
     </form>
   );
 }

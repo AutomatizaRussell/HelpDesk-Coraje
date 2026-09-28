@@ -10,9 +10,13 @@ import { notice, sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { formatDate, formatDateTime, formatPriority } from "@/features/tickets/format";
 import {
+  AddObserversForm,
   InternalNoteForm,
   ReassignForm,
   RejectForm,
+  RemoveObserverForm,
+  RequestValidationForm,
+  RequesterCommentForm,
   ResendMailForm,
   RespondForm,
 } from "@/features/tickets/TicketActionForms";
@@ -22,7 +26,8 @@ import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
 import { logEvent } from "@/server/observability/log";
 import { getMirrorStatus, type MirrorStatus } from "@/server/sync/sharepoint-mirror";
-import { getTicketDetail, listReassignCandidates } from "@/server/tickets/ticket-queries";
+import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
+import { getTicketDetail, listFollowCandidates, listReassignCandidates } from "@/server/tickets/ticket-queries";
 
 /**
  * Detalle de un ticket: ficha, historia y las acciones que la persona puede
@@ -73,7 +78,24 @@ export default async function TicketDetailPage({
     idPersonal: employee.idPersonal,
     teamView: ticket.projection === "EQUIPO",
   });
-  const hasActions = capabilities.responder || capabilities.reasignar || capabilities.rechazar || capabilities.notaInterna;
+  // Seguimiento (U11). Una sola lectura del directorio para los dos
+  // selectores; cada uno quita a quien no tiene sentido ofrecer.
+  const followCandidates =
+    capabilities.gestionarObservadores || capabilities.solicitarValidacion
+      ? await listFollowCandidates({ excludeIdPersonal: [] })
+      : [];
+  const yaLoVen = new Set([ticket.idSolicitante, ticket.idAsignado, ...ticket.observadores.map((item) => item.idPersonal)]);
+  const observerCandidates = followCandidates.filter((person) => !yaLoVen.has(person.idPersonal));
+  const validationCandidates = followCandidates.filter((person) => person.idPersonal !== employee.idPersonal);
+
+  const hasActions =
+    capabilities.responder ||
+    capabilities.reasignar ||
+    capabilities.rechazar ||
+    capabilities.notaInterna ||
+    capabilities.comentarSolicitante ||
+    capabilities.gestionarObservadores ||
+    capabilities.solicitarValidacion;
   // El espejo en PowerApps solo existe para los tickets de HelpDesk, y es
   // información del equipo. Es un panel de apoyo: si su lectura falla, el
   // ticket se sigue mostrando y el fallo queda en el registro del servidor.
@@ -121,6 +143,11 @@ export default async function TicketDetailPage({
                     <RespondForm idTicket={ticket.idTicket} />
                   </ActionPanel>
                 )}
+                {capabilities.comentarSolicitante && (
+                  <ActionPanel title="Escribir en el ticket" open={!capabilities.responder}>
+                    <RequesterCommentForm idTicket={ticket.idTicket} />
+                  </ActionPanel>
+                )}
                 {capabilities.reasignar && (
                   <ActionPanel title="Reasignar dentro del área">
                     <ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />
@@ -129,6 +156,16 @@ export default async function TicketDetailPage({
                 {capabilities.notaInterna && (
                   <ActionPanel title="Agregar nota interna">
                     <InternalNoteForm idTicket={ticket.idTicket} />
+                  </ActionPanel>
+                )}
+                {capabilities.solicitarValidacion && (
+                  <ActionPanel title="Solicitar validación">
+                    <RequestValidationForm idTicket={ticket.idTicket} candidates={validationCandidates} />
+                  </ActionPanel>
+                )}
+                {capabilities.gestionarObservadores && (
+                  <ActionPanel title="Añadir observadores">
+                    <AddObserversForm idTicket={ticket.idTicket} candidates={observerCandidates} max={MAX_OBSERVERS_PER_ACTION} />
                   </ActionPanel>
                 )}
                 {capabilities.rechazar && (
@@ -217,6 +254,22 @@ export default async function TicketDetailPage({
               </Field>
               <Field label="Solicitante">{ticket.solicitante ?? "Sin solicitante"}</Field>
               <Field label="Responsable">{ticket.responsable ?? "Sin responsable"}</Field>
+              <Field label="Observadores">
+                {ticket.observadores.length === 0 ? (
+                  <span className="text-ink-muted">Nadie sigue este ticket</span>
+                ) : (
+                  <ul className="space-y-2">
+                    {ticket.observadores.map((observador) => (
+                      <li key={observador.idPersonal} className="flex flex-wrap items-center justify-between gap-2">
+                        <span>{observador.nombre}</span>
+                        {capabilities.gestionarObservadores && (
+                          <RemoveObserverForm idTicket={ticket.idTicket} idObservador={observador.idPersonal} nombre={observador.nombre} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Field>
               <Field label="Radicado">{formatDateTime(ticket.fechaCreacion)}</Field>
               {ticket.fechaResolucion && <Field label="Terminado">{formatDateTime(ticket.fechaResolucion)}</Field>}
             </dl>

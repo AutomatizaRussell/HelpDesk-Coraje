@@ -1,6 +1,42 @@
 # Handoff técnico
 
 ```
+CORTE:   28-sep-2026 (corte 22, U11 — seguimiento del ticket a partir del prototipo
+         de TI, construida, SIN DESPLEGAR; y corrección del perímetro)
+SOBRE:   `d1d8e86` (corte 21). Los cortes 19, 20 y 21 se publicaron juntos el
+         28-sep y están desplegados: `/helpdesk/portal/ingreso` sirve el formulario
+         de U8, y `web` solo arranca si `migrate` aplicó todo
+RAMA:    main
+UNIDAD:  U11 · SEGUIMIENTO DEL TICKET. El usuario pidió construir ya lo del
+         prototipo `helpdesk_santi/` de la persona encargada de TI, «para que solo sea
+         correr pruebas y corregir», y resolver después los conflictos con las
+         decisiones vigentes, con la idea de tomar lo del prototipo.
+         Construido (`specs/tickets.md` §11.1, `specs/permisos.md` §4.4):
+         - migraciones `20260928140000_valores_seguimiento` (cuatro tipos de evento)
+           y `20260928150000_seguimiento_ticket` (`helpdesk.ticket_observador`,
+           `helpdesk.ticket_validacion`, cuatro ramas nuevas del escritor único y
+           tres acciones para los tres roles);
+         - observadores (al crear y después), solicitud de validación a una persona
+           (no bloquea) y comentario del solicitante sin cerrar, con sus correos;
+         - bandeja: vista «Que sigo», marca «Te pidieron validar», búsqueda por
+           código, descripción o solicitante, filtro por estado, contadores por
+           estado y vencidos.
+         Fuera, hasta hablarlo con TI: «En Proceso», cierre por el solicitante,
+         tareas y soluciones, prioridad y tipo del solicitante, «SLA cumplido» y
+         respuesta del validador (`tickets.md` §11.1).
+         **Fallo de producción corregido en el mismo corte (F15):** quien llegaba
+         sin sesión a una ruta privada recibía un 500 en vez del ingreso. En Next 16
+         el proxy corre en Node y el adaptador de Next lee su `Location` con
+         `new NextURL()` sin base; el `Location` relativo lanzaba. Ahora es
+         absoluto sobre el host de la petición, y el adaptador lo devuelve relativo.
+         Evidencia: `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test`
+         145/145, `next build`; SQL y PL/pgSQL de las dos migraciones parseados con
+         `libpg-query`, con dos controles negativos. **Sin ejercitar**: nada
+         aplicado. El 500 se diagnosticó contra producción sin acceso SSH (§4); la
+         corrección no se ha visto funcionar.
+SIGUE:   desplegar el corte 22 y ejercitar U7-U11 («Acción inmediata», B-G).
+
+--- Corte 21, para contexto:
 CORTE:   28-sep-2026 (corte 21, U10 — observabilidad, construida, SIN DESPLEGAR)
 SOBRE:   `3834418` (corte 20, sin publicar todavía: los cortes 19, 20 y 21 salen
          juntos; `origin/main` sigue en `f117661`)
@@ -485,18 +521,30 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 |---|---|---|
 | Ingesta SharePoint → PostgreSQL | `EJERCITADO, con el código corregido de esta unidad` | 2.313 tickets conciliados en `legacy/baseline-calidad.md` (baseline histórico, no se edita) → 2.559 el 10-sep-2026 antes de esta unidad → **2.825 el 10-sep-2026 tras ejecutar la ingesta con el fix de F10** (§4). El crecimiento es la ingesta incremental real, confirmado por el usuario — no es un error de conteo |
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
-| Portal de clientes | `CONSTRUIDO, SIN DESPLEGAR` (corte 19) | El abierto se eliminó el 22-sep-2026 (U4, `735be57`). El nuevo (U8): invitación de un solo uso, código por correo, navegador recordado con 180 días de inactividad, cada contacto ve solo lo suyo, consola `/accesos` y cola `/clasificacion`. Sin ejercitar |
+| Portal de clientes | `DESPLEGADO, SIN EJERCITAR` (corte 19, publicado el 28-sep) | El abierto se eliminó el 22-sep-2026 (U4, `735be57`). El nuevo (U8): invitación de un solo uso, código por correo, navegador recordado con 180 días de inactividad, cada contacto ve solo lo suyo, consola `/accesos` y cola `/clasificacion`. Sin ejercitar |
 | Redirección interna | `RETIRADA` | La clave compartida y su pantalla se eliminaron (`735be57`); las dos vistas cayeron con el frontend heredado (`1937589`). La lógica —resolución del encargado y escritura en el outbox— se conservó sin pantalla en `features/redireccion/`, como referencia para `U7` |
-| Perímetro de acceso | `CONSTRUIDO Y EJERCITADO` | *Deny-by-default* en `src/proxy.ts`, con lista pública de tres entradas desde U5 (`/login`, `/ingreso`, `/api/auth/microsoft`); la navegación sin sesión va a `/ingreso`. 42 pruebas, ocho ejecutando `proxy()`; cuatro escenarios contra el despliegue el 22-sep-2026. **No verificado:** el tratamiento del prefijo `/helpdesk` dentro del proxy real (§1, salvedad 4) |
+| Perímetro de acceso | `CONSTRUIDO Y EJERCITADO; CORRECCIÓN SIN DESPLEGAR` | **28-sep-2026:** sin ninguna cookie, toda ruta privada respondía 500 en producción (F15, §4); corregido en el corte 22, sin ejercitar. *Deny-by-default* en `src/proxy.ts`, con lista pública de tres entradas desde U5 (`/login`, `/ingreso`, `/api/auth/microsoft`); la navegación sin sesión va a `/ingreso`. 42 pruebas, ocho ejecutando `proxy()`; cuatro escenarios contra el despliegue el 22-sep-2026. **No verificado:** el tratamiento del prefijo `/helpdesk` dentro del proxy real (§1, salvedad 4) |
 | Frontend | `DESPLEGADO; SHELL EJERCITADO` | Seis rutas: `/` (dos modos), `/login`, `/ingreso` y las tres de auth. Shell de Conecta, barra propia y pestañas de HelpDesk vistos en producción por el usuario el 24-sep-2026. Sin funcionalidad de tickets |
 | Identidad de empleados | `EJERCITADA DE PUNTA A PUNTA` | **U5:** dos modos de entrada (desde Conecta sin selector; directo con `select_account`) ejercitados por el usuario el 24-sep-2026 (`specs/integracion-conecta.md`). **U3:** Ingreso real, cierre de sesión, expulsión por desactivación, rechazo por rol ausente, cookie de sesión manipulada sin efecto y destino de retorno saneado — **todo contra el despliegue, 22-sep-2026** (§4). `NOT_REGISTERED` y `EMAIL_INVALID` quedan con cobertura unitaria únicamente |
-| Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
-| Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
+| Autorización | `DESPLEGADA, SIN EJERCITAR` | Autorizador y catálogo desde U7 (corte 18); roles `CLASIFICADOR` y `ADMIN` desde U8; acciones de seguimiento en el corte 22, sin desplegar (`specs/permisos.md` §4.4) |
+| Ciclo de vida del ticket | `DESPLEGADO, SIN EJERCITAR` | Ciclo interno (U7) y del portal (U8) desplegados. Seguimiento —observadores, validación, comentario del solicitante— construido en el corte 22 (`specs/tickets.md` §11.1) |
 | Sistema de diseño | `CONSTRUIDO Y DESPLEGADO` | `coraje-web/src/design-system/` y `globals.css`; validador de adaptadores y barrido de valores en `pnpm test` (U5). Sin validación de lector de pantalla; foco con Tab corregido y sin ejercitar |
-| Observabilidad | `CONSTRUIDA, SIN DESPLEGAR` (corte 21) | Revisión diaria en la base con reconciliación contra HelpDeskBd, aviso a Teams solo de lo crítico nuevo o peor, vista `/salud`, registro JSON con `idTicket`. Antes existía solo el workflow de error (V10, 24-sep). Sin ejercitar (`specs/observabilidad.md` §7) |
+| Observabilidad | `DESPLEGADA, SIN EJERCITAR` (corte 21, publicado el 28-sep; workflow sin importar) | Revisión diaria en la base con reconciliación contra HelpDeskBd, aviso a Teams solo de lo crítico nuevo o peor, vista `/salud`, registro JSON con `idTicket`. Antes existía solo el workflow de error (V10, 24-sep). Sin ejercitar (`specs/observabilidad.md` §7) |
 | Documentación | `CERRADA en este corte` | Este conjunto |
 
 ## 3. Capacidades publicadas en esta unidad
+
+### U11 — seguimiento del ticket (corte 22, sin desplegar)
+
+- **Observadores:** personas reales del directorio que ven el ticket y su historia
+  y reciben aviso al añadirlas y al responder o rechazar. Ninguna acción.
+- **Solicitud de validación** a una persona, con comentario. No bloquea; quien la
+  recibe pasa a seguir el ticket y lo ve en «Que sigo» con una marca.
+- **Comentario del solicitante:** quien radicó escribe en su ticket abierto sin
+  cerrarlo; la persona responsable recibe aviso.
+- **Bandeja:** búsqueda, filtro por estado, contadores y vencidos.
+- **Perímetro:** la redirección al ingreso vuelve a funcionar para quien llega sin
+  sesión (F15).
 
 ### U10 — observabilidad (corte 21, sin desplegar)
 
@@ -638,6 +686,8 @@ persona habilitada y la ruta pública sirviendo tráfico:
 
 | Tipo | Demuestra | **No** demuestra |
 |---|---|---|
+| **Sondeo HTTP de producción tras publicar los cortes 19-21, 28-sep-2026** (`curl` desde esta sesión, sin SSH) | `/helpdesk/portal/ingreso` responde 200 con el formulario de U8, así que el despliegue nuevo está en pie. Sin cookie, `/tickets`, `/salud`, `/clasificacion`, `/accesos` y `/portal` responden **500** (`Internal Server Error`, texto plano), sea navegación o no; con una cookie inventada, la página redirige bien (307 a `/login`); `/api/*` da 401; `/helpdesk` da 307 desde la página. Aísla el fallo en la redirección del proxy (F15), y la lectura de `adapter.js` de `next@16.2.6` da la causa | El registro del contenedor con la traza, que no se pudo leer. Que la corrección del corte 22 funcione: se probó con la función de Next que hace la conversión, no en el despliegue |
+| `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test` 145/145, `next build` y `libpg-query` sobre las dos migraciones, **corte 22**, 28-sep-2026, en local | Que U11 y la corrección de F15 tipan, construyen y cumplen las pruebas puras: alcance del observador (ninguna acción), ramas nuevas del escritor, catálogo sembrado y consultado, `Location` legible por el adaptador y relativo para el navegador | Nada contra la base ni el navegador. Los nombres de columna de las consultas nuevas se revisaron a mano contra `schema.prisma` |
 | Lectura del árbol de HelpDesk | Qué contiene el código y el SQL hoy | Que funcione, ni qué hace en ejecución |
 | Lectura del árbol de Impulsa | Cómo resolvió el proyecto hermano identidad, permisos y diseño | Que esas piezas funcionen aquí sin adaptación |
 | `git log` y `git status` | Que el árbol estaba limpio y cuál es el HEAD | Nada sobre despliegues |
@@ -760,6 +810,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | F8 | El SLA no se pausa, no se recalcula y no existe prioridad `ALTA` — **decidido el 24-sep-2026:** reloj por turno, prioridad del legacy para internos, 3 días fijos para clientes (`specs/tickets.md` §5). **Corte 18:** el plazo de los tickets internos se calcula al crear, y el calendario de festivos se corrigió (Ley Emiliani, lunes de Ascensión/Corpus, Sagrado Corazón, Ley 2578). Sin ejercitar. Los 3 días de clientes esperan a U8 | Media | `specs/tickets.md` §5 |
 | F14 | El envío de correo depende de la autorización delegada de cada persona. Una contraseña cambiada o sesiones revocadas la matan, y hasta que esa persona vuelva a entrar sus correos fallan | Baja | `src/server/auth/graph-grant.ts`. Mitigado: el correo queda `FALLIDO` en el ticket, con el motivo y la opción de reenviar |
 | F9 | `encargado_interno` es texto libre sin clave foránea | Baja | Ídem §7.2 |
+| F15 | Sin ninguna cookie, toda ruta privada respondía **500** en lugar de llevar al ingreso: sesión caducada o enlace de un correo abierto en otro navegador. **Corregido en código en el corte 22, sin ejercitar.** Causa: en Next 16 el proxy corre en Node, y el adaptador (`next/dist/server/web/adapter.js`) lee el `Location` de su respuesta con `new NextURL(location)` sin base; el relativo de `redirectWithinApp` lanzaba `Invalid URL`. Con cualquier cookie el proxy dejaba pasar y la página redirigía bien, por eso U4 no lo vio. Ahora `redirectFromProxy` emite la URL absoluta sobre el host de la petición y el adaptador la vuelve relativa; `proxy.test.mts` hace las dos conversiones | **Alta** | `src/server/auth/app-redirect.ts`, `src/proxy.ts` |
 
 > **F12 reabierto — la consulta que se marcó "opcional, de prioridad baja" en corte 4
 > era la que hacía falta correr antes de decidir, no después.** Ya se corrió, contra la
@@ -808,8 +859,9 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
-| `3834418` | **Corte 20.** U9: espejo en PowerApps y regla de precedencia. Sale junto con los cortes 19 y 21 |
-| `4455741` | **Corte 19.** U8: acceso de clientes y tickets del portal. Sale junto con los cortes 20 y 21 |
+| `d1d8e86` | **Corte 21.** U10: revisión diaria de salud y registro JSON. Publicado y desplegado el 28-sep-2026 junto con los cortes 19 y 20; sin ejercitar |
+| `3834418` | **Corte 20.** U9: espejo en PowerApps y regla de precedencia. Publicado y desplegado el 28-sep-2026; sin ejercitar |
+| `4455741` | **Corte 19.** U8: acceso de clientes y tickets del portal. Publicado y desplegado el 28-sep-2026; sin ejercitar |
 | `f117661` | Registra la infraestructura propia de HelpDesk y el dueño verificado de las funciones del calendario (solo documentación, excepción autorizada por cambio de equipo) |
 | `987107c` | **Corte 18.** U7: ciclo interno con permisos y correo delegado. Desplegado el 28-sep-2026 (`migrate`: 8 migraciones, ninguna pendiente); sin ejercitar |
 | `8eff969` | **Corte 17.** U6 fase 2: retira los privilegios que eluden el escritor único |
@@ -924,7 +976,7 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar los cortes 19, 20 y 21 y ejercitar U7 a U10
+## Acción inmediata para la siguiente sesión — desplegar el corte 22 y ejercitar U7 a U11
 
 **Se desvía de la cola, y el motivo queda escrito:** U7 seguía en la cabeza de
 `plan-ejecucion.md` con sus pruebas pendientes, pero el 28-sep-2026 no había acceso SSH a
@@ -933,9 +985,31 @@ pruebas de U7 no cambian por U8, salvo `crear_ticket_interno`, que ahora usa
 `resolver_responsable_tipo` con el mismo comportamiento: el paso 4 la ejercita.
 
 **Ya hecho:** U7 está desplegada. El 28-sep, `migrate` reportó 8 migraciones y ninguna
-pendiente, así que las tres del corte 18 están aplicadas.
+pendiente, así que las tres del corte 18 están aplicadas. Los cortes 19, 20 y 21 se
+publicaron el mismo día y están desplegados (cabecera). El corte 22 sale solo y se
+prueba en la sección G.
 
-### A. Antes de publicar los cortes 19, 20 y 21 (salen juntos)
+**Antes de cualquier prueba en el navegador, con el corte 22 desplegado:** abrir en una
+ventana de incógnito `https://conecta.rbgct.cloud/helpdesk/tickets`. Tiene que llevar
+a la pantalla de ingreso, no a «Internal Server Error» (F15). Si sigue en 500, parar:
+casi toda prueba sin sesión pasa por ahí.
+
+### A. Publicación de los cortes 19, 20 y 21 — hecha el 28-sep-2026
+
+Publicados y desplegados. **Sin confirmar desde esta sesión** (no hubo acceso SSH ni
+registro de Coolify): el log de `migrate` con las cuatro migraciones, la
+desactivación de la salida vieja (paso 0) y la importación de las versiones U9
+(paso 2b). Los pasos quedan abajo tal como se escribieron, para comprobarlos:
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 6;"
+```
+
+Tras el corte 22 deben aparecer también `20260928140000_valores_seguimiento` y
+`20260928150000_seguimiento_ticket`. La primera altera `helpdesk.tipo_evento_ticket`,
+del mismo dueño que `tipo_actor_evento` (las creó la misma migración), que U8 ya
+alteró sin problema.
 
 El corte 21 no añade nada a la comprobación de dueños del paso 1: las tablas que su
 migración altera (`sync_divergencia`, `portal_auditoria`) las crean los cortes 19 y 20 en
@@ -1181,6 +1255,38 @@ convertirse en tareas implícitas:
 - **Retirar la topbar** en modo Conecta (`design/sistema-helpdesk.md` §2).
 - **Ejercitar el foco con Tab** tras `ed0bd1d`. Es una comprobación de minutos, no una
   unidad.
+
+### G. Pruebas de U11 (corte 22) — con la persona de TI
+
+Necesitan **tres personas con rol** en HelpDesk: quien radica (A), quien atiende (B,
+responsable del área del tipo elegido) y alguien de otra área (C). Todo sale por
+correo desde el buzón de quien actúa, así que cada una tiene que haber entrado al
+menos una vez (F14).
+
+30. **Observadores al crear.** A radica un ticket y elige a C en «Observadores». C
+    recibe el correo «Sigues el ticket…», lo encuentra en «Que sigo», lo abre y ve la
+    historia completa, incluidas las notas internas de B, **sin ningún formulario de
+    acción**. Esperado en la base: una fila en `helpdesk.ticket_observador` y un
+    evento `OBSERVADOR_AGREGADO`.
+31. **Negativa del observador.** Con la sesión de C, llamar a responder, reasignar o
+    rechazar ese ticket (por ejemplo, repitiendo el POST de la acción con el id del
+    ticket) tiene que dar «No tienes permiso…» y un `tickets.accion_denegada` en el
+    registro.
+32. **Comentario del solicitante.** A escribe en su ticket abierto. B recibe el aviso;
+    el ticket sigue `ASIGNADO` y con el mismo plazo. A no ve la opción en un ticket
+    que solo sigue, ni en uno cerrado.
+33. **Solicitud de validación.** B pide validación a una persona D que no veía el
+    ticket. D recibe el correo, lo ve en «Que sigo» con «Te pidieron validar», y pasa
+    a figurar entre los observadores. El ticket no cambia de estado.
+34. **Retirar observador.** B retira a C: evento `OBSERVADOR_RETIRADO`, y C deja de
+    ver el ticket (404 al abrirlo, salvo que sea de su área).
+35. **Cierre con observadores.** B responde: A y cada observador reciben el aviso.
+36. **Bandeja.** Buscar por un código, por parte de la descripción y por el nombre de
+    quien radicó; filtrar por estado; cambiar de vista conservando la búsqueda. Los
+    contadores no cambian al cambiar de vista.
+37. **Lo que TI corrija** se registra aquí, una línea por punto, y se decide con el
+    usuario contra la tabla «Pendiente de resolver con TI» de `specs/tickets.md`
+    §11.1 antes de construir nada.
 
 ### Lo que NO hace falta repetir
 
@@ -1802,3 +1908,23 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   *Documentación:* `specs/sincronizacion-sharepoint.md` §4.3, `contexto-canonico.md`
   §2, `specs/tickets.md`, `estado/operacion.md`, `estado/plan-ejecucion.md` y este
   handoff.
+- 28-sep-2026 (corte 21) — **U10 construida, sin desplegar.** Registro que faltaba:
+  el corte 21 actualizó la cabecera y las secciones, pero no dejó su línea aquí.
+  *Cambio:* revisión diaria de salud en la base, reconciliación con HelpDeskBd, Teams
+  solo con lo crítico nuevo o peor, vista `/salud` y registro JSON. *Decisión:*
+  construida; publicada y desplegada el mismo día con los cortes 19 y 20 (`d1d8e86`),
+  sin ejercitar. *Documentación:* `specs/observabilidad.md` y los de su commit.
+- 28-sep-2026 (corte 22) — **U11 construida, sin desplegar, y F15 corregido en
+  código.** *Estado previo:* cortes 19-21 recién desplegados; observadores y
+  validación decididos desde el 03-sep sin construir; toda ruta privada daba 500
+  sin cookie. *Cambio:* lo compatible del prototipo de TI (observadores, validación,
+  comentario del solicitante, búsqueda, filtro, contadores, «Que sigo») y
+  `redirectFromProxy` en el perímetro. *Evidencia:* `tsc`, `eslint`, `pnpm test`
+  145/145, `next build`, `libpg-query` sobre las dos migraciones; diagnóstico de F15
+  por sondeo HTTP y lectura del adaptador de Next (§4). *Incidencias:* el usuario no
+  tenía acceso SSH, así que la causa de F15 se dedujo sin la traza del contenedor; las
+  pruebas existentes del proxy exigían el `Location` relativo que causaba el fallo y
+  se reescribieron para probar lo que recibe el navegador. *Decisión:* U11
+  **construida, sin desplegar ni ejercitar**; los conflictos con el prototipo quedan
+  para decidir con TI tras probar. *Documentación:* `specs/tickets.md` §11.1,
+  `specs/permisos.md` §4.4, `estado/plan-ejecucion.md`, `CLAUDE.md` y este handoff.

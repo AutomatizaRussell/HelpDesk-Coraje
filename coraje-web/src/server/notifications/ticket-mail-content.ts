@@ -15,6 +15,13 @@
  * nunca recibe la clasificación ni el nombre del área interna que la hizo:
  * solo lo que le toca saber.
  *
+ * Seguimiento (U11, tickets.md §11), siempre entre empleados:
+ * - añadir un observador → a esa persona;
+ * - solicitar validación → a quien se le pide, con el comentario;
+ * - responder o rechazar → también a cada observador, que para eso sigue el
+ *   ticket;
+ * - el solicitante escribe en su ticket → a la persona responsable.
+ *
  * Todo texto que viene de una persona (descripción, respuesta, nombres) se
  * escapa antes de entrar al HTML: un ticket cuya descripción trae `<script>`
  * o un enlace disfrazado no puede convertirse en contenido activo del correo
@@ -33,7 +40,12 @@ export type TicketMailKind =
   | "RECHAZO_SOLICITANTE"
   | "REDIRECCION_RESPONSABLE"
   | "RESPUESTA_CLIENTE"
-  | "RECHAZO_CLIENTE";
+  | "RECHAZO_CLIENTE"
+  | "OBSERVADOR_AGREGADO"
+  | "SOLICITUD_VALIDACION"
+  | "RESPUESTA_OBSERVADOR"
+  | "RECHAZO_OBSERVADOR"
+  | "COMENTARIO_SOLICITANTE_RESPONSABLE";
 
 export interface TicketMailContext {
   codigo: string;
@@ -43,7 +55,10 @@ export interface TicketMailContext {
   solicitante: string;
   remitente: string;
   responsable: string | null;
-  /** Respuesta, motivo del rechazo o comentario de la reasignación, según el caso. */
+  /**
+   * Respuesta, motivo del rechazo, comentario de la reasignación o de la
+   * solicitud de validación, o lo que escribió el solicitante, según el caso.
+   */
   texto: string | null;
   vence: string | null;
   url: string;
@@ -159,6 +174,56 @@ export function buildTicketMail(kind: TicketMailKind, ctx: TicketMailContext): {
           `<p>${escapeHtml(ctx.remitente)} revisó tu solicitud y no se atenderá. Motivo:</p>`,
           paragraph(ctx.texto ?? ""),
           clientLink(ctx),
+        ].join(""),
+      };
+    case "OBSERVADOR_AGREGADO":
+      return {
+        subject: `Sigues el ticket ${ctx.codigo}`,
+        html: [
+          `<p>${escapeHtml(ctx.remitente)} te añadió como observador de este ticket. Lo puedes consultar y te avisaremos cuando se responda o se rechace. No tienes que atenderlo.</p>`,
+          detailList(ctx, [["Responsable", ctx.responsable]]),
+          paragraph(ctx.descripcion),
+          link(ctx),
+        ].join(""),
+      };
+    case "SOLICITUD_VALIDACION":
+      return {
+        subject: `${ctx.remitente} te pide validar el ticket ${ctx.codigo}`,
+        html: [
+          `<p>${escapeHtml(ctx.remitente)} te pide que valides algo de este ticket:</p>`,
+          paragraph(ctx.texto ?? ""),
+          detailList(ctx, [["Responsable", ctx.responsable]]),
+          link(ctx),
+        ].join(""),
+      };
+    case "RESPUESTA_OBSERVADOR":
+      return {
+        subject: `El ticket ${ctx.codigo} que sigues fue respondido`,
+        html: [
+          `<p>${escapeHtml(ctx.remitente)} respondió el ticket y quedó cerrado.</p>`,
+          paragraph(ctx.texto ?? ""),
+          detailList(ctx),
+          link(ctx),
+        ].join(""),
+      };
+    case "RECHAZO_OBSERVADOR":
+      return {
+        subject: `El ticket ${ctx.codigo} que sigues fue rechazado`,
+        html: [
+          `<p>${escapeHtml(ctx.remitente)} rechazó el ticket. Motivo:</p>`,
+          paragraph(ctx.texto ?? ""),
+          detailList(ctx),
+          link(ctx),
+        ].join(""),
+      };
+    case "COMENTARIO_SOLICITANTE_RESPONSABLE":
+      return {
+        subject: `${ctx.solicitante} escribió en el ticket ${ctx.codigo}`,
+        html: [
+          `<p>${escapeHtml(ctx.solicitante)} escribió en su ticket. Sigue abierto y a tu cargo.</p>`,
+          paragraph(ctx.texto ?? ""),
+          detailList(ctx, [["Vence", ctx.vence]]),
+          link(ctx),
         ].join(""),
       };
   }

@@ -3,8 +3,10 @@
 ```
 ESTADO:      modelo de eventos y escritor único desplegados y ejercitados (U6). Ciclo
              interno (T2, T4, T7, T8, nota interna) desplegado, sin ejercitar (U7,
-             corte 18). Tickets del portal (T1 por el cliente, T3) construidos, sin
-             desplegar (U8, corte 19). Las secciones fechadas antes del 24-sep son
+             corte 18). Tickets del portal (T1 por el cliente, T3) desplegados, sin
+             ejercitar (U8, corte 19). Seguimiento —observadores, solicitud de
+             validación, comentario del solicitante— construido, sin desplegar (U11,
+             corte 22, §11). Las secciones fechadas antes del 24-sep son
              antecedente: §1 describe el estado del 03-sep
 CORTE:       28-sep-2026
 EVIDENCIA:   lectura directa de `sql/db/06_helpdesk_facts.sql`, `sql/db/07_seed.sql` y
@@ -617,8 +619,8 @@ inmediata.
 > de eventos no debería cerrarse sin saber cuál de los dos números es el real y por qué
 > difieren. V11 sigue requiriendo consulta.
 
-| V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `prisma/migrations/` | **Sin verificar** — no construido |
-| V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem | **Sin verificar** — no construido |
+| V12 | Existe relación ticket↔observador en el esquema | `schema.prisma` / `prisma/migrations/20260928150000_seguimiento_ticket` | **Construido** (corte 22): `helpdesk.ticket_observador`, FK a `core.dim_personal`, sin `UPDATE` para la aplicación. Sin desplegar |
+| V13 | Existe tipo de evento de solicitud de validación con destinatario | Ídem, y `20260928140000_valores_seguimiento` | **Construido** (corte 22): `SOLICITUD_VALIDACION` más `helpdesk.ticket_validacion` con el destinatario. Sin desplegar |
 | V14 | Modelo de eventos de §6 y escritor único de §3.1 | `prisma/migrations/20260925120000_modelo_eventos_ticket` | **Desplegado** (25-sep-2026). Contrato en `src/server/tickets/event-model.contract.test.mts` |
 | V15 | La ingesta escribe estado y eventos solo por el escritor | Nodos `PG - Transform 06` y `07` del workflow de ingesta | **Ejercitado** (25-sep-2026), dos ejecuciones: 2.898 `MIGRACION_LEGACY`, 0 tickets sin inicio, 0 desfasados, segunda ejecución sin eventos nuevos |
 | V16 | Privilegios retirados, con prueba negativa (§8) | `prisma/migrations/20260925180000_proteger_estado_y_eventos` | **Ejercitado** (25-sep-2026): `SET LOCAL ROLE` sobre la base desplegada, 7/7 por rol; `RESTRICT` frena a `coraje_app`; ingesta posterior al retiro en *Success* |
@@ -627,14 +629,14 @@ inmediata.
 | V19 | Solo los tickets creados en HelpDesk se operan desde HelpDesk hasta U9 | `ticket-state.ts`, `isOperableInHelpDesk` | **Construido**: los legacy se consultan, no se operan |
 | V20 | Un único vocabulario de estados en `src/` (§8) | `ticket-lifecycle.contract.test.mts` | **Verificado por prueba**. Encontró una segunda lista real en la nota interna al construir |
 
-## 11. `PROPUESTA` Observadores y solicitud de validación — confirmado para v1
+## 11. `DECISIÓN` Observadores y solicitud de validación — construidos (U11)
 
 ```
 FUENTE:  prototipo funcional (`helpdesk_santi/`, HTML/JS estático, sin backend) hecho
          por la persona encargada de TI — quien más usa la mesa de ayuda actual y más
          sufre sus límites. No es referencia visual: se toma únicamente el concepto.
-ESTADO:  confirmado por el usuario para la primera versión (03-sep-2026). No es una
-         idea a evaluar — es una decisión tomada, sin diseño técnico completo todavía.
+ESTADO:  confirmado por el usuario para la primera versión (03-sep-2026). Construido
+         el 28-sep-2026 (U11, corte 22), sin desplegar: §11.1 dice cómo quedó.
 ```
 
 **Observadores.** Un ticket puede tener personas añadidas para que reciban
@@ -677,6 +679,43 @@ respuesta de aprobar/rechazar**, solo el registro de la solicitud.
   hay estado de aprobación ni respuesta de aprobar/rechazar en la v1 (§4.1).
 - Mismo destinatario dirigido a persona real, misma dependencia del catálogo de
   personas/roles que Observadores.
+
+### 11.1 `DECISIÓN` (28-sep-2026, U11) Cómo quedó construido
+
+El usuario pidió construirlo ya, con todo lo compatible del prototipo, para que la
+persona de TI corrija sobre algo que funciona y no sobre este texto. Lo que el
+prototipo trae y **contradice decisiones vigentes** no se construyó; queda listado
+abajo para resolverlo con ella («Pendiente de resolver con TI»).
+
+**Construido** (migraciones `20260928140000_valores_seguimiento` y
+`20260928150000_seguimiento_ticket`, `ticket-commands.ts`):
+
+| Pieza | Cómo |
+|---|---|
+| Observadores | Personas reales del directorio, activas y con rol (`follow-rules.ts`), nunca etiquetas. Quien radica las elige al crear, bajo `ticket.crear`; después, el responsable y su área, con `ticket.observador.gestionar` (`AREA`). Hasta 10 por vez. Solo en ticket abierto |
+| Qué ve un observador | El ticket y su historia completa (`EQUIPO`, `scope.ts`), como decía §11. **Ninguna acción**: una prueba recorre el catálogo entero |
+| Avisos al observador | Al añadirlo, y cuando el ticket se responde o se rechaza. No al reasignar ni por notas internas: seguir no es recibir cada movimiento |
+| Solicitud de validación | `ticket.validacion.solicitar` (`AREA`), a una persona concreta, con comentario obligatorio. Evento `SOLICITUD_VALIDACION` (`INTERNO`) y destinatario en `helpdesk.ticket_validacion`. **No bloquea** y no tiene respuesta. Si el destinatario no veía el ticket, pasa a seguirlo |
+| Comentario del solicitante | El «Responder» de la vista del solicitante del prototipo: `ticket.solicitante.comentar` (`PROPIO` = haberlo radicado). Evento `COMENTARIO_SOLICITANTE`, visible para ambos; avisa a la persona responsable. No cambia estado ni plazo |
+| Bandeja | Vista «Que sigo», marca «Te pidieron validar», búsqueda por código, descripción o solicitante, filtro por estado y contadores por estado más vencidos |
+
+Los cuatro tipos de evento nuevos tienen su rama en el escritor único, que exige lo
+que no depende del rol: actor `EMPLEADO`, visibilidad fija, ningún cambio de estado,
+ticket abierto y, en el comentario, que el autor sea quien lo radicó.
+
+**Pendiente de resolver con TI** (propuesta del usuario, 28-sep: «resolver el
+conflicto tomando lo de Santi»; se decide después de probar):
+
+| Del prototipo | Decisión vigente que lo contradice |
+|---|---|
+| Estado «En Proceso» y selector de estado libre | §4 y §4.1: cuatro estados, se cierra respondiendo |
+| El solicitante cierra con «Resolver» | §4.1: ninguna transición la ejecuta el solicitante |
+| «Crear tarea» y «Agregar solución» | Sin equivalente: hoy son nota interna y respuesta |
+| Solicitante elige prioridad, fuente y tipo «Incidencia/Requerimiento» | La prioridad y el área salen del tipo de requerimiento del legacy |
+| «SLA cumplido» como cerrados entre total | No mide el plazo. La bandeja cuenta vencidos (§5) |
+| Respuesta del validador | El prototipo no la tiene. Hoy quien valida solo puede leer; si no es del área, no puede escribir en el ticket |
+
+«Agregar documento» son los adjuntos, bloqueados aparte (U7).
 
 **Relación con `specs/permisos.md` §3 (separación de acciones):** ambas son acciones
 propias nuevas del catálogo — "ser observador" no es lo mismo que "Consultar" (que
@@ -753,3 +792,7 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   `redirigir_ticket`, regla de enrutamiento única en `resolver_responsable_tipo`),
   sin salida a SharePoint hasta U9. §6: el cliente pasa a ser actor, solo de
   `CREACION`, por el camino aditivo que esta misma sección había previsto.
+- 28-sep-2026 — U11 (corte 22). §11 construido: observadores, solicitud de
+  validación y comentario del solicitante, más búsqueda, filtro, contadores y vista
+  «Que sigo» en la bandeja (§11.1). Lo que el prototipo trae y contradice §4, §4.1 y
+  §5 queda listado para resolverlo con TI tras probar. V12 y V13 pasan a construidos.

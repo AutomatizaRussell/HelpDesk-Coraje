@@ -292,6 +292,11 @@ una copia vieja: la primera réplica salió de un `main` reescrito después con 
   el navegador, se entra sin clics dentro del shell de Conecta. Sin ella, se entra por
   `/login` eligiendo cuenta, con la barra propia de HelpDesk. El perfil que Conecta deja en
   `localStorage` (`gct_empleado`) **solo decide qué se muestra, nunca un permiso**.
+- **El proxy redirige con `redirectFromProxy`, nunca con `redirectWithinApp`**
+  (F15, 28-sep-2026). En Next 16 el adaptador lee el `Location` del proxy con
+  `new NextURL()` sin base: uno relativo da 500 a todo el que llega sin sesión. El
+  absoluto se construye sobre `request.url` y el adaptador lo devuelve relativo al
+  navegador. `redirectWithinApp` es solo para route handlers.
 - **Nada de `console.*` en `src/`** (U10): el registro del servidor pasa por
   `logEvent()` de `src/server/observability/log.ts`, una línea JSON con `idTicket` como
   correlación y sin secretos. `log.test.mts` falla si alguien vuelve a usar la consola.

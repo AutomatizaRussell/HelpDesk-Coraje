@@ -9,11 +9,16 @@ import { z } from "zod";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import {
   addInternalNote,
+  addObservers,
+  commentAsRequester,
   createInternalTicket,
   reassignTicket,
   rejectTicket,
+  removeObserver,
+  requestValidation,
   respondTicket,
 } from "@/server/tickets/ticket-commands";
+import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
 import { dispatchTicketMail, resendTicketMail } from "@/server/notifications/ticket-notifications";
 import { logEvent } from "@/server/observability/log";
 import { kickSharePointMirror } from "@/server/sync/sharepoint-mirror";
@@ -45,11 +50,16 @@ const textSchema = (label: string, min: number) =>
     .min(min, { error: `${label} debe tener al menos ${min} caracteres.` })
     .max(MAX_TEXT, { error: `${label} no puede superar ${MAX_TEXT.toLocaleString("es-CO")} caracteres.` });
 
-/** Campos de texto del formulario tal como llegaron, para devolverlos si falla. */
+/**
+ * Campos de texto del formulario tal como llegaron, para devolverlos si falla.
+ * Un campo con varios valores (las personas de un selector múltiple) vuelve
+ * unido por comas: son uuid, que nunca llevan una.
+ */
 function formValues(formData: FormData): Record<string, string> {
   const values: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
-    if (typeof value === "string" && !key.startsWith("$")) values[key] = value;
+    if (typeof value !== "string" || key.startsWith("$")) continue;
+    values[key] = key in values ? `${values[key]},${value}` : value;
   }
   return values;
 }
@@ -98,10 +108,22 @@ async function succeeded(message: string, mailIds: readonly string[] = []): Prom
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Personas elegidas en un selector múltiple. Llegan como varios valores del
+ * mismo campo (`formData.getAll`); el tope es el mismo que aplica el comando,
+ * para responder aquí con un mensaje claro en lugar de dejarlo llegar.
+ */
+const peopleSchema = (min: number) =>
+  z
+    .array(z.uuid({ error: "Persona inválida." }))
+    .min(min, { error: "Elige al menos una persona." })
+    .max(MAX_OBSERVERS_PER_ACTION, { error: `Puedes elegir hasta ${MAX_OBSERVERS_PER_ACTION} personas de una vez.` });
+
 const createSchema = z.object({
   idTipoReq: idSchema,
   prioridad: z.string().trim().min(1, { error: "Elige una prioridad." }).max(50),
   descripcion: textSchema("La descripción", 10),
+  idObservadores: peopleSchema(0),
 });
 
 export async function createTicketAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
@@ -110,6 +132,7 @@ export async function createTicketAction(_prev: TicketFormState, formData: FormD
     idTipoReq: formData.get("idTipoReq"),
     prioridad: formData.get("prioridad"),
     descripcion: formData.get("descripcion"),
+    idObservadores: formData.getAll("idObservadores"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
 
@@ -267,4 +290,102 @@ export async function resendTicketMailAction(_prev: TicketFormState, formData: F
     return { status: "error", message: outcome.result.error ?? "El correo no se envió.", fieldErrors: {}, values: {} };
   }
   return { status: "success", message: "Correo enviado.", nonce: randomUUID() };
+}
+
+// ---------------------------------------------------------------------------
+// Seguimiento (U11)
+// ---------------------------------------------------------------------------
+
+const addObserversSchema = z.object({ idTicket: idSchema, idObservadores: peopleSchema(1) });
+
+export async function addObserversAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = addObserversSchema.safeParse({
+    idTicket: formData.get("idTicket"),
+    idObservadores: formData.getAll("idObservadores"),
+  });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  let mailIds: string[];
+  try {
+    ({ mailIds } = await addObservers({ idPersonal: employee.idPersonal, ...parsed.data }));
+  } catch (error) {
+    return failed(error, formData, "añadir observadores");
+  }
+
+  const result = await succeeded("Observadores añadidos. Les llegó un aviso.", mailIds);
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return result;
+}
+
+const removeObserverSchema = z.object({ idTicket: idSchema, idObservador: idSchema });
+
+export async function removeObserverAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = removeObserverSchema.safeParse({
+    idTicket: formData.get("idTicket"),
+    idObservador: formData.get("idObservador"),
+  });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  try {
+    await removeObserver({ idPersonal: employee.idPersonal, ...parsed.data });
+  } catch (error) {
+    return failed(error, formData, "retirar el observador");
+  }
+
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return succeeded("Ya no sigue el ticket.");
+}
+
+const validationSchema = z.object({
+  idTicket: idSchema,
+  idDestinatario: z.uuid({ error: "Elige a la persona que debe validar." }),
+  comentario: textSchema("El comentario", 5),
+});
+
+export async function requestValidationAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = validationSchema.safeParse({
+    idTicket: formData.get("idTicket"),
+    idDestinatario: formData.get("idDestinatario"),
+    comentario: formData.get("comentario"),
+  });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  let mailIds: string[];
+  try {
+    ({ mailIds } = await requestValidation({ idPersonal: employee.idPersonal, ...parsed.data }));
+  } catch (error) {
+    return failed(error, formData, "solicitar la validación");
+  }
+
+  const result = await succeeded("Validación solicitada. El ticket sigue su curso.", mailIds);
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return result;
+}
+
+const requesterCommentSchema = z.object({
+  idTicket: idSchema,
+  comentario: textSchema("El comentario", 2),
+});
+
+export async function commentAsRequesterAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = requesterCommentSchema.safeParse({
+    idTicket: formData.get("idTicket"),
+    comentario: formData.get("comentario"),
+  });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  let mailIds: string[];
+  try {
+    ({ mailIds } = await commentAsRequester({ idPersonal: employee.idPersonal, ...parsed.data }));
+  } catch (error) {
+    return failed(error, formData, "comentar el ticket");
+  }
+
+  const result = await succeeded("Comentario enviado. La persona responsable recibió un aviso.", mailIds);
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return result;
 }
