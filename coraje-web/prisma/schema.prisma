@@ -136,6 +136,7 @@ model DimPersonal {
   portalAccesosRevocados                 PortalAutorizacion[] @relation("PortalAutorizacionRevocadaPor")
   portalInvitacionesEmitidas             PortalInvitacion[]
   portalAuditoria                        PortalAuditoria[]
+  divergenciasRevisadas                  SyncDivergencia[]
 
   // Como máximo un marcador histórico por correo compartido — protege la regla
   // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
@@ -407,6 +408,8 @@ model PortalAuditoria {
 
   @@index([idContacto, createdAt], map: "ix_portal_auditoria_contacto")
   @@index([idAutorizacion, createdAt], map: "ix_portal_auditoria_autorizacion")
+  // U10: envíos fallidos del portal, lo que busca la revisión de salud (S7).
+  @@index([createdAt], map: "ix_portal_auditoria_fallo", where: raw("((resultado)::text = 'FALLO'::text)"))
   @@map("portal_auditoria")
   @@schema("app")
 }
@@ -681,6 +684,8 @@ model TicketNotificacion {
   contactoDestinatario PortalContacto? @relation(fields: [idContactoDestinatario], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([idTicket, createdAt], map: "ix_ticket_notificacion_ticket")
+  // U10: lo que busca la revisión de salud (S5). Casi vacío en una base sana.
+  @@index([updatedAt], map: "ix_ticket_notificacion_no_enviada", where: raw("((estado)::text <> 'ENVIADO'::text)"))
   @@map("ticket_notificacion")
   @@schema("helpdesk")
 }
@@ -729,23 +734,56 @@ model EspejoSharepoint {
 }
 
 /// Cambio hecho en PowerApps sobre un ticket de HelpDesk, aplicado o
-/// rechazado (chk_sync_divergencia_resultado). Lo escribe solo la ingesta;
-/// coraje_runtime solo lee.
+/// rechazado (chk_sync_divergencia_resultado). Lo escribe solo la ingesta
+/// (INSERT); coraje_runtime solo lee. La revisión (U10) la escribe solo
+/// helpdesk.marcar_divergencia_revisada: chk_sync_divergencia_revision exige
+/// las tres columnas juntas o ninguna.
 model SyncDivergencia {
-  id                       String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  idTicket                 String     @map("id_ticket") @db.Uuid
-  spId                     Int        @map("sp_id")
-  campo                    String     @db.VarChar(60)
-  valorHelpdesk            String?    @map("valor_helpdesk")
-  valorSharepoint          String?    @map("valor_sharepoint")
-  resultado                String     @db.VarChar(20)
-  motivo                   String?    @db.VarChar(1000)
-  modificadoEnSharepointAt DateTime?  @map("modificado_en_sharepoint_at") @db.Timestamptz(6)
-  detectadoAt              DateTime   @default(now()) @map("detectado_at") @db.Timestamptz(6)
-  factTicket               FactTicket @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idTicket                 String       @map("id_ticket") @db.Uuid
+  spId                     Int          @map("sp_id")
+  campo                    String       @db.VarChar(60)
+  valorHelpdesk            String?      @map("valor_helpdesk")
+  valorSharepoint          String?      @map("valor_sharepoint")
+  resultado                String       @db.VarChar(20)
+  motivo                   String?      @db.VarChar(1000)
+  modificadoEnSharepointAt DateTime?    @map("modificado_en_sharepoint_at") @db.Timestamptz(6)
+  detectadoAt              DateTime     @default(now()) @map("detectado_at") @db.Timestamptz(6)
+  revisadaAt               DateTime?    @map("revisada_at") @db.Timestamptz(6)
+  revisadaPor              String?      @map("revisada_por") @db.Uuid
+  motivoRevision           String?      @map("motivo_revision") @db.VarChar(500)
+  factTicket               FactTicket   @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  revisor                  DimPersonal? @relation(fields: [revisadaPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([idTicket, detectadoAt], map: "ix_sync_divergencia_ticket")
   @@index([detectadoAt], map: "ix_sync_divergencia_detectado")
+  @@index([detectadoAt], map: "ix_sync_divergencia_sin_revisar", where: raw("(((resultado)::text = 'RECHAZADO'::text) AND (revisada_at IS NULL))"))
   @@map("sync_divergencia")
+  @@schema("helpdesk")
+}
+
+// ---------------------------------------------------------------------
+// U10 · Observabilidad (migración 20260928130000_observabilidad,
+// docs/specs/observabilidad.md)
+// ---------------------------------------------------------------------
+
+/// Una revisión de salud: una al día, desde n8n (HELPDESK - Salud diaria V1),
+/// con helpdesk.registrar_revision_salud. `hallazgos` son las filas de esa
+/// revisión (senal, chequeo, severidad, cantidad, detalle, ejemplo); la
+/// siguiente la usa para saber qué es nuevo. coraje_runtime solo lee; nadie
+/// edita ni borra. CHECK no representables: chk_revision_salud_origen,
+/// _hallazgos y _criticos (arrays JSON).
+model RevisionSalud {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ejecutadaAt     DateTime @default(now()) @map("ejecutada_at") @db.Timestamptz(6)
+  origen          String   @db.VarChar(20)
+  hallazgos       Json
+  criticosNuevos  Json     @default("[]") @map("criticos_nuevos")
+  itemsSharepoint Int?     @map("items_sharepoint")
+  itemsStaging    Int?     @map("items_staging")
+  itemsConTicket  Int?     @map("items_con_ticket")
+
+  @@index([ejecutadaAt(sort: Desc)], map: "ix_revision_salud_ejecutada")
+  @@map("revision_salud")
   @@schema("helpdesk")
 }

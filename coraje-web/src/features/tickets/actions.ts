@@ -15,6 +15,7 @@ import {
   respondTicket,
 } from "@/server/tickets/ticket-commands";
 import { dispatchTicketMail, resendTicketMail } from "@/server/notifications/ticket-notifications";
+import { logEvent } from "@/server/observability/log";
 import { kickSharePointMirror } from "@/server/sync/sharepoint-mirror";
 import { isTicketDomainError } from "@/server/tickets/ticket-errors";
 
@@ -70,7 +71,8 @@ function failed(error: unknown, formData: FormData, context: string): TicketForm
   if (isTicketDomainError(error)) {
     return { status: "error", message: error.message, fieldErrors: {}, values: formValues(formData) };
   }
-  console.error(`[tickets] Fallo inesperado al ${context}:`, error);
+  const idTicket = formData.get("idTicket");
+  logEvent("error", "tickets.accion_fallida", { accion: context, idTicket: typeof idTicket === "string" ? idTicket : undefined }, error);
   return {
     status: "error",
     message: "No fue posible completar la acción. Intenta de nuevo en unos minutos.",

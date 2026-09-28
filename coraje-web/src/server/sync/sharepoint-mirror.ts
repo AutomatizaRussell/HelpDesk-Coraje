@@ -1,6 +1,7 @@
 import { after } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/server/observability/log";
 
 /**
  * Espejo en SharePoint de los tickets de HelpDesk (U9,
@@ -30,7 +31,7 @@ export function kickSharePointMirror(): void {
     const url = process.env.N8N_OUTBOX_KICK_URL;
     const secret = process.env.N8N_OUTBOX_KICK_SECRET;
     if (!url || !secret) {
-      console.warn("[espejo] N8N_OUTBOX_KICK_URL o N8N_OUTBOX_KICK_SECRET no están configuradas; el envío espera a la pasada programada.");
+      logEvent("warn", "espejo.kick_sin_configurar", { motivo: "Faltan N8N_OUTBOX_KICK_URL o N8N_OUTBOX_KICK_SECRET; el envío espera a la pasada programada." });
       return;
     }
     try {
@@ -41,9 +42,11 @@ export function kickSharePointMirror(): void {
         signal: AbortSignal.timeout(KICK_TIMEOUT_MS),
         cache: "no-store",
       });
-      if (!response.ok) console.warn(`[espejo] n8n respondió ${response.status} al despertar la salida.`);
+      if (!response.ok) logEvent("warn", "espejo.kick_rechazado", { estadoHttp: response.status });
     } catch (error) {
-      console.warn("[espejo] No se pudo despertar la salida; la pasada programada la recogerá.", error);
+      // La pasada programada la recogerá; si tampoco, la revisión diaria lo
+      // ve como S1 (espejo detenido).
+      logEvent("warn", "espejo.kick_fallido", {}, error);
     }
   });
 }
@@ -63,6 +66,8 @@ export interface MirrorStatus {
     resultado: "APLICADO" | "RECHAZADO";
     motivo: string | null;
     fecha: Date;
+    /** U10: cuándo la dio por atendida alguien en /salud, si ya lo hizo. */
+    revisadaAt: Date | null;
   }[];
 }
 
@@ -84,7 +89,7 @@ export async function getMirrorStatus(idTicket: string): Promise<MirrorStatus> {
       where: { idTicket },
       orderBy: { detectadoAt: "desc" },
       take: 20,
-      select: { id: true, campo: true, valorSharepoint: true, resultado: true, motivo: true, detectadoAt: true },
+      select: { id: true, campo: true, valorSharepoint: true, resultado: true, motivo: true, detectadoAt: true, revisadaAt: true },
     }),
   ]);
   return {
@@ -101,6 +106,7 @@ export async function getMirrorStatus(idTicket: string): Promise<MirrorStatus> {
       resultado: row.resultado === "APLICADO" ? "APLICADO" : "RECHAZADO",
       motivo: row.motivo,
       fecha: row.detectadoAt,
+      revisadaAt: row.revisadaAt,
     })),
   };
 }

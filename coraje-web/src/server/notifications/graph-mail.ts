@@ -1,4 +1,5 @@
 import { GraphGrantUnavailableError, getGraphAccessTokenForEmployee } from "@/server/auth/graph-grant";
+import { logEvent } from "@/server/observability/log";
 
 /**
  * Envío de un correo como un empleado, por Microsoft Graph (D6). Adaptado de
@@ -43,7 +44,7 @@ export async function sendMailAsEmployee(params: { idPersonal: string; message: 
     accessToken = await getGraphAccessTokenForEmployee(params.idPersonal);
   } catch (error) {
     if (error instanceof GraphGrantUnavailableError) throw new MailSendError(error.message);
-    console.error("[correo] No se pudo obtener el token de Graph:", error);
+    logEvent("error", "correo.token_graph_no_obtenido", { idPersonal: params.idPersonal }, error);
     throw new MailSendError("No fue posible contactar a Microsoft para enviar el correo. Intenta reenviarlo en unos minutos.");
   }
 
@@ -64,14 +65,16 @@ export async function sendMailAsEmployee(params: { idPersonal: string; message: 
       signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS),
     });
   } catch (error) {
-    console.error("[correo] Fallo de red al contactar Graph:", error);
+    logEvent("error", "correo.graph_inalcanzable", { idPersonal: params.idPersonal }, error);
     throw new MailSendError("No fue posible contactar a Microsoft para enviar el correo. Intenta reenviarlo en unos minutos.");
   }
 
   if (response.status === 202) return;
 
   const detail = await response.text().catch(() => "");
-  console.error(`[correo] Graph respondió ${response.status}: ${detail.slice(0, 500)}`);
+  // La respuesta de error de Graph describe el rechazo, no el mensaje: no
+  // lleva el cuerpo del correo ni el token.
+  logEvent("error", "correo.graph_rechazo", { idPersonal: params.idPersonal, estadoHttp: response.status, respuestaGraph: detail });
   // 401/403: el token no sirve para enviar (consentimiento de Mail.Send
   // retirado o nunca dado). 429/5xx: pasajero. El resto: destinatario o
   // mensaje rechazado.

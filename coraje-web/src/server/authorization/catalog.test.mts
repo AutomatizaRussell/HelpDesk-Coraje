@@ -4,10 +4,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PORTAL_ACTIONS, TICKET_ACTIONS } from "./catalog";
+import { PORTAL_ACTIONS, SALUD_ACTIONS, TICKET_ACTIONS } from "./catalog";
 
 /** Cada catálogo de código con el nombre con que se consulta. */
-const CATALOGS = { TICKET_ACTIONS, PORTAL_ACTIONS } as const;
+const CATALOGS = { TICKET_ACTIONS, PORTAL_ACTIONS, SALUD_ACTIONS } as const;
 
 /**
  * Criterios de aceptación de specs/permisos.md §7 que se pueden comprobar sin

@@ -1,6 +1,45 @@
 # Handoff técnico
 
 ```
+CORTE:   28-sep-2026 (corte 21, U10 — observabilidad, construida, SIN DESPLEGAR)
+SOBRE:   `3834418` (corte 20, sin publicar todavía: los cortes 19, 20 y 21 salen
+         juntos; `origin/main` sigue en `f117661`)
+RAMA:    main
+UNIDAD:  U10 · OBSERVABILIDAD. Decisiones O1-O6 cerradas por el usuario (28-sep), con
+         sus ajustes (`specs/observabilidad.md` §3) y una condición sobre O3: al canal
+         de Teams solo llega «lo mínimo, solo lo más grave, inmediato y urgente».
+         Atiende el canal Juan Felipe Zuluaga Mejía (`felipezuluaga@rbcol.co`).
+         Construido:
+         - migración `20260928130000_observabilidad`: `helpdesk.salud_hallazgos()`
+           (12 chequeos de S1-S8 más el de la propia revisión, `SECURITY
+           DEFINER`), `helpdesk.registrar_revision_salud()` (4 chequeos de S9
+           contra la lista de ids de HelpDeskBd, invoker porque toca staging), registro
+           `helpdesk.revision_salud`, revisión de divergencias
+           (`revisada_at`/`revisada_por`/`motivo_revision`, solo por
+           `marcar_divergencia_revisada`), índices parciales y permisos
+           `salud.consultar` / `salud.divergencia.revisar` para `ADMIN`;
+         - de paso, `coraje_runtime` pierde el DML sobre `sync_divergencia` que le
+           daban los privilegios por defecto (defecto de U9, §4 de la spec);
+         - workflow `n8n/HELPDESK - Salud diaria V1.json`: 7:00 Bogotá, una petición
+           a SharePoint, y a Teams (por el workflow de error) solo lo CRITICO que
+           aparece o empeora. **Sin importar**;
+         - vista `/salud` (pestaña «Salud» con `salud.consultar`): hallazgos vivos, la
+           última revisión diaria con sus conteos, divergencias pendientes con
+           formulario para marcarlas revisadas, y las revisadas recientes. El
+           detalle del ticket muestra si una divergencia fue revisada;
+         - `logEvent()` (`src/server/observability/log.ts`): una línea JSON por
+           evento, con `idTicket` como correlación y sin secretos. Sustituye los 20
+           `console.*` del servidor; una prueba impide volver a usarlos.
+         Evidencia: `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test`
+         140/140, `next build` (con `DATABASE_URL` ficticia: el build no conecta);
+         SQL y PL/pgSQL de la migración y de la consulta del workflow parseados con
+         `libpg-query`, y JavaScript del nodo compilado, con tres controles
+         negativos. El parser no comprueba nombres de columna: se revisaron a mano
+         contra `schema.prisma`. **Sin ejercitar**: nada aplicado ni importado.
+SIGUE:   desplegar los cortes 19-21, pruebas A-E y puesta en marcha y guion de
+         cierre de U10 («Acción inmediata», F).
+
+--- Corte 20, para contexto:
 CORTE:   28-sep-2026 (corte 20, U9 — regla de precedencia con SharePoint, construida,
          SIN DESPLEGAR)
 SOBRE:   `4455741` (corte 19, sin publicar todavía: los dos commits salen juntos)
@@ -454,10 +493,23 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 | Autorización | `NO EXISTE` | Contrato escrito, bloqueado por U0 |
 | Ciclo de vida del ticket | `NO EXISTE` | Modelo de datos presente; bloqueado por U0 |
 | Sistema de diseño | `CONSTRUIDO Y DESPLEGADO` | `coraje-web/src/design-system/` y `globals.css`; validador de adaptadores y barrido de valores en `pnpm test` (U5). Sin validación de lector de pantalla; foco con Tab corregido y sin ejercitar |
-| Observabilidad | `NO EXISTE` | Ni alertas, ni reconciliación, ni correlación |
+| Observabilidad | `CONSTRUIDA, SIN DESPLEGAR` (corte 21) | Revisión diaria en la base con reconciliación contra HelpDeskBd, aviso a Teams solo de lo crítico nuevo o peor, vista `/salud`, registro JSON con `idTicket`. Antes existía solo el workflow de error (V10, 24-sep). Sin ejercitar (`specs/observabilidad.md` §7) |
 | Documentación | `CERRADA en este corte` | Este conjunto |
 
 ## 3. Capacidades publicadas en esta unidad
+
+### U10 — observabilidad (corte 21, sin desplegar)
+
+- **Revisión de salud en la base:** una función por frontera de permisos, umbrales
+  solo en SQL, una fila por revisión en `helpdesk.revision_salud` (el antes y el
+  después, y la señal de que la revisión dejó de correr).
+- **Reconciliación con SharePoint (S9)** por lista de ids, con tolerancia al retraso
+  normal de la ingesta.
+- **Teams con lo mínimo:** solo lo CRITICO (S1, S3, S7, S9 sin ingerir), solo cuando
+  aparece o empeora, en un solo mensaje, por el workflow de error.
+- **`/salud` para `ADMIN`:** lo mismo que la revisión, y marcar revisada una divergencia
+  con motivo.
+- **Registro estructurado** con correlación por `idTicket` y sin secretos.
 
 ### U9 — regla de precedencia con SharePoint (corte 20, sin desplegar)
 
@@ -600,6 +652,7 @@ persona habilitada y la ruta pública sirviendo tráfico:
 | **Ejercicio de U4 contra el despliegue real, 22-sep-2026** — navegador sobre `https://conecta.rbgct.cloud/helpdesk`, más la pantalla de variables de Coolify | Cuatro escenarios, tabla más abajo | Que el 401 de API sin sesión, el paso del asset público o el trato de las peticiones `RSC` se comporten en producción como en la suite — ninguno se tocó a mano |
 | `tsc --noEmit`/`eslint`/`next build` + 62 pruebas unitarias, 24-sep-2026, en local con FNM (Node 24.16.0), HEAD `ed0bd1d` | Que el contrato tipa y construye; que los adaptadores coinciden y el validador falla ante divergencia (forzada a mano con tres casos); que el perfil de Conecta falla cerrado y se ata a la identidad; que `select` nunca envía pista; que el perímetro manda a `/ingreso` | Nada del comportamiento en navegador ni contra Entra real |
 | Lectura de RBGCT-REACT `cb06681` y de los archivos JS/CSS servidos por `https://conecta.rbgct.cloud`, 24-sep-2026 (solo lectura, acceso Read) | Que la réplica sale del código desplegado: el fragmento de producción trae los mismos valores (`text-[13px]`, `w-56 md:w-64 lg:w-72 xl:w-80`, `acceso_sqf`); el formato de `gct_empleado`; la barra de desplazamiento | Que Conecta no cambie mañana: la réplica y la lectura de `gct_empleado` quedan acopladas a su código sin aviso |
+| `prisma validate`/`generate`, `tsc --noEmit`, `eslint`, `pnpm test` 140/140, `next build`, 28-sep-2026, local con FNM, sobre `3834418` más los cambios del corte 21; `libpg-query` 17.6 sobre la migración de U10 y la consulta de `HELPDESK - Salud diaria V1`, con tres controles negativos que fallan como deben | Que U10 tipa, construye y cumple sus contratos de texto: base y aplicación con los mismos chequeos, S1-S9 cubiertas, Teams solo con lo crítico nuevo, permisos de la migración, workflow a las 7:00 de Bogotá, ninguna línea de registro con secretos ni `console.*` suelto | Que las funciones corran contra la base real (el parser no resuelve nombres de columna; se revisaron a mano), que el workflow se importe tal cual, que los umbrales no hagan ruido con los datos reales |
 | **Ejercicio de U5 contra el despliegue, 23 y 24-sep-2026**, reportado por el usuario con capturas (HEAD `47886bd`) | Entrada desde Conecta sin selector de cuenta, con nombre corto, área y «Mis clientes»; entrada directa con `/login`, selector y barra propia; `/login` con Lato y logotipo; Esc cierra el sidebar en móvil y escritorio | El foco con Tab tras `ed0bd1d`; lector de pantalla; la matriz completa de resoluciones de `sistema-helpdesk.md` §7 |
 
 **U4 — escenarios ejercitados contra el despliegue, 22-sep-2026** (reportados por el
@@ -744,13 +797,19 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | **U9: el espejo cambia la lista HelpDeskBd que usa PowerApps en producción** | Un defecto de la salida escribiría ítems incorrectos donde la gente trabaja | Espejo apagado por defecto; se enciende con un `UPDATE` deliberado, y solo se refleja lo encolado desde entonces. Probar primero con un ticket propio y mirar el ítem en PowerApps |
 | **U9: un conflicto con PowerApps espera a la ingesta** (cada 12 horas) | Mientras tanto, los cambios de HelpDesk sobre ese ticket no llegan a SharePoint | Aceptado: sobrescribir borraría el cambio de PowerApps sin rastro. Se ve en el detalle del ticket (`CONFLICTO_POWERAPPS`) |
 | **U9: un rechazo de la conciliación se avisa como «ejecución fallida»** en n8n | Puede leerse como una caída de la ingesta | El mensaje empieza por «AVISO, no error de datos», y la ingesta ya guardó todo antes de avisar |
+| **U10: un crítico se avisa por Teams una sola vez** (decisión del usuario: el canal, con lo mínimo) | Si ese mensaje se pierde, el problema sigue abierto y solo `/salud` lo muestra | Aceptado. `/salud` lo muestra hasta que se resuelve, y la cantidad que sube vuelve a avisar |
+| ~~U10: nadie tiene asignado atender el canal de alertas~~ — **cerrado 28-sep-2026:** lo atiende Juan Felipe Zuluaga Mejía (`felipezuluaga@rbcol.co`), por decisión del usuario | ~~Una alerta que nadie tiene asignada existe, pero nadie actúa sobre ella~~ | Darle el rol `ADMIN` para que vea `/salud` (paso 29) |
+| **U10: los umbrales se eligieron sin medir** | Un chequeo que sale en rojo el primer día por datos históricos genera ruido y desconfianza. El candidato más probable es `proyeccion_desfasada`, que ordena por `fecha_registro`, y la historia legacy puede tenerla desordenada | Primera revisión manual en n8n antes de activarla, y la línea base registrada aquí (`observabilidad.md` §7). Un chequeo ruidoso se corrige o se reclasifica antes de confiar en él |
+| **U10: si n8n cae entero, nada avisa de que falta la revisión** | La vigilancia se apaga en silencio | `revision_ausente` en `/salud` (más de 26 h). Un vigilante externo exigiría un servicio fuera de la VPS; no se construye |
+| **U10: la reconciliación falla a partir de 5.000 ítems en HelpDeskBd** (≈3.000 hoy) | La revisión se detiene con error, que sí avisa por Teams | Aceptado: PowerApps se retira antes. Si no, paginar la petición del workflow |
 | **U8: el correo del portal se entrega a n8n en el momento, sin cola** | Si n8n está caído, el código o la invitación no salen y no se reintentan solos: la persona pide otro código, o quien administra accesos emite otra invitación | Aceptado: una cola exigiría guardar el secreto (`acceso-clientes.md` §11, D4). El fallo queda auditado |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
-| `4455741` | **Corte 19.** U8: acceso de clientes y tickets del portal. Sale junto con el corte 20 |
+| `3834418` | **Corte 20.** U9: espejo en PowerApps y regla de precedencia. Sale junto con los cortes 19 y 21 |
+| `4455741` | **Corte 19.** U8: acceso de clientes y tickets del portal. Sale junto con los cortes 20 y 21 |
 | `f117661` | Registra la infraestructura propia de HelpDesk y el dueño verificado de las funciones del calendario (solo documentación, excepción autorizada por cambio de equipo) |
 | `987107c` | **Corte 18.** U7: ciclo interno con permisos y correo delegado. Desplegado el 28-sep-2026 (`migrate`: 8 migraciones, ninguna pendiente); sin ejercitar |
 | `8eff969` | **Corte 17.** U6 fase 2: retira los privilegios que eluden el escritor único |
@@ -865,7 +924,7 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar los cortes 19 y 20 y ejercitar U7, U8 y U9
+## Acción inmediata para la siguiente sesión — desplegar los cortes 19, 20 y 21 y ejercitar U7 a U10
 
 **Se desvía de la cola, y el motivo queda escrito:** U7 seguía en la cabeza de
 `plan-ejecucion.md` con sus pruebas pendientes, pero el 28-sep-2026 no había acceso SSH a
@@ -876,7 +935,12 @@ pruebas de U7 no cambian por U8, salvo `crear_ticket_interno`, que ahora usa
 **Ya hecho:** U7 está desplegada. El 28-sep, `migrate` reportó 8 migraciones y ninguna
 pendiente, así que las tres del corte 18 están aplicadas.
 
-### A. Antes de publicar los cortes 19 y 20 (salen juntos)
+### A. Antes de publicar los cortes 19, 20 y 21 (salen juntos)
+
+El corte 21 no añade nada a la comprobación de dueños del paso 1: las tablas que su
+migración altera (`sync_divergencia`, `portal_auditoria`) las crean los cortes 19 y 20 en
+el mismo despliegue, ya como `coraje_migrator`, y `ticket_notificacion` ya está en la
+lista.
 
 0. **Desactivar en n8n el workflow `CORAJE - SALIDA - PostgreSQL to SharePoint`.** La
    versión activa es la anterior: con la migración de U9, el trigger empieza a encolar,
@@ -904,9 +968,10 @@ pendiente, así que las tres del corte 18 están aplicadas.
        ('helpdesk', 'ticket_sync_outbox'), ('core', 'dim_cliente_contai'));
    "
    ```
-2. **Publicar** (`git push` de `4455741` y del corte 20) y confirmar en el log de
-   `migrate` que aplica las tres: `20260928100000_valores_acceso_clientes`,
-   `20260928110000_acceso_clientes` y `20260928120000_espejo_sharepoint`.
+2. **Publicar** (`git push` de `4455741`, `3834418` y del corte 21) y confirmar en el
+   log de `migrate` que aplica las cuatro: `20260928100000_valores_acceso_clientes`,
+   `20260928110000_acceso_clientes`, `20260928120000_espejo_sharepoint` y
+   `20260928130000_observabilidad`.
 2b. **Importar las versiones U9** de `CORAJE - INCREMENTAL COMPLETO` y `CORAJE - SALIDA`
    sobre los mismos workflows, revisar sus credenciales y **reactivar la salida**. Con
    el espejo apagado, la salida no envía nada.
@@ -1033,21 +1098,38 @@ pendiente, así que las tres del corte 18 están aplicadas.
 22. **Apagar el espejo** al terminar, salvo que se decida dejarlo encendido. Borrar a
     mano en PowerApps los ítems de prueba: la salida no borra.
 
-### F. Después de las pruebas: U10
+### F. U10: puesta en marcha, pruebas y guion de cierre
 
-La siguiente unidad a construir es **U10 · Observabilidad**. Está preparada en
-`estado/plan-ejecucion.md`:
-- inventario de diez señales que hoy pueden fallar en silencio (S1-S10);
-- diseño propuesto sin procesos nuevos: una función `helpdesk.revisar_salud()` en la
-  base y un workflow diario en n8n que solo avisa si hay algo;
-- seis decisiones tuyas por confirmar (O1-O6), con su propuesta;
-- el guion de cierre con una divergencia controlada.
+**Otra desviación, y su motivo:** este handoff pedía registrar las pruebas A-E antes de
+construir U10. El 28-sep el usuario decidió construirla ya, como corte 21, para que
+salga con los cortes 19 y 20 y se ejercite en el mismo despliegue. Si una prueba A-E
+falla, se corrige antes de cerrar U10.
 
-**Al empezar la sesión de U10:**
-1. Registrar aquí el resultado de las pruebas A-E: qué pasó, qué falló y qué se
-   corrigió. Si una prueba falló, corregirla va antes que U10.
-2. Confirmar O1-O6 con el usuario.
-3. Construir.
+23. **Puesta en marcha** (`operacion.md`, «Salud diaria (U10)»): importar
+    `HELPDESK - Salud diaria V1`, comprobar credenciales, zona horaria y workflow de
+    error, **ejecutarlo a mano una vez** y registrar aquí la línea base:
+    `SELECT * FROM helpdesk.salud_hallazgos();` y la fila de `helpdesk.revision_salud`.
+    Un chequeo en rojo por datos históricos se corrige o se reclasifica **antes de
+    activar el workflow**. Después, activarlo.
+24. **`/salud`**: con la cuenta `ADMIN` del paso 8, la pestaña «Salud» aparece y la vista
+    carga; con `AGENTE` no aparece y `/salud` responde 404.
+25. **Prueba negativa de permisos**, en una transacción revertida: con
+    `SET LOCAL ROLE coraje_runtime`, `UPDATE helpdesk.sync_divergencia SET motivo = NULL
+    WHERE false` y `SELECT helpdesk.registrar_revision_salud('[]', 'MANUAL')` dan
+    `permission denied`; `SELECT * FROM helpdesk.salud_hallazgos()` funciona.
+26. **Registro sin secretos:** tras las pruebas de U7 y U8, `docker logs` del contenedor
+    `web` solo tiene líneas JSON, y ninguna lleva un token, un código ni un enlace.
+27. **Guion de cierre** (`specs/observabilidad.md` §7), con el espejo encendido del paso
+    18: divergencia controlada (cambiar el área del ítem en PowerApps) → la ingesta la
+    registra `RECHAZADO` y `/salud` la lista en S4 → marcarla revisada con el motivo →
+    deshacer el cambio en PowerApps → ejecutar la revisión a mano y comprobar que S9 no
+    lista nada y guarda sus conteos. **Registrar aquí** el antes, la acción y el después
+    con las dos consultas de §7. Sin esto, U10 no cierra.
+28. **Teams, lo mínimo:** en la ejecución del paso 27 no debe llegar nada al canal
+    (S4 no es crítico). Si se quiere ver el aviso, basta con dejar un envío del espejo
+    `PENDING` más de 2 h con la salida apagada: la revisión siguiente avisa una vez y la
+    posterior, sin cambios, no.
+29. **Rol de quien atiende el canal:** Juan Felipe Zuluaga Mejía (`felipezuluaga@rbcol.co`) necesita `ADMIN` para ver `/salud` (`UPDATE` de `operacion.md`, «Asignar los roles de U8»; comprobar antes su rol actual: un rol por persona).
 
 **Otras unidades abiertas, fuera de la cabeza:**
 - adjuntos de U7 (bloqueados por dos datos, abajo);

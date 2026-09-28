@@ -1,0 +1,246 @@
+{
+  "name": "HELPDESK - Salud diaria V1",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c61",
+      "name": "Schedule - Diaria 7:00"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c62",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://dsasas-my.sharepoint.com/personal/edwinpena_rbcol_co/_api/web/lists/getbytitle('HelpDeskBd')/items?$select=Id,Created&$orderby=Id asc&$top=5000",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftSharePointOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json;odata=nometadata"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        100
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c63",
+      "name": "HTTP - Get HelpDeskBd Ids",
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "CMvf9g4hz3B0CE2C",
+          "name": "Microsoft SharePoint account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Transporta, no compara (CLAUDE.md, fronteras): arma la lista de ítems de\n * HelpDeskBd que la base reconcilia contra staging y los tickets\n * (helpdesk.registrar_revision_salud).\n *\n * Una sola petición, sin paginar: con $top=5000 cabe la lista entera\n * (≈3.000 ítems al 28-sep-2026). Si algún día llega al tope, falla en vez\n * de reconciliar a medias: una reconciliación incompleta diría que faltan\n * ítems que sí están.\n */\nconst value = $input.first()?.json?.value;\nif (!Array.isArray(value)) {\n  throw new Error(\"SharePoint no devolvió la lista de ítems de HelpDeskBd.\");\n}\nif (value.length >= 5000) {\n  throw new Error(\"HelpDeskBd llegó a 5.000 ítems: la reconciliación de HELPDESK - Salud diaria V1 necesita paginar.\");\n}\n\nconst items = value.map((item) => ({ Id: Number(item.Id ?? item.ID), Created: item.Created }));\n\n// Viaja entre comillas de dólar con etiqueta propia; se retira la etiqueta\n// por si algún valor la contuviera.\nreturn [{ json: { items_json: JSON.stringify(items).replace(/\\$salud_items\\$/g, \"\"), items_count: items.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        100
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c64",
+      "name": "Code - Build Item List"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- =================================================================\n-- Revisión diaria de salud (U10, docs/specs/observabilidad.md)\n-- =================================================================\n-- La base hace todo el trabajo: corre los chequeos, reconcilia la lista\n-- de HelpDeskBd con staging y los tickets, guarda la revisión en\n-- helpdesk.revision_salud y decide si hay algo que avisar. Solo avisa lo\n-- CRITICO que aparece o empeora respecto de la revisión anterior.\n--\n-- Corre como coraje_etl: es el único rol que ve staging.\nSELECT id_revision, notificar, mensaje\nFROM helpdesk.registrar_revision_salud(\n    $salud_items${{ $json.items_json }}$salud_items$::jsonb,\n    'N8N'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        100
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c65",
+      "name": "PG - Registrar Revision",
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7c2a9e41-0b5d-4f8e-a1c3-2d4e6f8a0b17",
+              "leftValue": "={{ $json.notificar === true || $json.notificar === 't' || $json.notificar === 'true' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        100
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c66",
+      "name": "IF - Criticos Nuevos"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ $json.mensaje }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c67",
+      "name": "Stop - Avisar Criticos"
+    },
+    {
+      "parameters": {
+        "content": "## HELPDESK - Salud diaria V1 (U10)\n\nUna vez al día, 7:00 en Bogotá (zona horaria del workflow).\n\n1. Pide a SharePoint los ids de HelpDeskBd (una petición).\n2. La base reconcilia, corre los chequeos y guarda la revisión (`helpdesk.registrar_revision_salud`).\n3. Solo si hay algo **crítico nuevo o peor**, se detiene con error: el workflow «Alertas de errores a Teams» lo lleva al canal. Sin eso, silencio.\n\nTodo lo demás se ve en HelpDesk › Salud.",
+        "height": 300,
+        "width": 520
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -360
+      ],
+      "id": "5b1f0c2e-7a41-4d3e-9c6a-1e2f3a4b5c68",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule - Diaria 7:00": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get HelpDeskBd Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get HelpDeskBd Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Get HelpDeskBd Ids": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Item List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Item List": {
+      "main": [
+        [
+          {
+            "node": "PG - Registrar Revision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Registrar Revision": {
+      "main": [
+        [
+          {
+            "node": "IF - Criticos Nuevos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Criticos Nuevos": {
+      "main": [
+        [
+          {
+            "node": "Stop - Avisar Criticos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "America/Bogota",
+    "errorWorkflow": "A10yl90Zh5otaSlJ",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
+  },
+  "tags": []
+}

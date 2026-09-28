@@ -4,6 +4,7 @@ import { after } from "next/server";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/server/observability/log";
 import { deriveSubkey } from "@/server/security/secret-box";
 
 import { createDeviceForAuthorization, setDeviceCookie } from "./portal-access";
@@ -179,7 +180,9 @@ async function deliverCode(params: {
     });
   } catch (error) {
     const message = error instanceof PortalMailError ? error.message : "Fallo inesperado al enviar el código.";
-    if (!(error instanceof PortalMailError)) console.error("[portal] Fallo inesperado al enviar el código:", error);
+    if (!(error instanceof PortalMailError)) {
+      logEvent("error", "portal.codigo_no_enviado", { idContacto: params.idContacto, idDesafio: params.challengeId }, error);
+    }
     try {
       // Un código que no llegó no debe quedar vivo: nadie lo recibió.
       await prisma.portalDesafioOtp.updateMany({
@@ -195,7 +198,7 @@ async function deliverCode(params: {
         metadata: { idDesafio: params.challengeId },
       });
     } catch (auditError) {
-      console.error("[portal] No se pudo registrar el fallo de envío del código:", auditError);
+      logEvent("error", "portal.fallo_de_codigo_no_auditado", { idContacto: params.idContacto, idDesafio: params.challengeId }, auditError);
     }
   }
 }

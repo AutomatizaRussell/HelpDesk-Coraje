@@ -314,7 +314,12 @@ ELT ajustado a ella. Un ticket del portal conserva su origen tras una pasada de 
 > **Se vuelve urgente en el momento en que empiece U7**, no antes. Pero U7 sin esto
 > produce trabajo que la siguiente ingesta borra.
 
-### U10 · Observabilidad — **siguiente unidad a construir** (preparada el 28-sep-2026)
+### U10 · Observabilidad — **construida el 28-sep-2026 (corte 21), sin desplegar**
+
+> **Construida sobre el diseño de abajo**, con las decisiones O1-O6 cerradas y los
+> ajustes aprobados por el usuario. El contrato vigente es `specs/observabilidad.md`;
+> esta sección queda como la preparación. **Sin cerrar:** el guion de cierre exige
+> desplegar los cortes 19-21 y ejercitarlo (`estado/handoff.md`, «Acción inmediata»).
 
 Alerta de outbox envejecido · workflow de error en n8n · reconciliación de conteos ·
 identificador de correlación de punta a punta · logs estructurados sin secretos.
@@ -376,16 +381,16 @@ Respeta la economía de recursos de `CLAUDE.md`: **ningún proceso nuevo en la V
 6. **Opcional, según tu decisión:** una vista `/salud` para `ADMIN` que muestre lo mismo
    que la función, sin consultas propias.
 
-#### Decisiones que faltan (del usuario, al empezar U10)
+#### Decisiones (cerradas por el usuario el 28-sep-2026)
 
-| # | Decisión | Propuesta |
-|---|---|---|
-| O1 | Frecuencia de la revisión | Una vez al día, 7:00 en Bogotá, además del aviso inmediato que ya dan los workflows cuando fallan |
-| O2 | Umbrales de cada señal | S1 `PENDING` > 2 h con el espejo encendido; S2 > 24 h; S3 > 2 h; S5 cualquier `FALLIDO` de más de 1 día; S7 cualquier `FALLO` del último día |
-| O3 | Quién recibe y atiende las alertas | El mismo canal de Teams del workflow de error |
-| O4 | ¿Página `/salud` en HelpDesk para `ADMIN`, o solo Teams? | Solo Teams primero; la página, si hace falta |
-| O5 | ¿Entra S10 (plazos vencidos)? | No en U10: es producto, no observabilidad |
-| O6 | ¿Añadir una columna `id_ticket` a la lista HelpDeskBd para la correlación? | **No**: la lista es infraestructura compartida con PowerApps en producción, y `Id_Req` ya correlaciona |
+| # | Decisión | Propuesta | Resolución |
+|---|---|---|---|
+| O1 | Frecuencia de la revisión | Una vez al día, 7:00 en Bogotá, además del aviso inmediato que ya dan los workflows cuando fallan | **Aprobada**, y cada revisión se guarda en la base para ver si faltó alguna |
+| O2 | Umbrales de cada señal | S1 `PENDING` > 2 h con el espejo encendido; S2 > 24 h; S3 > 2 h; S5 cualquier `FALLIDO` de más de 1 día; S7 cualquier `FALLO` del último día | **Aprobada con ajustes:** S1 solo lo encolado con el espejo encendido, más reintentos agotados y `PROCESSING` > 1 h; S3 solo lo que S1 no cubre; S4 sin umbral hasta que se revise; S5 `FALLIDO` > 12 h y atascados > 1 h; S6 revocada, con aparte quien nunca autorizó; S9 por lista de ids (`specs/observabilidad.md` §3) |
+| O3 | Quién recibe y atiende las alertas | El mismo canal de Teams del workflow de error | **Aprobada, con condición:** al canal solo llega lo crítico, y solo cuando aparece o empeora («lo mínimo, solo lo más grave, inmediato y urgente»). **Lo atiende Juan Felipe Zuluaga Mejía** (`felipezuluaga@rbcol.co`) |
+| O4 | ¿Página `/salud` en HelpDesk para `ADMIN`, o solo Teams? | Solo Teams primero; la página, si hace falta | **Página incluida**, con `salud.consultar` y `salud.divergencia.revisar` |
+| O5 | ¿Entra S10 (plazos vencidos)? | No en U10: es producto, no observabilidad | **Aprobada:** fuera |
+| O6 | ¿Añadir una columna `id_ticket` a la lista HelpDeskBd para la correlación? | **No**: la lista es infraestructura compartida con PowerApps en producción, y `Id_Req` ya correlaciona | **Aprobada:** sin columna |
 
 #### Guion de cierre (evidencia exigida)
 
@@ -447,3 +452,7 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   Evidencia en `estado/handoff.md` (corte 14). Entra en la cola U5.2 (endpoint de Conecta, parte 2 de la
   opción 3, decidida y en paralelo por su latencia humana). El panel de administración
   propio queda como posibilidad no comprometida. **U6 pasa a ser la cabeza de la cola.**
+- 28-sep-2026 — U10 construida (corte 21), sin desplegar: decisiones O1-O6 cerradas,
+  con Teams limitado a lo crítico nuevo o peor por condición del usuario. Sale junto
+  con los cortes 19 y 20. **La cabeza de la cola sigue siendo desplegar y ejercitar
+  U7-U10** (pruebas A-E y guion de cierre de U10).

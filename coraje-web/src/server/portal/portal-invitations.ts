@@ -4,6 +4,7 @@ import { formatDate } from "@/features/tickets/format";
 import { publicPortalUrl } from "@/server/auth/conecta-return";
 import { AuthorizationDeniedError, requireGrant } from "@/server/authorization/authorizer";
 import { PORTAL_ACTIONS } from "@/server/authorization/catalog";
+import { logEvent } from "@/server/observability/log";
 import { createOpaqueCredential, hashOpaqueCredential } from "@/server/security/opaque-credential";
 
 import { createDeviceForAuthorization, setDeviceCookie } from "./portal-access";
@@ -135,7 +136,9 @@ async function deliverInvitation(issued: IssuedInvitation, idPersonal: string): 
       });
     } catch (error) {
       const message = error instanceof PortalMailError ? error.message : "No fue posible enviar la invitación.";
-      if (!(error instanceof PortalMailError)) console.error("[portal] Fallo inesperado al enviar la invitación:", error);
+      if (!(error instanceof PortalMailError)) {
+        logEvent("error", "portal.invitacion_no_enviada", { idContacto: issued.idContacto, idInvitacion: issued.idInvitacion }, error);
+      }
       delivery.fallidos.push({ correo, error: message });
       await recordPortalAudit(prisma, {
         evento: "INVITACION_ENVIADA",

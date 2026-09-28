@@ -8,6 +8,7 @@ import { errorForm, invalidForm } from "@/features/forms/form-state";
 import type { TicketFormState } from "@/features/tickets/action-state";
 import { PORTAL_CHALLENGE_COOKIE, PORTAL_COOKIE_PATH } from "@/server/portal/portal-cookie";
 import { activateInvitation } from "@/server/portal/portal-invitations";
+import { logEvent } from "@/server/observability/log";
 import { requestPortalCode, verifyPortalCode } from "@/server/portal/portal-otp";
 import { OTP_TTL_MINUTES } from "@/server/portal/portal-policy";
 
@@ -37,7 +38,9 @@ export async function requestCodeAction(_prev: TicketFormState, formData: FormDa
   try {
     reference = await requestPortalCode(parsed.data.correo);
   } catch (error) {
-    console.error("[portal] Fallo inesperado al emitir un código:", error);
+    // Sin el correo: la entrada es anónima y el registro no debe decir
+    // quién intentó entrar.
+    logEvent("error", "portal.codigo_no_emitido", {}, error);
     return errorForm("No fue posible continuar. Intenta de nuevo en unos minutos.", formData);
   }
 
@@ -71,7 +74,7 @@ export async function verifyCodeAction(_prev: TicketFormState, formData: FormDat
   try {
     outcome = await verifyPortalCode(reference, parsed.data.codigo);
   } catch (error) {
-    console.error("[portal] Fallo inesperado al verificar un código:", error);
+    logEvent("error", "portal.codigo_no_verificado", {}, error);
     return errorForm("No fue posible verificar el código. Intenta de nuevo en unos minutos.", formData);
   }
 

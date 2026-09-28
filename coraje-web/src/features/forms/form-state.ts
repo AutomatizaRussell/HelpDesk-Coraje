@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { z } from "zod";
 
 import type { TicketFormState } from "@/features/tickets/action-state";
+import { logEvent } from "@/server/observability/log";
 
 /**
  * Ayudantes comunes a toda acción de formulario (tickets, clasificación,
@@ -44,7 +45,8 @@ export function errorForm(message: string, formData: FormData): TicketFormState 
  * genérica, sin describir el interior de la aplicación.
  */
 export function unexpectedForm(error: unknown, formData: FormData, context: string): TicketFormState {
-  console.error(`[formulario] Fallo inesperado al ${context}:`, error);
+  const idTicket = formData.get("idTicket");
+  logEvent("error", "formulario.accion_fallida", { accion: context, idTicket: typeof idTicket === "string" ? idTicket : undefined }, error);
   return errorForm("No fue posible completar la acción. Intenta de nuevo en unos minutos.", formData);
 }
 

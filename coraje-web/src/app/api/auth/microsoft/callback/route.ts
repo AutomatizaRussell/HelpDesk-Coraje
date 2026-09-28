@@ -20,6 +20,7 @@ import { ENTRY_COOKIE_NAME, sealEntryContext } from "@/server/auth/entry-cookie"
 import { sanitizeLoginHint } from "@/server/auth/login-hint";
 import { STATE_COOKIE_NAME, type SealedOidcState } from "@/server/auth/oidc-state";
 import { sanitizeDestination } from "@/server/auth/sanitize-destination";
+import { logEvent } from "@/server/observability/log";
 import { openSecret } from "@/server/security/secret-box";
 
 /**
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
         subject: result.subject,
       });
     } catch (error) {
-      console.error("No se pudo guardar la autorización de correo del empleado:", error);
+      logEvent("error", "auth.autorizacion_correo_no_guardada", { idPersonal: result.idPersonal }, error);
     }
 
     // Se sanea de nuevo aquí, no solo al sellar en /start: el sellado prueba
@@ -161,7 +162,7 @@ export async function GET(request: NextRequest) {
     // detalle interno en la URL (specs/acceso-empleados.md §8) — solo un
     // código de un enum cerrado que /login interpreta. El detalle real sí
     // queda en los logs del servidor para poder diagnosticarlo.
-    console.error("Fallo al validar el ingreso con Microsoft:", error);
+    logEvent("error", "auth.ingreso_no_validado", {}, error);
     return redirectToLogin("VALIDATION_FAILED");
   }
 }

@@ -4,6 +4,7 @@ import { AuthorizationDeniedError, requireGrant, requireTicketAction } from "@/s
 import { TICKET_ACTIONS, type TicketAction } from "@/server/authorization/catalog";
 import { enqueueTicketMail, type MailDelivery } from "@/server/notifications/ticket-notifications";
 import type { TicketMailKind } from "@/server/notifications/ticket-mail-content";
+import { logEvent } from "@/server/observability/log";
 import { recordPortalAudit } from "@/server/portal/portal-audit";
 import type { PortalAccess } from "@/server/portal/portal-access";
 
@@ -119,7 +120,12 @@ async function lockAndAuthorize(params: {
     });
   } catch (error) {
     if (error instanceof AuthorizationDeniedError) {
-      console.warn(`[tickets] ${error.message} ticket=${params.idTicket} persona=${params.idPersonal}`);
+      logEvent("warn", "tickets.accion_denegada", {
+        accion: error.action,
+        motivo: error.reason,
+        idTicket: params.idTicket,
+        idPersonal: params.idPersonal,
+      });
       throw new TicketDomainError("NO_AUTORIZADO", DENIED_MESSAGE);
     }
     throw error;

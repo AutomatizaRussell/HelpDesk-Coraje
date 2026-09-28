@@ -254,6 +254,11 @@ Estado al corte 20 (construido, sin ejercitar):
 
 ## 7. Observabilidad mínima que no existe
 
+> **Superada por `specs/observabilidad.md` (U10, corte 21, construida sin desplegar).**
+> El workflow de error existe desde el 24-sep (V10). La alerta de envíos envejecidos es
+> S1, la reconciliación es S9 y la correlación es `id_ticket` en el registro
+> estructurado. La tabla de abajo queda como el diagnóstico del 03-sep-2026.
+
 Un pipeline que falla en silencio es el modo de fallo más caro, y este puede fallar en
 silencio **hoy**:
 

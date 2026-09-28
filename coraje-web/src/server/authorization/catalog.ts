@@ -1,8 +1,8 @@
 /**
  * Códigos de las acciones del catálogo (specs/permisos.md §3), tal como están
  * sembrados en `app.permiso_accion` por las migraciones
- * `20260926100000_permisos_y_creacion_ticket` y
- * `20260928110000_acceso_clientes`.
+ * `20260926100000_permisos_y_creacion_ticket`,
+ * `20260928110000_acceso_clientes` y `20260928130000_observabilidad`.
  *
  * Este archivo **no** decide quién puede qué: eso vive en `app.permiso_regla`,
  * que es la única fuente operativa (permisos.md §1). Aquí solo se nombran los
@@ -34,9 +34,23 @@ export const PORTAL_ACTIONS = {
   administrarAccesos: "portal.acceso.administrar",
 } as const;
 
+/**
+ * Salud de la aplicación (U10, migración `20260928130000_observabilidad`).
+ * Tampoco se evalúan sobre un ticket: su alcance `TOTAL` significa «toda la
+ * aplicación». Son dos porque mirar no es lo mismo que dar algo por atendido.
+ */
+export const SALUD_ACTIONS = {
+  /** Ver la vista `/salud`: la revisión viva y la última diaria. */
+  consultar: "salud.consultar",
+  /** Marcar revisada, con motivo, una divergencia rechazada con PowerApps (S4). */
+  revisarDivergencia: "salud.divergencia.revisar",
+} as const;
+
 export type TicketAction = (typeof TICKET_ACTIONS)[keyof typeof TICKET_ACTIONS];
 
 export type PortalAction = (typeof PORTAL_ACTIONS)[keyof typeof PORTAL_ACTIONS];
 
+export type SaludAction = (typeof SALUD_ACTIONS)[keyof typeof SALUD_ACTIONS];
+
 /** Cualquier acción del catálogo, sea sobre un ticket o no. */
-export type PermissionAction = TicketAction | PortalAction;
+export type PermissionAction = TicketAction | PortalAction | SaludAction;

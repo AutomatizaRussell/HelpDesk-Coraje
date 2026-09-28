@@ -17,6 +17,8 @@ export interface SectionGrants {
   clasificar: boolean;
   /** `portal.acceso.administrar`: contactos e invitaciones de clientes. */
   administrarAccesos: boolean;
+  /** `salud.consultar`: la revisión de salud de la aplicación (U10). */
+  consultarSalud: boolean;
 }
 
 export function helpdeskSections(grants: SectionGrants): readonly ModuleNavItem[] {
@@ -24,5 +26,6 @@ export function helpdeskSections(grants: SectionGrants): readonly ModuleNavItem[
     { label: "Tickets", href: "/tickets" },
     ...(grants.clasificar ? [{ label: "Clasificación", href: "/clasificacion" }] : []),
     ...(grants.administrarAccesos ? [{ label: "Accesos de clientes", href: "/accesos" }] : []),
+    ...(grants.consultarSalud ? [{ label: "Salud", href: "/salud" }] : []),
   ];
 }

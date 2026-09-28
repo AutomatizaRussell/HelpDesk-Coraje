@@ -76,6 +76,10 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
     acceso: "EMPLEADO",
     razon: "Contactos e invitaciones de un cliente; exige portal.acceso.administrar",
   },
+  "/salud": {
+    acceso: "EMPLEADO",
+    razon: "Revisión de salud y divergencias con PowerApps (U10); exige salud.consultar",
+  },
   "/ingreso": {
     acceso: "PUBLICA",
     razon: "Detecta en el navegador si hay sesión de Conecta y elige el modo de entrada",

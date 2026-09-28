@@ -223,7 +223,9 @@ igual que Impulsa**, solo falta construirlas (U2):
     de borrar las otras dos.**
 - Un workflow sin manejo de error es una falla silenciosa programada. **Confirmado
   ausente** (10-sep-2026): no hay `errorWorkflow` en la configuración exportada del
-  consumidor, y el usuario lo corroboró directamente.
+  consumidor, y el usuario lo corroboró directamente. **Resuelto el 24-sep-2026 (V10):**
+  «Alertas de errores a Teams» es el `errorWorkflow` de la ingesta, la salida, el correo
+  del portal y, desde U10, la salud diaria.
 
 ### Espejo en PowerApps y regla de precedencia (U9)
 
@@ -321,6 +323,41 @@ RETURNING correo_corporativo, rol_aplicacion, estado_activo;
 
 La fila debe volver con `estado_activo = t`. Cambiar el rol surte efecto en la siguiente
 petición de esa persona; no hace falta que vuelva a entrar.
+
+### Salud diaria (U10)
+
+`specs/observabilidad.md`. La migración `20260928130000_observabilidad` y el workflow
+`n8n/HELPDESK - Salud diaria V1.json`. **Puesta en marcha, una sola vez**, después de
+publicar:
+
+1. **Importar el workflow** como workflow nuevo. Comprobar que el nodo Postgres usa
+   «Postgres account Daniel» (tiene que ser `coraje_etl`: es el único rol que ve
+   `staging`) y el HTTP, «Microsoft SharePoint account».
+2. En *Settings*: **Timezone = America/Bogota** y **Error workflow = Alertas de errores a
+   Teams**. El export los trae, pero un import puede no conservar el id del workflow de
+   error.
+3. **Ejecutarlo a mano una vez** y comprobar que termina en *Success*, o en el aviso
+   «SALUD DIARIA DE HELPDESK» si ya hay algo crítico. Esa primera fila es la línea base
+   (§7 de la spec).
+4. Activarlo.
+
+**A Teams solo llega lo crítico, y solo cuando aparece o empeora** (decisión del
+28-sep-2026). Todo lo demás está en HelpDesk › Salud, que ven las personas con rol
+`ADMIN`. **Atiende el canal: Juan Felipe Zuluaga Mejía** (`felipezuluaga@rbcol.co`, 28-sep-2026).
+
+**Mirar a mano:**
+
+```sql
+-- Lo que no está en verde ahora (sin la reconciliación, que solo calcula la diaria).
+SELECT * FROM helpdesk.salud_hallazgos();
+
+-- Las últimas revisiones: hallazgos, qué se avisó y conteos de la reconciliación.
+SELECT ejecutada_at, criticos_nuevos, items_sharepoint, items_staging, items_con_ticket, hallazgos
+FROM helpdesk.revision_salud ORDER BY ejecutada_at DESC LIMIT 5;
+```
+
+**Registros del servidor:** una línea JSON por evento en `docker logs` del contenedor
+`web`. Para seguir un ticket: `docker logs <web> 2>&1 | grep '"idTicket":"<uuid>"'`.
 
 ## Cuidados sobre infraestructura compartida
 

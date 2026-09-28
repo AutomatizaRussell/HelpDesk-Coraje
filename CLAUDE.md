@@ -292,6 +292,10 @@ una copia vieja: la primera réplica salió de un `main` reescrito después con 
   el navegador, se entra sin clics dentro del shell de Conecta. Sin ella, se entra por
   `/login` eligiendo cuenta, con la barra propia de HelpDesk. El perfil que Conecta deja en
   `localStorage` (`gct_empleado`) **solo decide qué se muestra, nunca un permiso**.
+- **Nada de `console.*` en `src/`** (U10): el registro del servidor pasa por
+  `logEvent()` de `src/server/observability/log.ts`, una línea JSON con `idTicket` como
+  correlación y sin secretos. `log.test.mts` falla si alguien vuelve a usar la consola.
+  Qué vigila la revisión diaria y qué llega a Teams: `docs/specs/observabilidad.md`.
 - **`helpdesk.ticket_sync_outbox` es el patrón bueno y se conserva.** Fuente de verdad
   en PostgreSQL, `ON CONFLICT DO NOTHING` sobre un índice parcial único para
   idempotencia, webhook a n8n fuera de la transacción y sin capacidad de romperla. No lo

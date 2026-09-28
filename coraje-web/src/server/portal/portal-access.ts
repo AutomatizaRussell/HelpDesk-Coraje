@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/server/observability/log";
 import { createOpaqueCredential, hashOpaqueCredential } from "@/server/security/opaque-credential";
 
 import { recordPortalAudit } from "./portal-audit";
@@ -121,7 +122,7 @@ export async function resolvePortalAccess(): Promise<PortalAccess | null> {
   if (denial) {
     // Al registro del servidor, no a la persona ni a la auditoría: una fila
     // por cada página pedida con una cookie vieja no aporta evidencia nueva.
-    console.warn(`[portal] acceso denegado: ${denial} dispositivo=${device.id}`);
+    logEvent("warn", "portal.acceso_denegado", { motivo: denial, idDispositivo: device.id, idContacto: contacto.id });
     return null;
   }
 

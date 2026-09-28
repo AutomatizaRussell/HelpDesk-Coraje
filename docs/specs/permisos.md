@@ -4,8 +4,9 @@
 ESTADO:      construido, sin desplegar (corte 18, 26-sep-2026): catálogo en
              `app.permiso_accion` / `app.permiso_regla`, autorizador en
              `src/server/authorization/`, cada acción del ticket conectada en su
-             comando. Falta la autorización excepcional (§5) y la consola (§8)
-CORTE:       26-sep-2026
+             comando. Falta la autorización excepcional (§5) y la consola (§8).
+             Corte 21 (U10): acciones `salud.*` para `ADMIN` (§4.3)
+CORTE:       28-sep-2026
 EVIDENCIA:   `tsc`, `lint`, `pnpm test` (alcance, catálogo sembrado y consultado,
              sin comparaciones de rol). Sin ejercitar contra la base
 BLOQUEO:     parcialmente levantado (03-sep-2026) — el usuario confirmó directamente,
@@ -128,6 +129,24 @@ Construido en `20260928110000_acceso_clientes`, sin desplegar.
   cliente».
 - Asignar el rol es una actualización de `core.dim_personal.rol_aplicacion` por `psql`,
   hasta que exista la consola de administración (§8, entrega 6).
+
+### 4.3 `DECISIÓN` (28-sep-2026, U10) Salud de la aplicación
+
+Construido en `20260928130000_observabilidad`, sin desplegar.
+
+| Acción | `AGENTE` | `CLASIFICADOR` | `ADMIN` |
+|---|---|---|---|
+| `salud.consultar` | — | — | `TOTAL` |
+| `salud.divergencia.revisar` | — | — | `TOTAL` |
+
+- **Dos acciones y no una:** mirar la salud no es lo mismo que dar por atendida una
+  divergencia con PowerApps. Hoy las tiene el mismo rol; separarlas después no exige
+  cambiar código, solo reglas.
+- **No se evalúan sobre un ticket** (`SALUD_ACTIONS` en `catalog.ts`): `TOTAL`
+  significa «toda la aplicación».
+- Marcar revisada entra solo por `helpdesk.marcar_divergencia_revisada`:
+  `coraje_runtime` no tiene `UPDATE` sobre `sync_divergencia` (`specs/observabilidad.md`
+  §4).
 
 ## 5. Autorización excepcional
 

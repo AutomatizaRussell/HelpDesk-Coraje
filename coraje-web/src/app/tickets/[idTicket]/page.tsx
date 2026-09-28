@@ -20,6 +20,7 @@ import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
+import { logEvent } from "@/server/observability/log";
 import { getMirrorStatus, type MirrorStatus } from "@/server/sync/sharepoint-mirror";
 import { getTicketDetail, listReassignCandidates } from "@/server/tickets/ticket-queries";
 
@@ -81,7 +82,7 @@ export default async function TicketDetailPage({
     try {
       mirror = await getMirrorStatus(ticket.idTicket);
     } catch (error) {
-      console.error(`[espejo] No se pudo leer el estado del espejo de ${ticket.idTicket}:`, error);
+      logEvent("error", "espejo.estado_no_leido", { idTicket: ticket.idTicket }, error);
     }
   }
 
@@ -168,6 +169,7 @@ export default async function TicketDetailPage({
                         <p className={cn("text-sm", item.resultado === "RECHAZADO" ? "text-danger" : "text-ink-muted")}>
                           {item.resultado === "APLICADO" ? "Aplicado en HelpDesk" : `No se aplicó: ${item.motivo ?? "sin motivo"}`} ·{" "}
                           {formatDateTime(item.fecha)}
+                          {item.revisadaAt && ` · Revisado el ${formatDateTime(item.revisadaAt)}`}
                         </p>
                       </li>
                     ))}

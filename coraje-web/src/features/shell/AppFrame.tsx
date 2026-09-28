@@ -6,7 +6,7 @@ import type { EmployeeSessionContext } from "@/server/auth/employee-session";
 import { readEntryContext } from "@/server/auth/entry-cookie";
 import { signOutAction } from "@/server/auth/sign-out-action";
 import { resolveGrants } from "@/server/authorization/authorizer";
-import { PORTAL_ACTIONS, TICKET_ACTIONS } from "@/server/authorization/catalog";
+import { PORTAL_ACTIONS, SALUD_ACTIONS, TICKET_ACTIONS } from "@/server/authorization/catalog";
 
 import { helpdeskSections } from "./helpdesk-sections";
 
@@ -39,11 +39,12 @@ export async function AppFrame({
 }) {
   const [entry, grants] = await Promise.all([
     readEntryContext(),
-    resolveGrants(employee.idPersonal, [TICKET_ACTIONS.redirigir, PORTAL_ACTIONS.administrarAccesos]),
+    resolveGrants(employee.idPersonal, [TICKET_ACTIONS.redirigir, PORTAL_ACTIONS.administrarAccesos, SALUD_ACTIONS.consultar]),
   ]);
   const sections = helpdeskSections({
     clasificar: grants.has(TICKET_ACTIONS.redirigir),
     administrarAccesos: grants.has(PORTAL_ACTIONS.administrarAccesos),
+    consultarSalud: grants.has(SALUD_ACTIONS.consultar),
   });
 
   if (entry.via === "conecta") {

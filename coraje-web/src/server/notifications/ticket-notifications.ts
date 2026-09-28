@@ -4,6 +4,7 @@ import { formatDate } from "@/features/tickets/format";
 import { AuthorizationDeniedError, requireGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
 import { publicPortalUrl, publicTicketUrl } from "@/server/auth/conecta-return";
+import { logEvent } from "@/server/observability/log";
 import { TicketDomainError } from "@/server/tickets/ticket-errors";
 
 import { MailSendError, sendMailAsEmployee } from "./graph-mail";
@@ -173,13 +174,13 @@ export interface MailDispatchResult {
 async function claim(id: string) {
   const staleBefore = new Date(Date.now() - STALE_SENDING_MS);
   const rows = await prisma.$queryRaw<
-    { id: string; id_remitente: string; destinatario_correo: string; asunto: string; cuerpo_html: string }[]
+    { id: string; id_ticket: string; id_remitente: string; destinatario_correo: string; asunto: string; cuerpo_html: string }[]
   >`
     UPDATE helpdesk.ticket_notificacion
     SET estado = 'ENVIANDO', intentos = intentos + 1, updated_at = NOW()
     WHERE id = ${id}::uuid
       AND (estado IN ('PENDIENTE', 'FALLIDO') OR (estado = 'ENVIANDO' AND updated_at < ${staleBefore}))
-    RETURNING id::text, id_remitente::text, destinatario_correo, asunto, cuerpo_html
+    RETURNING id::text, id_ticket::text, id_remitente::text, destinatario_correo, asunto, cuerpo_html
   `;
   return rows[0] ?? null;
 }
@@ -198,7 +199,12 @@ async function sendClaimed(row: NonNullable<Awaited<ReturnType<typeof claim>>>):
   } catch (error) {
     const message =
       error instanceof MailSendError ? error.message : "No fue posible enviar el correo. Intenta reenviarlo en unos minutos.";
-    if (!(error instanceof MailSendError)) console.error("[correo] Fallo inesperado al enviar:", error);
+    // Un fallo esperado (MailSendError) ya lleva su frase para la persona y
+    // queda en el correo; aun así se registra, con la correlación, para que
+    // el registro del servidor cuente la misma historia que la base.
+    const correlation = { idNotificacion: row.id, idTicket: row.id_ticket, idPersonal: row.id_remitente };
+    if (error instanceof MailSendError) logEvent("warn", "correo.envio_fallido", { ...correlation, motivo: error.message });
+    else logEvent("error", "correo.envio_fallido", correlation, error);
     await prisma.ticketNotificacion.update({
       where: { id: row.id },
       data: { estado: "FALLIDO", ultimoError: message.slice(0, 1000), updatedAt: new Date() },
@@ -219,7 +225,7 @@ export async function dispatchTicketMail(ids: readonly string[]): Promise<MailDi
       const row = await claim(id);
       if (row) results.push(await sendClaimed(row));
     } catch (error) {
-      console.error(`[correo] No se pudo procesar el correo ${id}:`, error);
+      logEvent("error", "correo.no_procesado", { idNotificacion: id }, error);
       results.push({ id, destinatario: "", ok: false, error: "No fue posible enviar el correo. Intenta reenviarlo." });
     }
   }
