@@ -246,7 +246,7 @@ negativa · reprocesar la ingesta legacy no duplica eventos.
 
 **Depende de:** U0, U2.
 
-### U7 · Ciclo interno del ticket — **cabeza de la cola, en curso**
+### U7 · Ciclo interno del ticket — **desplegada, sin ejercitar**
 
 Crear, bandeja, reasignar, responder (que cierra) y rechazar, más la nota interna,
 cada acción conectada al autorizador. Plazo por días hábiles, sin pausa. Correo como
@@ -270,12 +270,31 @@ quien actúa (D6) y adjuntos. **Depende de:** U6, `specs/permisos.md`.
 > sus correos enviados; prueba negativa del `INSERT` directo; calendario de 2026
 > verificado contra los festivos oficiales; adjuntos construidos y ejercitados.
 
-### U8 · Acceso de clientes
+> **Estado (corte 19, 28-sep-2026):** desplegada (`migrate`: 8 migraciones, ninguna
+> pendiente). Sus pruebas —negativa del `INSERT`, calendario, ciclo en el navegador,
+> salida de n8n— se hacen junto con las de U8 (`estado/handoff.md`, «Acción
+> inmediata»). Los adjuntos siguen bloqueados.
+
+### U8 · Acceso de clientes — **construida, sin desplegar**
 
 Implementa `specs/acceso-clientes.md` y retira `/portal` actual. Incluye redirigir
 (T3), que solo producen los tickets de clientes, con su permiso y el rol que lo tenga.
 **Depende de:** la decisión de alcance de su §3.1, la del remitente de correo de su §11,
 y U3.
+
+> **Se adelantó a las pruebas de U7 el 28-sep-2026**, por decisión del usuario: ese día
+> no había SSH, así que se construyó todo lo que no exige la VPS, y las dos unidades se
+> ejercitan juntas. Decisiones tomadas ese día: D2, D3, D4 y los roles `CLASIFICADOR` y
+> `ADMIN` (`specs/acceso-clientes.md`, `specs/permisos.md` §4.2).
+>
+> **Cierre:** la migración aplicada; una invitación enviada y activada; un código pedido
+> y verificado desde otro navegador; un ticket radicado, clasificado y respondido, con
+> sus correos; la prueba negativa de D2 (otro contacto no ve el ticket), de solo
+> lectura y de revocación; y la auditoría sin secretos. El guion está en
+> `estado/handoff.md`, «Acción inmediata», pasos 7 a 16.
+>
+> **No abre el portal a clientes reales**: eso espera a U9, porque los tickets del
+> portal no llegan a PowerApps (`specs/tickets.md` §4.1).
 
 ### U9 · Regla de precedencia con SharePoint
 

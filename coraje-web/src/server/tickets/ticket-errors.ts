@@ -32,7 +32,9 @@ export function isTicketDomainError(error: unknown): error is TicketDomainError 
 }
 
 /**
- * Traduce los errores con nombre de `helpdesk.crear_ticket_interno`.
+ * Traduce los errores con nombre de `helpdesk.resolver_responsable_tipo`, que
+ * comparten la creación interna (T2) y la redirección de un ticket del
+ * portal (T3).
  *
  * La función de PostgreSQL marca con un prefijo `HD_…` los fallos que
  * dependen de datos de enrutamiento y que la persona no puede corregir desde

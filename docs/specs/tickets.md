@@ -2,10 +2,11 @@
 
 ```
 ESTADO:      modelo de eventos y escritor único desplegados y ejercitados (U6). Ciclo
-             interno (T2, T4, T7, T8, nota interna) construido, sin desplegar (U7,
-             corte 18). Las secciones fechadas antes del 24-sep son antecedente: §1
-             describe el estado del 03-sep
-CORTE:       26-sep-2026
+             interno (T2, T4, T7, T8, nota interna) desplegado, sin ejercitar (U7,
+             corte 18). Tickets del portal (T1 por el cliente, T3) construidos, sin
+             desplegar (U8, corte 19). Las secciones fechadas antes del 24-sep son
+             antecedente: §1 describe el estado del 03-sep
+CORTE:       28-sep-2026
 EVIDENCIA:   lectura directa de `sql/db/06_helpdesk_facts.sql`, `sql/db/07_seed.sql` y
              `coraje-web/prisma/schema.prisma` en este corte. Los conteos vienen de
              `docs/legacy/baseline-calidad.md`, conciliados en su momento
@@ -244,6 +245,23 @@ con su alcance (§4 de ese documento). La columna «Plazo» aplica el reloj por 
 T5 (entrar en `ESPERANDO_SOLICITANTE`) y T6 (salir de él) se retiraron con ese estado
 el 25-sep-2026 (§4). Los demás números se conservan para no romper las referencias.
 
+> **T1 y T3, construidos el 28-sep-2026 (U8), sin desplegar.**
+> - **T1 por el cliente:** `helpdesk.crear_ticket_cliente` inserta el ticket
+>   `PORTAL_CLIENTE` con su contacto (`id_contacto_portal`) y su `CREACION` de actor
+>   `CLIENTE`, sin área, sin prioridad, sin plazo y sin código (el código nace con el
+>   área). «Crear en nombre de un cliente» por un empleado sigue sin construir: lo impide
+>   `chk_fact_ticket_origen_exclusivo` (§7.1).
+> - **T3:** `helpdesk.redirigir_ticket`. El tipo decide el área y la regla de
+>   enrutamiento decide la persona, con la misma función que usa T2
+>   (`helpdesk.resolver_responsable_tipo`, extraída de `crear_ticket_interno` sin cambiar
+>   su comportamiento). El plazo son **3 días hábiles desde hoy**, al final del día (§5).
+>   El evento `REDIRECCION` es `INTERNO`: el cliente ve el estado, no la clasificación.
+> - **Sin salida a SharePoint.** Redirigir no encola `CREATE_TICKET`: los tickets del
+>   portal viven solo en HelpDesk hasta que U9 fije la precedencia, igual que los
+>   internos de U7. La antigua `/redireccion` sí lo encolaba.
+> - Responder y rechazar un ticket del portal avisan al contacto por correo (D6, desde
+>   la cuenta de quien actúa); reasignar no, porque es un movimiento interno.
+
 `CERRADO` y `RECHAZADO` son **terminales**: la v1 no tiene reapertura, igual que el
 legacy. Si un problema vuelve después del cierre, se abre un ticket nuevo. Registrar
 una nota interna, añadir un observador, solicitar validación y calificar **no cambian
@@ -409,6 +427,14 @@ duplicar nada.
 >   él (§4.1). Añadirlo es aditivo: `CLIENTE` en el `enum` (decisión siguiente), una
 >   columna nueva que acepte vacío con su clave foránea, ampliar el `CHECK`, y recrear la función del escritor único (§3.1),
 >   cuya firma cambia y por eso no admite `CREATE OR REPLACE`.
+>
+>   **Superado el 28-sep-2026 (U8), exactamente por ese camino:** `CLIENTE` en
+>   `tipo_actor_evento`, `fact_ticket_evento.id_contacto_autor` con su clave foránea a
+>   `app.portal_contacto`, el `CHECK` ampliado a tres actores, y el escritor recreado
+>   con `p_id_contacto_autor` al final y `DEFAULT NULL`, de modo que las llamadas por
+>   nombre de la ingesta siguen resolviendo sin reimportar el workflow. En la v1 el
+>   cliente **solo** produce `CREACION` y su ticket nace `ABIERTO` (T1): el escritor
+>   rechaza cualquier otro evento de `CLIENTE`. Ver «T1 y T3» en §4.1.
 > - **Diferencia con Impulsa:** su `EventActor` guarda el tipo y una columna por actor,
 >   pero en sus migraciones no aparece un `CHECK` que ate el tipo a su columna. Aquí se
 >   exige desde el principio.
@@ -722,3 +748,7 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   borrar eventos por la vía del ticket; se retira `DELETE` sobre `fact_ticket` a
   `coraje_runtime` y `coraje_etl`, y la clave foránea de eventos pasa a
   `ON DELETE RESTRICT`.
+- 28-sep-2026 — U8. §4.1: T1 por el cliente y T3 construidos (`crear_ticket_cliente`,
+  `redirigir_ticket`, regla de enrutamiento única en `resolver_responsable_tipo`),
+  sin salida a SharePoint hasta U9. §6: el cliente pasa a ser actor, solo de
+  `CREACION`, por el camino aditivo que esta misma sección había previsto.

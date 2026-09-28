@@ -34,7 +34,10 @@ export const TICKET_STATE_LABEL: Record<TicketState, string> = {
 
 /**
  * `EXCEPCIÓN TEMPORAL` — solo los tickets creados en HelpDesk se operan desde
- * HelpDesk.
+ * HelpDesk: los internos (`SISTEMA_INTERNO`, U7) y los del portal de
+ * clientes (`PORTAL_CLIENTE`, U8). Los del portal no viajan a SharePoint
+ * mientras U9 no decida la precedencia (migración 20260928110000,
+ * `helpdesk.redirigir_ticket`), así que tampoco hay ingesta que los pise.
  *
  * Mientras conviven PowerApps y HelpDesk, la ingesta sobrescribe con lo que
  * tenga SharePoint los tickets que vienen de allí
@@ -48,8 +51,11 @@ export const TICKET_STATE_LABEL: Record<TicketState, string> = {
  * Condición de eliminación: U9 fija qué sistema manda sobre cada ticket. Esta
  * función pasa a consultar esa regla, o desaparece si el corte es total.
  */
-export const OPERABLE_ORIGIN = "SISTEMA_INTERNO";
+export const OPERABLE_ORIGINS = ["SISTEMA_INTERNO", "PORTAL_CLIENTE"] as const;
+
+/** Origen de los tickets que radica un contacto de cliente (T1). */
+export const PORTAL_ORIGIN = "PORTAL_CLIENTE" satisfies (typeof OPERABLE_ORIGINS)[number];
 
 export function isOperableInHelpDesk(origenSistema: string): boolean {
-  return origenSistema === OPERABLE_ORIGIN;
+  return (OPERABLE_ORIGINS as readonly string[]).includes(origenSistema);
 }

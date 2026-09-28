@@ -22,6 +22,11 @@ datasource db {
 // corresponde.
 enum RolAplicacion {
   AGENTE
+  // U8 (28-sep-2026): CLASIFICADOR redirige los tickets del portal; ADMIN
+  // administra los accesos de clientes. Ambos parten de las reglas de AGENTE
+  // (migración 20260928110000_acceso_clientes).
+  CLASIFICADOR
+  ADMIN
 
   @@map("rol_aplicacion")
   @@schema("core")
@@ -80,6 +85,7 @@ model DimClienteContai {
   updatedAt              DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
   clienteContaiRecurso   ClienteContaiRecurso[]
   factTicket             FactTicket[]
+  portalContacto         PortalContacto[]
 
   // Único parcial: NIT no vacío no se repite, pero permite múltiples clientes
   // sin identificación fiscal registrada (identificacion_fiscal IS NULL).
@@ -125,6 +131,11 @@ model DimPersonal {
   factTicketAsignado                     FactTicket[]         @relation("FactTicketAsignado")
   factTicketSolicitante                  FactTicket[]         @relation("FactTicketSolicitante")
   factTicketEvento                       FactTicketEvento[]
+  portalContactosCreados                 PortalContacto[]     @relation("PortalContactoCreadoPor")
+  portalAccesosConcedidos                PortalAutorizacion[] @relation("PortalAutorizacionConcedidaPor")
+  portalAccesosRevocados                 PortalAutorizacion[] @relation("PortalAutorizacionRevocadaPor")
+  portalInvitacionesEmitidas             PortalInvitacion[]
+  portalAuditoria                        PortalAuditoria[]
 
   // Como máximo un marcador histórico por correo compartido — protege la regla
   // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
@@ -235,6 +246,171 @@ model PermisoRegla {
   @@schema("app")
 }
 
+// ---------------------------------------------------------------------
+// Acceso externo de clientes (specs/acceso-clientes.md, U8). Migración
+// 20260928110000_acceso_clientes, que documenta cada CHECK no representable.
+// Ningún token, código ni credencial se guarda en claro: solo su hash.
+// ---------------------------------------------------------------------
+
+/// Una persona de un cliente con acceso al portal. Pertenece a un solo
+/// cliente y ve solo los tickets que ella radicó (D2).
+model PortalContacto {
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idClienteContai  String                 @map("id_cliente_contai") @db.Uuid
+  nombre           String                 @db.VarChar(200)
+  activo           Boolean                @default(true)
+  creadoPor        String                 @map("creado_por") @db.Uuid
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+  dimClienteContai DimClienteContai       @relation(fields: [idClienteContai], references: [idClienteContai], onDelete: Restrict, onUpdate: NoAction)
+  creador          DimPersonal            @relation("PortalContactoCreadoPor", fields: [creadoPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  correos          PortalContactoCorreo[]
+  autorizaciones   PortalAutorizacion[]
+  auditoria        PortalAuditoria[]
+  factTicket       FactTicket[]
+  eventosAutor     FactTicketEvento[]
+  notificaciones   TicketNotificacion[]
+
+  @@index([idClienteContai], map: "ix_portal_contacto_cliente")
+  @@map("portal_contacto")
+  @@schema("app")
+}
+
+/// Correos de un contacto, todos de igual valor (no hay correo principal).
+/// Se guardan normalizados: chk_portal_contacto_correo_normalizado.
+model PortalContactoCorreo {
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idContacto String             @map("id_contacto") @db.Uuid
+  correo     String             @db.VarChar(254)
+  activo     Boolean            @default(true)
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  contacto   PortalContacto     @relation(fields: [idContacto], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  desafios   PortalDesafioOtp[]
+
+  // Un correo activo identifica a lo sumo a un contacto: el ingreso por
+  // código tiene una sola respuesta a «¿a quién se lo mando?».
+  @@unique([correo], map: "ux_portal_contacto_correo_activo", where: raw("activo"))
+  @@index([idContacto], map: "ix_portal_contacto_correo_contacto")
+  @@map("portal_contacto_correo")
+  @@schema("app")
+}
+
+/// Concesión de acceso de un contacto. Una sola ACTIVA por contacto. El guard
+/// exige `activadaAt` además de un dispositivo válido (B2 de Impulsa, cerrada
+/// desde el principio). CHECK: estado IN (ACTIVA, REVOCADA), y revocadaAt
+/// presente si y solo si REVOCADA.
+model PortalAutorizacion {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idContacto       String              @map("id_contacto") @db.Uuid
+  estado           String              @default("ACTIVA") @db.VarChar(20)
+  soloLectura      Boolean             @default(false) @map("solo_lectura")
+  activadaAt       DateTime?           @map("activada_at") @db.Timestamptz(6)
+  concedidaPor     String              @map("concedida_por") @db.Uuid
+  revocadaAt       DateTime?           @map("revocada_at") @db.Timestamptz(6)
+  revocadaPor      String?             @map("revocada_por") @db.Uuid
+  motivoRevocacion String?             @map("motivo_revocacion") @db.VarChar(500)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  contacto         PortalContacto      @relation(fields: [idContacto], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  concedente       DimPersonal         @relation("PortalAutorizacionConcedidaPor", fields: [concedidaPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  revocador        DimPersonal?        @relation("PortalAutorizacionRevocadaPor", fields: [revocadaPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  invitaciones     PortalInvitacion[]
+  desafios         PortalDesafioOtp[]
+  dispositivos     PortalDispositivo[]
+  auditoria        PortalAuditoria[]
+
+  @@unique([idContacto], map: "ux_portal_autorizacion_activa", where: raw("estado = 'ACTIVA'"))
+  @@map("portal_autorizacion")
+  @@schema("app")
+}
+
+/// Invitación de un solo uso. Solo el hash del enlace. CHECK: estado IN
+/// (PENDIENTE, CONSUMIDA, REEMPLAZADA, REVOCADA), consumidaAt si y solo si
+/// CONSUMIDA. A lo sumo una PENDIENTE por autorización.
+model PortalInvitacion {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idAutorizacion String             @map("id_autorizacion") @db.Uuid
+  tokenHash      String             @unique(map: "ux_portal_invitacion_token_hash") @map("token_hash") @db.Char(64)
+  estado         String             @default("PENDIENTE") @db.VarChar(20)
+  expiraAt       DateTime           @map("expira_at") @db.Timestamptz(6)
+  consumidaAt    DateTime?          @map("consumida_at") @db.Timestamptz(6)
+  emitidaPor     String             @map("emitida_por") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  autorizacion   PortalAutorizacion @relation(fields: [idAutorizacion], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  emisor         DimPersonal        @relation(fields: [emitidaPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([idAutorizacion], map: "ux_portal_invitacion_pendiente", where: raw("estado = 'PENDIENTE'"))
+  @@map("portal_invitacion")
+  @@schema("app")
+}
+
+/// Código de seis dígitos para un navegador nuevo. `codeHash` es un HMAC con
+/// clave del servidor. CHECK: estado IN (ACTIVO, VERIFICADO, REEMPLAZADO,
+/// VENCIDO, AGOTADO) y 0 <= intentos <= maxIntentos.
+model PortalDesafioOtp {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idAutorizacion String               @map("id_autorizacion") @db.Uuid
+  idCorreo       String               @map("id_correo") @db.Uuid
+  codeHash       String               @map("code_hash") @db.Char(64)
+  estado         String               @default("ACTIVO") @db.VarChar(20)
+  intentos       Int                  @default(0)
+  maxIntentos    Int                  @map("max_intentos")
+  expiraAt       DateTime             @map("expira_at") @db.Timestamptz(6)
+  verificadoAt   DateTime?            @map("verificado_at") @db.Timestamptz(6)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  autorizacion   PortalAutorizacion   @relation(fields: [idAutorizacion], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  correo         PortalContactoCorreo @relation(fields: [idCorreo], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([idAutorizacion, createdAt], map: "ix_portal_desafio_otp_autorizacion")
+  @@map("portal_desafio_otp")
+  @@schema("app")
+}
+
+/// Navegador recordado. Cuelga de la autorización, no del contacto. Sin
+/// vencimiento absoluto (D3): `ultimoUsoAt` alimenta la regla de 180 días de
+/// inactividad. CHECK: estado IN (ACTIVO, REVOCADO), revocadoAt si y solo si
+/// REVOCADO.
+model PortalDispositivo {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idAutorizacion String             @map("id_autorizacion") @db.Uuid
+  credentialHash String             @unique(map: "ux_portal_dispositivo_credential_hash") @map("credential_hash") @db.Char(64)
+  estado         String             @default("ACTIVO") @db.VarChar(20)
+  ultimoUsoAt    DateTime           @default(now()) @map("ultimo_uso_at") @db.Timestamptz(6)
+  revocadoAt     DateTime?          @map("revocado_at") @db.Timestamptz(6)
+  userAgent      String?            @map("user_agent") @db.VarChar(400)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  autorizacion   PortalAutorizacion @relation(fields: [idAutorizacion], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([idAutorizacion], map: "ix_portal_dispositivo_autorizacion")
+  @@map("portal_dispositivo")
+  @@schema("app")
+}
+
+/// Auditoría del acceso externo: solo INSERT para coraje_runtime. Nunca lleva
+/// el código ni el enlace. CHECK: resultado IN (EXITO, FALLO).
+model PortalAuditoria {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evento         String              @db.VarChar(60)
+  resultado      String              @db.VarChar(20)
+  idContacto     String?             @map("id_contacto") @db.Uuid
+  idAutorizacion String?             @map("id_autorizacion") @db.Uuid
+  idPersonal     String?             @map("id_personal") @db.Uuid
+  motivo         String?             @db.VarChar(500)
+  metadata       Json                @default("{}")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  contacto       PortalContacto?     @relation(fields: [idContacto], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  autorizacion   PortalAutorizacion? @relation(fields: [idAutorizacion], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  dimPersonal    DimPersonal?        @relation(fields: [idPersonal], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([idContacto, createdAt], map: "ix_portal_auditoria_contacto")
+  @@index([idAutorizacion, createdAt], map: "ix_portal_auditoria_autorizacion")
+  @@map("portal_auditoria")
+  @@schema("app")
+}
+
 // =====================================================================
 // HELPDESK — dimensiones, hechos y reglas
 // =====================================================================
@@ -275,6 +451,9 @@ enum TipoEventoTicket {
 enum TipoActorEvento {
   EMPLEADO
   SISTEMA
+  // U8: el contacto de un cliente que radica su ticket (T1). Su columna es
+  // idContactoAutor, atada al tipo por chk_fact_ticket_evento_actor.
+  CLIENTE
 
   @@map("tipo_actor_evento")
   @@schema("helpdesk")
@@ -348,6 +527,12 @@ model FactTicket {
   origenSistema        String                  @map("origen_sistema")
   ultimaActualizacion  DateTime                @default(now()) @map("ultima_actualizacion") @db.Timestamptz(6)
   encargadoInterno     String?                 @map("encargado_interno")
+  // U8 (D2): el contacto que radicó un ticket del portal. Lo escribe solo
+  // helpdesk.crear_ticket_cliente; coraje_runtime no tiene UPDATE sobre la
+  // columna. chk_fact_ticket_origen_portal: presente si y solo si
+  // origen_sistema = PORTAL_CLIENTE.
+  idContactoPortal     String?                 @map("id_contacto_portal") @db.Uuid
+  portalContacto       PortalContacto?         @relation(fields: [idContactoPortal], references: [id], onDelete: Restrict, onUpdate: NoAction)
   dimArea              DimArea?                @relation(fields: [idAreaDestino], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
   dimPersonalAsignado  DimPersonal?            @relation("FactTicketAsignado", fields: [idAsignado], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
   dimClienteContai     DimClienteContai?       @relation(fields: [idClienteContai], references: [idClienteContai], onDelete: NoAction, onUpdate: NoAction)
@@ -387,6 +572,8 @@ model FactTicketEvento {
   eventHash         String?           @unique @map("event_hash")
   idTicket          String            @map("id_ticket") @db.Uuid
   idAutor           String?           @map("id_autor") @db.Uuid
+  // U8: autor cuando tipoActor = CLIENTE (chk_fact_ticket_evento_actor).
+  idContactoAutor   String?           @map("id_contacto_autor") @db.Uuid
   tipoEvento        TipoEventoTicket  @map("tipo_evento")
   tipoActor         TipoActorEvento   @map("tipo_actor")
   visibilidad       VisibilidadEvento
@@ -395,6 +582,7 @@ model FactTicketEvento {
   contenido         String
   fechaRegistro     DateTime          @default(now()) @map("fecha_registro") @db.Timestamptz(6)
   dimPersonal       DimPersonal?      @relation(fields: [idAutor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  contactoAutor     PortalContacto?   @relation(fields: [idContactoAutor], references: [id], onDelete: Restrict, onUpdate: NoAction)
   factTicket        FactTicket        @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
   estadoAnterior    DimEstado?        @relation("EventoEstadoAnterior", fields: [idEstadoAnterior], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   estadoNuevo       DimEstado?        @relation("EventoEstadoNuevo", fields: [idEstadoNuevo], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
@@ -461,14 +649,16 @@ model TicketLegacySharepointRef {
 /// Un correo producido por una acción del ticket (D6). Nace PENDIENTE en la
 /// transacción del evento y se envía después del commit, sin worker
 /// (src/server/notifications/ticket-notifications.ts). CHECK no representables:
-/// chk_ticket_notificacion_estado (PENDIENTE, ENVIANDO, ENVIADO, FALLIDO) e
-/// _intentos (>= 0). coraje_runtime no tiene DELETE: lo enviado es evidencia.
+/// chk_ticket_notificacion_estado (PENDIENTE, ENVIANDO, ENVIADO, FALLIDO),
+/// _intentos (>= 0) y _destinatario (un empleado o un contacto, exactamente
+/// uno, U8). coraje_runtime no tiene DELETE: lo enviado es evidencia.
 model TicketNotificacion {
   id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   idTicket           String           @map("id_ticket") @db.Uuid
   idEvento           String           @map("id_evento") @db.Uuid
   idRemitente        String           @map("id_remitente") @db.Uuid
-  idDestinatario     String           @map("id_destinatario") @db.Uuid
+  idDestinatario     String?          @map("id_destinatario") @db.Uuid
+  idContactoDestinatario String?      @map("id_contacto_destinatario") @db.Uuid
   destinatarioCorreo String           @map("destinatario_correo") @db.VarChar(150)
   asunto             String           @db.VarChar(300)
   cuerpoHtml         String           @map("cuerpo_html")
@@ -481,7 +671,8 @@ model TicketNotificacion {
   factTicket         FactTicket       @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
   factTicketEvento   FactTicketEvento @relation(fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
   remitente          DimPersonal      @relation("NotificacionRemitente", fields: [idRemitente], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
-  destinatario       DimPersonal      @relation("NotificacionDestinatario", fields: [idDestinatario], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  destinatario       DimPersonal?     @relation("NotificacionDestinatario", fields: [idDestinatario], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+  contactoDestinatario PortalContacto? @relation(fields: [idContactoDestinatario], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([idTicket, createdAt], map: "ix_ticket_notificacion_ticket")
   @@map("ticket_notificacion")

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/features/tickets/format";
 import { AuthorizationDeniedError, requireGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
-import { publicTicketUrl } from "@/server/auth/conecta-return";
+import { publicPortalUrl, publicTicketUrl } from "@/server/auth/conecta-return";
 import { TicketDomainError } from "@/server/tickets/ticket-errors";
 
 import { MailSendError, sendMailAsEmployee } from "./graph-mail";
@@ -33,9 +33,23 @@ type Tx = Prisma.TransactionClient;
 /** Un envío que lleva más de esto en `ENVIANDO` se da por muerto y se puede reclamar. */
 const STALE_SENDING_MS = 5 * 60 * 1000;
 
+/**
+ * A quién va un correo: una persona del directorio o un contacto de cliente
+ * (U8). Nunca los dos: `chk_ticket_notificacion_destinatario`.
+ */
+export type MailRecipient = { tipo: "EMPLEADO"; idPersonal: string } | { tipo: "CONTACTO"; idContacto: string };
+
 export interface MailDelivery {
   kind: TicketMailKind;
-  idDestinatario: string;
+  destinatario: MailRecipient;
+}
+
+/** Un correo concreto a registrar: una dirección, con su destinatario. */
+interface ResolvedDelivery {
+  kind: TicketMailKind;
+  correo: string;
+  idDestinatario: string | null;
+  idContactoDestinatario: string | null;
 }
 
 /**
@@ -43,13 +57,19 @@ export interface MailDelivery {
  * no tiene correo y a quien sería remitente y destinatario a la vez: nadie
  * necesita que le avisen de lo que acaba de hacer.
  *
+ * Un contacto de cliente recibe un correo por cada dirección activa suya:
+ * ninguna es la principal (acceso-clientes.md §4). Su enlace lleva al portal;
+ * el de un empleado, a la bandeja interna.
+ *
  * @returns los ids de los correos creados, para enviarlos tras el commit.
  */
 export async function enqueueTicketMail(
   tx: Tx,
   params: { idTicket: string; idEvento: string; idRemitente: string; texto: string | null; deliveries: MailDelivery[] },
 ): Promise<string[]> {
-  const deliveries = params.deliveries.filter((delivery) => delivery.idDestinatario !== params.idRemitente);
+  const deliveries = params.deliveries.filter(
+    (delivery) => !(delivery.destinatario.tipo === "EMPLEADO" && delivery.destinatario.idPersonal === params.idRemitente),
+  );
   if (deliveries.length === 0) return [];
 
   const ticket = await tx.factTicket.findUniqueOrThrow({
@@ -62,41 +82,72 @@ export async function enqueueTicketMail(
       dimTipoRequerimiento: { select: { tipoRequerimiento: true } },
       dimPersonalSolicitante: { select: { nombreCompleto: true } },
       dimPersonalAsignado: { select: { nombreCompleto: true } },
+      portalContacto: { select: { nombre: true } },
+      dimClienteContai: { select: { nombreCliente: true } },
     },
   });
-  const personas = await tx.dimPersonal.findMany({
-    where: { idPersonal: { in: [params.idRemitente, ...deliveries.map((delivery) => delivery.idDestinatario)] } },
-    select: { idPersonal: true, nombreCompleto: true, correoCorporativo: true },
-  });
+
+  const personIds = deliveries.flatMap((d) => (d.destinatario.tipo === "EMPLEADO" ? [d.destinatario.idPersonal] : []));
+  const contactIds = deliveries.flatMap((d) => (d.destinatario.tipo === "CONTACTO" ? [d.destinatario.idContacto] : []));
+  const [personas, contactos] = await Promise.all([
+    tx.dimPersonal.findMany({
+      where: { idPersonal: { in: [params.idRemitente, ...personIds] } },
+      select: { idPersonal: true, nombreCompleto: true, correoCorporativo: true },
+    }),
+    contactIds.length === 0
+      ? Promise.resolve([])
+      : tx.portalContactoCorreo.findMany({
+          where: { idContacto: { in: contactIds }, activo: true, contacto: { activo: true } },
+          select: { idContacto: true, correo: true },
+        }),
+  ]);
   const persona = new Map(personas.map((row) => [row.idPersonal, row]));
   const remitente = persona.get(params.idRemitente)?.nombreCompleto ?? "HelpDesk";
 
-  const context = {
+  const resolved: ResolvedDelivery[] = deliveries.flatMap((delivery): ResolvedDelivery[] => {
+    if (delivery.destinatario.tipo === "EMPLEADO") {
+      const correo = persona.get(delivery.destinatario.idPersonal)?.correoCorporativo?.trim();
+      return correo ? [{ kind: delivery.kind, correo, idDestinatario: delivery.destinatario.idPersonal, idContactoDestinatario: null }] : [];
+    }
+    const { idContacto } = delivery.destinatario;
+    return contactos
+      .filter((row) => row.idContacto === idContacto)
+      .map((row) => ({ kind: delivery.kind, correo: row.correo, idDestinatario: null, idContactoDestinatario: idContacto }));
+  });
+
+  const solicitante =
+    ticket.dimPersonalSolicitante?.nombreCompleto ??
+    (ticket.portalContacto ? `${ticket.portalContacto.nombre} · ${ticket.dimClienteContai?.nombreCliente ?? "cliente"}` : "Sin solicitante");
+
+  const baseContext = {
+    // Un ticket del portal sin clasificar no tiene código; al contacto se le
+    // nombra por su fecha en el portal, aquí basta con decirlo.
     codigo: ticket.codigoTicket ?? "sin código",
     descripcion: ticket.descripcionProblema,
     area: ticket.dimArea?.nombreArea ?? null,
     tipo: ticket.dimTipoRequerimiento?.tipoRequerimiento ?? null,
-    solicitante: ticket.dimPersonalSolicitante?.nombreCompleto ?? "Sin solicitante",
+    solicitante,
     remitente,
     responsable: ticket.dimPersonalAsignado?.nombreCompleto ?? null,
     texto: params.texto,
     vence: ticket.fechaLimite ? formatDate(ticket.fechaLimite) : null,
-    url: publicTicketUrl(params.idTicket),
   };
 
   const ids: string[] = [];
-  for (const delivery of deliveries) {
-    const destinatario = persona.get(delivery.idDestinatario);
-    const correo = destinatario?.correoCorporativo?.trim();
-    if (!correo) continue;
-    const { subject, html } = buildTicketMail(delivery.kind, context);
+  for (const delivery of resolved) {
+    const url =
+      delivery.idContactoDestinatario !== null
+        ? publicPortalUrl(`/portal/tickets/${encodeURIComponent(params.idTicket)}`)
+        : publicTicketUrl(params.idTicket);
+    const { subject, html } = buildTicketMail(delivery.kind, { ...baseContext, url });
     const created = await tx.ticketNotificacion.create({
       data: {
         idTicket: params.idTicket,
         idEvento: params.idEvento,
         idRemitente: params.idRemitente,
         idDestinatario: delivery.idDestinatario,
-        destinatarioCorreo: correo.slice(0, 150),
+        idContactoDestinatario: delivery.idContactoDestinatario,
+        destinatarioCorreo: delivery.correo.slice(0, 150),
         asunto: subject.slice(0, 300),
         cuerpoHtml: html,
       },
@@ -242,6 +293,7 @@ export async function listTicketMail(params: {
       createdAt: true,
       updatedAt: true,
       destinatario: { select: { nombreCompleto: true } },
+      contactoDestinatario: { select: { nombre: true } },
     },
   });
   const staleBefore = Date.now() - STALE_SENDING_MS;
@@ -254,7 +306,7 @@ export async function listTicketMail(params: {
     const stuck = (estado === "ENVIANDO" || estado === "PENDIENTE") && row.updatedAt.getTime() < staleBefore;
     return {
       id: row.id,
-      destinatario: row.destinatario.nombreCompleto,
+      destinatario: row.destinatario?.nombreCompleto ?? (row.contactoDestinatario ? `${row.contactoDestinatario.nombre} (cliente)` : "Destinatario"),
       asunto: row.asunto,
       estado,
       error: row.ultimoError,

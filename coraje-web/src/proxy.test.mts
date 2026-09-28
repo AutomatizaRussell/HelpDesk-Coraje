@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 
 import { proxy } from "./proxy";
 import { SESSION_COOKIE_NAME } from "./server/auth/session-cookie";
+import { PORTAL_DEVICE_COOKIE } from "./server/portal/portal-cookie";
 
 /**
  * Comportamiento del perímetro.
@@ -24,12 +25,16 @@ const ORIGEN = "https://conecta.rbgct.cloud";
 
 function peticion(
   ruta: string,
-  opciones: { conSesion?: boolean; navegacion?: boolean; metodo?: string } = {},
+  opciones: { conSesion?: boolean; conPortal?: boolean; navegacion?: boolean; metodo?: string } = {},
 ): NextRequest {
-  const { conSesion = false, navegacion = true, metodo = "GET" } = opciones;
+  const { conSesion = false, conPortal = false, navegacion = true, metodo = "GET" } = opciones;
   const headers = new Headers();
   if (navegacion) headers.set("accept", "text/html,application/xhtml+xml");
-  if (conSesion) headers.set("cookie", `${SESSION_COOKIE_NAME}=token-cualquiera`);
+  const cookies = [
+    ...(conSesion ? [`${SESSION_COOKIE_NAME}=token-cualquiera`] : []),
+    ...(conPortal ? [`${PORTAL_DEVICE_COOKIE}=credencial-cualquiera`] : []),
+  ];
+  if (cookies.length > 0) headers.set("cookie", cookies.join("; "));
   return new NextRequest(new URL(`${ORIGEN}${ruta}`), { method: metodo, headers });
 }
 
@@ -103,4 +108,37 @@ test("una ruta que no existe tampoco se filtra: deniega por defecto", () => {
   // escribirse, y que una inexistente no revela si existe o no.
   assert.equal(proxy(peticion("/helpdesk/tickets/42")).status, 303);
   assert.equal(proxy(peticion("/helpdesk/portal")).status, 303);
+});
+
+// ---------------------------------------------------------------------------
+// Portal de clientes (U8)
+// ---------------------------------------------------------------------------
+
+test("sin navegador recordado, el portal manda a su propio ingreso, no al de empleados", () => {
+  const respuesta = proxy(peticion("/helpdesk/portal/tickets/nuevo"));
+  assert.equal(respuesta.status, 303);
+  const location = respuesta.headers.get("location") ?? "";
+  assert.ok(location.startsWith("/helpdesk/portal/ingreso"), location);
+  assert.ok(!location.includes("://"), `Location absoluto: ${location}`);
+});
+
+test("con la cookie del portal presente, el portal deja pasar", () => {
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal", { conPortal: true }))));
+});
+
+test("la entrada del portal es pública", () => {
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/ingreso"))));
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/ingreso/codigo"))));
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/activar/enlace-cualquiera"))));
+});
+
+test("una credencial no abre la clase de la otra", () => {
+  // La sesión de un empleado no entra al portal…
+  const empleadoEnPortal = proxy(peticion("/helpdesk/portal", { conSesion: true }));
+  assert.equal(empleadoEnPortal.status, 303);
+  assert.ok((empleadoEnPortal.headers.get("location") ?? "").startsWith("/helpdesk/portal/ingreso"));
+  // …y la cookie de un cliente no entra a la bandeja interna.
+  const clienteEnBandeja = proxy(peticion("/helpdesk/tickets", { conPortal: true }));
+  assert.equal(clienteEnBandeja.status, 303);
+  assert.ok((clienteEnBandeja.headers.get("location") ?? "").startsWith("/helpdesk/ingreso"));
 });

@@ -1,11 +1,46 @@
 # Handoff técnico
 
 ```
-CORTE:   26-sep-2026 (corte 18, U7 — ciclo interno publicado en `987107c`, despliegue SIN
-         CONFIRMAR. Después, un commit de solo documentación por excepción autorizada:
-         cambio de PC, ver `CLAUDE.md`, «Proyecto hermano»)
-SOBRE:   `8eff969` (corte 17)
+CORTE:   28-sep-2026 (corte 19, U8 — acceso de clientes y tickets del portal,
+         construido, SIN DESPLEGAR)
+SOBRE:   `f117661`
 RAMA:    main
+UNIDAD:  U8 · ACCESO DE CLIENTES. Se adelanta a los pasos 2-5 de U7, que quedan para
+         ejercitarse junto con U8 (decisión del usuario del 28-sep: hoy sin SSH).
+         Decisiones del usuario (28-sep): D2 cada contacto ve solo lo suyo · D3 sin
+         vencimiento, 180 días de inactividad por navegador · D4 correo por n8n y
+         Graph delegado desde `automatizacionmedellin@` · roles CLASIFICADOR
+         (redirige) y ADMIN (administra accesos), separados.
+         Construido:
+         - migraciones `20260928100000_valores_acceso_clientes` (solo ADD VALUE:
+           actor CLIENTE, roles CLASIFICADOR y ADMIN) y
+           `20260928110000_acceso_clientes`: siete tablas en `app` (contacto,
+           correo, autorización, invitación, desafío, dispositivo, auditoría);
+           `fact_ticket.id_contacto_portal`; actor CLIENTE en el escritor único
+           (DROP + CREATE, parámetro nuevo al final con DEFAULT NULL);
+           `resolver_responsable_tipo` (regla de enrutamiento única, también la
+           usa ya `crear_ticket_interno`); `crear_ticket_cliente` (T1);
+           `redirigir_ticket` (T3, 3 días hábiles, sin salida a SharePoint);
+           correo del ticket a un contacto; catálogo `ticket.redirigir` y
+           `portal.acceso.administrar`;
+         - `src/server/portal/` (política, acceso, invitaciones, código, correo a
+           n8n, auditoría, consultas), perímetro de tres clases de ruta
+           (`PUBLICA`, `PORTAL`, `EMPLEADO`);
+         - vistas `/portal`, `/portal/tickets/nuevo`, `/portal/tickets/[id]`,
+           `/portal/ingreso`, `/portal/ingreso/codigo`, `/portal/activar/[token]`,
+           `/clasificacion`, `/clasificacion/[id]`, `/accesos`, `/accesos/[id]`;
+         - workflow `n8n/HELPDESK - Portal - Enviar correo V1.json` (sin guardar
+           ejecuciones, sin copia en Elementos enviados). **Sin importar**.
+         Evidencia: `prisma validate`, `prisma generate`, `tsc`, `eslint`,
+         `pnpm test` 120/120, `next build`; SQL y PL/pgSQL de las dos migraciones
+         parseados con `@libpg-query/parser`, con controles negativos.
+         **Sin ejercitar**: ninguna migración aplicada, ningún correo enviado,
+         ninguna vista abierta.
+
+--- Corte 18, para contexto:
+CORTE:   26-sep-2026 (corte 18, U7 — ciclo interno publicado en `987107c`, desplegado
+         el 28-sep: `migrate` reporta 8 migraciones y ninguna pendiente)
+SOBRE:   `8eff969` (corte 17)
 UNIDAD:  U7 · CICLO INTERNO DEL TICKET. Incluye además el cierre documental de U6
          (pruebas negativas y la ingesta posterior al retiro, ejercitadas el 25-sep).
          Construido:
@@ -376,7 +411,7 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 |---|---|---|
 | Ingesta SharePoint → PostgreSQL | `EJERCITADO, con el código corregido de esta unidad` | 2.313 tickets conciliados en `legacy/baseline-calidad.md` (baseline histórico, no se edita) → 2.559 el 10-sep-2026 antes de esta unidad → **2.825 el 10-sep-2026 tras ejecutar la ingesta con el fix de F10** (§4). El crecimiento es la ingesta incremental real, confirmado por el usuario — no es un error de conteo |
 | Salida PostgreSQL → SharePoint | `CONSTRUIDO, ACTIVO, NUNCA EJERCITADO` | Ningún cliente radicó nunca — el outbox sigue en 0 filas (U1 §5). El workflow consumidor **existe, está commiteado y confirmado activo en n8n** (F5 cerrado), pero nadie lo ha visto procesar un ticket real todavía |
-| Portal de clientes | `RETIRADO, SIN SUSTITUTO` | Eliminado el 22-sep-2026 (U4, `735be57`): las tres páginas, la API de clientes, la cookie de cliente y `features/portal/`. **HelpDesk no tiene hoy canal externo de recepción**; construirlo es `U8`, bloqueado por D2/D3/D4 |
+| Portal de clientes | `CONSTRUIDO, SIN DESPLEGAR` (corte 19) | El abierto se eliminó el 22-sep-2026 (U4, `735be57`). El nuevo (U8): invitación de un solo uso, código por correo, navegador recordado con 180 días de inactividad, cada contacto ve solo lo suyo, consola `/accesos` y cola `/clasificacion`. Sin ejercitar |
 | Redirección interna | `RETIRADA` | La clave compartida y su pantalla se eliminaron (`735be57`); las dos vistas cayeron con el frontend heredado (`1937589`). La lógica —resolución del encargado y escritura en el outbox— se conservó sin pantalla en `features/redireccion/`, como referencia para `U7` |
 | Perímetro de acceso | `CONSTRUIDO Y EJERCITADO` | *Deny-by-default* en `src/proxy.ts`, con lista pública de tres entradas desde U5 (`/login`, `/ingreso`, `/api/auth/microsoft`); la navegación sin sesión va a `/ingreso`. 42 pruebas, ocho ejecutando `proxy()`; cuatro escenarios contra el despliegue el 22-sep-2026. **No verificado:** el tratamiento del prefijo `/helpdesk` dentro del proxy real (§1, salvedad 4) |
 | Frontend | `DESPLEGADO; SHELL EJERCITADO` | Seis rutas: `/` (dos modos), `/login`, `/ingreso` y las tres de auth. Shell de Conecta, barra propia y pestañas de HelpDesk vistos en producción por el usuario el 24-sep-2026. Sin funcionalidad de tickets |
@@ -388,6 +423,23 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 | Documentación | `CERRADA en este corte` | Este conjunto |
 
 ## 3. Capacidades publicadas en esta unidad
+
+### U8 — acceso de clientes y tickets del portal (corte 19, sin desplegar)
+
+- **Identidad del cliente** (`src/server/portal/`): invitación de un solo uso que se
+  activa con un botón (abrir el enlace no la consume), código de seis dígitos por
+  correo para cualquier navegador nuevo, navegador recordado que cuelga de la
+  autorización y caduca a los 180 días sin uso, solo lectura en servidor, revocación
+  que cierra todos los navegadores sin cancelar tickets, y auditoría sin secretos.
+- **Perímetro de tres clases**: `PUBLICA`, `PORTAL` y `EMPLEADO`. Cada cookie viaja solo
+  a su ruta y ninguna abre la clase de la otra.
+- **Tickets del portal**: el cliente radica (T1) y ve solo lo suyo (D2); `CLASIFICADOR`
+  clasifica desde `/clasificacion` (T3, 3 días hábiles); responder y rechazar le
+  avisan por correo desde la cuenta de quien actúa.
+- **Consola `/accesos`** para `ADMIN`: buscar cliente, dar de alta un contacto con
+  invitación, reenviarla, solo consulta y revocar.
+- **Correo del portal** por el workflow `HELPDESK - Portal - Enviar correo V1`, sin cola,
+  sin guardar ejecuciones y sin copia en «Elementos enviados».
 
 ### U5 — contrato de diseño, shell de Conecta y modos de entrada (`463f8d0` → `ed0bd1d`)
 
@@ -641,11 +693,16 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
 | **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, decidido y pendiente de construir (U5.2) |
 | **Compartir origen con Conecta** (D7) expone a cada app lo que la otra guarda en el navegador, incluidos los tokens de sesión de Conecta | Un XSS en cualquiera de las dos compromete a ambas | Disciplina contra XSS (sin `dangerouslySetInnerHTML` ni HTML de terceros), y una política de seguridad de contenido antes de renderizar contenido de clientes (`integracion-conecta.md` §6) |
+| **U8: los correos del portal dependen de una credencial delegada del buzón `automatizacionmedellin@`** en n8n | Si le cambian la contraseña, le revocan las sesiones o pasa unos 90 días sin enviar, ni invitaciones ni códigos salen: ningún cliente nuevo entra y ningún navegador nuevo se verifica. Los navegadores ya recordados siguen entrando | Alerta de Teams (workflow de error) y `app.portal_auditoria` con `CODIGO_ENVIADO`/`INVITACION_ENVIADA` en `FALLO`. Reautorizar la credencial (`operacion.md`). Salida estructural si se repite: permiso de aplicación restringido al buzón, en una App Registration propia |
+| **U8: los tickets del portal no llegan a PowerApps** | El equipo que trabaja en PowerApps no los ve: solo existen en HelpDesk, en la cola `/clasificacion` y en la bandeja de quien los recibe | Decisión deliberada hasta U9 (`specs/tickets.md` §4.1). **No abrir el portal a clientes reales antes de U9** o antes de que el equipo que recibe esos tickets trabaje en HelpDesk |
+| **U8: el correo del portal se entrega a n8n en el momento, sin cola** | Si n8n está caído, el código o la invitación no salen y no se reintentan solos: la persona pide otro código, o quien administra accesos emite otra invitación | Aceptado: una cola exigiría guardar el secreto (`acceso-clientes.md` §11, D4). El fallo queda auditado |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
+| `f117661` | Registra la infraestructura propia de HelpDesk y el dueño verificado de las funciones del calendario (solo documentación, excepción autorizada por cambio de equipo) |
+| `987107c` | **Corte 18.** U7: ciclo interno con permisos y correo delegado. Desplegado el 28-sep-2026 (`migrate`: 8 migraciones, ninguna pendiente); sin ejercitar |
 | `8eff969` | **Corte 17.** U6 fase 2: retira los privilegios que eluden el escritor único |
 | `96d0860` | Corte 16. U6 fase 1: modelo de eventos, escritor único e ingesta reescrita |
 | `9e2c322` | Retira `sql/` y fija la traducción de estados legacy (`tickets.md` §4.2) y la visibilidad `INTERNO` de los eventos legacy |
@@ -758,57 +815,137 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — U7: desplegar y ejercitar el corte 18
+## Acción inmediata para la siguiente sesión — desplegar el corte 19 y ejercitar U7 y U8 juntas
 
-**U7 sigue siendo la cabeza de `plan-ejecucion.md`.** El corte 18 está construido y sin
-desplegar. Lo que falta, en orden:
+**Se desvía de la cola, y el motivo queda escrito:** U7 seguía en la cabeza de
+`plan-ejecucion.md` con sus pruebas pendientes, pero el 28-sep-2026 no había acceso SSH a
+la VPS y el usuario decidió construir U8 ese día y ejercitar las dos al siguiente. Las
+pruebas de U7 no cambian por U8, salvo `crear_ticket_interno`, que ahora usa
+`resolver_responsable_tipo` con el mismo comportamiento: el paso 4 la ejercita.
 
-0. ~~Antes de publicar, confirmar que `coraje_migrator` es dueño de
-   `core.next_monday` y `core.is_colombia_holiday`.~~ **Hecho el 26-sep-2026:** las dos
-   ya eran suyas, sin ningún cambio. Después se publicó `987107c`, pendiente de
-   comprobar que se desplegó. Comando usado, con el patrón de `estado/operacion.md`:
+**Ya hecho:** U7 está desplegada. El 28-sep, `migrate` reportó 8 migraciones y ninguna
+pendiente, así que las tres del corte 18 están aplicadas.
+
+### A. Antes de publicar el corte 19
+
+1. **Dueño de los tipos que la migración altera.** `ALTER TYPE … ADD VALUE` exige ser su
+   dueño. Si alguna fila da `f`, se corrige con `ALTER TYPE … OWNER TO coraje_migrator`
+   antes de publicar; si no, `migrate` aborta y `web` no arranca:
 
    ```bash
    docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-   SELECT p.oid::regprocedure AS funcion,
-          pg_get_userbyid(p.proowner) AS dueno,
-          pg_get_userbyid(p.proowner) = 'coraje_migrator' AS migracion_puede_reemplazarla
-   FROM pg_proc p
-   JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname = 'core'
-     AND p.proname IN ('next_monday', 'is_colombia_holiday');
+   SELECT n.nspname || '.' || t.typname AS tipo,
+          pg_get_userbyid(t.typowner) = 'coraje_migrator' AS migracion_puede_alterarlo
+   FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+   WHERE (n.nspname, t.typname) IN (('core', 'rol_aplicacion'), ('helpdesk', 'tipo_actor_evento'));
    "
    ```
+2. **Publicar** (`git push`) y confirmar en el log de `migrate` que aplica
+   `20260928100000_valores_acceso_clientes` y `20260928110000_acceso_clientes`.
 
-   Si alguna fila da `f`, antes de publicar se ejecuta `ALTER FUNCTION … OWNER TO
-   coraje_migrator` con el mismo patrón. Si no, la migración del calendario aborta con
-   ese mensaje y `web` no arranca.
-1. **Confirmar que `migrate` aplicó las tres migraciones** del corte
-   (`_prisma_migrations`).
-2. **Prueba negativa del `INSERT`**, con `SET LOCAL ROLE coraje_runtime` dentro de una
-   transacción revertida: un `INSERT` en `helpdesk.fact_ticket` falla con
-   *permission denied*. El comando se entrega con el patrón de `estado/operacion.md`.
-3. **Calendario**: los festivos de 2026 según `core.is_colombia_holiday` tienen que ser
-   los 19 oficiales, incluidos el 12 de enero, el 18 de mayo, el 8 y el 15 de junio y el
-   13 de julio. No deben aparecer el 6 de enero, el 14 de mayo ni el 4 de junio. El
-   comando se entrega con el mismo patrón.
-4. **Ciclo completo con tickets de prueba**, en el navegador: crear (le llega el correo
-   a quien recibe) → reasignar a otra persona del área (le llega el correo a esa persona
-   y a quien radicó) → responder (le llega a quien radicó, el ticket queda `CERRADO`).
-   Crear otro y rechazarlo. Una nota interna no aparece al solicitante. **Antes, cerrar
-   sesión y volver a entrar:** la autorización de correo solo se guarda en un ingreso
-   posterior al despliegue. **Condición:** el área de prueba necesita un responsable de
-   recepción con `rol_aplicacion`, y la reasignación, una segunda persona con rol en la
-   misma área.
-5. **Importar la salida de n8n** con la credencial nueva y confirmar en la instancia que
-   el nodo HTTP usa «Microsoft SharePoint account».
+### B. Pruebas de U7 que quedaron pendientes
 
-**Adjuntos, bloqueados por dos datos del usuario:** los permisos de Microsoft Graph de la
-App Registration de Conecta y de la que hay detrás de «Microsoft SharePoint account»
-(tipo delegado o de aplicación, y si tienen consentimiento de administrador), y el sitio
-o biblioteca donde se guardarán los archivos. El diseño será el del buzón de sugerencias
-de Impulsa (sesión de carga de Graph creada por n8n; el navegador sube directo; en
-PostgreSQL solo el manifiesto).
+3. **Prueba negativa del `INSERT`** y **de la columna protegida de U8**, en una
+   transacción revertida:
+
+   ```bash
+   docker exec -i coraje_postgres psql -U "coraje_app" -d "coraje" <<'SQL'
+   BEGIN;
+   SET LOCAL ROLE coraje_runtime;
+   DO $prueba$
+   BEGIN
+     BEGIN
+       INSERT INTO helpdesk.fact_ticket (descripcion_problema, id_solicitante, id_estado, origen_sistema)
+       SELECT 'prueba', (SELECT id_personal FROM core.dim_personal LIMIT 1), id_estado, 'SISTEMA_INTERNO'
+       FROM helpdesk.dim_estado WHERE nombre_estado = 'ABIERTO';
+       RAISE NOTICE 'INSERT en fact_ticket: PERMITIDO (defecto)';
+     EXCEPTION WHEN insufficient_privilege THEN
+       RAISE NOTICE 'INSERT en fact_ticket: denegado (correcto)';
+     END;
+     BEGIN
+       UPDATE helpdesk.fact_ticket SET id_contacto_portal = NULL WHERE false;
+       RAISE NOTICE 'UPDATE de id_contacto_portal: PERMITIDO (defecto)';
+     EXCEPTION WHEN insufficient_privilege THEN
+       RAISE NOTICE 'UPDATE de id_contacto_portal: denegado (correcto)';
+     END;
+     BEGIN
+       UPDATE app.portal_auditoria SET motivo = NULL WHERE false;
+       RAISE NOTICE 'UPDATE de portal_auditoria: PERMITIDO (defecto)';
+     EXCEPTION WHEN insufficient_privilege THEN
+       RAISE NOTICE 'UPDATE de portal_auditoria: denegado (correcto)';
+     END;
+   END
+   $prueba$;
+   ROLLBACK;
+   SQL
+   ```
+
+   Esperado: tres avisos, los tres «denegado (correcto)». Todo va dentro de una
+   transacción revertida, así que no queda nada escrito.
+4. **Calendario 2026**: tienen que salir los 19 festivos oficiales, con el 12-ene, el
+   18-may, el 8 y 15-jun y el 13-jul, y sin el 6-ene, el 14-may ni el 4-jun:
+
+   ```bash
+   docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+   SELECT d::date AS festivo
+   FROM generate_series('2026-01-01'::date, '2026-12-31'::date, '1 day') AS d
+   WHERE core.is_colombia_holiday(d::date)
+   ORDER BY 1;
+   "
+   ```
+5. **Ciclo interno completo** en el navegador, igual que en el corte 18: crear → le llega
+   el correo a quien recibe; reasignar dentro del área → correo a la persona nueva y a
+   quien radicó; responder → queda `CERRADO`. Crear otro y rechazarlo. Una nota interna
+   no la ve el solicitante. **Antes, cerrar sesión y volver a entrar**: la autorización
+   de correo solo se guarda en un ingreso posterior al despliegue. Condición: un
+   responsable de recepción con rol en el área de prueba y una segunda persona con rol
+   en la misma área.
+6. **Importar la salida de n8n** con la credencial «Microsoft SharePoint account».
+
+### C. Puesta en marcha de U8 (`estado/operacion.md`)
+
+7. **Correo del portal**: redirect URI de n8n en la App Registration, credencial *Microsoft
+   OAuth2* autorizada **como `automatizacionmedellin@`**, importar `HELPDESK - Portal -
+   Enviar correo V1`, comprobar que no guarda ejecuciones, `HELPDESK_PORTAL_MAIL_SECRET`
+   en n8n, `N8N_PORTAL_MAIL_WEBHOOK_URL` y `N8N_PORTAL_MAIL_SECRET` en Coolify, y activar.
+8. **Roles de prueba**: una persona `ADMIN` y otra `CLASIFICADOR`, con el `UPDATE` de
+   `operacion.md`. La cuenta propia puede ser cualquiera de las dos, pero no las dos a la
+   vez: un rol por persona. **Al terminar, devolver cada fila a su rol anterior**,
+   fijando rol y `estado_activo` a la vez (§ «Estado de la fila de prueba»).
+
+### D. Pruebas de U8
+
+9. **Invitación**: como `ADMIN`, en `/accesos`, buscar un cliente activo y dar de alta un
+   contacto con un correo propio de prueba. Llega la invitación; abrirla **no** la
+   consume (volver a abrirla sigue ofreciendo el botón); «Activar mi acceso» lleva a
+   `/portal` con la URL limpia. Reabrir el enlace dice «ya se usó».
+10. **Radicar (T1)**: «Nueva solicitud» → la solicitud queda `ABIERTO`, sin código, con
+    el evento «Solicitud radicada».
+11. **Otro navegador** (incógnito): `/portal` manda a `/portal/ingreso`; con el correo
+    llega un código y entra. Probar también un correo **sin** acceso: la pantalla es la
+    misma y no llega nada.
+12. **Clasificar (T3)**: como `CLASIFICADOR`, en `/clasificacion` aparece la solicitud;
+    clasificarla la asigna a quien recibe ese tipo, con código nuevo y plazo de 3 días
+    hábiles, y le llega el correo. En la base, el ticket **no** tiene fila en
+    `helpdesk.ticket_sync_outbox`.
+13. **Responder**: quien lo recibió responde → el contacto recibe el correo desde la
+    cuenta de esa persona, con enlace al portal, y ve la respuesta. **No** ve la
+    redirección ni una nota interna que se añada.
+14. **D2**: un segundo contacto del mismo cliente no ve la solicitud del primero, ni
+    abriendo su URL (404).
+15. **Solo lectura y revocación**: pasar el acceso a solo consulta → `/portal/tickets/nuevo`
+    no ofrece el formulario, y la acción lo rechaza (prueba negativa de V4). Revocar →
+    los dos navegadores vuelven a `/portal/ingreso` y el correo ya no recibe código.
+16. **Auditoría sin secretos**: `SELECT evento, resultado, metadata FROM
+    app.portal_auditoria ORDER BY created_at DESC LIMIT 30;` — ningún valor es un
+    código ni un enlace.
+
+**Adjuntos (U7), bloqueados por dos datos:** la App Registration de Conecta ya se
+conoce (28-sep-2026, captura del usuario): **solo permisos delegados**, todos con
+consentimiento (`email`, `Mail.Send`, `Mail.Send.Shared`, `offline_access`, `openid`,
+`profile`, `User.Read`), **ninguno de archivos**. Faltan los permisos de la que hay detrás
+de «Microsoft SharePoint account» y el sitio o biblioteca donde se guardarán los
+archivos.
 
 Cierre de U6 (25-sep-2026): fase 2 desplegada y con prueba negativa superada: migración
 aplicada; con `SET LOCAL ROLE`, `coraje_runtime` y `coraje_etl` tienen denegados
@@ -900,7 +1037,7 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 |---|---|---|
 | Ningún token viaja entre Conecta y HelpDesk; cada módulo hace su propio OIDC | `specs/acceso-empleados.md` §2 | **Construida (U3, corte 9):** `src/server/auth/entra-oidc.ts`; confirmada además con evidencia real de que Conecta no ofrece ningún mecanismo de federación, no solo por principio |
 | SSO silencioso con `prompt=none` para eliminar la fricción del botón | Ídem §4 | **Construida (U3, corte 9):** `/api/auth/microsoft/start`, con cookie anti-bucle de un solo uso. Sin ejercitar contra el tenant real |
-| El acceso de clientes se ancla al cliente, no al ticket | `specs/acceso-clientes.md` §3 | Decidida, no construida |
+| El acceso de clientes se ancla al cliente, no al ticket | `specs/acceso-clientes.md` §3 | **Construida (U8, corte 19), sin desplegar**, precisada por D2: se ancla al **contacto**, que pertenece a un cliente, y cada contacto ve solo lo suyo |
 | Estado del ticket derivado de eventos, con escritor único | `specs/tickets.md` §3 | Decidida, no construida |
 | Rediseño visual completo, sin fase de centralización posterior | `design/sistema-helpdesk.md` §1 | **Construida (U5, 24-sep-2026):** la primera vista nació consumiendo el contrato; un valor fuera de él rompe `pnpm test` |
 | Tipografía Lato, pesos 400/700/900 (corregida: Lato no tiene 500/600) | Ídem §2 | **Construida (U5):** `layout.tsx` y una prueba que cruza sus pesos con el contrato |
@@ -926,9 +1063,14 @@ cambia nada sin aprobación explícita, y un cambio aprobado va en la rama `lulo
 
 | # | Decisión | Bloquea | Quién decide |
 |---|---|---|---|
-| D2 | Qué ve un contacto: sus tickets o los de su empresa | El modelo de acceso externo | Usuario |
-| D3 | Si el acceso de cliente vence o solo se revoca | Ídem | Usuario |
-| D4 | Por dónde sale el correo del portal | Invitaciones y OTP | Usuario |
+| ~~D2~~ | **Cerrada el 28-sep-2026: por contacto.** Cada contacto ve solo los tickets que él radicó (`specs/acceso-clientes.md` §3.1) | — | — |
+| ~~D3~~ | **Cerrada el 28-sep-2026: solo revocación**, y un navegador sin uso durante 180 días vuelve a pedir código (§7) | — | — |
+| ~~D4~~ | **Cerrada el 28-sep-2026: n8n por Graph delegado** desde el buzón sin dueño `automatizacionmedellin@rbcol.co`, sin cola porque el correo lleva el secreto (§11) | — | — |
+
+> **Nombrada, no resuelta en silencio:** al pedir D2-D4 el 28-sep, el usuario indicó
+> que ya las había respondido antes. Ningún documento las registraba: quedaron en una
+> conversación que no pasó al handoff. Es exactamente el fallo que §8 existe para
+> evitar, y por eso quedan escritas aquí y en la spec con su fecha.
 | ~~D5~~ | **Cerrada el 23-sep-2026: acento visual propio**, no el de Impulsa. Fija que el tema declara un acento distinto del teal; **no fija cuál** — esa elección es de `U5`, dentro de la paleta corporativa, sin chocar con el navy del shell de Conecta y sin competir con la señal de urgencia de la bandeja | — | — |
 | ~~D7~~ | **Cerrada por completo el 22-sep-2026.** Decidida el 18-sep, y **configurada y ejercitada** en este corte: `/helpdesk` sirve tráfico real y el ingreso funciona de punta a punta | — | — |
 
@@ -1426,3 +1568,23 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   *Documentación:* `specs/tickets.md`, `specs/permisos.md`, `specs/sincronizacion-sharepoint.md`,
   `contexto-canonico.md`, `estado/operacion.md`, `CLAUDE.md`,
   `legacy/reglas-negocio-powerapps.md` y este handoff.
+- 28-sep-2026 (corte 19) — **U8 construida, sin desplegar.** *Estado previo:* no había
+  ningún acceso externo desde U4, y D2/D3/D4 bloqueaban el modelo. *Cambio:* el usuario
+  decidió D2 (por contacto), D3 (sin vencimiento, 180 días de inactividad por
+  navegador), D4 (n8n por Graph delegado desde `automatizacionmedellin@`) y dos roles
+  separados (`CLASIFICADOR`, `ADMIN`); se construyeron el acceso externo completo
+  (invitación, código, navegador recordado, solo lectura, revocación, auditoría), T1
+  por el cliente, T3 con plazo de 3 días y sin salida a SharePoint, la consola
+  `/accesos`, la cola `/clasificacion` y el workflow de correo del portal.
+  *Evidencia:* `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test` 120/120,
+  `next build`, SQL y PL/pgSQL parseados. *Incidencias:* (1) el log de `migrate` del
+  usuario confirmó que el corte 18 está desplegado; (2) la prueba de columnas de
+  `event-model.contract.test.mts` partía líneas con `\n` y, en un checkout de Windows con
+  CRLF, veía una sola columna: corregida a `\r?\n`; (3) la extracción de funciones para
+  el parser cortaba por caracteres y no por bytes, y dio dos falsos errores; corregida y
+  reverificada contra las funciones ya desplegadas; (4) D2-D4 se habían respondido en
+  una conversación anterior que nunca llegó al handoff. *Decisión:* U8 **construida,
+  sin desplegar ni ejercitar**; U7 **desplegada, sin ejercitar**. *Documentación:*
+  `specs/acceso-clientes.md`, `specs/tickets.md`, `specs/permisos.md`,
+  `estado/operacion.md`, `estado/plan-ejecucion.md`, `CLAUDE.md` y este handoff. En
+  Impulsa, fuera de este commit: observación B8 en `specs/acceso-seguro.md`.

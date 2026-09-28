@@ -4,7 +4,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { TICKET_ACTIONS } from "./catalog";
+import { PORTAL_ACTIONS, TICKET_ACTIONS } from "./catalog";
+
+/** Cada catálogo de código con el nombre con que se consulta. */
+const CATALOGS = { TICKET_ACTIONS, PORTAL_ACTIONS } as const;
 
 /**
  * Criterios de aceptación de specs/permisos.md §7 que se pueden comprobar sin
@@ -41,7 +44,9 @@ const sources = listSourceFiles(SRC_DIR).map((file) => ({
 }));
 
 test("cada acción del catálogo de código está sembrada en app.permiso_accion", () => {
-  const missing = Object.values(TICKET_ACTIONS).filter((code) => !migrationsSql.includes(`('${code}'`));
+  const missing = Object.values(CATALOGS)
+    .flatMap((catalog) => Object.values(catalog))
+    .filter((code) => !migrationsSql.includes(`('${code}'`));
   assert.deepEqual(missing, [], "Acciones sin fila en app.permiso_accion");
 });
 
@@ -51,7 +56,11 @@ test("cada acción del catálogo se consulta en algún servicio", () => {
     .map(({ text }) => text)
     .join("\n");
   // `reenviarNotificacion` la consulta el envío de correo (D6).
-  const unused = Object.keys(TICKET_ACTIONS).filter((key) => !consulted.includes(`TICKET_ACTIONS.${key}`));
+  const unused = Object.entries(CATALOGS).flatMap(([name, catalog]) =>
+    Object.keys(catalog)
+      .filter((key) => !consulted.includes(`${name}.${key}`))
+      .map((key) => `${name}.${key}`),
+  );
   assert.deepEqual(unused, [], "Acciones del catálogo que ningún servicio consulta");
 });
 
@@ -61,7 +70,9 @@ test("ninguna comparación de rol fuera del autorizador y la admisión", () => {
   const allowed = new Set(["server/auth/employee-admission.ts", "server/authorization/authorizer.ts"]);
   const offenders = sources
     .filter(({ file }) => !allowed.has(file) && !file.endsWith(".test.mts"))
-    .filter(({ text }) => /rolAplicacion\s*[!=]==|===?\s*["']AGENTE["']|["']AGENTE["']\s*===?/.test(text))
+    .filter(({ text }) =>
+      /rolAplicacion\s*[!=]==|===?\s*["'](?:AGENTE|CLASIFICADOR|ADMIN)["']|["'](?:AGENTE|CLASIFICADOR|ADMIN)["']\s*===?/.test(text),
+    )
     .map(({ file }) => file);
   assert.deepEqual(offenders, [], "Comparaciones de rol fuera del autorizador");
 });

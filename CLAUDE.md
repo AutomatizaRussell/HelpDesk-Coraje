@@ -84,6 +84,11 @@ Reglas al traer algo de Impulsa:
 > carga de Graph de los adjuntos, no existe aquí hasta que se cree. Al 26-sep-2026, el
 > n8n de HelpDesk tiene credenciales `microsoftSharePointOAuth2Api` (API REST de
 > SharePoint), de PostgreSQL y de webhook, y **ninguna de Microsoft Graph**.
+> **Corregido el 28-sep-2026:** también tiene una credencial SMTP («CuentaJulian», que
+> entra como el buzón sin dueño `automatizacionmedellin@rbcol.co`, no como una
+> persona), usada en un flujo de prueba. U8 pide crear una de Graph delegada para ese
+> mismo buzón (`docs/estado/operacion.md`, «Correo del portal de clientes»); hasta que
+> exista, sigue sin haber ninguna de Graph.
 >
 > **Excepción: en consumo de recursos, tampoco.** Impulsa corre app, worker de
 > reintentos, servicio de migración y navegador para PDF. HelpDesk tiene el objetivo

@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
 // Sellado simétrico (AEAD) para valores que viajan por el navegador pero no
 // deben ser legibles ni manipulables desde ahí: la cookie de estado OIDC
@@ -24,6 +24,20 @@ function resolveKey(): Buffer {
     throw new Error(`${KEY_ENV_VAR} debe decodificar a 32 bytes (AES-256).`);
   }
   return key;
+}
+
+/**
+ * Subclave de 32 bytes para un propósito con nombre, derivada con HKDF-SHA256
+ * de la misma clave maestra.
+ *
+ * Existe para no reutilizar la clave de AES tal cual en otra primitiva: el
+ * HMAC de los códigos del portal (src/server/portal/portal-otp.ts) necesita
+ * una clave que la base no conozca, y una derivada por propósito separa los
+ * usos sin añadir otra variable de entorno que custodiar. Cambiar `purpose`
+ * produce una clave independiente; rotar la maestra rota todas.
+ */
+export function deriveSubkey(purpose: string): Buffer {
+  return Buffer.from(hkdfSync("sha256", resolveKey(), Buffer.alloc(0), `helpdesk:${purpose}`, 32));
 }
 
 /**

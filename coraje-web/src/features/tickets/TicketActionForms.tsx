@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useRef, type ReactNode } from "react";
+import { useActionState, type ReactNode } from "react";
 
 import { buttonRecipe, type ButtonVariant } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
-import { notice } from "@/design-system/recipes/surface";
+import { FormFeedback } from "@/features/forms/FormFeedback";
 
 import { IDLE_FORM_STATE, type TicketFormState } from "./action-state";
 import {
@@ -29,24 +29,6 @@ type Action = (prev: TicketFormState, formData: FormData) => Promise<TicketFormS
 function useTicketForm(action: Action) {
   const [state, formAction, pending] = useActionState(action, IDLE_FORM_STATE);
   return { state, formAction, pending, formKey: state.status === "success" ? state.nonce : "formulario" };
-}
-
-function FormFeedback({ state }: { state: TicketFormState }) {
-  const ref = useRef<HTMLParagraphElement>(null);
-  // El mensaje recibe el foco para que un lector de pantalla lo anuncie y la
-  // persona no tenga que buscarlo.
-  useEffect(() => {
-    if (state.status !== "idle") ref.current?.focus();
-  }, [state]);
-  if (state.status === "idle") return null;
-  return (
-    <div className="space-y-2">
-      <p ref={ref} tabIndex={-1} role={state.status === "error" ? "alert" : "status"} className={notice(state.status === "error" ? "danger" : "success")}>
-        {state.message}
-      </p>
-      {state.status === "success" && state.warning && <p className={notice("warning")}>{state.warning}</p>}
-    </div>
-  );
 }
 
 function TextField({

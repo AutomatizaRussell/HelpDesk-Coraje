@@ -103,8 +103,31 @@ Su significado vive en un solo sitio, `src/server/authorization/scope.ts`:
 | `ticket.notificacion.reenviar` | `PROPIO`: solo quien envió el correo, porque sale de su buzón |
 
 Quien solo radicó un ticket ve su historia sin las notas internas (`specs/tickets.md`
-§6). **Redirigir (T3) no está en el catálogo de la v1 interna**: solo lo producen los
-tickets de clientes y llega con U8, con el rol que lo tenga.
+§6).
+
+### 4.2 `DECISIÓN` (28-sep-2026, U8) Redirigir, accesos de clientes y dos roles nuevos
+
+Construido en `20260928110000_acceso_clientes`, sin desplegar.
+
+| Acción | `AGENTE` | `CLASIFICADOR` | `ADMIN` |
+|---|---|---|---|
+| Las siete de §4.1 | Como arriba | Copia de `AGENTE` | Copia de `AGENTE` |
+| `ticket.redirigir` (T3) | — | `TOTAL` | — |
+| `portal.acceso.administrar` | — | — | `TOTAL` |
+
+- **Separados por decisión del usuario:** quien reparte lo que entra del portal no
+  concede acceso externo (§3, «quien prepara no expone»). `CLASIFICADOR` y no
+  `RECEPCION`, para no confundirlo con la recepción física de la firma.
+- **`TOTAL` para redirigir no es un privilegio especial:** un ticket sin clasificar no
+  tiene responsable ni área, así que ni `PROPIO` ni `AREA` lo cubren
+  (`scope.ts`, prueba en `client-access.contract.test.mts`).
+- **Copia, no herencia.** Cambiar una regla de `AGENTE` después no la cambia en los
+  otros dos: la migración que lo haga tiene que decidirlo para cada rol.
+- **`portal.acceso.administrar` no se evalúa sobre un ticket** (`PORTAL_ACTIONS` en
+  `catalog.ts`): `requireTicketAction` no la acepta, y su `TOTAL` significa «cualquier
+  cliente».
+- Asignar el rol es una actualización de `core.dim_personal.rol_aplicacion` por `psql`,
+  hasta que exista la consola de administración (§8, entrega 6).
 
 ## 5. Autorización excepcional
 

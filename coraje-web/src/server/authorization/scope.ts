@@ -35,6 +35,12 @@ export interface ScopeTicket {
  *   (reglas-negocio-powerapps.md §6): quien recibe el ticket es quien actúa
  *   sobre él. Radicarlo no da derecho a responderlo ni a rechazarlo.
  *
+ * - Redirigir (T3): cae en «ser su responsable», y un ticket sin clasificar
+ *   no tiene responsable ni área. Por eso solo `TOTAL` lo cubre, y es el
+ *   alcance que la migración de U8 le da a `CLASIFICADOR`. No es un caso
+ *   especial: es la regla general aplicada a un ticket que todavía no es de
+ *   nadie.
+ *
  * `ticket.crear` no aparece: no se evalúa sobre un ticket existente. Su
  * alcance `PROPIO` significa que se crea a nombre propio, y el servicio de
  * creación lo garantiza usando siempre a quien actúa como solicitante.
@@ -126,3 +132,11 @@ export const VISIBLE_BY_PROJECTION = {
   EQUIPO: ["INTERNO", "AMBOS"],
   SOLICITANTE: ["AMBOS"],
 } as const satisfies Record<HistoryProjection, readonly ("INTERNO" | "CLIENTE" | "AMBOS")[]>;
+
+/**
+ * Lo que ve el contacto de un cliente en el portal (tickets.md §6): `CLIENTE`
+ * y `AMBOS`, nunca `INTERNO`. No es una proyección de `historyProjection`
+ * porque no hay alcance que evaluar: el contacto no es un empleado, y lo que
+ * lo limita es D2 (solo sus tickets), aplicado en la consulta del portal.
+ */
+export const VISIBLE_TO_CLIENT = ["CLIENTE", "AMBOS"] as const satisfies readonly ("INTERNO" | "CLIENTE" | "AMBOS")[];

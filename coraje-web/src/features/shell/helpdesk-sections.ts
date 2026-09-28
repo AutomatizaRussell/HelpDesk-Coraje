@@ -7,7 +7,22 @@ import type { ModuleNavItem } from "@/design-system/patterns/module-nav/ModuleNa
  * lleva a una pantalla vacía le promete a la persona algo que la aplicación no
  * hace. La bandeja cubre también el detalle y la creación (`/tickets/…`).
  *
- * Cuando una sección dependa de un permiso, se filtrará con el autorizador
- * ejecutable (specs/permisos.md), nunca comparando roles aquí.
+ * Las secciones que dependen de un permiso reciben la decisión ya tomada por
+ * el autorizador (`AppFrame` pregunta por la acción), nunca un rol. Ocultar
+ * la pestaña es solo presentación: cada vista y cada acción vuelve a exigir
+ * su permiso en servidor.
  */
-export const HELPDESK_SECTIONS: readonly ModuleNavItem[] = [{ label: "Tickets", href: "/tickets" }];
+export interface SectionGrants {
+  /** `ticket.redirigir`: la cola de tickets del portal por clasificar (T3). */
+  clasificar: boolean;
+  /** `portal.acceso.administrar`: contactos e invitaciones de clientes. */
+  administrarAccesos: boolean;
+}
+
+export function helpdeskSections(grants: SectionGrants): readonly ModuleNavItem[] {
+  return [
+    { label: "Tickets", href: "/tickets" },
+    ...(grants.clasificar ? [{ label: "Clasificación", href: "/clasificacion" }] : []),
+    ...(grants.administrarAccesos ? [{ label: "Accesos de clientes", href: "/accesos" }] : []),
+  ];
+}

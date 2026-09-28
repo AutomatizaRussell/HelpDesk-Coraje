@@ -51,7 +51,7 @@ function prismaEnumValues(prismaName: string): string[] {
   const match = SCHEMA.match(new RegExp(`enum ${prismaName} \\{([\\s\\S]*?)\\}`));
   assert.ok(match, `schema.prisma debe declarar enum ${prismaName}`);
   return match[1]
-    .split("\n")
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => /^[A-Z_]+$/.test(line));
 }
@@ -122,8 +122,11 @@ function prismaColumns(model: string): string[] {
   const match = SCHEMA.match(new RegExp(`model ${model} \\{([\\s\\S]*?)\\n\\}`));
   assert.ok(match, `schema.prisma debe declarar model ${model}`);
   const scalar = /^\s*(\w+)\s+(String|Int|BigInt|DateTime|Boolean|Decimal|Float|Json)\??\s*(.*)$/;
+  // \r?\n: en un checkout de Windows (core.autocrlf) cada línea termina en
+  // \r, que `.` no reconoce, y `(.*)$` fallaba en toda línea con atributos:
+  // la prueba veía una sola columna y fallaba por la razón equivocada.
   return match[1]
-    .split("\n")
+    .split(/\r?\n/)
     .map((line) => line.match(scalar))
     .filter((m): m is RegExpMatchArray => m !== null)
     .map((m) => m[3].match(/@map\("([^"]+)"\)/)?.[1] ?? m[1]);
@@ -138,13 +141,30 @@ function grantedUpdateColumns(): string[] {
   return [...grants[grants.length - 1][1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
 }
 
-test("los roles de servicio pueden actualizar toda columna de fact_ticket salvo id_estado", () => {
-  // Un REVOKE de columna no anula un UPDATE de tabla, así que la protección de
-  // id_estado es una lista explícita de columnas concedidas. Una columna nueva
-  // obliga a decidir si se concede: esta prueba falla hasta que se decida.
-  const expected = prismaColumns("FactTicket").filter((column) => column !== "id_estado").sort();
+/**
+ * Columnas de fact_ticket que los roles de servicio NO pueden actualizar,
+ * cada una con su motivo. Toda columna fuera de esta lista debe estar
+ * concedida; toda columna de esta lista, no.
+ */
+const PROTECTED_COLUMNS: Record<string, string> = {
+  id_estado: "solo la cambia el escritor único, con su evento (U6)",
+  id_contacto_portal: "quién radicó un ticket del portal no cambia; solo crear_ticket_cliente la escribe (U8)",
+};
+
+test("los roles de servicio pueden actualizar toda columna de fact_ticket salvo las protegidas", () => {
+  // Un REVOKE de columna no anula un UPDATE de tabla, así que la protección es
+  // una lista explícita de columnas concedidas. Una columna nueva obliga a
+  // decidir si se concede: esta prueba falla hasta que se decida, en la
+  // concesión o en PROTECTED_COLUMNS.
+  const columns = prismaColumns("FactTicket");
+  for (const protectedColumn of Object.keys(PROTECTED_COLUMNS)) {
+    assert.ok(columns.includes(protectedColumn), `${protectedColumn} ya no existe en FactTicket: retírala de PROTECTED_COLUMNS`);
+  }
+  const expected = columns.filter((column) => !(column in PROTECTED_COLUMNS)).sort();
   const granted = grantedUpdateColumns();
-  assert.ok(!granted.includes("id_estado"), "id_estado no puede estar en la concesión de UPDATE");
+  for (const [column, reason] of Object.entries(PROTECTED_COLUMNS)) {
+    assert.ok(!granted.includes(column), `${column} no puede estar en la concesión de UPDATE: ${reason}`);
+  }
   assert.deepEqual([...granted].sort(), expected);
 });
 

@@ -1,0 +1,191 @@
+{
+  "name": "HELPDESK - Portal - Enviar correo V1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helpdesk/portal/correo-v1",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "5b0c7e1a-6f2d-4c1e-9a3b-1d2e3f4a5b61",
+      "name": "Webhook",
+      "webhookId": "b7e4c2d1-3a5f-4e6b-8c9d-0e1f2a3b4c52"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1a2b3c4-d5e6-4f70-8192-a3b4c5d6e7f8",
+              "leftValue": "={{ ($json.headers[\"x-helpdesk-secret\"] || \"\").trim() }}",
+              "rightValue": "={{ $env.HELPDESK_PORTAL_MAIL_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "d2b3c4d5-e6f7-4081-92a3-b4c5d6e7f809",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "helpdesk.portal.correo",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [220, 0],
+      "id": "e3c4d5e6-f708-4192-a3b4-c5d6e7f8091a",
+      "name": "IF - Validate HelpDesk Secret"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Valida el cuerpo que envía HelpDesk (src/server/portal/portal-mail.ts) y\n * arma el mensaje de Microsoft Graph. n8n transporta: no decide a quién ni qué\n * se envía; eso ya lo decidió PostgreSQL y la aplicación.\n *\n * saveToSentItems: false a propósito. El cuerpo lleva un código o un enlace de\n * un solo uso: una copia en Elementos enviados del buzón sería otro sitio donde\n * el secreto queda en claro.\n */\nconst body = $input.first().json.body ?? {};\nconst kinds = ['INVITACION', 'CODIGO'];\nconst email = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (body.version !== 1) throw new Error('Versión de mensaje no soportada.');\nif (!kinds.includes(body.kind)) throw new Error('Tipo de correo no soportado.');\nif (typeof body.id !== 'string' || body.id.length === 0) throw new Error('Falta el id de correlación.');\nif (typeof body.to !== 'string' || !email.test(body.to)) throw new Error('Destinatario inválido.');\nif (typeof body.subject !== 'string' || body.subject.length === 0) throw new Error('Falta el asunto.');\nif (typeof body.html !== 'string' || body.html.length === 0) throw new Error('Falta el cuerpo.');\n\nreturn [\n  {\n    json: {\n      id: body.id,\n      graph: {\n        message: {\n          subject: body.subject,\n          body: { contentType: 'HTML', content: body.html },\n          toRecipients: [{ emailAddress: { address: body.to } }],\n        },\n        saveToSentItems: false,\n      },\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, -100],
+      "id": "f4d5e6f7-0819-42a3-b4c5-d6e7f8091a2b",
+      "name": "Code - Build Graph Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.microsoft.com/v1.0/me/sendMail",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.graph) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [660, -100],
+      "id": "0819a2b3-c4d5-4e6f-8091-a2b3c4d5e6f7",
+      "name": "HTTP - Graph sendMail",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph automatizacionmedellin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, accepted: true, id: $('Code - Build Graph Message').first().json.id, executionId: $execution.id }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [880, -100],
+      "id": "1a2b3c4d-5e6f-4708-9a1b-2c3d4e5f6071",
+      "name": "Respond - Accepted"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": false,\n  \"error\": \"Unauthorized\"\n}",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [440, 120],
+      "id": "2b3c4d5e-6f70-4819-a2b3-c4d5e6f70819",
+      "name": "Respond - Unauthorized"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "IF - Validate HelpDesk Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Validate HelpDesk Secret": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Graph Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Graph Message": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Graph sendMail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Graph sendMail": {
+      "main": [
+        [
+          {
+            "node": "Respond - Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "errorWorkflow": "A10yl90Zh5otaSlJ",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
+  },
+  "tags": []
+}

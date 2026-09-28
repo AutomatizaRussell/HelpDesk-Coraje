@@ -123,7 +123,7 @@ export async function listInbox(params: { idPersonal: string; view: InboxView; p
         dimPrioridad: { select: { nombrePrioridad: true } },
         dimArea: { select: { nombreArea: true } },
         dimTipoRequerimiento: { select: { tipoRequerimiento: true } },
-        dimPersonalSolicitante: { select: { nombreCompleto: true } },
+        ...REQUESTER_SELECT,
         dimPersonalAsignado: { select: { nombreCompleto: true } },
       },
     }),
@@ -140,7 +140,7 @@ export async function listInbox(params: { idPersonal: string; view: InboxView; p
       prioridad: ticket.dimPrioridad?.nombrePrioridad ?? null,
       area: ticket.dimArea?.nombreArea ?? null,
       tipo: ticket.dimTipoRequerimiento?.tipoRequerimiento ?? null,
-      solicitante: ticket.dimPersonalSolicitante?.nombreCompleto ?? null,
+      solicitante: requesterLabel(ticket),
       responsable: ticket.dimPersonalAsignado?.nombreCompleto ?? null,
       fechaCreacion: ticket.fechaCreacion,
       fechaLimite: ticket.fechaLimite,
@@ -156,6 +156,27 @@ export async function listInbox(params: { idPersonal: string; view: InboxView; p
     pageCount: Math.max(1, Math.ceil(total / INBOX_PAGE_SIZE)),
   };
 }
+
+/**
+ * Quién radicó, en una línea: el empleado, o el contacto con su cliente para
+ * un ticket del portal. Un ticket legacy de cliente no tiene contacto y se
+ * nombra por el cliente.
+ */
+function requesterLabel(ticket: {
+  dimPersonalSolicitante: { nombreCompleto: string } | null;
+  portalContacto: { nombre: string } | null;
+  dimClienteContai: { nombreCliente: string } | null;
+}): string | null {
+  if (ticket.dimPersonalSolicitante) return ticket.dimPersonalSolicitante.nombreCompleto;
+  if (ticket.portalContacto) return `${ticket.portalContacto.nombre} · ${ticket.dimClienteContai?.nombreCliente ?? "Cliente"}`;
+  return ticket.dimClienteContai?.nombreCliente ?? null;
+}
+
+const REQUESTER_SELECT = {
+  dimPersonalSolicitante: { select: { nombreCompleto: true } },
+  portalContacto: { select: { nombre: true } },
+  dimClienteContai: { select: { nombreCliente: true } },
+} as const;
 
 function requireKnownState(value: string): TicketState {
   if (!isTicketState(value)) throw new Error(`Estado desconocido en dim_estado: ${value}`);
@@ -234,7 +255,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       dimPrioridad: { select: { nombrePrioridad: true } },
       dimArea: { select: { nombreArea: true } },
       dimTipoRequerimiento: { select: { tipoRequerimiento: true, categoria1: true, categoria2: true } },
-      dimPersonalSolicitante: { select: { nombreCompleto: true } },
+      ...REQUESTER_SELECT,
       dimPersonalAsignado: { select: { nombreCompleto: true } },
     },
   });
@@ -263,6 +284,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       contenido: true,
       fechaRegistro: true,
       dimPersonal: { select: { nombreCompleto: true } },
+      contactoAutor: { select: { nombre: true } },
       estadoNuevo: { select: { nombreEstado: true } },
     },
   });
@@ -270,7 +292,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
   const estado = requireKnownState(ticket.dimEstado.nombreEstado);
   const operable = isOperableInHelpDesk(ticket.origenSistema);
 
-  const grants = await resolveGrants(params.idPersonal, [
+  const grants = await resolveGrants<TicketAction>(params.idPersonal, [
     TICKET_ACTIONS.reasignar,
     TICKET_ACTIONS.responder,
     TICKET_ACTIONS.rechazar,
@@ -304,7 +326,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     tipo: ticket.dimTipoRequerimiento?.tipoRequerimiento ?? null,
     categoria1: ticket.dimTipoRequerimiento?.categoria1 ?? null,
     categoria2: ticket.dimTipoRequerimiento?.categoria2 ?? null,
-    solicitante: ticket.dimPersonalSolicitante?.nombreCompleto ?? null,
+    solicitante: requesterLabel(ticket),
     idAsignado: ticket.idAsignado,
     responsable: ticket.dimPersonalAsignado?.nombreCompleto ?? null,
     fechaCreacion: ticket.fechaCreacion,
@@ -317,7 +339,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       idEvento: evento.idEvento,
       tipo: evento.tipoEvento,
       visibilidad: evento.visibilidad,
-      autor: evento.dimPersonal?.nombreCompleto ?? null,
+      autor: evento.dimPersonal?.nombreCompleto ?? evento.contactoAutor?.nombre ?? null,
       esSistema: evento.tipoActor === "SISTEMA",
       contenido: evento.contenido,
       fecha: evento.fechaRegistro,

@@ -2,14 +2,17 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationDeniedError, requireGrant, requireTicketAction } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS, type TicketAction } from "@/server/authorization/catalog";
-import { enqueueTicketMail } from "@/server/notifications/ticket-notifications";
+import { enqueueTicketMail, type MailDelivery } from "@/server/notifications/ticket-notifications";
+import type { TicketMailKind } from "@/server/notifications/ticket-mail-content";
+import { recordPortalAudit } from "@/server/portal/portal-audit";
+import type { PortalAccess } from "@/server/portal/portal-access";
 
 import { TicketDomainError, translateCreationFailure } from "./ticket-errors";
 import { TICKET_STATES, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
 
 /**
- * Comandos del ciclo interno del ticket (specs/tickets.md §4.1, T2, T4, T7,
- * T8, y la nota interna).
+ * Comandos del ciclo del ticket (specs/tickets.md §4.1: T1 y T3 desde U8;
+ * T2, T4, T7, T8 y la nota interna desde U7).
  *
  * Todos siguen el mismo orden, y el orden es la garantía:
  * 1. Bloquear la fila del ticket (`FOR UPDATE`) dentro de la transacción.
@@ -40,6 +43,8 @@ export interface TicketEventResult {
 interface LockedTicket {
   idTicket: string;
   idSolicitante: string | null;
+  /** Contacto del cliente que radicó un ticket del portal (U8, D2). */
+  idContactoPortal: string | null;
   idAsignado: string | null;
   idAreaDestino: string | null;
   origenSistema: string;
@@ -53,6 +58,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
     {
       id_ticket: string;
       id_solicitante: string | null;
+      id_contacto_portal: string | null;
       id_asignado: string | null;
       id_area_destino: string | null;
       origen_sistema: string;
@@ -61,6 +67,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
   >`
     SELECT ticket.id_ticket::text,
            ticket.id_solicitante::text,
+           ticket.id_contacto_portal::text,
            ticket.id_asignado::text,
            ticket.id_area_destino::text,
            ticket.origen_sistema,
@@ -81,6 +88,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
   return {
     idTicket: row.id_ticket,
     idSolicitante: row.id_solicitante,
+    idContactoPortal: row.id_contacto_portal,
     idAsignado: row.id_asignado,
     idAreaDestino: row.id_area_destino,
     origenSistema: row.origen_sistema,
@@ -155,6 +163,21 @@ async function writeEvent(
   return idEvento;
 }
 
+/**
+ * El aviso a quien radicó, sea un empleado o el contacto de un cliente. Los
+ * dos casos no se mezclan: el empleado recibe el enlace a la bandeja y el
+ * vocabulario interno; el contacto, el enlace al portal.
+ */
+function requesterDelivery(
+  ticket: LockedTicket,
+  internalKind: TicketMailKind,
+  clientKind: TicketMailKind,
+): MailDelivery | null {
+  if (ticket.idSolicitante) return { kind: internalKind, destinatario: { tipo: "EMPLEADO", idPersonal: ticket.idSolicitante } };
+  if (ticket.idContactoPortal) return { kind: clientKind, destinatario: { tipo: "CONTACTO", idContacto: ticket.idContactoPortal } };
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // T2 · Crear
 // ---------------------------------------------------------------------------
@@ -208,7 +231,9 @@ export async function createInternalTicket(params: {
             idEvento: creado.idEvento,
             idRemitente: params.idPersonal,
             texto: null,
-            deliveries: [{ kind: "CREACION_RESPONSABLE", idDestinatario: creado.factTicket.idAsignado }],
+            deliveries: [
+              { kind: "CREACION_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: creado.factTicket.idAsignado } },
+            ],
           })
         : [];
 
@@ -217,6 +242,135 @@ export async function createInternalTicket(params: {
   } catch (error) {
     const translated = translateCreationFailure(error);
     if (translated) throw translated;
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// T1 · Un contacto de cliente radica desde el portal
+// ---------------------------------------------------------------------------
+
+/**
+ * Radica un ticket a nombre del contacto del acceso. El contacto y el
+ * cliente salen del acceso resuelto en servidor, nunca de un dato del
+ * formulario: nadie puede radicar a nombre de otra empresa ni de otra
+ * persona. Quien llama ya exigió escritura (`requirePortalWriteAccess`).
+ *
+ * El ticket nace ABIERTO y sin plazo: espera a que alguien lo clasifique
+ * (T3), y el plazo del cliente empieza entonces (tickets.md §5). No avisa a
+ * nadie por correo: no hay un empleado que lo envíe desde su buzón (D6), y
+ * la cola de clasificación es donde se ve lo que llega.
+ */
+export async function createPortalTicket(params: { access: PortalAccess; descripcion: string }): Promise<{ idTicket: string }> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id_ticket: string }[]>`
+        SELECT helpdesk.crear_ticket_cliente(
+            ${params.access.idContacto}::uuid,
+            ${params.descripcion}::text
+        )::text AS id_ticket
+      `;
+      const idTicket = rows[0]?.id_ticket;
+      if (!idTicket) throw new Error("crear_ticket_cliente no devolvió el ticket creado");
+      await recordPortalAudit(tx, {
+        evento: "TICKET_RADICADO",
+        resultado: "EXITO",
+        idContacto: params.access.idContacto,
+        idAutorizacion: params.access.idAutorizacion,
+        metadata: { idTicket, idDispositivo: params.access.idDispositivo },
+      });
+      return { idTicket };
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // El contacto o su cliente se desactivaron entre la lectura del acceso y
+    // la escritura: para la persona, el acceso dejó de ser válido.
+    if (message.includes("HD_CONTACTO_INACTIVO")) {
+      throw new TicketDomainError("NO_AUTORIZADO", "Tu acceso al portal ya no está activo.");
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// T3 · Redirigir un ticket del portal
+// ---------------------------------------------------------------------------
+
+/**
+ * Clasifica un ticket del portal: el tipo de requerimiento decide el área,
+ * la regla de enrutamiento decide la persona, y empieza el plazo de 3 días
+ * hábiles. Todo eso lo hace `helpdesk.redirigir_ticket`, en una sola regla
+ * compartida con la creación interna.
+ *
+ * Autoriza `ticket.redirigir` contra la fila bloqueada. Un ticket sin
+ * clasificar no tiene responsable ni área, así que solo el alcance `TOTAL`
+ * lo cubre (scope.ts); en la v1 lo tiene `CLASIFICADOR`.
+ *
+ * No encola nada hacia SharePoint: los tickets del portal viven solo en
+ * HelpDesk hasta U9 (migración 20260928110000, §5b).
+ */
+export async function redirectTicket(params: {
+  idPersonal: string;
+  idTicket: string;
+  idTipoReq: string;
+}): Promise<TicketEventResult & { idResponsable: string | null; codigoTicket: string | null }> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { ticket } = await lockAndAuthorize({
+        tx,
+        idTicket: params.idTicket,
+        idPersonal: params.idPersonal,
+        action: TICKET_ACTIONS.redirigir,
+        allowedStates: ["ABIERTO"],
+        stateMessage: "Este ticket ya fue clasificado.",
+      });
+      if (ticket.idContactoPortal === null || ticket.idAreaDestino !== null) {
+        throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya fue clasificado o no viene del portal.");
+      }
+
+      const rows = await tx.$queryRaw<{ id_evento: string | null }[]>`
+        SELECT helpdesk.redirigir_ticket(
+            ${ticket.idTicket}::uuid,
+            ${params.idPersonal}::uuid,
+            ${params.idTipoReq}::uuid
+        )::text AS id_evento
+      `;
+      const idEvento = rows[0]?.id_evento;
+      if (!idEvento) throw new Error(`redirigir_ticket no devolvió evento para ${ticket.idTicket}`);
+
+      const redirigido = await tx.factTicket.findUniqueOrThrow({
+        where: { idTicket: ticket.idTicket },
+        select: { idAsignado: true, codigoTicket: true },
+      });
+      // Como al crear un ticket interno: avisa a la persona que lo recibe,
+      // desde el buzón de quien clasificó.
+      const mailIds = redirigido.idAsignado
+        ? await enqueueTicketMail(tx, {
+            idTicket: ticket.idTicket,
+            idEvento,
+            idRemitente: params.idPersonal,
+            texto: null,
+            deliveries: [
+              { kind: "REDIRECCION_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: redirigido.idAsignado } },
+            ],
+          })
+        : [];
+
+      return {
+        idTicket: ticket.idTicket,
+        idEvento,
+        mailIds,
+        idResponsable: redirigido.idAsignado,
+        codigoTicket: redirigido.codigoTicket,
+      };
+    });
+  } catch (error) {
+    const translated = translateCreationFailure(error);
+    if (translated) throw translated;
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("HD_NO_REDIRIGIBLE")) {
+      throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya fue clasificado.");
+    }
     throw error;
   }
 }
@@ -301,8 +455,13 @@ export async function reassignTicket(params: {
       idRemitente: params.idPersonal,
       texto: params.comentario,
       deliveries: [
-        { kind: "REASIGNACION_RESPONSABLE", idDestinatario: destino.idPersonal },
-        ...(ticket.idSolicitante ? [{ kind: "REASIGNACION_SOLICITANTE" as const, idDestinatario: ticket.idSolicitante }] : []),
+        { kind: "REASIGNACION_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: destino.idPersonal } },
+        // Solo al solicitante interno. Al contacto de un cliente no se le
+        // avisa de un movimiento dentro del equipo: sigue viendo su ticket en
+        // atención, y quién lo atiende es asunto interno.
+        ...(ticket.idSolicitante
+          ? [{ kind: "REASIGNACION_SOLICITANTE" as const, destinatario: { tipo: "EMPLEADO" as const, idPersonal: ticket.idSolicitante } }]
+          : []),
       ],
     });
 
@@ -349,13 +508,14 @@ export async function respondTicket(params: {
       estadoNuevo: "CERRADO",
     });
 
-    const mailIds = ticket.idSolicitante
+    const delivery = requesterDelivery(ticket, "RESPUESTA_SOLICITANTE", "RESPUESTA_CLIENTE");
+    const mailIds = delivery
       ? await enqueueTicketMail(tx, {
           idTicket: ticket.idTicket,
           idEvento,
           idRemitente: params.idPersonal,
           texto: params.respuesta,
-          deliveries: [{ kind: "RESPUESTA_SOLICITANTE", idDestinatario: ticket.idSolicitante }],
+          deliveries: [delivery],
         })
       : [];
 
@@ -402,13 +562,14 @@ export async function rejectTicket(params: {
       estadoNuevo: "RECHAZADO",
     });
 
-    const mailIds = ticket.idSolicitante
+    const delivery = requesterDelivery(ticket, "RECHAZO_SOLICITANTE", "RECHAZO_CLIENTE");
+    const mailIds = delivery
       ? await enqueueTicketMail(tx, {
           idTicket: ticket.idTicket,
           idEvento,
           idRemitente: params.idPersonal,
           texto: params.motivo,
-          deliveries: [{ kind: "RECHAZO_SOLICITANTE", idDestinatario: ticket.idSolicitante }],
+          deliveries: [delivery],
         })
       : [];
 

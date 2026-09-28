@@ -177,6 +177,15 @@ igual que Impulsa**, solo falta construirlas (U2):
 | `DATABASE_URL` | `coraje-web` | Conexión de Prisma |
 | `N8N_OUTBOX_KICK_URL` | `coraje-web` | Webhook que despierta el consumo del outbox |
 | `N8N_OUTBOX_KICK_SECRET` | `coraje-web` | Secreto de ese webhook |
+| `N8N_PORTAL_MAIL_WEBHOOK_URL` | `coraje-web` (Coolify) | U8: URL **HTTPS** del webhook `helpdesk/portal/correo-v1` del workflow `HELPDESK - Portal - Enviar correo V1`. Sin ella, ni invitaciones ni códigos salen: el fallo queda en `app.portal_auditoria` con el nombre de la variable |
+| `N8N_PORTAL_MAIL_SECRET` | `coraje-web` (Coolify) | U8: secreto de ese webhook, cabecera `x-helpdesk-secret`. **El mismo valor** va en n8n como `HELPDESK_PORTAL_MAIL_SECRET` |
+| `HELPDESK_PORTAL_MAIL_SECRET` | n8n (variable de entorno de la instancia) | U8: lo compara el nodo `IF - Validate HelpDesk Secret`, igual que `CORAJE_OUTBOX_KICK_SECRET` en la salida |
+
+> **El código del portal usa `HELPDESK_TOKEN_ENCRYPTION_KEY`** (ya configurada desde U3)
+> a través de una subclave derivada (`deriveSubkey("portal-otp-v1")`). **Rotar esa clave
+> invalida los códigos vivos** (duran 10 minutos: basta con rotar fuera de horas), además
+> de lo que ya invalidaba: las cookies de estado OIDC y las autorizaciones de correo
+> selladas.
 
 > **`REDIRECCION_PASSWORD` ya no existe** (U4, 22-sep-2026). La clave compartida del
 > módulo de redirección se retiró del código junto con su pantalla de acceso, y la
@@ -215,6 +224,53 @@ igual que Impulsa**, solo falta construirlas (U2):
 - Un workflow sin manejo de error es una falla silenciosa programada. **Confirmado
   ausente** (10-sep-2026): no hay `errorWorkflow` en la configuración exportada del
   consumidor, y el usuario lo corroboró directamente.
+
+### Correo del portal de clientes (U8)
+
+Workflow `n8n/HELPDESK - Portal - Enviar correo V1.json`. Envía invitaciones y códigos
+desde el buzón sin dueño `automatizacionmedellin@rbcol.co` (D4,
+`specs/acceso-clientes.md` §11). **Puesta en marcha, una sola vez:**
+
+1. **App Registration «GCT - Conecta RBG»**, en *Authentication*: añadir la redirect URI
+   de n8n, `https://<n8n-de-helpdesk>/rest/oauth2-credential/callback`. **No** añadir
+   ningún permiso de aplicación: bastan los delegados que ya tiene (`Mail.Send`,
+   `offline_access`).
+2. **Credencial en n8n**, tipo *Microsoft OAuth2 API*, con el nombre
+   `Graph automatizacionmedellin`: client ID y secreto de esa App Registration, scope
+   `https://graph.microsoft.com/Mail.Send offline_access`. Autorizarla **iniciando
+   sesión como `automatizacionmedellin@rbcol.co`**, no con una cuenta personal.
+3. **Importar el workflow**, abrir el nodo `HTTP - Graph sendMail` y elegir esa
+   credencial (el export trae `REEMPLAZAR_AL_IMPORTAR`). Confirmar en *Settings* que
+   **Save successful/failed executions = Do not save**: el cuerpo lleva el código.
+4. Variable `HELPDESK_PORTAL_MAIL_SECRET` en la instancia, y las dos `N8N_PORTAL_MAIL_*`
+   en Coolify (tabla de variables).
+5. Activar el workflow.
+
+**Consecuencia de compartir la App Registration:** su secreto vive ahora también en la
+credencial de n8n. **Rotarlo exige actualizar tres sitios**: Conecta, HelpDesk (Coolify)
+y esta credencial. Si la credencial deja de valer (contraseña del buzón cambiada,
+sesiones revocadas, unos 90 días sin enviar), los códigos no llegan: se reautoriza la
+credencial en n8n.
+
+### Asignar los roles de U8
+
+`CLASIFICADOR` (redirige tickets del portal) y `ADMIN` (administra accesos de clientes)
+se asignan por `psql`, como `AGENTE`. **Una persona tiene un solo rol**; los dos nuevos
+ya incluyen todo lo de `AGENTE`:
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+UPDATE core.dim_personal
+SET rol_aplicacion = 'ADMIN'
+WHERE LOWER(correo_corporativo) = 'persona@rbcol.co'
+  AND estado_activo
+  AND NOT es_responsable_historico_no_identificado
+RETURNING correo_corporativo, rol_aplicacion, estado_activo;
+"
+```
+
+La fila debe volver con `estado_activo = t`. Cambiar el rol surte efecto en la siguiente
+petición de esa persona; no hace falta que vuelva a entrar.
 
 ## Cuidados sobre infraestructura compartida
 

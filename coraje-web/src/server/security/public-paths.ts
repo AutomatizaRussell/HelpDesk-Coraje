@@ -26,12 +26,21 @@ import { APP_BASE_PATH } from "@/server/auth/base-path";
  * - `/api/auth/microsoft`: el inicio del flujo OIDC y la vuelta del proveedor.
  *   Quien las pide todavía no tiene sesión; es lo que van a producir.
  *
- * Lo que **no** está y antes sí habría estado: el portal de clientes y su
- * API. No se declararon públicos, se retiraron (U4). El acceso externo con
- * identidad propia es `specs/acceso-clientes.md`, y hasta que exista no hay
- * ninguna superficie anónima que listara clientes ni escribiera tickets.
+ * - `/portal/ingreso`: el cliente escribe su correo y el código que recibe.
+ *   Produce la identidad del portal; no muestra datos, y su respuesta es la
+ *   misma exista o no el correo (acceso-clientes.md §9).
+ * - `/portal/activar`: el enlace de invitación. El enlace es la credencial, y
+ *   abrirlo no consume nada: activar es una acción explícita.
+ *
+ * Lo que **no** está: el resto del portal. `/portal` y todo lo que cuelga de
+ * él es una tercera clase de ruta —ni anónima ni de empleado— que exige la
+ * cookie del navegador recordado (`isPortalPath`). El portal abierto de antes
+ * de U4, que listaba clientes sin credencial, no vuelve por aquí.
  */
-export const PUBLIC_PATHS = ["/login", "/ingreso", "/api/auth/microsoft"] as const;
+export const PUBLIC_PATHS = ["/login", "/ingreso", "/api/auth/microsoft", "/portal/ingreso", "/portal/activar"] as const;
+
+/** Prefijo del portal de clientes (specs/acceso-clientes.md). */
+export const PORTAL_PREFIX = "/portal";
 
 /**
  * Prefijo, no coincidencia exacta: `/api/auth/microsoft` cubre `/start` y
@@ -42,6 +51,29 @@ export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+/** ¿Ruta del portal de clientes? Misma regla de prefijo con barra. */
+export function isPortalPath(pathname: string): boolean {
+  return pathname === PORTAL_PREFIX || pathname.startsWith(`${PORTAL_PREFIX}/`);
+}
+
+/**
+ * Las tres clases de ruta del perímetro, en el orden en que se deciden:
+ * - `PUBLICA`: pasa sin credencial (la lista de arriba, y nada más);
+ * - `PORTAL`: exige la cookie del navegador recordado de un cliente;
+ * - `EMPLEADO`: todo lo demás, exige la cookie de sesión de empleado.
+ *
+ * Una credencial no abre la clase de la otra: la sesión de un empleado no
+ * entra al portal y la de un cliente no entra a la bandeja. Tampoco podría
+ * aunque se quisiera: cada cookie viaja solo a su ruta (`path`).
+ */
+export type PathAccess = "PUBLICA" | "PORTAL" | "EMPLEADO";
+
+export function classifyPath(pathname: string): PathAccess {
+  if (isPublicPath(pathname)) return "PUBLICA";
+  if (isPortalPath(pathname)) return "PORTAL";
+  return "EMPLEADO";
 }
 
 /**

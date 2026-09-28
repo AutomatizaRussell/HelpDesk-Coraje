@@ -1,16 +1,19 @@
 # Acceso de clientes al portal
 
 ```
-ESTADO:      aprobado en su forma, ABIERTO en su alcance — el mecanismo se adopta de
-             `plataforma-impulsa`; la frontera de qué ve un contacto es decisión de
-             negocio sin tomar (§3.1). NO implementado
-CORTE:       23-sep-2026
-EVIDENCIA:   ninguna del mecanismo nuevo, que sigue sin construirse. Lo que sí cambió:
-             **el selector abierto ya no existe** — U4 lo retiró el 22-sep-2026, junto
-             con su cookie y su API, sin sustituto. Hoy **no hay ningún acceso externo
-             a HelpDesk**; los clientes no tienen por dónde entrar hasta que este
-             contrato se construya
-MIGRACIÓN:   requiere seis tablas nuevas. Ninguna sustituye a `dim_cliente_contai`
+ESTADO:      aprobado y CONSTRUIDO, SIN DESPLEGAR (U8, corte 19). Las tres decisiones
+             que lo bloqueaban se tomaron el 28-sep-2026: D2 (§3.1), D3 (§7) y D4
+             (§11)
+CORTE:       28-sep-2026
+EVIDENCIA:   estática y unitaria: `tsc`, `lint`, `pnpm test` 120/120 (incluye
+             `portal-policy.test.mts`, `client-access.contract.test.mts` y el
+             perímetro de tres clases), `next build`, y el SQL de las dos migraciones
+             parseado con el parser de PostgreSQL (`@libpg-query/parser`, cuerpos
+             PL/pgSQL incluidos). **Sin ejercitar**: ninguna migración aplicada, ningún
+             correo enviado, ninguna vista abierta
+MIGRACIÓN:   `20260928100000_valores_acceso_clientes` (solo ADD VALUE) y
+             `20260928110000_acceso_clientes`: siete tablas en `app`. Ninguna sustituye
+             a `dim_cliente_contai`
 ```
 
 **Autoridad:** este documento es propietario del contrato de acceso externo. La
@@ -85,9 +88,17 @@ La recomendación es **por empresa**, porque una mesa de ayuda existe para que u
 no dependa de que una persona concreta esté disponible, y porque el tercer alcance
 introduce una clasificación que alguien tiene que mantener correcta indefinidamente.
 
-> **`DECISIÓN` pendiente del usuario.** No se elige aquí. Mientras no se elija, la
-> especificación de las tablas queda bloqueada: el alcance es literalmente la clave de
-> la fila de autorización.
+> **`DECISIÓN` (D2, 28-sep-2026): por contacto.** Un contacto ve **solo los tickets que
+> él radicó**. Se aparta de la recomendación de arriba por decisión del usuario, y
+> acepta su costo: si la persona deja la empresa cliente, sus tickets abiertos no los
+> ve nadie más del lado del cliente (el equipo interno los sigue atendiendo igual).
+>
+> Consecuencias en el modelo: la autorización cuelga del contacto, y el contacto
+> pertenece a un único cliente. `helpdesk.fact_ticket.id_contacto_portal` dice quién
+> radicó, y la consulta del portal filtra por contacto **y** cliente del acceso
+> (`src/server/portal/portal-tickets.ts`). Un correo activo identifica a lo sumo a un
+> contacto (`ux_portal_contacto_correo_activo`): una misma dirección no puede ser
+> contacto de dos clientes a la vez. Limitación aceptada para la v1.
 
 ## 4. Principios e invariantes
 
@@ -140,11 +151,26 @@ nuevo invalida el anterior · sin bloqueo irreversible automático · espera bre
 progresiva solo ante repetición anormal · se persiste el hash y metadatos mínimos, nunca
 el código.
 
+> **`DECISIÓN DE DISEÑO` (U8): el código se pide con el correo, no desde el enlace.** En
+> Impulsa el navegador adicional entra desde el enlace de la solicitud, porque el acceso
+> cuelga de ella. Aquí el acceso es continuo y el cliente vuelve cuando tiene un
+> problema nuevo, sin enlace a mano: entra en `/portal/ingreso` escribiendo su correo.
+> Eso abre la pregunta «¿este correo tiene acceso?», y **no se responde**: la pantalla
+> y el tiempo de respuesta son los mismos exista o no el correo, esté revocado o se
+> haya alcanzado el límite. El código se envía con `after()`, después de responder,
+> para que n8n no delate con su demora qué correos existen. Solo pide código un acceso
+> **ya activado**; uno sin activar entra por su invitación.
+>
 > **`INVARIANTE`** El dispositivo recordado **no basta por sí solo**. La autorización
 > debe estar activada explícitamente —por consumo de invitación o por OTP verificado— y
 > el guard exige ambas cosas. Impulsa cerró esta brecha el 03-sep-2026: un dispositivo
 > recordado alcanzaba una autorización que nunca había activado, sin invitación, sin OTP
 > y sin auditoría propia. **Se construye ya cerrada, no se hereda abierta.**
+>
+> **Construida (U8) de dos formas a la vez:** el dispositivo cuelga de la
+> **autorización**, no del contacto (`app.portal_dispositivo.id_autorizacion`), así que
+> no hay otra autorización a la que pueda llegar; y el guard exige además
+> `activada_at` (`evaluatePortalAccess`, con prueba).
 
 ## 7. Vigencias
 
@@ -157,10 +183,23 @@ límite visible de sesión por horas.
 | Solo lectura | Consulta e historial; bloquea mutaciones **en servidor**, no solo en la interfaz |
 | Revocación | Bloquea aunque las fechas no hayan vencido |
 
-> `ABIERTO` Los plazos concretos dependen de §3.1. En Impulsa una autorización muere con
-> su solicitud; aquí, ligada a la relación comercial, un vencimiento anual obligaría a
-> reinvitar a todos los contactos de todos los clientes cada año. **Hay que decidir si
-> el vencimiento existe o si la revocación explícita es el único final.**
+> **`DECISIÓN` (D3, 28-sep-2026): solo revocación, y el navegador caduca por
+> inactividad.** El acceso **no vence**: termina solo cuando alguien lo revoca (§8). Un
+> navegador recordado que pasa **180 días sin uso** vuelve a pedir código. Valor
+> elegido por el usuario, no medido.
+>
+> Por qué basta: quien deja la empresa cliente pierde su correo corporativo, y con él
+> la posibilidad de recibir el código. El acceso se le cierra solo aunque nadie se
+> acuerde de revocarlo.
+>
+> Cómo se construyó: la regla la aplica el servidor en cada lectura
+> (`portal-policy.ts`, `evaluatePortalAccess`), no la fecha de la cookie. La cookie dura
+> lo máximo que admiten los navegadores (400 días), porque en un render no se puede
+> reescribir y una cookie de 180 días echaría también a quien entra cada semana.
+>
+> **Vida de la invitación sin usar: 14 días**. «Hasta el vencimiento máximo de acceso»
+> (§6, paso 2) dejó de tener sentido sin vencimiento. Valor inicial, no medido; si
+> caduca, quien administra accesos emite otra.
 
 ## 8. Revocación
 
@@ -206,14 +245,27 @@ contactos ni tickets ajenos · limitación de tasa tolerante y recuperable.
 
 ## 11. Orden de implementación
 
-| # | Entrega | Depende de |
-|---|---|---|
-| 1 | **Decidir §3.1 y §7** | Usuario |
-| 2 | Modelo de datos del acceso externo | 1 |
-| 3 | Alta interna de contactos y emisión de invitaciones | 2, `specs/permisos.md` |
-| 4 | Activación, dispositivo recordado y OTP | 2 |
-| ~~5~~ | ~~Retirar `/portal` actual y su cookie de cliente~~ | **Hecho el 22-sep-2026, fuera de orden** |
-| 6 | Consola interna de accesos: consultar, reenviar, revocar | 4 |
+| # | Entrega | Depende de | Estado (corte 19) |
+|---|---|---|---|
+| 1 | **Decidir §3.1 y §7** | Usuario | **Hecho** (D2, D3, D4 el 28-sep-2026) |
+| 2 | Modelo de datos del acceso externo | 1 | Construido, sin aplicar |
+| 3 | Alta interna de contactos y emisión de invitaciones | 2, `specs/permisos.md` | Construido (`/accesos`, rol `ADMIN`) |
+| 4 | Activación, dispositivo recordado y OTP | 2 | Construido (`/portal/activar`, `/portal/ingreso`) |
+| ~~5~~ | ~~Retirar `/portal` actual y su cookie de cliente~~ | | **Hecho el 22-sep-2026, fuera de orden** |
+| 6 | Consola interna de accesos: consultar, reenviar, revocar | 4 | Construido, más solo lectura |
+| 7 | Radicar (T1) y clasificar (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`, `/clasificacion`, rol `CLASIFICADOR`) |
+
+**Roles (decisión del usuario, 28-sep-2026).** `CLASIFICADOR` redirige los tickets del
+portal (`ticket.redirigir`, `TOTAL`); `ADMIN` administra los accesos
+(`portal.acceso.administrar`). Separados a propósito: quien reparte el trabajo no
+concede acceso externo. No se llama `RECEPCION` para no confundirlo con la recepción
+física de la firma. Los dos parten de una **copia** de las reglas de `AGENTE`.
+
+**Fuera de la v1, registrado:** varios correos por contacto desde la consola (el
+modelo los admite, pero la vista da de alta uno); desactivar un contacto (hoy se
+revoca su acceso); aviso por correo al cliente cuando radica («recibimos tu
+solicitud»), que necesitaría el buzón de la firma y no un empleado; delegación (§4,
+invariante 7), que no se pidió.
 
 > **El paso 5 se adelantó a los cuatro anteriores, y la razón importa.** Estaba escrito
 > como último porque se suponía que el portal abierto se apagaría al encender el
@@ -224,30 +276,53 @@ contactos ni tickets ajenos · limitación de tasa tolerante y recuperable.
 > identificación fiscal. Se retiró en U4 sin sustituto: **hoy no hay ningún acceso
 > externo**, y construirlo sigue siendo este documento.
 
-> `ABIERTO` **Por dónde sale el correo.** Impulsa lo envía desde la aplicación con
-> Microsoft Graph y el *grant* delegado de quien pulsa el botón, y retiró n8n de esa
-> ruta. Aquí no hay *grant* porque `acceso-empleados.md` §9 lo deja fuera de alcance, y
-> el correo del portal **no tiene un remitente humano natural**: lo emite la firma. Las
-> dos salidas conocidas son un buzón de firma con su propio *grant*, como hace Impulsa
-> para las invitaciones delegadas, o un workflow de n8n. **Sin decidir**, y bloquea el
-> paso 3.
+> **`DECISIÓN` (D4, 28-sep-2026): n8n, desde el buzón sin dueño
+> `automatizacionmedellin@rbcol.co`, por Microsoft Graph.** El correo del portal no
+> tiene remitente humano (el código lo pide el cliente a cualquier hora), así que sale
+> del buzón de la firma, como en Impulsa. Workflow versionado:
+> `n8n/HELPDESK - Portal - Enviar correo V1.json`.
+>
+> - **Graph y no SMTP.** El flujo de prueba del usuario («Correo empresarial») envía por
+>   SMTP con usuario y contraseña, que es la autenticación que Microsoft anunció que
+>   retira de Exchange Online. El workflow usa una credencial *Microsoft OAuth2* de n8n
+>   con la App Registration compartida con Conecta, autorizada **iniciando sesión como
+>   el buzón**, con permisos **delegados** (`Mail.Send`). No se añade ningún permiso de
+>   aplicación: con el secreto compartido, un `Mail.Send` de aplicación sin restringir
+>   permitiría enviar como cualquier buzón del tenant.
+> - **Sin cola y sin reintento, a propósito.** Estos correos llevan un secreto (enlace
+>   de un solo uso o código), y una cola exigiría guardarlo (invariante 4). La
+>   aplicación entrega el correo a n8n en el momento y audita el resultado; un envío
+>   fallido se repite emitiendo un secreto nuevo.
+> - **n8n no guarda el cuerpo.** El workflow fija `saveDataSuccessExecution` y
+>   `saveDataErrorExecution` en `none` (observación B8 de Impulsa), y Graph recibe
+>   `saveToSentItems: false`, para que el buzón no acumule códigos en «Elementos
+>   enviados».
+> - **Riesgo aceptado:** la credencial delegada del buzón caduca si le cambian la
+>   contraseña, le revocan las sesiones o pasa unos 90 días sin enviar nada. Hay que
+>   volver a autorizarla en n8n; mientras tanto, los códigos no llegan y el fallo queda
+>   en la alerta de Teams y en `app.portal_auditoria`.
+>
+> Los correos que produce un **empleado** sobre un ticket del portal (respuesta,
+> rechazo) siguen D6: salen de la cuenta de quien actúa, hacia cada correo activo del
+> contacto, con enlace al portal.
 
 ---
 
 ## 12. Verificación contra código
 
-Sin implementación; la tabla queda escrita para la unidad que la construya.
+Verificado contra el código del corte 19 (sin desplegar). «Por prueba» es estático o
+unitario; nada de esta tabla está ejercitado contra la base.
 
-| # | Afirmación a verificar | Dónde comprobarlo |
-|---|---|---|
-| V1 | El selector abierto de `/portal` y su cookie no existen | `grep` sobre `src/` — **cumplida el 22-sep-2026 (U4):** se eliminaron las tres páginas, la API de clientes, la cookie de cliente seleccionado y todo `features/portal/`. Una prueba del perímetro falla si `/portal` o su API reaparecen en la lista pública |
-| V2 | Los tokens e invitaciones se comparan por hash y nunca se guardan en claro | Servicios de invitación y OTP |
-| V3 | El guard exige activación **además** de dispositivo válido | Guard de acceso del portal |
-| V4 | La escritura externa pasa por un guard de escritura propio, con prueba negativa | Handlers de mutación del portal |
-| V5 | La revocación aplica el alcance de §8, sin excederlo | Servicios de desactivación |
-| V6 | Los mensajes externos no distinguen causas | Cadenas de error de las rutas públicas |
-| V7 | Los valores de OTP coinciden con §6 | Constantes del servicio |
-| V8 | Las rutas del portal figuran en la lista pública del perímetro | Proxy |
+| # | Afirmación a verificar | Dónde comprobarlo | Estado |
+|---|---|---|---|
+| V1 | El selector abierto de `/portal` y su cookie no existen | `grep` sobre `src/` | **Cumplida el 22-sep-2026 (U4).** El `/portal` nuevo no es público: exige el navegador recordado (V8) |
+| V2 | Los tokens e invitaciones se comparan por hash y nunca se guardan en claro | `portal-invitations.ts`, `portal-otp.ts`, migración | **Por prueba**: columnas `*_hash CHAR(64)` y ninguna en claro (`client-access.contract.test.mts`). El código es un HMAC con subclave derivada (`deriveSubkey`), no un SHA-256 plano |
+| V3 | El guard exige activación **además** de dispositivo válido | `portal-policy.ts`, `portal-access.ts` | **Por prueba** (`portal-policy.test.mts`), y el dispositivo cuelga de la autorización |
+| V4 | La escritura externa pasa por un guard de escritura propio, con prueba negativa | `requirePortalWriteAccess` en `features/portal/actions.ts` | Construida; **prueba negativa pendiente contra la base** (acceso en solo lectura que intenta radicar) |
+| V5 | La revocación aplica el alcance de §8, sin excederlo | `revokeAccess` | Construida: autorización, invitación pendiente, códigos vivos y navegadores de **esa** autorización; los tickets siguen. Sin ejercitar |
+| V6 | Los mensajes externos no distinguen causas | `/portal/ingreso`, `entry-actions.ts`, `portal-otp.ts` | Construida: mismo texto y mismo tiempo exista o no el correo. Sin ejercitar |
+| V7 | Los valores de OTP coinciden con §6 | `portal-policy.ts` | **Cumplida**: 6 dígitos, 10 min, 10 intentos, 6 por hora, uno nuevo invalida el anterior |
+| V8 | Las rutas del portal figuran en el perímetro | `public-paths.ts`, `proxy.ts` | **Por prueba**: tres clases de ruta (`PUBLICA`, `PORTAL`, `EMPLEADO`); solo `/portal/ingreso` y `/portal/activar` son públicas, y una credencial no abre la clase de la otra (`perimeter.test.mts`, `proxy.test.mts`) |
 
 **Changelog:** 03-sep-2026 — línea base. Adopta el mecanismo de acceso externo de
 Impulsa y aísla la diferencia de dominio que impide calcarlo: la autorización se ancla
@@ -262,3 +337,9 @@ día (§6).
   externo de recepción de tickets**, y las tres decisiones abiertas (D2 visibilidad,
   D3 vencimiento, D4 remitente del correo) son lo único que separa a los clientes de
   volver a tener uno.
+- 28-sep-2026 (U8, corte 19) — **decididas D2, D3 y D4, y construido el contrato sin
+  desplegar.** D2: cada contacto ve solo lo suyo. D3: sin vencimiento, 180 días de
+  inactividad por navegador, 14 días de vida para una invitación. D4: n8n por Graph
+  delegado desde `automatizacionmedellin@`, sin cola porque el correo lleva el secreto.
+  Diferencia de diseño con Impulsa: el código se pide con el correo. Roles
+  `CLASIFICADOR` y `ADMIN`. Tabla de verificación resuelta contra el código.

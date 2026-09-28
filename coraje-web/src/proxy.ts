@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { redirectWithinApp } from "@/server/auth/app-redirect";
 import { SESSION_COOKIE_NAME } from "@/server/auth/session-cookie";
+import { PORTAL_DEVICE_COOKIE } from "@/server/portal/portal-cookie";
 import { isPublicAssetPath } from "@/server/security/public-assets";
-import { isPublicPath, normalizeAppPathname } from "@/server/security/public-paths";
+import { classifyPath, normalizeAppPathname } from "@/server/security/public-paths";
 
 /**
  * Perímetro de la aplicación (specs/acceso-empleados.md §8).
@@ -63,8 +64,27 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isPublicPath(pathname)) {
+  const access = classifyPath(pathname);
+  if (access === "PUBLICA") {
     return NextResponse.next();
+  }
+
+  // Portal de clientes (specs/acceso-clientes.md): la misma regla de dos
+  // capas, con su propia credencial. Aquí solo se comprueba que la cookie del
+  // navegador recordado está presente; si corresponde a un acceso vivo lo
+  // decide `resolvePortalAccess`. Quien llega sin ella va al ingreso del
+  // portal, no al de empleados: son personas distintas.
+  if (access === "PORTAL") {
+    if (request.cookies.get(PORTAL_DEVICE_COOKIE)?.value) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    return redirectWithinApp("/portal/ingreso", undefined, 303);
   }
 
   if (request.cookies.get(SESSION_COOKIE_NAME)?.value) {

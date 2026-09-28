@@ -30,3 +30,13 @@ export const CONECTA_HOME_URL = `${PUBLIC_ORIGIN}/app`;
 export function publicTicketUrl(idTicket: string): string {
   return `${PUBLIC_ORIGIN}${APP_BASE_PATH}/tickets/${encodeURIComponent(idTicket)}`;
 }
+
+/**
+ * Enlace absoluto a una ruta del portal de clientes (`/portal/...`), para los
+ * correos que reciben los contactos. Mismo origen fijo y por el mismo motivo:
+ * un enlace de activación armado con una cabecera de la petición mandaría al
+ * cliente a donde dijera esa cabecera.
+ */
+export function publicPortalUrl(pathname: `/portal${string}`): string {
+  return `${PUBLIC_ORIGIN}${APP_BASE_PATH}${pathname}`;
+}

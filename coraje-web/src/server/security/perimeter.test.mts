@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isPublicPath, normalizeAppPathname } from "./public-paths";
+import { classifyPath, isPublicPath, normalizeAppPathname, type PathAccess } from "./public-paths";
 
 /**
  * Prueba del perímetro (`plan-ejecucion.md` §U4, criterio de cierre).
@@ -32,46 +32,89 @@ const APP_DIR = path.resolve(THIS_DIR, "../../app");
 /**
  * Inventario completo y declarado de rutas de `src/app`.
  *
- * `publica: true` debe corresponder, una a una, con lo que
- * `PUBLIC_PATHS` deja pasar. Si alguien abre una ruta en el perímetro y se
- * olvida de esta tabla —o al revés— la prueba lo dice.
+ * `acceso` debe corresponder, una a una, con lo que `classifyPath` decide:
+ * - `PUBLICA`: pasa sin credencial;
+ * - `PORTAL`: exige el navegador recordado de un contacto de cliente (U8);
+ * - `EMPLEADO`: exige la sesión de un empleado.
+ * Si alguien abre una ruta en el perímetro y se olvida de esta tabla —o al
+ * revés— la prueba lo dice.
  */
-const RUTAS_DECLARADAS: Record<string, { publica: boolean; razon: string }> = {
+const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = {
   "/": {
-    publica: false,
+    acceso: "EMPLEADO",
     razon: "Entrada de empleados: sin sesión pasa por /ingreso",
   },
   "/login": {
-    publica: true,
+    acceso: "PUBLICA",
     razon: "La puerta. Se dibuja sin sesión por definición",
   },
   "/tickets": {
-    publica: false,
+    acceso: "EMPLEADO",
     razon: "Bandeja de empleados; lo que lista lo acota el autorizador",
   },
   "/tickets/nuevo": {
-    publica: false,
+    acceso: "EMPLEADO",
     razon: "Radicar un ticket propio exige sesión y el permiso ticket.crear",
   },
   "/tickets/[idTicket]": {
-    publica: false,
+    acceso: "EMPLEADO",
     razon: "Detalle de un ticket dentro del alcance de ticket.consultar",
   },
+  "/clasificacion": {
+    acceso: "EMPLEADO",
+    razon: "Cola de tickets del portal por clasificar; exige ticket.redirigir",
+  },
+  "/clasificacion/[idTicket]": {
+    acceso: "EMPLEADO",
+    razon: "Clasificar un ticket del portal (T3); exige ticket.redirigir",
+  },
+  "/accesos": {
+    acceso: "EMPLEADO",
+    razon: "Buscar clientes para darles acceso; exige portal.acceso.administrar",
+  },
+  "/accesos/[idCliente]": {
+    acceso: "EMPLEADO",
+    razon: "Contactos e invitaciones de un cliente; exige portal.acceso.administrar",
+  },
   "/ingreso": {
-    publica: true,
+    acceso: "PUBLICA",
     razon: "Detecta en el navegador si hay sesión de Conecta y elige el modo de entrada",
   },
   "/api/auth/logout": {
-    publica: false,
+    acceso: "EMPLEADO",
     razon: "Revoca la sesión de quien la trae; sin cookie no hay nada que hacer",
   },
   "/api/auth/microsoft/start": {
-    publica: true,
+    acceso: "PUBLICA",
     razon: "Inicia el flujo OIDC: quien la pide todavía no tiene sesión",
   },
   "/api/auth/microsoft/callback": {
-    publica: true,
+    acceso: "PUBLICA",
     razon: "Vuelta del proveedor, con el código que producirá la sesión",
+  },
+  "/portal": {
+    acceso: "PORTAL",
+    razon: "Las solicitudes que radicó el contacto (D2)",
+  },
+  "/portal/tickets/nuevo": {
+    acceso: "PORTAL",
+    razon: "Radicar (T1); la escritura exige además que el acceso no sea de solo lectura",
+  },
+  "/portal/tickets/[idTicket]": {
+    acceso: "PORTAL",
+    razon: "Una solicitud propia; la ajena responde como inexistente",
+  },
+  "/portal/ingreso": {
+    acceso: "PUBLICA",
+    razon: "Pedir código por correo: produce la identidad del portal y no revela si el correo existe",
+  },
+  "/portal/ingreso/codigo": {
+    acceso: "PUBLICA",
+    razon: "Escribir el código recibido; mismo motivo que el paso anterior",
+  },
+  "/portal/activar/[token]": {
+    acceso: "PUBLICA",
+    razon: "El enlace de invitación es la credencial; abrirlo no consume nada",
   },
 };
 
@@ -88,6 +131,23 @@ const SIMBOLOS_DE_IDENTIDAD = [
   "getCurrentEmployee",
   "revokeCurrentEmployeeSession",
 ];
+
+/**
+ * Lo mismo para el portal: los tres pasan por `resolvePortalAccess`, que
+ * relee dispositivo, autorización, contacto y cliente en cada petición.
+ */
+const SIMBOLOS_DE_PORTAL = ["requirePortalAccess", "requirePortalWriteAccess", "signOutPortalDevice"];
+
+/**
+ * Server Actions anónimas **declaradas**. Son las que producen la identidad
+ * del portal —pedir código, verificarlo, activar una invitación— y por eso no
+ * pueden exigirla. Una acción anónima nueva tiene que añadirse aquí, con su
+ * motivo, y eso es visible en la revisión del cambio.
+ */
+const ACCIONES_ANONIMAS: Record<string, string> = {
+  "features/portal/entry-actions.ts":
+    "Ingreso al portal: no devuelven datos, no revelan si un correo existe y validan un secreto que solo está en el correo de la persona",
+};
 
 type ArchivoDeRuta = { pathname: string; archivo: string };
 
@@ -174,30 +234,43 @@ test("el inventario declarado cubre exactamente las rutas que existen", () => {
 });
 
 test("el perímetro clasifica cada ruta igual que el inventario", () => {
-  for (const [pathname, { publica, razon }] of Object.entries(RUTAS_DECLARADAS)) {
+  for (const [pathname, { acceso, razon }] of Object.entries(RUTAS_DECLARADAS)) {
     assert.equal(
-      isPublicPath(pathname),
-      publica,
-      `${pathname} está declarada como ${publica ? "pública" : "privada"} (${razon}), ` +
-        "pero el perímetro la clasifica al revés.",
+      classifyPath(pathname),
+      acceso,
+      `${pathname} está declarada como ${acceso} (${razon}), pero el perímetro la clasifica distinto.`,
     );
   }
 });
 
-test("toda ruta privada resuelve identidad en su propio archivo", () => {
+test("toda ruta privada resuelve la identidad de su clase en su propio archivo", () => {
   for (const { pathname, archivo } of RUTAS_EN_DISCO) {
-    if (RUTAS_DECLARADAS[pathname]?.publica) continue;
+    const acceso = RUTAS_DECLARADAS[pathname]?.acceso;
+    if (acceso === "PUBLICA") continue;
 
     const fuente = readFileSync(archivo, "utf8");
-    const resuelve = SIMBOLOS_DE_IDENTIDAD.some((s) => fuente.includes(s));
+    const simbolos = acceso === "PORTAL" ? SIMBOLOS_DE_PORTAL : SIMBOLOS_DE_IDENTIDAD;
+    const resuelve = simbolos.some((s) => fuente.includes(s));
 
     assert.ok(
       resuelve,
-      `${pathname} es privada pero su archivo no resuelve identidad. ` +
+      `${pathname} es de clase ${acceso} pero su archivo no resuelve esa identidad. ` +
         "El proxy solo comprueba que la cookie está presente; la validez la " +
-        "decide la lectura de sesión, y tiene que invocarse aquí.",
+        "decide la lectura de sesión o de acceso, y tiene que invocarse aquí.",
     );
   }
+});
+
+test("el portal no abre nada fuera de su prefijo, y solo su entrada es pública", () => {
+  assert.equal(classifyPath("/portal"), "PORTAL");
+  assert.equal(classifyPath("/portal/tickets/x"), "PORTAL");
+  assert.equal(classifyPath("/portal/ingreso"), "PUBLICA");
+  assert.equal(classifyPath("/portal/ingreso/codigo"), "PUBLICA");
+  assert.equal(classifyPath("/portal/activar/abc"), "PUBLICA");
+  // Prefijos parecidos no heredan ninguna de las dos clases.
+  assert.equal(classifyPath("/portalfalso"), "EMPLEADO");
+  assert.equal(classifyPath("/portal/ingresofalso"), "PORTAL");
+  assert.equal(classifyPath("/tickets"), "EMPLEADO");
 });
 
 test("toda Server Action exportada resuelve identidad por su cuenta", () => {
@@ -208,15 +281,23 @@ test("toda Server Action exportada resuelve identidad por su cuenta", () => {
   // comprobar nada y nadie se enteraría.
   assert.ok(archivos.length > 0, "No se encontró ninguna Server Action");
 
+  const anonimasEncontradas: string[] = [];
   for (const archivo of archivos) {
+    const relativo = path.relative(SRC_DIR, archivo).split(path.sep).join("/");
+    if (relativo in ACCIONES_ANONIMAS) {
+      anonimasEncontradas.push(relativo);
+      continue;
+    }
     const fuente = readFileSync(archivo, "utf8");
     assert.ok(
-      SIMBOLOS_DE_IDENTIDAD.some((s) => fuente.includes(s)),
-      `Las Server Actions de ${path.relative(SRC_DIR, archivo)} no resuelven ` +
+      [...SIMBOLOS_DE_IDENTIDAD, ...SIMBOLOS_DE_PORTAL].some((s) => fuente.includes(s)),
+      `Las Server Actions de ${relativo} no resuelven ` +
         "identidad. Una acción exportada es un endpoint alcanzable por sí " +
         "mismo: no hereda el guard de la página que la dibuja.",
     );
   }
+  // Una excepción declarada que ya no existe es una excepción que nadie revisa.
+  assert.deepEqual(anonimasEncontradas.sort(), Object.keys(ACCIONES_ANONIMAS).sort());
 });
 
 test("la clave compartida no sobrevive en ninguna parte del código", () => {

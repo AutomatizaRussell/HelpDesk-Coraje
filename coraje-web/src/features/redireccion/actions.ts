@@ -18,10 +18,19 @@ import { requireCurrentEmployee } from "@/server/auth/current-employee";
  * Borrarla obligaría a reconstruirlas leyendo SQL y nodos de n8n.
  *
  * Mientras no la importe ninguna vista, Next **no** publica ningún endpoint
- * para ella: `"use server"` solo genera uno cuando algo la referencia. Al
- * volver a conectarla habrá que releer dos cosas que hoy quedan colgando: el
- * destino final del `redirect`, que apunta a una ruta retirada, y si el ciclo
- * del ticket (U7) sigue queriendo que sea una sola acción o un evento.
+ * para ella: `"use server"` solo genera uno cuando algo la referencia.
+ *
+ * **U8 (28-sep-2026) la sustituyó para la redirección.** Las dos primeras
+ * reglas viven ahora en `helpdesk.redirigir_ticket` y
+ * `helpdesk.resolver_responsable_tipo` (migración 20260928110000), y la
+ * pantalla es `/clasificacion`. Lo único que sigue escrito solo aquí es la
+ * tercera: la forma del registro `CREATE_TICKET` que espera el workflow de
+ * salida hacia SharePoint. La redirección nueva **no** lo encola, porque qué
+ * sistema manda sobre un ticket del portal lo decide U9.
+ *
+ * Condición de eliminación: U9 decide. Si los tickets del portal viajan a
+ * PowerApps, esta forma pasa al comando de redirección y el archivo se
+ * borra; si no viajan, se borra sin más.
  */
 
 /**

@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-import type { TicketAction } from "./catalog";
+import type { PermissionAction, TicketAction } from "./catalog";
 import { isTicketWithinScope, type Alcance, type ScopeActor, type ScopeTicket } from "./scope";
 
 /**
@@ -40,10 +40,10 @@ export interface ActorGrant {
 export type DenialReason = "SIN_REGLA" | "FUERA_DE_ALCANCE";
 
 export class AuthorizationDeniedError extends Error {
-  readonly action: TicketAction;
+  readonly action: PermissionAction;
   readonly reason: DenialReason;
 
-  constructor(action: TicketAction, reason: DenialReason) {
+  constructor(action: PermissionAction, reason: DenialReason) {
     super(`No autorizado: ${action} (${reason}).`);
     this.name = "AuthorizationDeniedError";
     this.action = action;
@@ -59,7 +59,7 @@ export class AuthorizationDeniedError extends Error {
  * (specs/acceso-empleados.md §6). Una acción desactivada en el catálogo
  * (`activo = false`) deniega a todos los roles.
  */
-export async function resolveGrant(idPersonal: string, action: TicketAction, db: Db = prisma): Promise<ActorGrant | null> {
+export async function resolveGrant(idPersonal: string, action: PermissionAction, db: Db = prisma): Promise<ActorGrant | null> {
   const persona = await db.dimPersonal.findUnique({
     where: { idPersonal },
     select: { idArea: true, rolAplicacion: true, estadoActivo: true },
@@ -80,12 +80,12 @@ export async function resolveGrant(idPersonal: string, action: TicketAction, db:
  * lo que usa una vista que decide qué botones ofrecer. Devuelve solo las
  * acciones concedidas.
  */
-export async function resolveGrants(
+export async function resolveGrants<A extends PermissionAction>(
   idPersonal: string,
-  actions: readonly TicketAction[],
+  actions: readonly A[],
   db: Db = prisma,
-): Promise<Map<TicketAction, ActorGrant>> {
-  const granted = new Map<TicketAction, ActorGrant>();
+): Promise<Map<A, ActorGrant>> {
+  const granted = new Map<A, ActorGrant>();
   const persona = await db.dimPersonal.findUnique({
     where: { idPersonal },
     select: { idArea: true, rolAplicacion: true, estadoActivo: true },
@@ -98,13 +98,13 @@ export async function resolveGrants(
   });
   const actor: ScopeActor = { idPersonal, idArea: persona.idArea };
   for (const regla of reglas) {
-    granted.set(regla.codigoAccion as TicketAction, { actor, alcance: regla.alcance });
+    granted.set(regla.codigoAccion as A, { actor, alcance: regla.alcance });
   }
   return granted;
 }
 
-/** Exige la acción sin mirar ningún ticket (crear). */
-export async function requireGrant(idPersonal: string, action: TicketAction, db: Db = prisma): Promise<ActorGrant> {
+/** Exige la acción sin mirar ningún ticket (crear, administrar accesos). */
+export async function requireGrant(idPersonal: string, action: PermissionAction, db: Db = prisma): Promise<ActorGrant> {
   const grant = await resolveGrant(idPersonal, action, db);
   if (!grant) throw new AuthorizationDeniedError(action, "SIN_REGLA");
   return grant;
