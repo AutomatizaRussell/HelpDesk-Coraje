@@ -293,10 +293,17 @@ y U3.
 > lectura y de revocación; y la auditoría sin secretos. El guion está en
 > `estado/handoff.md`, «Acción inmediata», pasos 7 a 16.
 >
-> **No abre el portal a clientes reales**: eso espera a U9, porque los tickets del
-> portal no llegan a PowerApps (`specs/tickets.md` §4.1).
+> **No abrir el portal a clientes reales** antes de desplegar U9 **y** de decidir si se
+> enciende el espejo: sin espejo, lo que radiquen los clientes solo se ve en HelpDesk.
 
-### U9 · Regla de precedencia con SharePoint
+### U9 · Regla de precedencia con SharePoint — **construida, sin desplegar**
+
+> **Decidida y construida el 28-sep-2026** (corte 20). Un dueño por ticket: lo que nace
+> en PowerApps es de SharePoint y se consulta en HelpDesk hasta el corte; lo que nace en
+> HelpDesk es de HelpDesk y se refleja en HelpDeskBd. Los cambios hechos en PowerApps
+> se aceptan si son válidos, con su evento, o se rechazan con aviso. Espejo apagado por
+> defecto. Regla completa en `specs/sincronizacion-sharepoint.md` §4.3. El guion de
+> despliegue y de pruebas está en `estado/handoff.md`, «Acción inmediata».
 
 **Objetivo:** cerrar el defecto de `sincronizacion-sharepoint.md` §4.1 antes de que el
 equipo interno trabaje desde la plataforma.
@@ -307,7 +314,7 @@ ELT ajustado a ella. Un ticket del portal conserva su origen tras una pasada de 
 > **Se vuelve urgente en el momento en que empiece U7**, no antes. Pero U7 sin esto
 > produce trabajo que la siguiente ingesta borra.
 
-### U10 · Observabilidad
+### U10 · Observabilidad — **siguiente unidad a construir** (preparada el 28-sep-2026)
 
 Alerta de outbox envejecido · workflow de error en n8n · reconciliación de conteos ·
 identificador de correlación de punta a punta · logs estructurados sin secretos.
@@ -315,6 +322,81 @@ identificador de correlación de punta a punta · logs estructurados sin secreto
 **Condición de cierre:** una divergencia controlada debe ser **detectada, clasificada y
 corregida**, dejando evidencia del antes, la acción y el resultado. **Un tablero sin
 reconciliación no cierra la unidad.**
+
+**Depende de:** U8 y U9 **desplegadas**, porque sus tablas son las que se vigilan. Se
+puede construir antes, pero ejercitarla exige el despliegue.
+
+#### Qué ya existe y no hay que rehacer
+
+- **Workflow de error de n8n** (`n8n/Alertas de errores a Teams.json`, V10 cerrado el
+  24-sep-2026). Lo usan la ingesta, la salida y el correo del portal. Una ejecución
+  que falla ya avisa en Teams.
+- **Aviso de divergencias rechazadas** (U9): la transformación 08 de la ingesta.
+- **Registros que ya guardan el fallo**, pero que hoy solo se ven al abrir un ticket o
+  consultando la base: los que lista la tabla de abajo.
+
+#### Inventario: lo que hoy puede fallar sin que nadie se entere
+
+| # | Señal | Dónde está | Desde | Por qué importa |
+|---|---|---|---|---|
+| S1 | Filas del outbox `PENDING` envejecidas, o `FAILED` con 5 intentos | `helpdesk.ticket_sync_outbox` | U9 | El espejo se detuvo: PowerApps deja de ver lo que pasa en HelpDesk |
+| S2 | `CONFLICTO_POWERAPPS` sin conciliar tras más de una ingesta | Ídem, `last_error` | U9 | Un ticket quedó desincronizado y esperando |
+| S3 | Tickets de HelpDesk clasificados, con el espejo encendido y sin ítem (sin fila en `ticket_legacy_sharepoint_ref`) pasado un plazo | `fact_ticket` + ref | U9 | La creación en SharePoint nunca ocurrió |
+| S4 | Divergencias `RECHAZADO` sin revisar | `helpdesk.sync_divergencia` | U9 | Hoy la tabla no tiene cómo marcar «revisado»: el aviso de Teams sale una vez y se pierde |
+| S5 | Correos del ticket `FALLIDO` o atascados en `PENDIENTE`/`ENVIANDO` | `helpdesk.ticket_notificacion` | U7 | Solo se ven en el detalle del ticket, y solo los reenvía quien los envió |
+| S6 | Agentes activos con la autorización de correo revocada | `app.employee_graph_grant.revoked_at` | U7 | Todos sus correos fallan hasta que vuelvan a entrar (F14) |
+| S7 | Envíos de invitación o de código fallidos | `app.portal_auditoria` (`INVITACION_ENVIADA` / `CODIGO_ENVIADO` con `FALLO`) | U8 | Ningún cliente nuevo entra: la credencial del buzón pudo caducar |
+| S8 | Salud de la ingesta: tickets legacy sin evento de inicio, estados desfasados, tipos sin mapear | `fact_ticket_evento`, `staging.helpdesk_legacy_tipo_req_unmapped` | U6 | Hoy se comprueba a mano en cada despliegue |
+| S9 | **Reconciliación de conteos**: ítems de HelpDeskBd frente a tickets con referencia, e ítems en staging sin ticket | SharePoint + staging + ref | — | Es lo que exige el cierre: sin esto, una divergencia se descubre por casualidad |
+| S10 | Tickets por vencer o vencidos sin movimiento | `fact_ticket.fecha_limite` | U7 | Fuera del alcance mínimo; se decide si entra (`specs/tickets.md` §5 lo prevé con un scheduler) |
+
+#### Diseño propuesto (a confirmar al empezar la unidad)
+
+Respeta la economía de recursos de `CLAUDE.md`: **ningún proceso nuevo en la VPS**.
+
+1. **La regla vive en la base.** Una función `helpdesk.revisar_salud()` devuelve una
+   fila por chequeo que no está en verde: código (`S1`…), severidad, cantidad, detalle
+   y un id de ejemplo. Con índices sobre lo que filtra. Una prueba de contrato cruza
+   esta tabla con la función, para que ninguna señal quede sin chequeo.
+2. **n8n solo dispara y avisa.** Un workflow `HELPDESK - Salud diaria`, programado una
+   vez al día, llama a la función. Para S9 pide a SharePoint el conteo de HelpDeskBd
+   (`ItemCount` de la lista, una sola petición) y lo pasa a la base, que es quien
+   compara. Solo envía algo a Teams si hay filas, reutilizando el canal del workflow de
+   error. Sin filas, silencio.
+3. **S4 gana una columna** `revisada_at` (y quién la revisó) en `sync_divergencia`, para
+   que una divergencia deje de avisar cuando alguien la atendió. Es el «clasificada y
+   corregida» del cierre.
+4. **Correlación:** el `id_ticket` ya recorre la cola, la referencia y las divergencias,
+   y el ítem de SharePoint lleva `Id_Req = codigo_ticket`. Lo que falta es que los
+   registros del servidor lo lleven siempre, en el mismo formato.
+5. **Registros estructurados sin secretos:** un ayudante `logEvent()` en
+   `src/server/` que escribe una línea JSON (evento, `id_ticket`, resultado, sin
+   cuerpos de correo ni tokens) en lugar de `console.*` sueltos, y una prueba que
+   impida registrar valores de campos con nombres de secreto.
+6. **Opcional, según tu decisión:** una vista `/salud` para `ADMIN` que muestre lo mismo
+   que la función, sin consultas propias.
+
+#### Decisiones que faltan (del usuario, al empezar U10)
+
+| # | Decisión | Propuesta |
+|---|---|---|
+| O1 | Frecuencia de la revisión | Una vez al día, 7:00 en Bogotá, además del aviso inmediato que ya dan los workflows cuando fallan |
+| O2 | Umbrales de cada señal | S1 `PENDING` > 2 h con el espejo encendido; S2 > 24 h; S3 > 2 h; S5 cualquier `FALLIDO` de más de 1 día; S7 cualquier `FALLO` del último día |
+| O3 | Quién recibe y atiende las alertas | El mismo canal de Teams del workflow de error |
+| O4 | ¿Página `/salud` en HelpDesk para `ADMIN`, o solo Teams? | Solo Teams primero; la página, si hace falta |
+| O5 | ¿Entra S10 (plazos vencidos)? | No en U10: es producto, no observabilidad |
+| O6 | ¿Añadir una columna `id_ticket` a la lista HelpDeskBd para la correlación? | **No**: la lista es infraestructura compartida con PowerApps en producción, y `Id_Req` ya correlaciona |
+
+#### Guion de cierre (evidencia exigida)
+
+1. Con el espejo encendido y un ticket de prueba, **provocar una divergencia
+   controlada**: cambiar el área del ítem en PowerApps.
+2. **Detectada:** la ingesta la registra `RECHAZADO` y la revisión diaria la lista.
+3. **Clasificada:** alguien la marca revisada, con el motivo.
+4. **Corregida:** se deshace el cambio en PowerApps, y la reconciliación de conteos de
+   la siguiente revisión queda en verde.
+5. Registrar en el handoff el antes, la acción y el después, con las consultas y sus
+   resultados.
 
 ---
 

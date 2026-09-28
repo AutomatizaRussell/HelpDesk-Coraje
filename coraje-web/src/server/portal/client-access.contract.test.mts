@@ -64,7 +64,7 @@ test("las funciones nuevas corren como su dueño, con search_path fijado, y no q
   }
 });
 
-test("redirigir no encola nada hacia SharePoint: los tickets del portal esperan a U9", () => {
+test("redirigir no escribe el outbox por su cuenta: el espejo lo encola un solo trigger (U9)", () => {
   const body = stripSqlComments(functionBody("redirigir_ticket"));
   assert.doesNotMatch(body, /ticket_sync_outbox/);
 });

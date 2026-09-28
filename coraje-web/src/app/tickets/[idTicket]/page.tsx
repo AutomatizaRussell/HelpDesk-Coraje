@@ -20,6 +20,7 @@ import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
+import { getMirrorStatus, type MirrorStatus } from "@/server/sync/sharepoint-mirror";
 import { getTicketDetail, listReassignCandidates } from "@/server/tickets/ticket-queries";
 
 /**
@@ -72,6 +73,17 @@ export default async function TicketDetailPage({
     teamView: ticket.projection === "EQUIPO",
   });
   const hasActions = capabilities.responder || capabilities.reasignar || capabilities.rechazar || capabilities.notaInterna;
+  // El espejo en PowerApps solo existe para los tickets de HelpDesk, y es
+  // información del equipo. Es un panel de apoyo: si su lectura falla, el
+  // ticket se sigue mostrando y el fallo queda en el registro del servidor.
+  let mirror: MirrorStatus | null = null;
+  if (ticket.operable && ticket.projection === "EQUIPO") {
+    try {
+      mirror = await getMirrorStatus(ticket.idTicket);
+    } catch (error) {
+      console.error(`[espejo] No se pudo leer el estado del espejo de ${ticket.idTicket}:`, error);
+    }
+  }
 
   return (
     <AppFrame employee={employee} title={ticket.codigoTicket ?? "Ticket sin código"}>
@@ -130,6 +142,39 @@ export default async function TicketDetailPage({
               <h2 id="historia-titulo" className={cn(sectionTitle, "mb-4")}>Historia</h2>
               <TicketHistory entries={ticket.history} />
             </section>
+
+            {mirror && (mirror.spId !== null || mirror.divergencias.length > 0 || mirror.activo) && (
+              <section className={surface()} aria-labelledby="powerapps-titulo">
+                <h2 id="powerapps-titulo" className={cn(sectionTitle, "mb-2")}>PowerApps</h2>
+                <p className="text-sm text-ink-muted">
+                  {!mirror.activo
+                    ? "El espejo en PowerApps está apagado: este ticket no se refleja en la lista HelpDeskBd."
+                    : mirror.spId === null
+                      ? "Todavía no se refleja en PowerApps."
+                      : `Se refleja en PowerApps (ítem ${mirror.spId} de HelpDeskBd).`}
+                  {mirror.ultimoEnvio && ` Último envío: ${mirror.ultimoEnvio.estado.toLowerCase()}, ${formatDateTime(mirror.ultimoEnvio.fecha)}.`}
+                </p>
+                {mirror.ultimoEnvio?.estado === "FAILED" && mirror.ultimoEnvio.error && (
+                  <p className="mt-1 text-sm text-danger">{mirror.ultimoEnvio.error}</p>
+                )}
+                {mirror.divergencias.length > 0 && (
+                  <ul className="mt-3 divide-y divide-line">
+                    {mirror.divergencias.map((item) => (
+                      <li key={item.id} className="py-2.5">
+                        <p className="text-base text-ink">
+                          Cambio en PowerApps · {item.campo}
+                          {item.valorSharepoint && <span className="text-ink-muted"> → {item.valorSharepoint}</span>}
+                        </p>
+                        <p className={cn("text-sm", item.resultado === "RECHAZADO" ? "text-danger" : "text-ink-muted")}>
+                          {item.resultado === "APLICADO" ? "Aplicado en HelpDesk" : `No se aplicó: ${item.motivo ?? "sin motivo"}`} ·{" "}
+                          {formatDateTime(item.fecha)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
 
             {mails.length > 0 && (
               <section className={surface()} aria-labelledby="correos-titulo">

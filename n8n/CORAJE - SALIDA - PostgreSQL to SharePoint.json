@@ -4,7 +4,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH next_item AS (\n    SELECT\n        o.id_sync\n    FROM helpdesk.ticket_sync_outbox o\n    JOIN helpdesk.fact_ticket f\n        ON f.id_ticket = o.id_ticket\n    WHERE o.status = 'PENDING'\n      AND o.operation = 'CREATE_TICKET'\n      AND o.target_system = 'SHAREPOINT'\n\n      -- Solo tickets generados desde CORAJE / portal cliente.\n      AND f.origen_sistema = 'PORTAL_CLIENTE'\n\n      -- Solo tickets ya redirigidos.\n      AND f.id_area_destino IS NOT NULL\n      AND f.id_tipo_req IS NOT NULL\n\n      -- No reenviar tickets que ya tengan ítem SharePoint.\n      AND NOT EXISTS (\n          SELECT 1\n          FROM helpdesk.ticket_legacy_sharepoint_ref r\n          WHERE r.id_ticket = f.id_ticket\n            AND r.sp_id IS NOT NULL\n      )\n\n    ORDER BY o.created_at ASC\n    LIMIT 1\n    FOR UPDATE OF o SKIP LOCKED\n),\nclaimed AS (\n    UPDATE helpdesk.ticket_sync_outbox o\n    SET\n        status = 'PROCESSING',\n        attempts = attempts + 1,\n        updated_at = NOW()\n    FROM next_item n\n    WHERE o.id_sync = n.id_sync\n    RETURNING\n        o.id_sync,\n        o.id_ticket,\n        o.operation,\n        o.status,\n        o.attempts\n)\nSELECT *\nFROM claimed;",
+        "query": "-- =================================================================\n-- Reclamar el siguiente envío del espejo (U9)\n-- =================================================================\n-- Solo con el espejo encendido (helpdesk.espejo_sharepoint.activo_desde), y\n-- solo lo encolado desde que se encendió: los tickets de prueba anteriores\n-- no llegan a la lista que usa PowerApps.\n--\n-- Solo tickets cuyo dueño es HelpDesk (internos y del portal), ya con área y\n-- tipo. CREATE si todavía no tienen ítem en SharePoint; UPDATE si ya lo\n-- tienen. El contenido no viaja en la cola: se lee del ticket al enviar.\nWITH espejo AS (\n    SELECT activo_desde\n    FROM helpdesk.espejo_sharepoint\n    WHERE activo_desde IS NOT NULL\n),\nnext_item AS (\n    SELECT o.id_sync\n    FROM helpdesk.ticket_sync_outbox o\n    CROSS JOIN espejo\n    JOIN helpdesk.fact_ticket f\n        ON f.id_ticket = o.id_ticket\n    LEFT JOIN helpdesk.ticket_legacy_sharepoint_ref r\n        ON r.id_ticket = o.id_ticket\n    WHERE o.status = 'PENDING'\n      AND o.target_system = 'SHAREPOINT'\n      AND o.created_at >= espejo.activo_desde\n      AND f.origen_sistema IN ('SISTEMA_INTERNO', 'PORTAL_CLIENTE')\n      AND f.id_area_destino IS NOT NULL\n      AND f.id_tipo_req IS NOT NULL\n      AND (\n            (o.operation = 'CREATE_TICKET' AND r.sp_id IS NULL)\n         OR (o.operation = 'UPDATE_TICKET' AND r.sp_id IS NOT NULL)\n      )\n    ORDER BY o.created_at ASC\n    LIMIT 1\n    FOR UPDATE OF o SKIP LOCKED\n),\nclaimed AS (\n    UPDATE helpdesk.ticket_sync_outbox o\n    SET status = 'PROCESSING',\n        attempts = attempts + 1,\n        updated_at = NOW()\n    FROM next_item n\n    WHERE o.id_sync = n.id_sync\n    RETURNING o.id_sync, o.id_ticket, o.operation, o.status, o.attempts\n)\nSELECT *\nFROM claimed;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -26,7 +26,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n    o.id_sync,\n    o.id_ticket,\n\n    f.codigo_ticket,\n    f.descripcion_problema,\n    f.fecha_creacion,\n    f.fecha_limite,\n    f.encargado_interno,\n    f.origen_sistema,\n\n    c.nombre_cliente,\n    c.identificacion_fiscal,\n\n    a.nombre_area,\n\n    tr.tipo_requerimiento,\n    tr.categoria_1,\n    tr.categoria_2,\n\n    e.nombre_estado,\n\n    p.nombre_prioridad,\n    p.dias_sla\n\nFROM helpdesk.ticket_sync_outbox o\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = o.id_ticket\nJOIN core.dim_cliente_contai c\n    ON c.id_cliente_contai = f.id_cliente_contai\nJOIN core.dim_area a\n    ON a.id_area = f.id_area_destino\nJOIN helpdesk.dim_tipo_requerimiento tr\n    ON tr.id_tipo_req = f.id_tipo_req\nJOIN helpdesk.dim_estado e\n    ON e.id_estado = f.id_estado\nLEFT JOIN helpdesk.dim_prioridad p\n    ON p.id_prioridad = f.id_prioridad\nLEFT JOIN helpdesk.ticket_legacy_sharepoint_ref r\n    ON r.id_ticket = f.id_ticket\nWHERE o.id_sync = '{{ $json.id_sync }}'::uuid\n  AND o.status = 'PROCESSING'\n  AND o.operation = 'CREATE_TICKET'\n  AND f.origen_sistema = 'PORTAL_CLIENTE'\n  AND f.id_area_destino IS NOT NULL\n  AND f.id_tipo_req IS NOT NULL\n  AND r.sp_id IS NULL;",
+        "query": "-- El ítem lo arma PostgreSQL (helpdesk.item_espejo_sharepoint): n8n\n-- transporta, no traduce. claimed_at es el momento del reclamo; si el ticket\n-- cambia después, PG - Requeue If Changed lo vuelve a encolar.\nSELECT\n    o.id_sync,\n    o.id_ticket,\n    o.operation,\n    o.updated_at AS claimed_at,\n    r.sp_id,\n    r.espejo_conciliado->>'Modified' AS espejo_modified,\n    f.codigo_ticket,\n    helpdesk.item_espejo_sharepoint(o.id_ticket, o.operation) AS item\nFROM helpdesk.ticket_sync_outbox o\nJOIN helpdesk.fact_ticket f\n    ON f.id_ticket = o.id_ticket\nLEFT JOIN helpdesk.ticket_legacy_sharepoint_ref r\n    ON r.id_ticket = o.id_ticket\nWHERE o.id_sync = '{{ $json.id_sync }}'::uuid\n  AND o.status = 'PROCESSING';",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\n\nfunction toDateOnly(value) {\n  if (!value) return null;\n\n  const date = new Date(value);\n\n  return date.toLocaleDateString(\"es-CO\", {\n    year: \"numeric\",\n    month: \"2-digit\",\n    day: \"2-digit\",\n    timeZone: \"America/Bogota\",\n  });\n}\n\nfunction toHourMinute(value) {\n  if (!value) return null;\n\n  const date = new Date(value);\n\n  return date.toLocaleTimeString(\"es-CO\", {\n    hour: \"2-digit\",\n    minute: \"2-digit\",\n    hour12: false,\n    timeZone: \"America/Bogota\",\n  });\n}\n\nfunction formatPriority(nombrePrioridad, diasSla) {\n  if (!nombrePrioridad || !diasSla) {\n    return \"Media (3 días)\";\n  }\n\n  const normalized =\n    nombrePrioridad.charAt(0).toUpperCase() +\n    nombrePrioridad.slice(1).toLowerCase();\n\n  return `${normalized} (${diasSla} días)`;\n}\n\nconst sharepoint = {\n  Title: \"PORTAL_CLIENTE\",\n\n  Id_Req: item.codigo_ticket,\n  Requerimiento: item.descripcion_problema,\n\n  Fecha_Solicitud: toDateOnly(item.fecha_creacion),\n  Hora_Solicitud: toHourMinute(item.fecha_creacion),\n  Fecha_Max_Respuesta: toDateOnly(item.fecha_limite),\n\n  Nit: item.identificacion_fiscal,\n  Cliente: item.nombre_cliente,\n\n  \n  OData__x00c1_rea_Remite: \"PORTAL_CLIENTE\",\n  OData__x00c1_rea_Destino: item.nombre_area,\n\n\n  Tipo_Requerimiento: item.tipo_requerimiento,\n  Categor_x00ed_a1: item.categoria_1,\n  Estado: \"Abierto\",\n  Prioridad: formatPriority(item.nombre_prioridad, item.dias_sla),\n\n  Recibe: item.encargado_interno,\n  Reasignado: \"SI\",\n};\n\n/**\n * Solo agregamos Categoría 2 si viene con valor real.\n * Esto evita enviar null innecesario a SharePoint.\n */\nif (item.categoria_2) {\n  sharepoint.Categor_x00ed_a2 = item.categoria_2;\n}\n\n/**\n * Marcador temporal para pruebas.\n * Quitar cuando pases a producción real.\n */\nsharepoint.Comentarios_adicionales = \"PRUEBA CORAJE - BORRAR\";\n\nreturn [\n  {\n    json: {\n      id_sync: item.id_sync,\n      id_ticket: item.id_ticket,\n      sharepoint,\n      sharepointBody: {\n        __metadata: {\n          type: \"SP.Data.HelpDeskBdListItem\",\n        },\n        ...sharepoint,\n      },\n    },\n  },\n];"
+        "jsCode": "/**\n * Envuelve el ítem que armó PostgreSQL con el tipo de la lista. No traduce\n * nada: la traducción vive en helpdesk.item_espejo_sharepoint.\n */\nconst row = $input.first().json;\nconst item = typeof row.item === \"string\" ? JSON.parse(row.item) : row.item;\n\nreturn [\n  {\n    json: {\n      id_sync: row.id_sync,\n      id_ticket: row.id_ticket,\n      operation: row.operation,\n      claimed_at: row.claimed_at,\n      sp_id: row.sp_id,\n      espejo_modified: row.espejo_modified,\n      codigo_ticket: row.codigo_ticket,\n      sharepointBody: {\n        __metadata: { type: \"SP.Data.HelpDeskBdListItem\" },\n        ...item,\n      },\n    },\n  },\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -115,7 +115,7 @@
           "conditions": [
             {
               "id": "ac6cd8da-36ea-4bc7-a164-789fb0dc5d75",
-              "leftValue": "={{ $json.sharepoint_created }}",
+              "leftValue": "={{ $json.ok }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -135,19 +135,19 @@
         -800
       ],
       "id": "e5486fda-252e-4ac4-8747-4bbe1d60f3a8",
-      "name": "IF - SharePoint Created"
+      "name": "IF - SharePoint Written"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH ref_upsert AS (\n    INSERT INTO helpdesk.ticket_legacy_sharepoint_ref (\n        id_ticket,\n        sp_id,\n        legacy_id_req,\n        legacy_title,\n        legacy_created_at,\n        created_at,\n        updated_at\n    )\n    VALUES (\n        '{{ $(\"Code - Map SharePoint Fields\").item.json.id_ticket }}'::uuid,\n        {{ $json.sp_id }},\n        '{{ $(\"Code - Map SharePoint Fields\").item.json.sharepoint.Id_Req }}',\n        '{{ $(\"Code - Map SharePoint Fields\").item.json.sharepoint.Title }}',\n        NOW(),\n        NOW(),\n        NOW()\n    )\n    ON CONFLICT (id_ticket)\n    DO UPDATE SET\n        sp_id = EXCLUDED.sp_id,\n        legacy_id_req = EXCLUDED.legacy_id_req,\n        legacy_title = EXCLUDED.legacy_title,\n        legacy_created_at = EXCLUDED.legacy_created_at,\n        updated_at = NOW()\n    RETURNING id_ticket\n)\nUPDATE helpdesk.ticket_sync_outbox\nSET\n    status = 'SENT',\n    processed_at = NOW(),\n    updated_at = NOW(),\n    last_error = NULL\nWHERE id_sync = '{{ $(\"Code - Map SharePoint Fields\").item.json.id_sync }}'::uuid\nRETURNING\n    id_sync,\n    id_ticket,\n    status,\n    processed_at;",
+        "query": "-- =================================================================\n-- Envío hecho: referencia, lectura base del espejo y cola (U9)\n-- =================================================================\n-- La lectura base es el ítem tal como SharePoint lo devolvió en el GET que\n-- sigue a la escritura, pasado por helpdesk.espejo_campos: la ingesta\n-- compara contra esto para distinguir el eco de esta escritura de un cambio\n-- hecho en PowerApps. Si el GET falló, se conserva la lectura anterior.\n--\n-- El ítem viaja entre comillas de dólar con etiqueta propia: un apóstrofo en\n-- la descripción no puede romper la sentencia.\nWITH datos AS (\n    SELECT\n        '{{ $(\"Code - Normalize SharePoint Response\").item.json.id_sync }}'::uuid AS id_sync,\n        '{{ $(\"Code - Normalize SharePoint Response\").item.json.id_ticket }}'::uuid AS id_ticket,\n        {{ Number($(\"Code - Normalize SharePoint Response\").item.json.sp_id) }}::integer AS sp_id,\n        NULLIF($espejo_item${{ $json.error ? \"\" : JSON.stringify($json.d ?? $json).replace(/\\$espejo_item\\$/g, \"\") }}$espejo_item$, '')::jsonb AS item\n),\nref_upsert AS (\n    INSERT INTO helpdesk.ticket_legacy_sharepoint_ref (\n        id_ticket, sp_id, legacy_id_req, legacy_title, legacy_created_at,\n        espejo_conciliado, espejo_conciliado_at, created_at, updated_at\n    )\n    SELECT\n        d.id_ticket,\n        d.sp_id,\n        f.codigo_ticket,\n        COALESCE(d.item->'d'->>'Title', d.item->>'Title'),\n        NOW(),\n        helpdesk.espejo_campos(d.item),\n        CASE WHEN d.item IS NULL THEN NULL ELSE NOW() END,\n        NOW(),\n        NOW()\n    FROM datos d\n    JOIN helpdesk.fact_ticket f ON f.id_ticket = d.id_ticket\n    ON CONFLICT (id_ticket) DO UPDATE SET\n        sp_id = EXCLUDED.sp_id,\n        espejo_conciliado = COALESCE(EXCLUDED.espejo_conciliado, helpdesk.ticket_legacy_sharepoint_ref.espejo_conciliado),\n        espejo_conciliado_at = COALESCE(EXCLUDED.espejo_conciliado_at, helpdesk.ticket_legacy_sharepoint_ref.espejo_conciliado_at),\n        updated_at = NOW()\n    RETURNING id_ticket\n)\nUPDATE helpdesk.ticket_sync_outbox o\nSET status = 'SENT',\n    processed_at = NOW(),\n    updated_at = NOW(),\n    last_error = NULL\nFROM datos d\nWHERE o.id_sync = d.id_sync\nRETURNING o.id_sync, o.id_ticket, o.operation, o.status, o.processed_at;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2480,
-        -688
+        2704,
+        -912
       ],
       "id": "4ecfaacc-14ed-49a0-9387-acb896adf1d8",
       "name": "PG - Mark SENT",
@@ -161,7 +161,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE helpdesk.ticket_sync_outbox\nSET\n    status = 'FAILED',\n    last_error = LEFT(\n        COALESCE(\n            '{{ $json.error.message }}',\n            '{{ $json.message }}',\n            '{{ $json.error }}',\n            'Error desconocido al crear ítem en SharePoint'\n        ),\n        2000\n    ),\n    updated_at = NOW()\nWHERE id_sync = '{{ $(\"Code - Map SharePoint Fields\").item.json.id_sync }}'::uuid\nRETURNING\n    id_sync,\n    id_ticket,\n    status,\n    last_error;",
+        "query": "-- El mensaje de error viaja entre comillas de dólar: la versión anterior lo\n-- metía entre comillas simples, y un error con un apóstrofo rompía la\n-- sentencia que debía registrarlo.\nUPDATE helpdesk.ticket_sync_outbox\nSET status = 'FAILED',\n    last_error = LEFT($espejo_error${{ String($json.error_message ?? \"Error desconocido al escribir en SharePoint\").replace(/\\$espejo_error\\$/g, \"\") }}$espejo_error$, 2000),\n    updated_at = NOW()\nWHERE id_sync = '{{ $json.id_sync }}'::uuid\nRETURNING id_sync, id_ticket, status, last_error;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -216,7 +216,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH requeued AS (\n    UPDATE helpdesk.ticket_sync_outbox o\n    SET\n        status = 'PENDING',\n        updated_at = NOW(),\n        last_error = COALESCE(\n            NULLIF(o.last_error, ''),\n            'Requeue automático: PROCESSING vencido sin sp_id.'\n        )\n    WHERE o.status = 'PROCESSING'\n      AND o.operation = 'CREATE_TICKET'\n      AND o.target_system = 'SHAREPOINT'\n      AND o.updated_at < NOW() - INTERVAL '15 minutes'\n      AND NOT EXISTS (\n          SELECT 1\n          FROM helpdesk.ticket_legacy_sharepoint_ref r\n          WHERE r.id_ticket = o.id_ticket\n            AND r.sp_id IS NOT NULL\n      )\n    RETURNING o.id_sync\n)\nSELECT\n    COUNT(*)::int AS requeued_count\nFROM requeued;",
+        "query": "-- =================================================================\n-- Mantenimiento de la cola antes de procesar (U9)\n-- =================================================================\n-- 1. Un envío que murió a mitad (PROCESSING hace más de 15 minutos) vuelve a\n--    la cola. Un CREATE solo si su ítem no llegó a registrarse.\nUPDATE helpdesk.ticket_sync_outbox o\nSET status = 'PENDING',\n    updated_at = NOW(),\n    last_error = COALESCE(NULLIF(o.last_error, ''), 'Reencolado: el envío quedó a mitad.')\nWHERE o.status = 'PROCESSING'\n  AND o.target_system = 'SHAREPOINT'\n  AND o.updated_at < NOW() - INTERVAL '15 minutes'\n  AND (\n        o.operation = 'UPDATE_TICKET'\n     OR NOT EXISTS (\n            SELECT 1 FROM helpdesk.ticket_legacy_sharepoint_ref r\n            WHERE r.id_ticket = o.id_ticket AND r.sp_id IS NOT NULL\n        )\n  );\n\n-- 2. Reintento técnico automático (permisos.md §3): un fallo se reintenta\n--    hasta cinco veces, con al menos 15 minutos entre intentos. Después\n--    queda FAILED para que alguien lo mire (U10).\n--    Un conflicto con PowerApps (CONFLICTO_POWERAPPS) no se reintenta por\n--    tiempo sino cuando la ingesta ya concilió el cambio que lo causó, y no\n--    cuenta contra el límite: reintentarlo antes solo volvería a chocar.\nUPDATE helpdesk.ticket_sync_outbox o\nSET status = 'PENDING', updated_at = NOW()\nFROM helpdesk.fact_ticket f\nLEFT JOIN helpdesk.ticket_legacy_sharepoint_ref r ON r.id_ticket = f.id_ticket\nWHERE f.id_ticket = o.id_ticket\n  AND o.status = 'FAILED'\n  AND o.target_system = 'SHAREPOINT'\n  AND (\n        (o.last_error LIKE 'CONFLICTO_POWERAPPS%' AND r.espejo_conciliado_at > o.updated_at)\n     OR (COALESCE(o.last_error, '') NOT LIKE 'CONFLICTO_POWERAPPS%'\n         AND o.attempts < 5\n         AND o.updated_at < NOW() - INTERVAL '15 minutes')\n  )\n  AND NOT EXISTS (\n        SELECT 1 FROM helpdesk.ticket_sync_outbox otro\n        WHERE otro.id_ticket = o.id_ticket\n          AND otro.operation = o.operation\n          AND otro.status IN ('PENDING', 'PROCESSING')\n  );\n\n-- 3. Un CREATE cuyo ítem ya enlazó la ingesta (la salida lo creó pero murió\n--    antes de registrarlo; transformación 06, sección 0b) no se vuelve a\n--    crear: se da por enviado, y se encola un UPDATE para tomar la lectura\n--    base del espejo.\nUPDATE helpdesk.ticket_sync_outbox o\nSET status = 'SENT', processed_at = NOW(), updated_at = NOW(),\n    last_error = 'El ítem ya existía en SharePoint; lo enlazó la ingesta.'\nWHERE o.operation = 'CREATE_TICKET'\n  AND o.status IN ('PENDING', 'FAILED')\n  AND EXISTS (\n        SELECT 1 FROM helpdesk.ticket_legacy_sharepoint_ref r\n        WHERE r.id_ticket = o.id_ticket AND r.sp_id IS NOT NULL\n  );\n\nINSERT INTO helpdesk.ticket_sync_outbox (id_ticket, operation, status, target_system, payload)\nSELECT r.id_ticket, 'UPDATE_TICKET', 'PENDING', 'SHAREPOINT', jsonb_build_object('source', 'HELPDESK', 'trigger', 'LECTURA_BASE')\nFROM helpdesk.ticket_legacy_sharepoint_ref r\nJOIN helpdesk.fact_ticket f ON f.id_ticket = r.id_ticket\nWHERE f.origen_sistema IN ('SISTEMA_INTERNO', 'PORTAL_CLIENTE')\n  AND r.espejo_conciliado IS NULL\nON CONFLICT (id_ticket, operation) WHERE status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text]) DO NOTHING;\n\nSELECT\n    (SELECT COUNT(*) FROM helpdesk.ticket_sync_outbox WHERE status = 'PENDING')::int AS pendientes,\n    (SELECT activo_desde FROM helpdesk.espejo_sharepoint) AS espejo_activo_desde;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -236,7 +236,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\n\n/**\n * SharePoint REST puede devolver el ID como d.Id o d.ID.\n * Normalizamos a sp_id numérico y una bandera booleana para el IF.\n */\nconst rawSpId = item.d?.Id ?? item.d?.ID ?? item.Id ?? item.ID ?? null;\nconst spId = rawSpId === null ? null : Number(rawSpId);\n\nreturn [\n  {\n    json: {\n      ...item,\n      sp_id: Number.isFinite(spId) ? spId : null,\n      sharepoint_created: Number.isFinite(spId),\n    },\n  },\n];"
+        "jsCode": "/**\n * Resultado de la escritura en SharePoint, para crear o para actualizar.\n * Los dos nodos HTTP continúan ante error (onError: continueRegularOutput),\n * así que un fallo llega aquí como json.error y no detiene el lote.\n *\n * - CREATE: SharePoint devuelve el ítem; su Id es el sp_id.\n * - UPDATE (MERGE): SharePoint responde 204 sin cuerpo; el sp_id ya se sabía.\n */\nconst map = $(\"Code - Map SharePoint Fields\").item.json;\nconst res = $input.first().json ?? {};\nconst failed = res.error !== undefined;\n\nlet spId = map.sp_id;\nif (map.operation === \"CREATE_TICKET\") {\n  const raw = res.d?.Id ?? res.d?.ID ?? res.Id ?? res.ID ?? null;\n  spId = raw === null ? null : Number(raw);\n}\n\nconst ok = !failed && spId !== null && Number.isFinite(Number(spId));\nconst errorMessage = failed\n  ? String(res.error?.message ?? res.error ?? \"Error de SharePoint\")\n  : ok\n    ? null\n    : \"SharePoint no devolvió el id del ítem.\";\n\nreturn [\n  {\n    json: {\n      id_sync: map.id_sync,\n      id_ticket: map.id_ticket,\n      operation: map.operation,\n      claimed_at: map.claimed_at,\n      codigo_ticket: map.codigo_ticket,\n      sp_id: ok ? Number(spId) : null,\n      ok,\n      error_message: errorMessage,\n    },\n  },\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -388,6 +388,229 @@
       ],
       "id": "b8fe543b-2033-4514-83ed-724fea6aa37a",
       "name": "Respond - Accepted"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f3e9b6a6-343a-4bab-889d-a1fcb8251096",
+              "leftValue": "={{ $json.operation }}",
+              "rightValue": "CREATE_TICKET",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1584,
+        -800
+      ],
+      "id": "8c7c2ad5-0f0e-48d9-b970-82dbb41189ff",
+      "name": "IF - Operation Create"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://dsasas-my.sharepoint.com/personal/edwinpena_rbcol_co/_api/web/lists/getbytitle('HelpDeskBd')/items({{ $json.sp_id }})",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftSharePointOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json;odata=verbose"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1808,
+        -592
+      ],
+      "id": "98445c21-ce01-4aba-bd7f-ceac27e29029",
+      "name": "HTTP - Read Current HelpDeskBd Item",
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "CMvf9g4hz3B0CE2C",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Antes de actualizar un ítem: ¿lo cambió alguien en PowerApps después de la\n * última lectura base del espejo? Si sí, no se escribe. Sobrescribirlo\n * borraría ese cambio antes de que la ingesta lo vea, sin dejar rastro. El\n * envío queda FAILED con CONFLICTO_POWERAPPS y se reintenta cuando la\n * ingesta ya lo concilió (PG - Requeue Stale Processing, paso 2).\n *\n * Si no, se escribe con la etag de esta lectura (IF-MATCH): si alguien lo\n * cambia entre esta lectura y la escritura, SharePoint responde 412 y el\n * envío falla en vez de pisar el cambio.\n */\nconst map = $(\"Code - Map SharePoint Fields\").item.json;\nconst current = $input.first().json ?? {};\n\nif (current.error !== undefined) {\n  return [{ json: { ...map, safe: false, ok: false, error_message: \"No se pudo leer el ítem antes de actualizarlo: \" + String(current.error?.message ?? current.error) } }];\n}\n\nconst item = current.d ?? current;\nconst modified = item.Modified ? Date.parse(item.Modified) : NaN;\nconst base = map.espejo_modified ? Date.parse(map.espejo_modified) : NaN;\n\nif (Number.isFinite(base) && Number.isFinite(modified) && modified > base) {\n  return [{ json: { ...map, safe: false, ok: false, error_message: \"CONFLICTO_POWERAPPS: el ítem se modificó en PowerApps (\" + item.Modified + \") después del último envío. Se enviará cuando la ingesta concilie ese cambio.\" } }];\n}\n\nreturn [{ json: { ...map, safe: true, etag: item.__metadata?.etag ?? \"*\" } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        -592
+      ],
+      "id": "447abb9f-229a-4bf5-96a2-7010e072a559",
+      "name": "Code - Check PowerApps Changes"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4c6aff68-6a5d-4649-9eff-894620186f86",
+              "leftValue": "={{ $json.safe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2144,
+        -592
+      ],
+      "id": "ec7a2ca5-93de-456a-87f1-adeac867cfe7",
+      "name": "IF - Safe To Write"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dsasas-my.sharepoint.com/personal/edwinpena_rbcol_co/_api/web/lists/getbytitle('HelpDeskBd')/items({{ $json.sp_id }})",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftSharePointOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json;odata=verbose"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json;odata=verbose"
+            },
+            {
+              "name": "X-HTTP-Method",
+              "value": "MERGE"
+            },
+            {
+              "name": "IF-MATCH",
+              "value": "={{ $json.etag }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json;odata=verbose",
+        "body": "={{ JSON.stringify($json.sharepointBody) }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2256,
+        -592
+      ],
+      "id": "7c23c794-77ac-4c5d-a99d-e726df5c0518",
+      "name": "HTTP - Update HelpDeskBd Item",
+      "retryOnFail": false,
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "CMvf9g4hz3B0CE2C",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://dsasas-my.sharepoint.com/personal/edwinpena_rbcol_co/_api/web/lists/getbytitle('HelpDeskBd')/items({{ $json.sp_id }})",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftSharePointOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json;odata=verbose"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2480,
+        -912
+      ],
+      "id": "75d4948a-6661-483d-9647-a55dc2129bef",
+      "name": "HTTP - Get HelpDeskBd Item",
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "CMvf9g4hz3B0CE2C",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Si el ticket cambió mientras se enviaba, el trigger no pudo encolar (ya\n-- había un envío en curso para esa operación): se encola ahora, con el envío\n-- anterior ya marcado SENT.\nINSERT INTO helpdesk.ticket_sync_outbox (id_ticket, operation, status, target_system, payload)\nSELECT f.id_ticket, 'UPDATE_TICKET', 'PENDING', 'SHAREPOINT', jsonb_build_object('source', 'HELPDESK', 'trigger', 'CAMBIO_DURANTE_ENVIO')\nFROM helpdesk.fact_ticket f\nWHERE f.id_ticket = '{{ $(\"Code - Normalize SharePoint Response\").item.json.id_ticket }}'::uuid\n  AND f.ultima_actualizacion > '{{ $(\"Code - Normalize SharePoint Response\").item.json.claimed_at }}'::timestamptz\nON CONFLICT (id_ticket, operation) WHERE status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text]) DO NOTHING\nRETURNING id_sync;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2928,
+        -912
+      ],
+      "id": "a85697f1-efa2-4afe-bc8c-e8f3438a73f5",
+      "name": "PG - Requeue If Changed",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "BXUhXVnB90qTUUMU",
+          "name": "Postgres account Daniel"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -418,7 +641,7 @@
       "main": [
         [
           {
-            "node": "HTTP - Create HelpDeskBd Item",
+            "node": "IF - Operation Create",
             "type": "main",
             "index": 0
           }
@@ -430,24 +653,6 @@
         [
           {
             "node": "Code - Normalize SharePoint Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF - SharePoint Created": {
-      "main": [
-        [
-          {
-            "node": "PG - Mark SENT",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "PG - Mark FAILED",
             "type": "main",
             "index": 0
           }
@@ -480,7 +685,7 @@
       "main": [
         [
           {
-            "node": "IF - SharePoint Created",
+            "node": "IF - SharePoint Written",
             "type": "main",
             "index": 0
           }
@@ -565,7 +770,7 @@
       "main": [
         [
           {
-            "node": "Loop - Process Up To 20",
+            "node": "PG - Requeue If Changed",
             "type": "main",
             "index": 0
           }
@@ -588,6 +793,115 @@
         [
           {
             "node": "PG - Requeue Stale Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Operation Create": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Create HelpDeskBd Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP - Read Current HelpDeskBd Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Read Current HelpDeskBd Item": {
+      "main": [
+        [
+          {
+            "node": "Code - Check PowerApps Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Check PowerApps Changes": {
+      "main": [
+        [
+          {
+            "node": "IF - Safe To Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Safe To Write": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Update HelpDeskBd Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PG - Mark FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Update HelpDeskBd Item": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize SharePoint Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - SharePoint Written": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get HelpDeskBd Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PG - Mark FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Get HelpDeskBd Item": {
+      "main": [
+        [
+          {
+            "node": "PG - Mark SENT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG - Requeue If Changed": {
+      "main": [
+        [
+          {
+            "node": "Loop - Process Up To 20",
             "type": "main",
             "index": 0
           }

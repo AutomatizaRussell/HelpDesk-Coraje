@@ -35,9 +35,9 @@ export const TICKET_STATE_LABEL: Record<TicketState, string> = {
 /**
  * `EXCEPCIÓN TEMPORAL` — solo los tickets creados en HelpDesk se operan desde
  * HelpDesk: los internos (`SISTEMA_INTERNO`, U7) y los del portal de
- * clientes (`PORTAL_CLIENTE`, U8). Los del portal no viajan a SharePoint
- * mientras U9 no decida la precedencia (migración 20260928110000,
- * `helpdesk.redirigir_ticket`), así que tampoco hay ingesta que los pise.
+ * clientes (`PORTAL_CLIENTE`, U8). U9 fijó la regla: su dueño es HelpDesk.
+ * Se reflejan en SharePoint para quien siga en PowerApps, y la ingesta no
+ * los reescribe (sincronizacion-sharepoint.md §4.3).
  *
  * Mientras conviven PowerApps y HelpDesk, la ingesta sobrescribe con lo que
  * tenga SharePoint los tickets que vienen de allí
@@ -48,8 +48,11 @@ export const TICKET_STATE_LABEL: Record<TicketState, string> = {
  * HelpDesk y no se usa de verdad hasta U9. Los tickets legacy se pueden
  * consultar, no operar.
  *
- * Condición de eliminación: U9 fija qué sistema manda sobre cada ticket. Esta
- * función pasa a consultar esa regla, o desaparece si el corte es total.
+ * Los tickets legacy siguen siendo de SharePoint hasta el corte (decisión del
+ * 28-sep-2026, U9): aquí se consultan, no se operan.
+ *
+ * Condición de eliminación: el apagado de PowerApps (contexto-canonico.md §2).
+ * Con él, todos los tickets pasan a HelpDesk y esta función desaparece.
  */
 export const OPERABLE_ORIGINS = ["SISTEMA_INTERNO", "PORTAL_CLIENTE"] as const;
 

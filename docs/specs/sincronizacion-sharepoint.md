@@ -1,10 +1,11 @@
 # Sincronización con SharePoint y convivencia con PowerApps
 
 ```
-ESTADO:      parcial asimétrico — la ingesta funciona y está ejercitada con datos
-             reales; la salida está construida en la base pero su orquestación NO
-             está en el repositorio y NUNCA se ejercitó
-CORTE:       03-sep-2026
+ESTADO:      regla de precedencia DECIDIDA y CONSTRUIDA, SIN DESPLEGAR (U9, corte 20,
+             §4.3). La ingesta está ejercitada con datos reales; la salida nueva
+             (crear y actualizar el espejo) nunca se ha ejecutado
+CORTE:       28-sep-2026 (las secciones 1-4.2 describen el estado del 03-sep; §4.3
+             las supera)
 EVIDENCIA:   lectura directa de `sql/elt/06_transform_ticket.sql`,
              `sql/db/06_helpdesk_facts.sql`, `src/app/redireccion/[id]/actions.ts` y
              del contenido de `n8n/` en este corte. Los conteos de la carga vienen de
@@ -145,6 +146,82 @@ sentencia, un `INSERT ... ON CONFLICT (id_ticket) DO UPDATE` sobre
 > primera vez que un ticket real recorra este camino sigue siendo la primera vez que
 > se ejercita de verdad.
 
+### 4.3 `DECISIÓN` (28-sep-2026, U9) Un dueño por ticket
+
+**Construida, sin desplegar** (migración `20260928120000_espejo_sharepoint` y las
+versiones U9 de los dos workflows de `n8n/`). Decidida por el usuario, que la planteó
+así: el periodo de convivencia será corto, y quizá inexistente; quien siga en PowerApps
+tiene que ver lo que nace en la web; si alguien toca allí un ticket de HelpDesk, se
+acepta con trazabilidad o se avisa; y **la actividad que siga llegando desde PowerApps
+es lo que dirá cuándo desconectarlo**.
+
+| Nace en | Dueño | Ingesta | Salida | En HelpDesk |
+|---|---|---|---|---|
+| PowerApps (`SHAREPOINT_LEGACY`) | SharePoint | Manda en todos los campos, como siempre | No lo toca | Solo consulta, **hasta el corte** |
+| HelpDesk (`SISTEMA_INTERNO`, `PORTAL_CLIENTE`) | HelpDesk | **No lo reescribe** (06, 07). Concilia campo por campo lo que alguien cambie en PowerApps (08) | Lo crea en HelpDeskBd y lo actualiza en cada cambio | Se opera |
+
+**Cómo funciona la salida.**
+- Un trigger sobre `fact_ticket` (`trg_encolar_espejo_sharepoint`) encola `CREATE_TICKET`
+  o `UPDATE_TICKET` en la misma transacción que cualquier cambio de un ticket de
+  HelpDesk ya clasificado. Ningún comando puede olvidarlo. La cola sigue siendo la de
+  §2.2, con su índice parcial único.
+- El ítem lo arma PostgreSQL (`helpdesk.item_espejo_sharepoint`). `RECHAZADO` se
+  traduce a «Cerrado» con «RECHAZADO: motivo» como respuesta: es la única traducción
+  con pérdida, porque PowerApps no tiene estado de rechazo.
+- Después de escribir, la salida lee el ítem y guarda la **lectura base**
+  (`ticket_legacy_sharepoint_ref.espejo_conciliado`, normalizada por
+  `helpdesk.espejo_campos`).
+- Antes de actualizar, vuelve a leer el ítem. Si se modificó después de la lectura base,
+  lo cambió alguien en PowerApps: **no escribe** y registra `CONFLICTO_POWERAPPS`. Solo
+  reintenta cuando la ingesta ya concilió ese cambio. Si no se modificó, escribe con la
+  `etag` recién leída, y SharePoint rechaza la escritura (412) si alguien lo toca entre
+  la lectura y la escritura.
+- Si el ticket cambia mientras se envía, se vuelve a encolar al terminar. Los fallos
+  técnicos se reintentan solos hasta cinco veces.
+
+**Cómo funciona la conciliación (transformación 08).** Solo considera un ítem modificado
+después de la lectura base; así el eco de la propia escritura no cuenta como cambio.
+
+| Cambio en PowerApps | Resultado en HelpDesk |
+|---|---|
+| Cerrar un ticket `ASIGNADO` | Se acepta como `RESPUESTA` (actor `SISTEMA`, visible para el solicitante), con una nota interna que dice que vino de PowerApps y que no se envió correo |
+| Reasignar a una persona activa con acceso | Se acepta como `REASIGNACION` |
+| Editar la respuesta de un ticket cerrado | Se acepta, con un comentario visible para el solicitante |
+| Calificar | Se guarda, con una nota interna |
+| Reabrir un ticket terminado | **Rechazado**: la v1 no reabre |
+| Reasignar a quien no tiene acceso a HelpDesk | **Rechazado** |
+| Cambiar área, tipo o descripción | **Rechazado**: solo se cambian en HelpDesk |
+
+Cada cambio queda en `helpdesk.sync_divergencia`, aplicado o rechazado, y se muestra en
+el detalle del ticket. Un rechazo además **avisa por Teams**: el nodo `Stop - Avisar
+Divergencias` detiene la ejecución al final, con todo ya guardado, para que el workflow
+de error envíe la alerta. En n8n se verá como ejecución fallida; su mensaje empieza por
+«AVISO, no error de datos».
+
+**Interruptor.** El espejo nace **apagado** (`helpdesk.espejo_sharepoint.activo_desde`
+vacío). Encenderlo es un `UPDATE` deliberado, y solo se refleja lo encolado desde ese
+momento: los tickets de prueba anteriores no llegan a la lista que usa PowerApps.
+
+**Señal de corte.** `helpdesk.v_actividad_powerapps` cuenta por semana los tickets
+creados en PowerApps, los cambios de estado en tickets legacy y los cambios de PowerApps
+sobre tickets de HelpDesk. Varias semanas seguidas en cero en las tres columnas es la
+evidencia del cuarto criterio de `contexto-canonico.md` §2.
+
+**Riesgos que quedan, aceptados y nombrados.**
+- **Ventana de milisegundos** entre la escritura de HelpDesk y su lectura posterior: un
+  cambio de PowerApps en ese instante quedaría tomado como parte de la lectura base.
+- **Un conflicto espera a la ingesta**, que corre cada 12 horas. Mientras tanto, los
+  cambios de HelpDesk sobre ese ticket no llegan a SharePoint.
+- **Un cambio rechazado de área, tipo o descripción queda distinto en los dos sistemas.**
+  La salida solo reenvía los campos del ciclo. Se avisa, pero hay que corregirlo a mano
+  en PowerApps.
+- **Un cierre hecho en PowerApps no envía correo desde HelpDesk.** Lo que haga el flujo
+  de PowerApps sigue ocurriendo allí; HelpDesk lo registra.
+- **Un ítem creado cuya referencia no llegó a guardarse** (la salida murió entre crear y
+  registrar) se enlaza en la siguiente ingesta por su `Id_Req`, en vez de duplicarse
+  (06, sección 0b). Si la salida alcanzara a crearlo dos veces antes, quedarían dos
+  ítems en SharePoint. No se ha observado.
+
 ## 5. Invariantes de la convivencia
 
 1. **PostgreSQL es la fuente durable.** SharePoint es un destino de compatibilidad
@@ -160,13 +237,20 @@ sentencia, un `INSERT ... ON CONFLICT (id_ticket) DO UPDATE` sobre
 
 ## 6. Criterios de aceptación
 
-- Reprocesar la ingesta completa **no duplica** tickets ni eventos.
+Estado al corte 20 (construido, sin ejercitar):
+
+- Reprocesar la ingesta completa **no duplica** tickets ni eventos. *Sin cambio.*
 - Un ticket radicado en el portal **conserva su origen** después de cualquier pasada de
-  ingesta.
+  ingesta. *Construido:* la 06 no reescribe tickets de HelpDesk, y
+  `chk_fact_ticket_origen_portal` hace fallar cualquier intento.
 - Un ticket que viaja a SharePoint y regresa **es el mismo ticket**, no dos.
+  *Construido:* referencia escrita al crear, y enlace por `Id_Req` si faltó.
 - El outbox no acumula filas `PENDING` indefinidamente sin que nadie se entere.
+  **Pendiente: U10.**
 - Un fallo del workflow de salida **no pierde** la intención de sincronizar.
+  *Construido:* cinco reintentos, y reencolado de lo que cambió durante un envío.
 - Existe **una regla escrita** de qué sistema manda sobre cada campo en cada fase.
+  **Hecho:** §4.3.
 
 ## 7. Observabilidad mínima que no existe
 
@@ -213,3 +297,10 @@ procedencia (§4.1) y el riesgo de duplicado por eco (§4.2).
   marcar `SENT` (§4.2): el riesgo de duplicado por eco es infundado en el diseño actual,
   aunque nunca ejercitado. Hay cron de respaldo (12h + requeue a los 15 min); no hay
   workflow de error, confirmado. El outbox tiene cero filas, en cualquier estado.
+- 28-sep-2026 — U9, corte 20. §4.3: un dueño por ticket, decidido por el usuario.
+  HelpDesk refleja lo suyo en HelpDeskBd (crear y actualizar), la ingesta deja de
+  reescribirlo y concilia campo por campo lo que se cambie en PowerApps, con
+  trazabilidad y aviso. Espejo apagado por defecto, lectura base para distinguir el eco,
+  protección contra pisar cambios de PowerApps, y vista de actividad como señal de
+  corte. La salida anterior se sustituye: solo creaba, solo del portal, y llevaba un
+  marcador de prueba.

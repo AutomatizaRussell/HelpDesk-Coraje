@@ -256,9 +256,10 @@ el 25-sep-2026 (§4). Los demás números se conservan para no romper las refere
 >   (`helpdesk.resolver_responsable_tipo`, extraída de `crear_ticket_interno` sin cambiar
 >   su comportamiento). El plazo son **3 días hábiles desde hoy**, al final del día (§5).
 >   El evento `REDIRECCION` es `INTERNO`: el cliente ve el estado, no la clasificación.
-> - **Sin salida a SharePoint.** Redirigir no encola `CREATE_TICKET`: los tickets del
->   portal viven solo en HelpDesk hasta que U9 fije la precedencia, igual que los
->   internos de U7. La antigua `/redireccion` sí lo encolaba.
+> - ~~**Sin salida a SharePoint.**~~ **Superado por U9 el mismo día**
+>   (`specs/sincronizacion-sharepoint.md` §4.3). El dueño de un ticket del portal o
+>   interno es HelpDesk; se refleja en HelpDeskBd desde que tiene área, y la ingesta ya
+>   no lo reescribe. Lo encola un trigger, no la función de redirección.
 > - Responder y rechazar un ticket del portal avisan al contacto por correo (D6, desde
 >   la cuenta de quien actúa); reasignar no, porque es un movimiento interno.
 

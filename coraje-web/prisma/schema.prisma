@@ -545,6 +545,7 @@ model FactTicket {
   ticketLegacySharepointRef TicketLegacySharepointRef?
   ticketSyncOutbox     TicketSyncOutbox[]
   ticketNotificacion   TicketNotificacion[]
+  syncDivergencia      SyncDivergencia[]
 
   // Sin índices sobre las FK (id_cliente_contai, id_solicitante, id_area_destino,
   // id_asignado, id_estado, id_prioridad, id_tipo_req): sql/db/06_helpdesk_facts.sql
@@ -637,6 +638,11 @@ model TicketLegacySharepointRef {
   legacyCreatedAt  DateTime?   @map("legacy_created_at") @db.Timestamptz(6)
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  // U9: el ítem de SharePoint tal como se vio tras la última escritura de
+  // HelpDesk o la última conciliación. Distingue el eco de un cambio hecho en
+  // PowerApps (migración 20260928120000_espejo_sharepoint).
+  espejoConciliado   Json?     @map("espejo_conciliado")
+  espejoConciliadoAt DateTime? @map("espejo_conciliado_at") @db.Timestamptz(6)
   factTicket       FactTicket  @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticket_legacy_sharepoint_ref_ticket")
 
   // ix_ticket_legacy_sharepoint_ref_legacy_id_req / _legacy_created_at: declarados
@@ -701,5 +707,45 @@ model TicketSyncOutbox {
   @@index([status, createdAt], map: "ix_ticket_sync_outbox_status_created")
   @@index([idTicket], map: "ix_ticket_sync_outbox_ticket")
   @@map("ticket_sync_outbox")
+  @@schema("helpdesk")
+}
+
+// ---------------------------------------------------------------------
+// U9 · Espejo en SharePoint de los tickets de HelpDesk
+// (migración 20260928120000_espejo_sharepoint,
+// docs/specs/sincronizacion-sharepoint.md §4.3)
+// ---------------------------------------------------------------------
+
+/// Interruptor del espejo: una sola fila (chk_espejo_sharepoint_unica). Con
+/// activoDesde vacío, la salida de n8n no envía nada a SharePoint.
+model EspejoSharepoint {
+  id          Boolean   @id @default(true)
+  activoDesde DateTime? @map("activo_desde") @db.Timestamptz(6)
+  motivo      String?
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("espejo_sharepoint")
+  @@schema("helpdesk")
+}
+
+/// Cambio hecho en PowerApps sobre un ticket de HelpDesk, aplicado o
+/// rechazado (chk_sync_divergencia_resultado). Lo escribe solo la ingesta;
+/// coraje_runtime solo lee.
+model SyncDivergencia {
+  id                       String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idTicket                 String     @map("id_ticket") @db.Uuid
+  spId                     Int        @map("sp_id")
+  campo                    String     @db.VarChar(60)
+  valorHelpdesk            String?    @map("valor_helpdesk")
+  valorSharepoint          String?    @map("valor_sharepoint")
+  resultado                String     @db.VarChar(20)
+  motivo                   String?    @db.VarChar(1000)
+  modificadoEnSharepointAt DateTime?  @map("modificado_en_sharepoint_at") @db.Timestamptz(6)
+  detectadoAt              DateTime   @default(now()) @map("detectado_at") @db.Timestamptz(6)
+  factTicket               FactTicket @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([idTicket, detectadoAt], map: "ix_sync_divergencia_ticket")
+  @@index([detectadoAt], map: "ix_sync_divergencia_detectado")
+  @@map("sync_divergencia")
   @@schema("helpdesk")
 }

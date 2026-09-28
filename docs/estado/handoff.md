@@ -1,10 +1,45 @@
 # Handoff técnico
 
 ```
-CORTE:   28-sep-2026 (corte 19, U8 — acceso de clientes y tickets del portal,
-         construido, SIN DESPLEGAR)
-SOBRE:   `f117661`
+CORTE:   28-sep-2026 (corte 20, U9 — regla de precedencia con SharePoint, construida,
+         SIN DESPLEGAR)
+SOBRE:   `4455741` (corte 19, sin publicar todavía: los dos commits salen juntos)
 RAMA:    main
+UNIDAD:  U9 · REGLA DE PRECEDENCIA. Decisión del usuario (28-sep): un dueño por
+         ticket. Lo que nace en PowerApps es de SharePoint y en HelpDesk se consulta
+         hasta el corte; lo que nace en HelpDesk es de HelpDesk y se refleja en
+         HelpDeskBd; los cambios hechos en PowerApps sobre lo de HelpDesk se aceptan
+         con trazabilidad o se rechazan con aviso; y la actividad de PowerApps es la
+         señal para desconectarlo.
+         Construido:
+         - migración `20260928120000_espejo_sharepoint`: interruptor
+           `helpdesk.espejo_sharepoint` (APAGADO), lectura base en
+           `ticket_legacy_sharepoint_ref.espejo_conciliado`, registro
+           `helpdesk.sync_divergencia`, trigger `trg_encolar_espejo_sharepoint`,
+           `item_espejo_sharepoint` (el ítem lo arma la base), `espejo_campos`
+           (normalización compartida), vista `v_actividad_powerapps`;
+         - ingesta: la 06 enlaza ecos sin referencia y no reescribe tickets de
+           HelpDesk; la 07 no decide su estado; nueva 08 concilia campo por campo y
+           avisa por Teams de lo rechazado;
+         - salida reescrita: crear y actualizar, interruptor, lectura antes de
+           actualizar (no pisa cambios de PowerApps), `etag`, lectura base tras
+           escribir, reencolado de cambios durante un envío, cinco reintentos, sin
+           marcador de prueba y sin texto pegado sin escapar;
+         - la aplicación despierta la salida tras cada cambio y muestra el espejo y
+           las divergencias en el detalle del ticket. Se retira
+           `features/redireccion/actions.ts`: su última regla vive ya en el trigger.
+         Evidencia: `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test`
+         128/128, `next build`; SQL y PL/pgSQL de la migración y de cada consulta de
+         los dos workflows parseados, y JavaScript de sus nodos compilado, con
+         controles negativos. **Sin ejercitar**: nada aplicado ni importado.
+SIGUE:   pruebas A-E de «Acción inmediata» (U7, U8, U9) y después U10,
+         preparada en `plan-ejecucion.md` (inventario S1-S10, diseño, decisiones
+         O1-O6, guion de cierre).
+
+--- Corte 19, para contexto:
+CORTE:   28-sep-2026 (corte 19, U8 — acceso de clientes y tickets del portal,
+         construido, SIN DESPLEGAR; commit `4455741`, local)
+SOBRE:   `f117661`
 UNIDAD:  U8 · ACCESO DE CLIENTES. Se adelanta a los pasos 2-5 de U7, que quedan para
          ejercitarse junto con U8 (decisión del usuario del 28-sep: hoy sin SSH).
          Decisiones del usuario (28-sep): D2 cada contacto ve solo lo suyo · D3 sin
@@ -424,6 +459,17 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 
 ## 3. Capacidades publicadas en esta unidad
 
+### U9 — regla de precedencia con SharePoint (corte 20, sin desplegar)
+
+- **Un dueño por ticket.** Lo de PowerApps lo gobierna la ingesta como siempre; lo de
+  HelpDesk se refleja en HelpDeskBd y la ingesta ya no lo reescribe.
+- **Espejo** creado y actualizado por la salida desde un trigger. Nace apagado, y no pisa
+  cambios de PowerApps que la ingesta todavía no vio.
+- **Conciliación** de lo que se cambie en PowerApps sobre tickets de HelpDesk: se aplica
+  con su evento o se rechaza con aviso, siempre en `helpdesk.sync_divergencia` y en el
+  detalle del ticket.
+- **Señal de corte:** `helpdesk.v_actividad_powerapps`.
+
 ### U8 — acceso de clientes y tickets del portal (corte 19, sin desplegar)
 
 - **Identidad del cliente** (`src/server/portal/`): invitación de un solo uso que se
@@ -694,13 +740,17 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, decidido y pendiente de construir (U5.2) |
 | **Compartir origen con Conecta** (D7) expone a cada app lo que la otra guarda en el navegador, incluidos los tokens de sesión de Conecta | Un XSS en cualquiera de las dos compromete a ambas | Disciplina contra XSS (sin `dangerouslySetInnerHTML` ni HTML de terceros), y una política de seguridad de contenido antes de renderizar contenido de clientes (`integracion-conecta.md` §6) |
 | **U8: los correos del portal dependen de una credencial delegada del buzón `automatizacionmedellin@`** en n8n | Si le cambian la contraseña, le revocan las sesiones o pasa unos 90 días sin enviar, ni invitaciones ni códigos salen: ningún cliente nuevo entra y ningún navegador nuevo se verifica. Los navegadores ya recordados siguen entrando | Alerta de Teams (workflow de error) y `app.portal_auditoria` con `CODIGO_ENVIADO`/`INVITACION_ENVIADA` en `FALLO`. Reautorizar la credencial (`operacion.md`). Salida estructural si se repite: permiso de aplicación restringido al buzón, en una App Registration propia |
-| **U8: los tickets del portal no llegan a PowerApps** | El equipo que trabaja en PowerApps no los ve: solo existen en HelpDesk, en la cola `/clasificacion` y en la bandeja de quien los recibe | Decisión deliberada hasta U9 (`specs/tickets.md` §4.1). **No abrir el portal a clientes reales antes de U9** o antes de que el equipo que recibe esos tickets trabaje en HelpDesk |
+| ~~U8: los tickets del portal no llegan a PowerApps~~ | **Resuelto en diseño por U9 (corte 20)**, sin desplegar: con el espejo encendido, se reflejan en HelpDeskBd al clasificarse | — |
+| **U9: el espejo cambia la lista HelpDeskBd que usa PowerApps en producción** | Un defecto de la salida escribiría ítems incorrectos donde la gente trabaja | Espejo apagado por defecto; se enciende con un `UPDATE` deliberado, y solo se refleja lo encolado desde entonces. Probar primero con un ticket propio y mirar el ítem en PowerApps |
+| **U9: un conflicto con PowerApps espera a la ingesta** (cada 12 horas) | Mientras tanto, los cambios de HelpDesk sobre ese ticket no llegan a SharePoint | Aceptado: sobrescribir borraría el cambio de PowerApps sin rastro. Se ve en el detalle del ticket (`CONFLICTO_POWERAPPS`) |
+| **U9: un rechazo de la conciliación se avisa como «ejecución fallida»** en n8n | Puede leerse como una caída de la ingesta | El mensaje empieza por «AVISO, no error de datos», y la ingesta ya guardó todo antes de avisar |
 | **U8: el correo del portal se entrega a n8n en el momento, sin cola** | Si n8n está caído, el código o la invitación no salen y no se reintentan solos: la persona pide otro código, o quien administra accesos emite otra invitación | Aceptado: una cola exigiría guardar el secreto (`acceso-clientes.md` §11, D4). El fallo queda auditado |
 
 ## 7. Commits relevantes
 
 | Commit | Cambio |
 |---|---|
+| `4455741` | **Corte 19.** U8: acceso de clientes y tickets del portal. Sale junto con el corte 20 |
 | `f117661` | Registra la infraestructura propia de HelpDesk y el dueño verificado de las funciones del calendario (solo documentación, excepción autorizada por cambio de equipo) |
 | `987107c` | **Corte 18.** U7: ciclo interno con permisos y correo delegado. Desplegado el 28-sep-2026 (`migrate`: 8 migraciones, ninguna pendiente); sin ejercitar |
 | `8eff969` | **Corte 17.** U6 fase 2: retira los privilegios que eluden el escritor único |
@@ -815,7 +865,7 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar el corte 19 y ejercitar U7 y U8 juntas
+## Acción inmediata para la siguiente sesión — desplegar los cortes 19 y 20 y ejercitar U7, U8 y U9
 
 **Se desvía de la cola, y el motivo queda escrito:** U7 seguía en la cabeza de
 `plan-ejecucion.md` con sus pruebas pendientes, pero el 28-sep-2026 no había acceso SSH a
@@ -826,22 +876,40 @@ pruebas de U7 no cambian por U8, salvo `crear_ticket_interno`, que ahora usa
 **Ya hecho:** U7 está desplegada. El 28-sep, `migrate` reportó 8 migraciones y ninguna
 pendiente, así que las tres del corte 18 están aplicadas.
 
-### A. Antes de publicar el corte 19
+### A. Antes de publicar los cortes 19 y 20 (salen juntos)
 
-1. **Dueño de los tipos que la migración altera.** `ALTER TYPE … ADD VALUE` exige ser su
-   dueño. Si alguna fila da `f`, se corrige con `ALTER TYPE … OWNER TO coraje_migrator`
-   antes de publicar; si no, `migrate` aborta y `web` no arranca:
+0. **Desactivar en n8n el workflow `CORAJE - SALIDA - PostgreSQL to SharePoint`.** La
+   versión activa es la anterior: con la migración de U9, el trigger empieza a encolar,
+   y esa versión mandaría a HelpDeskBd los tickets del portal con el marcador «PRUEBA
+   CORAJE - BORRAR» y sin consultar el interruptor (`operacion.md`, «Espejo en
+   PowerApps»).
+1. **Dueño de lo que las migraciones alteran.** `ALTER TYPE … ADD VALUE`, `ALTER TABLE`
+   y `CREATE TRIGGER` exigen ser su dueño. Si alguna fila da `f`, se corrige con
+   `ALTER TYPE|TABLE … OWNER TO coraje_migrator` antes de publicar; si no, `migrate`
+   aborta y `web` no arranca:
 
    ```bash
    docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-   SELECT n.nspname || '.' || t.typname AS tipo,
+   SELECT n.nspname || '.' || t.typname AS objeto,
           pg_get_userbyid(t.typowner) = 'coraje_migrator' AS migracion_puede_alterarlo
    FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-   WHERE (n.nspname, t.typname) IN (('core', 'rol_aplicacion'), ('helpdesk', 'tipo_actor_evento'));
+   WHERE (n.nspname, t.typname) IN (('core', 'rol_aplicacion'), ('helpdesk', 'tipo_actor_evento'))
+   UNION ALL
+   SELECT n.nspname || '.' || c.relname,
+          pg_get_userbyid(c.relowner) = 'coraje_migrator'
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE (n.nspname, c.relname) IN (
+       ('helpdesk', 'fact_ticket'), ('helpdesk', 'fact_ticket_evento'),
+       ('helpdesk', 'ticket_notificacion'), ('helpdesk', 'ticket_legacy_sharepoint_ref'),
+       ('helpdesk', 'ticket_sync_outbox'), ('core', 'dim_cliente_contai'));
    "
    ```
-2. **Publicar** (`git push`) y confirmar en el log de `migrate` que aplica
-   `20260928100000_valores_acceso_clientes` y `20260928110000_acceso_clientes`.
+2. **Publicar** (`git push` de `4455741` y del corte 20) y confirmar en el log de
+   `migrate` que aplica las tres: `20260928100000_valores_acceso_clientes`,
+   `20260928110000_acceso_clientes` y `20260928120000_espejo_sharepoint`.
+2b. **Importar las versiones U9** de `CORAJE - INCREMENTAL COMPLETO` y `CORAJE - SALIDA`
+   sobre los mismos workflows, revisar sus credenciales y **reactivar la salida**. Con
+   el espejo apagado, la salida no envía nada.
 
 ### B. Pruebas de U7 que quedaron pendientes
 
@@ -939,6 +1007,54 @@ pendiente, así que las tres del corte 18 están aplicadas.
 16. **Auditoría sin secretos**: `SELECT evento, resultado, metadata FROM
     app.portal_auditoria ORDER BY created_at DESC LIMIT 30;` — ningún valor es un
     código ni un enlace.
+
+### E. Pruebas de U9
+
+17. **Con el espejo apagado:** ejecutar la ingesta a mano. Termina en *Success*, la 08
+    reporta `cambios_aplicados = 0` y `divergencias_rechazadas = 0`, y
+    `legacy_sin_inicio = 0` y `desfasados = 0` siguen como antes. Los tickets de prueba
+    de los pasos 5 y 10-13 tienen filas `PENDING` en `helpdesk.ticket_sync_outbox`, y la
+    salida no las envía.
+18. **Encender el espejo** (`operacion.md`) solo si se acepta que un ticket de prueba
+    aparezca en la lista HelpDeskBd real. Crear un ticket interno de prueba nuevo, con
+    «PRUEBA» en la descripción. En PowerApps aparece con su código, área, tipo, «Abierto»
+    y quien lo recibe. El detalle en HelpDesk dice «Se refleja en PowerApps (ítem N)».
+19. **Actualizar desde HelpDesk:** reasignarlo → en PowerApps queda «Reasignado» con el
+    responsable nuevo. Responder → «Cerrado» con la respuesta.
+20. **Cambiar desde PowerApps:** crear otro ticket de prueba y cerrarlo en PowerApps con
+    una respuesta. Tras la siguiente ingesta, en HelpDesk queda `CERRADO`, con la
+    respuesta y la nota «se registraron en PowerApps», y una divergencia `APLICADO`.
+    Reabrirlo en PowerApps → divergencia `RECHAZADO` y aviso en Teams («AVISO, no error
+    de datos»).
+21. **Conflicto:** en un ticket de prueba abierto, cambiar algo en PowerApps y, antes de
+    la ingesta, reasignarlo en HelpDesk. El envío queda `FAILED` con
+    `CONFLICTO_POWERAPPS`, el cambio de PowerApps **no** se pisa, y tras la ingesta el
+    envío sale solo.
+22. **Apagar el espejo** al terminar, salvo que se decida dejarlo encendido. Borrar a
+    mano en PowerApps los ítems de prueba: la salida no borra.
+
+### F. Después de las pruebas: U10
+
+La siguiente unidad a construir es **U10 · Observabilidad**. Está preparada en
+`estado/plan-ejecucion.md`:
+- inventario de diez señales que hoy pueden fallar en silencio (S1-S10);
+- diseño propuesto sin procesos nuevos: una función `helpdesk.revisar_salud()` en la
+  base y un workflow diario en n8n que solo avisa si hay algo;
+- seis decisiones tuyas por confirmar (O1-O6), con su propuesta;
+- el guion de cierre con una divergencia controlada.
+
+**Al empezar la sesión de U10:**
+1. Registrar aquí el resultado de las pruebas A-E: qué pasó, qué falló y qué se
+   corrigió. Si una prueba falló, corregirla va antes que U10.
+2. Confirmar O1-O6 con el usuario.
+3. Construir.
+
+**Otras unidades abiertas, fuera de la cabeza:**
+- adjuntos de U7 (bloqueados por dos datos, abajo);
+- observadores, solicitud de validación, calificación y «crear en nombre de un
+  cliente» (v1, sin diseño);
+- U5.2 y U0 (dependen de otras personas);
+- el apagado de PowerApps, que se decide con `helpdesk.v_actividad_powerapps`.
 
 **Adjuntos (U7), bloqueados por dos datos:** la App Registration de Conecta ya se
 conoce (28-sep-2026, captura del usuario): **solo permisos delegados**, todos con
@@ -1588,3 +1704,19 @@ build, pruebas) ≠ `publicado` (commit en `origin/main`) ≠ `desplegado` ≠ `
   `specs/acceso-clientes.md`, `specs/tickets.md`, `specs/permisos.md`,
   `estado/operacion.md`, `estado/plan-ejecucion.md`, `CLAUDE.md` y este handoff. En
   Impulsa, fuera de este commit: observación B8 en `specs/acceso-seguro.md`.
+- 28-sep-2026 (corte 20) — **U9 construida, sin desplegar.** *Estado previo:* la
+  ingesta reescribía cualquier ticket con ítem en SharePoint (origen incluido), la
+  salida solo creaba ítems del portal y llevaba un marcador de prueba, y la U8 había
+  decidido no sincronizar, en contra de `contexto-canonico.md` §2 (tiempo 1).
+  *Cambio:* regla de un dueño por ticket decidida por el usuario, espejo con
+  creación y actualización, conciliación de cambios de PowerApps con trazabilidad y
+  aviso, interruptor apagado, señal de corte. *Evidencia:* `tsc`, `eslint`,
+  `pnpm test` 128/128, `next build`, SQL, PL/pgSQL y JavaScript de migración y
+  workflows validados. *Incidencias:* (1) se encontró en revisión una carrera que
+  habría pisado sin rastro un cambio de PowerApps aún no conciliado; se cerró leyendo
+  el ítem antes de actualizar y escribiendo con su `etag`; (2) la salida anterior
+  estaba activa en n8n y habría enviado tickets con la migración nueva: el despliegue
+  empieza por desactivarla. *Decisión:* U9 **construida, sin desplegar ni ejercitar**.
+  *Documentación:* `specs/sincronizacion-sharepoint.md` §4.3, `contexto-canonico.md`
+  §2, `specs/tickets.md`, `estado/operacion.md`, `estado/plan-ejecucion.md` y este
+  handoff.

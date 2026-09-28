@@ -190,8 +190,8 @@ La sustitución es progresiva, por estrangulamiento, y ocurre en tres tiempos:
 
 | Tiempo | Qué cambia | Estado |
 |---|---|---|
-| 1 | Los clientes radican en el portal web; el ticket viaja a PostgreSQL y de ahí a SharePoint, donde PowerApps lo ve como siempre | Construido, nunca usado por un cliente real |
-| 2 | El equipo interno opera el HelpDesk completo desde la plataforma; PowerApps sigue disponible y ambos ven lo mismo | No construido |
+| 1 | Los clientes radican en el portal web; el ticket viaja a PostgreSQL y de ahí a SharePoint, donde PowerApps lo ve como siempre | **Construido de nuevo (U8 + U9), sin desplegar.** El portal anterior se retiró en U4. Ahora el ticket viaja a SharePoint **al clasificarse**, porque PowerApps exige área y tipo |
+| 2 | El equipo interno opera el HelpDesk completo desde la plataforma; PowerApps sigue disponible y ambos ven lo mismo | **Construido, sin desplegar** (U7 + U9). «Ambos ven lo mismo» para lo que nace en HelpDesk; lo que nace en PowerApps se consulta en HelpDesk y se opera en PowerApps hasta el corte (`specs/sincronizacion-sharepoint.md` §4.3) |
 | 3 | Se incentiva el uso de la plataforma, se apaga PowerApps y se desconectan las listas | No iniciado |
 
 **Criterio para apagar PowerApps** — los cuatro, no tres de cuatro:
@@ -202,6 +202,13 @@ La sustitución es progresiva, por estrangulamiento, y ocurre en tres tiempos:
 - SharePoint ha dejado de ser fuente operativa principal.
 
 Detalle del mecanismo en `specs/sincronizacion-sharepoint.md`.
+
+> **Contradicción nombrada y resuelta (28-sep-2026).** La U8 decidió que los tickets del
+> portal no viajaran a SharePoint hasta la U9, en contra del tiempo 1 de esta tabla, que
+> es una decisión aprobada. Se señaló ese mismo día y la U9 lo corrige: con el espejo
+> encendido, los tickets del portal ya clasificados y los internos se reflejan en
+> PowerApps. **La medida del cuarto criterio** es `helpdesk.v_actividad_powerapps`:
+> cuánto trabajo sigue entrando por PowerApps, semana a semana.
 
 ## 3. Identidad y autorización
 

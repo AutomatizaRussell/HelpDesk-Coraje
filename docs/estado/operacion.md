@@ -225,6 +225,56 @@ igual que Impulsa**, solo falta construirlas (U2):
   ausente** (10-sep-2026): no hay `errorWorkflow` en la configuración exportada del
   consumidor, y el usuario lo corroboró directamente.
 
+### Espejo en PowerApps y regla de precedencia (U9)
+
+`specs/sincronizacion-sharepoint.md` §4.3. Tres piezas que se despliegan juntas: la
+migración `20260928120000_espejo_sharepoint` y las versiones U9 de
+`CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` y
+`CORAJE - SALIDA - PostgreSQL to SharePoint.json`.
+
+**Orden obligatorio.** La salida que hoy está activa en n8n es la versión anterior. Solo
+crea ítems, lleva el marcador «PRUEBA CORAJE - BORRAR» y no consulta el interruptor.
+Desde la migración, el trigger empieza a encolar, así que con esa versión activa los
+tickets del portal clasificados irían a HelpDeskBd.
+1. **Desactivar** en n8n el workflow `CORAJE - SALIDA - PostgreSQL to SharePoint`.
+2. Publicar: `migrate` aplica la migración.
+3. **Importar las dos versiones U9** sobre los mismos workflows (mismo `id`). Comprobar
+   que los nodos Postgres usan «Postgres account Daniel» y los HTTP «Microsoft SharePoint
+   account».
+4. Activar la salida. Con el espejo apagado no envía nada: solo mantiene la cola.
+
+Mientras la ingesta vieja corra entre los pasos 2 y 3, no daña nada: ningún ticket de
+HelpDesk está todavía en SharePoint.
+
+**Encender y apagar el espejo** (decisión del usuario, no del despliegue):
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+UPDATE helpdesk.espejo_sharepoint
+SET activo_desde = NOW(), motivo = 'Encendido para <motivo>', updated_at = NOW()
+RETURNING activo_desde;
+"
+```
+
+Apagar es `SET activo_desde = NULL`. Solo se refleja lo encolado desde `activo_desde`.
+
+**Despertar la salida en cada cambio:** la aplicación llama al webhook
+`coraje/outbox/kick` con `N8N_OUTBOX_KICK_URL` y `N8N_OUTBOX_KICK_SECRET` (Coolify; el
+secreto coincide con `CORAJE_OUTBOX_KICK_SECRET` en n8n). Sin ellas, lo encolado sale en
+la pasada programada, cada 12 horas.
+
+**Mirar el estado:**
+
+```sql
+SELECT operation, status, attempts, last_error, updated_at
+FROM helpdesk.ticket_sync_outbox ORDER BY updated_at DESC LIMIT 20;
+
+SELECT campo, valor_sharepoint, resultado, motivo, detectado_at
+FROM helpdesk.sync_divergencia ORDER BY detectado_at DESC LIMIT 20;
+
+SELECT * FROM helpdesk.v_actividad_powerapps ORDER BY semana DESC LIMIT 12;
+```
+
 ### Correo del portal de clientes (U8)
 
 Workflow `n8n/HELPDESK - Portal - Enviar correo V1.json`. Envía invitaciones y códigos

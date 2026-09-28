@@ -15,6 +15,7 @@ import {
   respondTicket,
 } from "@/server/tickets/ticket-commands";
 import { dispatchTicketMail, resendTicketMail } from "@/server/notifications/ticket-notifications";
+import { kickSharePointMirror } from "@/server/sync/sharepoint-mirror";
 import { isTicketDomainError } from "@/server/tickets/ticket-errors";
 
 import type { TicketFormState } from "./action-state";
@@ -121,6 +122,7 @@ export async function createTicketAction(_prev: TicketFormState, formData: FormD
   // El aviso a quien recibe el ticket sale antes de navegar. Si falla, el
   // detalle lo muestra en «Correos», con la opción de reenviarlo.
   await dispatchTicketMail(mailIds);
+  kickSharePointMirror();
   revalidatePath("/tickets");
   // Fuera del try: redirect() funciona lanzando, y un catch lo tragaría.
   redirect(`/tickets/${idTicket}?creado=1`);
@@ -156,6 +158,7 @@ export async function reassignTicketAction(_prev: TicketFormState, formData: For
   }
 
   const result = await succeeded("Ticket reasignado.", mailIds);
+  kickSharePointMirror();
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return result;
 }
@@ -183,6 +186,7 @@ export async function respondTicketAction(_prev: TicketFormState, formData: Form
   }
 
   const result = await succeeded("Respuesta guardada. El ticket quedó cerrado.", mailIds);
+  kickSharePointMirror();
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return result;
 }
@@ -210,6 +214,7 @@ export async function rejectTicketAction(_prev: TicketFormState, formData: FormD
   }
 
   const result = await succeeded("Ticket rechazado.", mailIds);
+  kickSharePointMirror();
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return result;
 }
