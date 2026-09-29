@@ -88,9 +88,18 @@ export async function issueEmployeeSession(params: {
 }
 
 export interface EmployeeSessionContext {
+  /** Quién actúa en esta petición: la persona suplantada, si la hay. */
   idPersonal: string;
   nombreCompleto: string;
   rolAplicacion: string;
+  /** Fila de `app.employee_session` que sostiene la petición. */
+  idSesion: string;
+  /**
+   * SUPLANTACIÓN — bloque temporal. Quién inició sesión de verdad, solo
+   * mientras suplanta a otra persona; `null` en cualquier otro caso. La
+   * resuelve `current-employee.ts`, nunca esta lectura.
+   */
+  suplantacion: { idPersonalReal: string; nombreReal: string } | null;
 }
 
 /**
@@ -129,6 +138,8 @@ export async function readEmployeeSession(): Promise<EmployeeSessionContext | nu
     idPersonal: admission.employee.idPersonal,
     nombreCompleto: admission.employee.nombreCompleto,
     rolAplicacion: admission.employee.rolAplicacion,
+    idSesion: session.id,
+    suplantacion: null,
   };
 }
 

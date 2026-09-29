@@ -140,6 +140,12 @@ model DimPersonal {
   ticketsObservados                      TicketObservador[]   @relation("ObservadorPersona")
   observadoresAgregados                  TicketObservador[]   @relation("ObservadorAgregadoPor")
   validacionesRecibidas                  TicketValidacion[]
+  // SUPLANTACIÓN — bloque temporal para pruebas.
+  suplantacionHabilitada                 SuplantacionHabilitada? @relation("SuplantacionHabilitada")
+  suplantacionesComoDestino              SuplantacionActiva[]    @relation("SuplantacionActivaPersona")
+  suplantacionAuditoriaReal              SuplantacionAuditoria[] @relation("SuplantacionAuditoriaReal")
+  suplantacionAuditoriaSuplantado        SuplantacionAuditoria[] @relation("SuplantacionAuditoriaSuplantado")
+  // FIN SUPLANTACIÓN
 
   // Como máximo un marcador histórico por correo compartido — protege la regla
   // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
@@ -180,6 +186,9 @@ model EmployeeSession {
   revokedReason    String?   @map("revoked_reason") @db.VarChar(200)
   userAgent        String?   @map("user_agent") @db.VarChar(400)
   dimPersonal      DimPersonal @relation(fields: [idPersonal], references: [idPersonal], onDelete: Cascade, onUpdate: NoAction)
+  // SUPLANTACIÓN — bloque temporal para pruebas.
+  suplantacion     SuplantacionActiva?
+  // FIN SUPLANTACIÓN
 
   @@index([idPersonal, expiresAt], map: "ix_employee_session_personal_expires")
   @@index([expiresAt], map: "ix_employee_session_expires")
@@ -209,6 +218,51 @@ model EmployeeGraphGrant {
   @@map("employee_graph_grant")
   @@schema("app")
 }
+
+// SUPLANTACIÓN — bloque temporal para pruebas. Ver
+// src/server/auth/suplantacion.ts y docs/estado/operacion.md.
+
+/// Quién puede trabajar como otro empleado. Se inserta a mano por psql; la
+/// aplicación solo la lee (SELECT para coraje_runtime).
+model SuplantacionHabilitada {
+  idPersonal   String      @id @map("id_personal") @db.Uuid
+  habilitadaAt DateTime    @default(now()) @map("habilitada_at") @db.Timestamptz(6)
+  nota         String?     @db.VarChar(200)
+  dimPersonal  DimPersonal @relation("SuplantacionHabilitada", fields: [idPersonal], references: [idPersonal], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("suplantacion_habilitada")
+  @@schema("app")
+}
+
+/// A quién mira cada sesión mientras suplanta. Muere con la sesión.
+model SuplantacionActiva {
+  idSesion             String          @id @map("id_sesion") @db.Uuid
+  idPersonalSuplantado String          @map("id_personal_suplantado") @db.Uuid
+  iniciadaAt           DateTime        @default(now()) @map("iniciada_at") @db.Timestamptz(6)
+  sesion               EmployeeSession @relation(fields: [idSesion], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suplantado           DimPersonal     @relation("SuplantacionActivaPersona", fields: [idPersonalSuplantado], references: [idPersonal], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("suplantacion_activa")
+  @@schema("app")
+}
+
+/// Cada cambio de persona, incluido el regreso a uno mismo (suplantado nulo).
+/// Solo crece (SELECT e INSERT para coraje_runtime).
+model SuplantacionAuditoria {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idSesion             String       @map("id_sesion") @db.Uuid
+  idPersonalReal       String       @map("id_personal_real") @db.Uuid
+  idPersonalSuplantado String?      @map("id_personal_suplantado") @db.Uuid
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  real                 DimPersonal  @relation("SuplantacionAuditoriaReal", fields: [idPersonalReal], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+  suplantado           DimPersonal? @relation("SuplantacionAuditoriaSuplantado", fields: [idPersonalSuplantado], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([idPersonalReal, createdAt], map: "ix_suplantacion_auditoria_real")
+  @@map("suplantacion_auditoria")
+  @@schema("app")
+}
+
+// FIN SUPLANTACIÓN
 
 /// Sobre qué tickets vale una regla (specs/permisos.md §4). Su significado
 /// exacto por acción vive en un solo sitio: src/server/authorization/scope.ts.

@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { readEmployeeSession, type EmployeeSessionContext } from "./employee-session";
+// SUPLANTACIÓN — bloque temporal para pruebas.
+import { resolveActingEmployee } from "./suplantacion";
+// FIN SUPLANTACIÓN
 
 /**
  * Único punto de lectura de "quién hace esta petición" expuesto al resto de
@@ -9,7 +12,15 @@ import { readEmployeeSession, type EmployeeSessionContext } from "./employee-ses
  */
 
 export async function getCurrentEmployee(): Promise<EmployeeSessionContext | null> {
-  return readEmployeeSession();
+  const session = await readEmployeeSession();
+  if (!session) return null;
+  // SUPLANTACIÓN — bloque temporal para pruebas. Es el único sitio donde la
+  // suplantación entra en la aplicación: todo lo que pregunta «quién actúa»
+  // pasa por aquí, así que la vista y los permisos de la persona suplantada
+  // llegan a todas partes sin tocar nada más. La admisión ya la decidió la
+  // sesión real, en `readEmployeeSession`.
+  return resolveActingEmployee(session);
+  // FIN SUPLANTACIÓN
 }
 
 /**

@@ -1,6 +1,47 @@
 # Handoff técnico
 
 ```
+CORTE:   29-sep-2026 (corte 23, U12 — suplantación para pruebas, construida,
+         SIN DESPLEGAR; bloque temporal)
+SOBRE:   `2be19d1` (corte 22). El corte 22 está desplegado: `migrate` aplicó
+         `20260928140000_valores_seguimiento` y `20260928150000_seguimiento_ticket`
+         el 29-sep a las 09:47
+RAMA:    main
+UNIDAD:  U12 · SUPLANTACIÓN PARA PRUEBAS. El usuario pidió un selector de
+         empleado como el de Impulsa, sin acotar, para ejercitar U7-U11 sin una
+         cuenta por persona. Riesgo aceptado por el usuario: vive en producción
+         (Impulsa lo apaga ahí) y lo hecho suplantando queda a nombre de la
+         persona suplantada. Construido (`estado/operacion.md`, «Suplantación para
+         pruebas»):
+         - migración `20260929100000_suplantacion_pruebas`: `app.suplantacion_
+           habilitada` (solo lectura para la aplicación; se habilita por psql),
+           `app.suplantacion_activa` (muere con la sesión) y
+           `app.suplantacion_auditoria` (solo crece);
+         - `getCurrentEmployee` devuelve a quien actúa; destino: cualquier
+           persona activa y con rol, `ADMIN` incluido;
+         - correos generados suplantando: del buzón real y solo a él, con el
+           asunto `[Prueba · para <dirección>]`;
+         - selector «Trabajar como» encima del contenido de cada vista.
+         Evidencia: `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test`
+         150/150 (5 nuevas de contrato), `next build`. **Sin ejercitar.**
+         Ejercitado el 29-sep, sobre el corte 22 (salidas pegadas por el usuario):
+         F15 cerrado (incógnito a `/helpdesk/tickets` lleva al ingreso); B.3 tres
+         «denegado (correcto)»; B.4 los 19 festivos de 2026; `CORAJE - SALIDA` en
+         n8n es la versión del repositorio (A.0 y 2b); `daniellopera@rbcol.co`
+         pasa a `ADMIN` y ve «Accesos de clientes» y «Salud». Línea base de
+         `/salud` sin la revisión diaria: 1 atención (la revisión no corrió) y 1
+         aviso S8 (4 tickets de PowerApps sin tipo reconocido, p. ej.
+         `CON-2025-0010`).
+         Decidido el 29-sep, sin código: Conecta es la dueña de los datos de
+         personal; HelpDesk nunca lee su base; el filtro «solo Medellín» es el rol
+         asignado a mano, persona por persona (`rbcol.co` es de todas las ciudades
+         y Conecta no guarda sede). Queda abierto de dónde se alimenta
+         `core.dim_personal` al retirar SharePoint: U5.2 solo trae datos para la
+         barra lateral.
+SIGUE:   publicar el corte 23, habilitar la suplantación y seguir con B.5
+         («Acción inmediata»).
+
+--- Corte 22, para contexto:
 CORTE:   28-sep-2026 (corte 22, U11 — seguimiento del ticket a partir del prototipo
          de TI, construida, SIN DESPLEGAR; y corrección del perímetro)
 SOBRE:   `d1d8e86` (corte 21). Los cortes 19, 20 y 21 se publicaron juntos el
@@ -1100,13 +1141,16 @@ lista.
    ORDER BY 1;
    "
    ```
+   **Hecho el 29-sep-2026:** pasos 3, 4 y 6 superados (cabecera, corte 23).
+
 5. **Ciclo interno completo** en el navegador, igual que en el corte 18: crear → le llega
    el correo a quien recibe; reasignar dentro del área → correo a la persona nueva y a
    quien radicó; responder → queda `CERRADO`. Crear otro y rechazarlo. Una nota interna
    no la ve el solicitante. **Antes, cerrar sesión y volver a entrar**: la autorización
    de correo solo se guarda en un ingreso posterior al despliegue. Condición: un
    responsable de recepción con rol en el área de prueba y una segunda persona con rol
-   en la misma área.
+   en la misma área. Con U12 desplegada, las dos se recorren suplantándolas desde una
+   sola sesión; siguen necesitando rol, y sus correos llegan a quien suplanta.
 6. **Importar la salida de n8n** con la credencial «Microsoft SharePoint account».
 
 ### C. Puesta en marcha de U8 (`estado/operacion.md`)

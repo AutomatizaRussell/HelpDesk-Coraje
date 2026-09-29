@@ -324,6 +324,51 @@ RETURNING correo_corporativo, rol_aplicacion, estado_activo;
 La fila debe volver con `estado_activo = t`. Cambiar el rol surte efecto en la siguiente
 petición de esa persona; no hace falta que vuelva a entrar.
 
+### Suplantación para pruebas (bloque temporal)
+
+Una persona habilitada trabaja como cualquier empleado **activo y con rol** desde el
+selector «Trabajar como», encima del contenido de cada vista. Recibe su bandeja y sus
+permisos; lo que haga queda a nombre de esa persona. Los correos que genere salen de su
+propio buzón y llegan **solo a ella**, con el asunto `[Prueba · para <dirección>]`. Las
+invitaciones y los códigos del portal no se desvían: van a la dirección que se escribe.
+Vive en producción por decisión del usuario (29-sep-2026). Migración
+`20260929100000_suplantacion_pruebas`; código en `src/server/auth/suplantacion.ts`.
+
+**Habilitar y deshabilitar** (la aplicación solo lee esta tabla):
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+INSERT INTO app.suplantacion_habilitada (id_personal, nota)
+SELECT id_personal, 'pruebas'
+FROM core.dim_personal
+WHERE LOWER(correo_corporativo) = 'persona@rbcol.co' AND estado_activo AND NOT es_responsable_historico_no_identificado
+RETURNING id_personal;
+"
+```
+
+Para deshabilitar: `DELETE FROM app.suplantacion_habilitada WHERE id_personal = '…';`.
+La suplantación en curso termina en la siguiente petición.
+
+**Qué se hizo suplantando**, para limpiar después:
+
+```bash
+docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
+SELECT a.created_at, r.nombre_completo AS real, s.nombre_completo AS como
+FROM app.suplantacion_auditoria a
+JOIN core.dim_personal r ON r.id_personal = a.id_personal_real
+LEFT JOIN core.dim_personal s ON s.id_personal = a.id_personal_suplantado
+ORDER BY a.created_at DESC LIMIT 30;
+"
+```
+
+**Retiro**, antes de que HelpDesk sea la herramienta de trabajo de cualquier área:
+borrar `src/server/auth/suplantacion.ts`, `suplantacion.contract.test.mts` y
+`src/features/suplantacion/`; quitar los bloques `SUPLANTACIÓN — bloque temporal` …
+`FIN SUPLANTACIÓN` de `schema.prisma`, `current-employee.ts`, `employee-session.ts`,
+`AppFrame.tsx` y `ticket-notifications.ts`; y una migración nueva con
+`DROP TABLE app.suplantacion_auditoria, app.suplantacion_activa, app.suplantacion_habilitada;`.
+`grep -rn "SUPLANTACIÓN\|suplantacion" src prisma/schema.prisma` no debe devolver nada.
+
 ### Salud diaria (U10)
 
 `specs/observabilidad.md`. La migración `20260928130000_observabilidad` y el workflow

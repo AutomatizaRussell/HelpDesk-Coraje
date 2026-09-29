@@ -7,6 +7,10 @@ import { readEntryContext } from "@/server/auth/entry-cookie";
 import { signOutAction } from "@/server/auth/sign-out-action";
 import { resolveGrants } from "@/server/authorization/authorizer";
 import { PORTAL_ACTIONS, SALUD_ACTIONS, TICKET_ACTIONS } from "@/server/authorization/catalog";
+// SUPLANTACIÓN — bloque temporal para pruebas.
+import { SuplantacionSelector } from "@/features/suplantacion/SuplantacionSelector";
+import { getSuplantacionPanel } from "@/server/auth/suplantacion";
+// FIN SUPLANTACIÓN
 
 import { helpdeskSections } from "./helpdesk-sections";
 
@@ -37,18 +41,34 @@ export async function AppFrame({
   title: string;
   children: ReactNode;
 }) {
-  const [entry, grants] = await Promise.all([
+  const [entry, grants, suplantacion] = await Promise.all([
     readEntryContext(),
     resolveGrants(employee.idPersonal, [TICKET_ACTIONS.redirigir, PORTAL_ACTIONS.administrarAccesos, SALUD_ACTIONS.consultar]),
+    // SUPLANTACIÓN — bloque temporal para pruebas.
+    getSuplantacionPanel(employee),
+    // FIN SUPLANTACIÓN
   ]);
   const sections = helpdeskSections({
     clasificar: grants.has(TICKET_ACTIONS.redirigir),
     administrarAccesos: grants.has(PORTAL_ACTIONS.administrarAccesos),
     consultarSalud: grants.has(SALUD_ACTIONS.consultar),
   });
+  // SUPLANTACIÓN — bloque temporal para pruebas. Encima del contenido y no
+  // dentro de los shells: así ninguno de los dos patrones del sistema de
+  // diseño cambia por algo que se retira.
+  const content = (
+    <>
+      {suplantacion && <SuplantacionSelector panel={suplantacion} />}
+      {children}
+    </>
+  );
+  // FIN SUPLANTACIÓN
 
   if (entry.via === "conecta") {
-    const profile = entry.profile;
+    // SUPLANTACIÓN — bloque temporal. El perfil de Conecta es de quien inició
+    // sesión; mientras suplanta, la barra muestra a la persona suplantada.
+    const profile = employee.suplantacion ? null : entry.profile;
+    // FIN SUPLANTACIÓN
     return (
       <ConectaShell
         title={title}
@@ -58,7 +78,7 @@ export async function AppFrame({
         moduleNav={sections}
         signOutAction={signOutAction}
       >
-        {children}
+        {content}
       </ConectaShell>
     );
   }
@@ -70,7 +90,7 @@ export async function AppFrame({
       moduleNav={sections}
       signOutAction={signOutAction}
     >
-      {children}
+      {content}
     </StandaloneShell>
   );
 }

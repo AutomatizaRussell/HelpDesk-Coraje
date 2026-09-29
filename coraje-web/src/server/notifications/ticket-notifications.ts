@@ -4,6 +4,9 @@ import { formatDate } from "@/features/tickets/format";
 import { AuthorizationDeniedError, requireGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
 import { publicPortalUrl, publicTicketUrl } from "@/server/auth/conecta-return";
+// SUPLANTACIÓN — bloque temporal para pruebas.
+import { getCurrentEmployee } from "@/server/auth/current-employee";
+// FIN SUPLANTACIÓN
 import { logEvent } from "@/server/observability/log";
 import { TicketDomainError } from "@/server/tickets/ticket-errors";
 
@@ -52,6 +55,38 @@ interface ResolvedDelivery {
   idDestinatario: string | null;
   idContactoDestinatario: string | null;
 }
+
+/**
+ * SUPLANTACIÓN — bloque temporal para pruebas.
+ *
+ * Mientras quien actúa suplanta a otra persona, sus correos salen del buzón
+ * de la persona **real** y llegan **solo a su dirección**. Dos razones: la
+ * persona suplantada casi nunca ha dado permiso de correo (no ha entrado), y
+ * una prueba no debe llegar a un compañero ni a un cliente.
+ *
+ * La fila conserva a quién iba dirigido (`id_destinatario` o
+ * `id_contacto_destinatario`) y el asunto lo nombra; `destinatario_correo` y
+ * `id_remitente` guardan lo que de verdad pasó: a qué dirección salió y de qué
+ * buzón.
+ *
+ * Se lee de la petición y no llega como parámetro para no cambiar la firma de
+ * todos los comandos por un bloque que se retira. Fuera de una petición de
+ * empleado (el portal, un webhook) no hay sesión y no desvía nada.
+ *
+ * @returns `null` si no se está suplantando; si no, el buzón real y su
+ *   dirección (`null` si la persona real no tiene correo: entonces no se
+ *   registra ningún correo).
+ */
+async function testMailRedirect(tx: Tx): Promise<{ idPersonalReal: string; correo: string | null } | null> {
+  const suplantacion = (await getCurrentEmployee())?.suplantacion;
+  if (!suplantacion) return null;
+  const real = await tx.dimPersonal.findUnique({
+    where: { idPersonal: suplantacion.idPersonalReal },
+    select: { correoCorporativo: true },
+  });
+  return { idPersonalReal: suplantacion.idPersonalReal, correo: real?.correoCorporativo?.trim() || null };
+}
+// FIN SUPLANTACIÓN
 
 /**
  * Registra los correos de una acción, dentro de su transacción. Omite a quien
@@ -134,6 +169,11 @@ export async function enqueueTicketMail(
     vence: ticket.fechaLimite ? formatDate(ticket.fechaLimite) : null,
   };
 
+  // SUPLANTACIÓN — bloque temporal para pruebas (ver `testMailRedirect`).
+  const redirect = await testMailRedirect(tx);
+  if (redirect && !redirect.correo) return [];
+  // FIN SUPLANTACIÓN
+
   const ids: string[] = [];
   for (const delivery of resolved) {
     const url =
@@ -145,11 +185,11 @@ export async function enqueueTicketMail(
       data: {
         idTicket: params.idTicket,
         idEvento: params.idEvento,
-        idRemitente: params.idRemitente,
+        idRemitente: redirect?.idPersonalReal ?? params.idRemitente,
         idDestinatario: delivery.idDestinatario,
         idContactoDestinatario: delivery.idContactoDestinatario,
-        destinatarioCorreo: delivery.correo.slice(0, 150),
-        asunto: subject.slice(0, 300),
+        destinatarioCorreo: (redirect?.correo ?? delivery.correo).slice(0, 150),
+        asunto: (redirect ? `[Prueba · para ${delivery.correo}] ${subject}` : subject).slice(0, 300),
         cuerpoHtml: html,
       },
       select: { id: true },

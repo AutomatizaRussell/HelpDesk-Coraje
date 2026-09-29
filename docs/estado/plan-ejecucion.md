@@ -403,7 +403,7 @@ Respeta la economía de recursos de `CLAUDE.md`: **ningún proceso nuevo en la V
 5. Registrar en el handoff el antes, la acción y el después, con las consultas y sus
    resultados.
 
-### U11 · Seguimiento del ticket (prototipo de TI) — **construida el 28-sep-2026 (corte 22), sin desplegar**
+### U11 · Seguimiento del ticket (prototipo de TI) — **desplegada el 29-sep-2026 (corte 22), sin ejercitar**
 
 **Objetivo:** construir lo que el prototipo `helpdesk_santi/` de la persona encargada
 de TI trae y es compatible con las decisiones vigentes, para que lo corrija usándolo
@@ -423,6 +423,18 @@ probar. Los adjuntos siguen bloqueados en U7.
 **Condición de cierre:** la persona de TI prueba el flujo en el despliegue (`estado/
 handoff.md`, «Acción inmediata», G) y sus correcciones quedan decididas: construidas o
 descartadas con motivo.
+
+### U12 · Suplantación para pruebas — **construida el 29-sep-2026 (corte 23), bloque temporal**
+
+**Objetivo:** ejercitar U7-U11 sin una cuenta por persona. Decisión del usuario del
+29-sep-2026: selector de empleado como el de Impulsa, sin acotar a un área, en
+producción porque HelpDesk no tiene otro entorno. No es una unidad de producto: se
+retira antes de que HelpDesk sea la herramienta de trabajo de cualquier área
+(`estado/operacion.md`, «Suplantación para pruebas»).
+
+**Condición de cierre:** habilitada por psql, un cambio de persona y el regreso quedan
+en `app.suplantacion_auditoria`, y un correo generado suplantando llega solo a quien
+suplanta.
 
 ---
 
@@ -481,3 +493,6 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   U10). U11 construida (corte 22), sin desplegar: lo compatible del prototipo de TI.
   En el mismo corte se corrige el 500 del perímetro para quien llega sin sesión.
   **La cabeza de la cola sigue siendo ejercitar U7-U11** (pruebas B-G del handoff).
+- 29-sep-2026 — corte 22 desplegado. U12 construida (corte 23): suplantación para
+  pruebas, bloque temporal con condición de retiro. **La cabeza de la cola sigue siendo
+  ejercitar U7-U11**; U12 es el medio para hacerlo.
