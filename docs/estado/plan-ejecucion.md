@@ -436,6 +436,16 @@ retira antes de que HelpDesk sea la herramienta de trabajo de cualquier área
 en `app.suplantacion_auditoria`, y un correo generado suplantando llega solo a quien
 suplanta.
 
+### U13 · Rol `COLABORADOR` y visibilidad por recepción — **construida el 30-sep-2026 (corte 24), sin desplegar**
+
+**Objetivo:** que cada empleado vea solo lo suyo y que ver un área lo decida el
+enrutamiento, no un rol (`specs/permisos.md` §4.5). `AGENTE` pasa a `COLABORADOR` y
+`ADMIN` consulta todos los tickets.
+
+**Condición de cierre:** en el despliegue, suplantando, un `COLABORADOR` que no recibe
+nada ve solo lo suyo; el encargado de recepción de un área ve toda esa área; quien
+recibe por tipo ve solo esos tipos; `ADMIN` ve todas las áreas.
+
 ---
 
 ## Riesgos y controles
@@ -496,3 +506,6 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
 - 29-sep-2026 — corte 22 desplegado. U12 construida (corte 23): suplantación para
   pruebas, bloque temporal con condición de retiro. **La cabeza de la cola sigue siendo
   ejercitar U7-U11**; U12 es el medio para hacerlo.
+- 30-sep-2026 — U12 desplegada y habilitada. U13 construida (corte 24): `COLABORADOR`
+  y visibilidad por recepción, antes de ejercitar U7 para no probar dos veces la
+  bandeja. **La cabeza de la cola sigue siendo ejercitar U7-U11.**

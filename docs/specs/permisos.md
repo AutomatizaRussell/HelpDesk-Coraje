@@ -6,8 +6,10 @@ ESTADO:      construido, sin desplegar (corte 18, 26-sep-2026): catálogo en
              `src/server/authorization/`, cada acción del ticket conectada en su
              comando. Falta la autorización excepcional (§5) y la consola (§8).
              Corte 21 (U10): acciones `salud.*` para `ADMIN` (§4.3). Corte 22
-             (U11): observadores, validación y comentario del solicitante (§4.4)
-CORTE:       28-sep-2026
+             (U11): observadores, validación y comentario del solicitante (§4.4).
+             Corte 24 (U13): `COLABORADOR` y visibilidad por recepción (§4.5),
+             sin desplegar
+CORTE:       30-sep-2026
 EVIDENCIA:   `tsc`, `lint`, `pnpm test` (alcance, catálogo sembrado y consultado,
              sin comparaciones de rol). Sin ejercitar contra la base
 BLOQUEO:     parcialmente levantado (03-sep-2026) — el usuario confirmó directamente,
@@ -174,6 +176,29 @@ se siembran igual para los tres roles (copia, no herencia: §4.2).
 - Solo personas activas con rol pueden seguir o validar (`follow-rules.ts`): sin rol
   no pueden entrar. Se comprueba que el rol exista, no cuál es.
 
+### 4.5 `DECISIÓN` (30-sep-2026) `COLABORADOR` y visibilidad por recepción
+
+Construido en `20260930100000_rol_colaborador`, sin desplegar. Decisión del usuario:
+
+- **`AGENTE` pasa a llamarse `COLABORADOR`.** Era un valor provisional de U3, no un
+  rol del legacy: PowerApps no tenía roles, el permiso salía de la relación con el
+  ticket y de la lista `RecibeHelpdesk` (`legacy/reglas-negocio-powerapps.md` §6, §10).
+  Las reglas no cambian (§4.1, §4.4); `CLASIFICADOR` y `ADMIN` siguen siendo copias.
+- **`AREA` significa «lo que recibo», no «el área a la que pertenezco».** Una persona
+  recibe los tipos cuyo responsable resuelto es ella —la regla del tipo o, sin
+  regla, el encargado de recepción del área— y, para los tickets sin tipo, las áreas
+  que encarga. Es la regla de `helpdesk.resolver_responsable_tipo`, leída de las
+  tablas (`authorization/recepcion.ts`). Quien no recibe nada ve solo lo suyo.
+- **Por qué no un rol «ve toda su área»:** con los datos del 30-sep, la encargada de
+  ADMINISTRACIÓN-RECEPCIÓN pertenece a ADMINISTRACIÓN, y los responsables de
+  «proyectos y ti» pertenecen a ADMINISTRACIÓN sin recibir el resto del área. Un rol
+  sobre el área de la persona habría mostrado el área equivocada, y habría duplicado
+  un dato que ya vive en el enrutamiento.
+- **`ADMIN` consulta todos los tickets** (`ticket.consultar` `TOTAL`). Solo consultar:
+  actuar sigue exigiendo ser el responsable.
+- **El área de la persona** sigue decidiendo a quién puede reasignar, como en el
+  legacy.
+
 ## 5. Autorización excepcional
 
 Una acción fuera del alcance ordinario —intervención administrativa, acceso
@@ -262,6 +287,7 @@ hay evidencia, la única real.**
 | V6 | La interfaz y el servicio comparten frontera de estados | Comparar condición de la vista con la del servicio | **Por inspección**: `getTicketDetail` usa las mismas reglas de alcance y de estado que los comandos |
 | V7 | Un observador no puede ejecutar ninguna acción del catálogo | Guard del servicio + prueba negativa | **Verificado por prueba** (corte 22): `scope.test.mts`, «seguir un ticket no da ninguna acción sobre él». Sin ejercitar contra la base |
 | V8 | Solicitar validación no exige la justificación obligatoria de §5 | Comparar los dos handlers | **Por inspección** (corte 22): `requestValidation` es un comando ordinario; §5 sigue sin construir |
+| V9 | Quien recibe un ticket nuevo lo ve en su bandeja (§4.5) | `recepcion.ts` frente a `resolver_responsable_tipo` | **Verificado por prueba** (corte 24): `recepcion.contract.test.mts` exige la misma expresión; `scope.test.mts` cubre recepción, excepción por tipo y colaborador sin recepción. Sin ejercitar contra la base |
 
 ## 10. `DECISIÓN` Observadores y solicitud de validación — construidos (§4.4)
 

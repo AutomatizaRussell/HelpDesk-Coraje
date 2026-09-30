@@ -13,18 +13,18 @@ datasource db {
 // CORE — datos maestros
 // =====================================================================
 
-// Catálogo cerrado de roles de aplicación (specs/acceso-empleados.md §7,
-// specs/permisos.md §6). Un único valor por ahora: el levantamiento de roles
-// reales de la mesa de ayuda depende de U0/permisos.md §8 paso 1, todavía sin
-// cerrar — el catálogo fino de rol+acción es competencia de esa unidad, no de
-// esta. `AGENTE` basta para que la admisión (U3) pueda distinguir "persona con
-// rol reconocido" de `UNKNOWN_ROLE`, sin inventar aquí una jerarquía que no le
-// corresponde.
+// Catálogo cerrado de roles de aplicación (specs/permisos.md §4). PowerApps
+// no tenía roles: el permiso salía de la relación con el ticket y de la lista
+// RecibeHelpdesk (legacy/reglas-negocio-powerapps.md §6, §10). Aquí igual:
+// qué área ve alguien lo decide el enrutamiento, no el rol (§4.5).
 enum RolAplicacion {
-  AGENTE
-  // U8 (28-sep-2026): CLASIFICADOR redirige los tickets del portal; ADMIN
-  // administra los accesos de clientes. Ambos parten de las reglas de AGENTE
-  // (migración 20260928110000_acceso_clientes).
+  // Todo empleado con acceso (30-sep-2026; antes se llamaba AGENTE). Ve lo
+  // que radicó, lo que le asignaron, lo que sigue y lo que recibe según el
+  // enrutamiento.
+  COLABORADOR
+  // U8 (28-sep-2026): CLASIFICADOR clasifica los tickets del portal; ADMIN
+  // administra los accesos de clientes y, desde el 30-sep-2026, consulta todos
+  // los tickets. Ambos parten de una copia de las reglas de COLABORADOR.
   CLASIFICADOR
   ADMIN
 

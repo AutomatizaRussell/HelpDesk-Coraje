@@ -2,7 +2,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import type { PermissionAction, TicketAction } from "./catalog";
-import { isTicketWithinScope, type Alcance, type ScopeActor, type ScopeTicket } from "./scope";
+import { loadRecepcion } from "./recepcion";
+import { NO_RECEPCION, isTicketWithinScope, type Alcance, type ScopeActor, type ScopeTicket } from "./scope";
 
 /**
  * Autorizador ejecutable (specs/permisos.md §1, §2, §4).
@@ -62,7 +63,7 @@ export class AuthorizationDeniedError extends Error {
 export async function resolveGrant(idPersonal: string, action: PermissionAction, db: Db = prisma): Promise<ActorGrant | null> {
   const persona = await db.dimPersonal.findUnique({
     where: { idPersonal },
-    select: { idArea: true, rolAplicacion: true, estadoActivo: true },
+    select: { idArea: true, rolAplicacion: true, estadoActivo: true, correoCorporativo: true },
   });
   if (!persona || !persona.estadoActivo || !persona.rolAplicacion) return null;
 
@@ -72,7 +73,10 @@ export async function resolveGrant(idPersonal: string, action: PermissionAction,
   });
   if (!regla || !regla.accion.activo) return null;
 
-  return { actor: { idPersonal, idArea: persona.idArea }, alcance: regla.alcance };
+  // Lo que la persona recibe solo lo usa `AREA`: para PROPIO y TOTAL no se
+  // consulta, y la mayoría de las comprobaciones son PROPIO.
+  const recepcion = regla.alcance === "AREA" ? await loadRecepcion(persona.correoCorporativo, db) : NO_RECEPCION;
+  return { actor: { idPersonal, idArea: persona.idArea, recepcion }, alcance: regla.alcance };
 }
 
 /**
@@ -88,7 +92,7 @@ export async function resolveGrants<A extends PermissionAction>(
   const granted = new Map<A, ActorGrant>();
   const persona = await db.dimPersonal.findUnique({
     where: { idPersonal },
-    select: { idArea: true, rolAplicacion: true, estadoActivo: true },
+    select: { idArea: true, rolAplicacion: true, estadoActivo: true, correoCorporativo: true },
   });
   if (!persona || !persona.estadoActivo || !persona.rolAplicacion) return granted;
 
@@ -96,7 +100,11 @@ export async function resolveGrants<A extends PermissionAction>(
     where: { rol: persona.rolAplicacion, codigoAccion: { in: [...actions] }, accion: { activo: true } },
     select: { codigoAccion: true, alcance: true },
   });
-  const actor: ScopeActor = { idPersonal, idArea: persona.idArea };
+  // Una sola lectura de la recepción para todas las acciones que la necesiten.
+  const recepcion = reglas.some((regla) => regla.alcance === "AREA")
+    ? await loadRecepcion(persona.correoCorporativo, db)
+    : NO_RECEPCION;
+  const actor: ScopeActor = { idPersonal, idArea: persona.idArea, recepcion };
   for (const regla of reglas) {
     granted.set(regla.codigoAccion as A, { actor, alcance: regla.alcance });
   }

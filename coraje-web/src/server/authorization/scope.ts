@@ -12,18 +12,47 @@ import { TICKET_ACTIONS, type TicketAction } from "./catalog";
 
 export type Alcance = "PROPIO" | "AREA" | "TOTAL";
 
+/**
+ * Lo que una persona **recibe** según el enrutamiento (permisos.md §4.5), la
+ * misma regla que decide a quién se asigna un ticket nuevo
+ * (`helpdesk.resolver_responsable_tipo`): la regla del tipo si existe; si
+ * no, el encargado de recepción del área. Es el `Recibe` del legacy
+ * (reglas-negocio-powerapps.md §6), leído de la tabla y no de un rol.
+ */
+export interface ScopeRecepcion {
+  /** Tipos de requerimiento que se enrutan a esta persona. */
+  idTiposReq: readonly string[];
+  /**
+   * Áreas de las que es encargada de recepción. Solo cuentan para tickets
+   * **sin tipo** (legacy con tipo no reconocido): los que tienen tipo se
+   * deciden por `idTiposReq`, así una excepción por tipo (Alex Bolaños con
+   * «proyectos y ti») no se la muestra también al encargado del área.
+   */
+  idAreas: readonly string[];
+}
+
 /** Quién actúa, con lo que el alcance necesita saber de esa persona. */
 export interface ScopeActor {
   idPersonal: string;
-  /** Área de la persona en `core.dim_personal`. Sin área, `AREA` equivale a `PROPIO`. */
+  /**
+   * Área de la persona en `core.dim_personal`. **No amplía la consulta**
+   * (eso lo hace `recepcion`): solo decide a quién puede reasignar, como en
+   * el legacy (`Filter(Personal, AREA = área_del_usuario)`).
+   */
   idArea: string | null;
+  /** Vacía salvo que el alcance sea `AREA`: es lo único que la usa. */
+  recepcion: ScopeRecepcion;
 }
+
+/** Recepción vacía: quien no recibe nada, o un alcance que no la necesita. */
+export const NO_RECEPCION: ScopeRecepcion = { idTiposReq: [], idAreas: [] };
 
 /** Lo que el alcance necesita saber del ticket. */
 export interface ScopeTicket {
   idSolicitante: string | null;
   idAsignado: string | null;
   idAreaDestino: string | null;
+  idTipoReq: string | null;
   /**
    * Quienes siguen el ticket (U11, tickets.md §11). Obligatorio a propósito:
    * quien construya un ticket para evaluarlo tiene que decir quién lo sigue,
@@ -68,15 +97,23 @@ function isOwnTicket(action: TicketAction, actor: ScopeActor, ticket: ScopeTicke
   return isResponsable;
 }
 
-function isAreaTicket(actor: ScopeActor, ticket: ScopeTicket): boolean {
-  return actor.idArea !== null && ticket.idAreaDestino === actor.idArea;
+/**
+ * ¿Es un ticket que esta persona recibe? Por su tipo si lo tiene; si no, por
+ * su área. Un ticket del portal sin clasificar no tiene ninguno de los dos:
+ * no lo recibe nadie hasta que se clasifica (T3).
+ */
+function isReceivedTicket(actor: ScopeActor, ticket: ScopeTicket): boolean {
+  if (ticket.idTipoReq !== null) return actor.recepcion.idTiposReq.includes(ticket.idTipoReq);
+  return ticket.idAreaDestino !== null && actor.recepcion.idAreas.includes(ticket.idAreaDestino);
 }
 
 /**
  * ¿Cubre el alcance concedido este ticket para esta acción?
  *
- * Cada alcance incluye al anterior: `AREA` es `PROPIO` más el área, y `TOTAL`
- * es todo.
+ * Cada alcance incluye al anterior: `AREA` es `PROPIO` más lo que la persona
+ * recibe (`ScopeRecepcion`), y `TOTAL` es todo. El nombre `AREA` se conserva
+ * porque es un valor de la base; desde el 30-sep-2026 significa «el área o
+ * los tipos que recibo», no «el área a la que pertenezco» (permisos.md §4.5).
  */
 export function isTicketWithinScope(params: {
   alcance: Alcance;
@@ -87,7 +124,7 @@ export function isTicketWithinScope(params: {
   const { alcance, action, actor, ticket } = params;
   if (alcance === "TOTAL") return true;
   if (isOwnTicket(action, actor, ticket)) return true;
-  return alcance === "AREA" && isAreaTicket(actor, ticket);
+  return alcance === "AREA" && isReceivedTicket(actor, ticket);
 }
 
 /**
@@ -102,8 +139,9 @@ export function isTicketWithinScope(params: {
 export type ConsultScopeCondition =
   | { idSolicitante: string }
   | { idAsignado: string }
-  | { idAreaDestino: string }
-  | { observadores: { some: { idPersonal: string } } };
+  | { observadores: { some: { idPersonal: string } } }
+  | { idTipoReq: { in: string[] } }
+  | { idTipoReq: null; idAreaDestino: { in: string[] } };
 
 export function consultScopeConditions(alcance: Alcance, actor: ScopeActor): ConsultScopeCondition[] | null {
   if (alcance === "TOTAL") return null;
@@ -112,8 +150,13 @@ export function consultScopeConditions(alcance: Alcance, actor: ScopeActor): Con
     { idAsignado: actor.idPersonal },
     { observadores: { some: { idPersonal: actor.idPersonal } } },
   ];
-  if (alcance === "AREA" && actor.idArea !== null) {
-    conditions.push({ idAreaDestino: actor.idArea });
+  if (alcance === "AREA") {
+    // Una lista vacía no se envía: `IN ()` no ampliaría nada, y así quien no
+    // recibe nada queda exactamente en PROPIO.
+    if (actor.recepcion.idTiposReq.length > 0) conditions.push({ idTipoReq: { in: [...actor.recepcion.idTiposReq] } });
+    if (actor.recepcion.idAreas.length > 0) {
+      conditions.push({ idTipoReq: null, idAreaDestino: { in: [...actor.recepcion.idAreas] } });
+    }
   }
   return conditions;
 }
@@ -144,7 +187,7 @@ export function historyProjection(params: {
   if (alcance === "TOTAL") return "EQUIPO";
   if (ticket.idAsignado === actor.idPersonal) return "EQUIPO";
   if (ticket.idObservadores.includes(actor.idPersonal)) return "EQUIPO";
-  if (alcance === "AREA" && isAreaTicket(actor, ticket)) return "EQUIPO";
+  if (alcance === "AREA" && isReceivedTicket(actor, ticket)) return "EQUIPO";
   return "SOLICITANTE";
 }
 

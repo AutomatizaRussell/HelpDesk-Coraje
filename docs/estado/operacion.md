@@ -307,8 +307,9 @@ credencial en n8n.
 ### Asignar los roles de U8
 
 `CLASIFICADOR` (redirige tickets del portal) y `ADMIN` (administra accesos de clientes)
-se asignan por `psql`, como `AGENTE`. **Una persona tiene un solo rol**; los dos nuevos
-ya incluyen todo lo de `AGENTE`:
+se asignan por `psql`, como `COLABORADOR` (antes `AGENTE`, renombrado el 30-sep-2026).
+**Una persona tiene un solo rol**; los dos incluyen todo lo de `COLABORADOR`. Qué área
+ve alguien no depende del rol sino del enrutamiento (`specs/permisos.md` §4.5):
 
 ```bash
 docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "

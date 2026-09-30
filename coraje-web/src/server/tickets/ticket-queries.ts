@@ -33,12 +33,15 @@ import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicket
  * - `pendientes`: los que tengo que atender (soy responsable, siguen abiertos).
  *   Es la bandeja de trabajo del legacy (reglas-negocio-powerapps.md §6).
  * - `radicados`: los que abrí yo, en cualquier estado.
- * - `area`: los abiertos de mi área, para ver la carga del equipo.
+ * - `abiertos`: todos los abiertos de mi alcance. Para quien recibe un área
+ *   es la carga de esa área; para `ADMIN`, la de toda la firma; para quien
+ *   no recibe nada, lo suyo. La vista no mira el área: el alcance ya dice
+ *   qué cabe (permisos.md §4.5).
  * - `terminados`: los cerrados o rechazados dentro de mi alcance.
  * - `siguiendo` (U11): los que sigo como observador, incluidos aquellos en
  *   los que me pidieron una validación. Abiertos primero.
  */
-export const INBOX_VIEWS = ["pendientes", "radicados", "area", "siguiendo", "terminados"] as const;
+export const INBOX_VIEWS = ["pendientes", "radicados", "abiertos", "siguiendo", "terminados"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
 
 export function isInboxView(value: string | undefined): value is InboxView {
@@ -100,16 +103,15 @@ export interface InboxCounts {
 
 const TERMINAL_STATES = ["CERRADO", "RECHAZADO"] as const;
 
-function viewCondition(view: InboxView, idPersonal: string, idArea: string | null): Prisma.FactTicketWhereInput {
+function viewCondition(view: InboxView, idPersonal: string): Prisma.FactTicketWhereInput {
   const open = { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } };
   switch (view) {
     case "pendientes":
       return { idAsignado: idPersonal, ...open };
     case "radicados":
       return { idSolicitante: idPersonal };
-    case "area":
-      // Sin área, la vista está vacía en vez de caer en «todo mi alcance».
-      return idArea === null ? { idTicket: { in: [] } } : { idAreaDestino: idArea, ...open };
+    case "abiertos":
+      return open;
     case "terminados":
       return { dimEstado: { nombreEstado: { in: [...TERMINAL_STATES] } } };
     case "siguiendo":
@@ -162,12 +164,12 @@ export async function listInbox(params: {
   const where: Prisma.FactTicketWhereInput = {
     AND: [
       scope === null ? {} : { OR: scope },
-      viewCondition(params.view, params.idPersonal, grant.actor.idArea),
+      viewCondition(params.view, params.idPersonal),
       ...filterConditions(params.filters),
     ],
   };
   const orderBy: Prisma.FactTicketOrderByWithRelationInput[] =
-    params.view === "pendientes" || params.view === "area"
+    params.view === "pendientes" || params.view === "abiertos"
       ? [{ fechaLimite: { sort: "asc", nulls: "last" } }, { fechaCreacion: "asc" }]
       : params.view === "siguiendo"
         ? [{ fechaResolucion: { sort: "desc", nulls: "first" } }, { fechaCreacion: "desc" }]
@@ -361,6 +363,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       idSolicitante: true,
       idAsignado: true,
       idAreaDestino: true,
+      idTipoReq: true,
       fechaCreacion: true,
       fechaLimite: true,
       fechaResolucion: true,
@@ -383,6 +386,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     idSolicitante: ticket.idSolicitante,
     idAsignado: ticket.idAsignado,
     idAreaDestino: ticket.idAreaDestino,
+    idTipoReq: ticket.idTipoReq,
     idObservadores: ticket.observadores.map((observador) => observador.idPersonal),
   };
   if (!isTicketWithinScope({ alcance: grant.alcance, action: TICKET_ACTIONS.consultar, actor: grant.actor, ticket: scopeTicket })) {

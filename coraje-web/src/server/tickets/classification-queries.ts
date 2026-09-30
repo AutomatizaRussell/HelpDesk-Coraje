@@ -20,7 +20,7 @@ import { PORTAL_ORIGIN } from "./ticket-state";
  * evaluación vale para todos, y el filtro de la cola va en la consulta SQL.
  */
 
-const UNCLASSIFIED_SHAPE = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idObservadores: [] } as const;
+const UNCLASSIFIED_SHAPE = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idTipoReq: null, idObservadores: [] } as const;
 
 /** Tamaño de la cola por página. Es trabajo pendiente, no un histórico. */
 export const CLASSIFICATION_PAGE_SIZE = 100;

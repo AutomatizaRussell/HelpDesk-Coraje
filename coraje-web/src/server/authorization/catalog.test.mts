@@ -71,7 +71,7 @@ test("ninguna comparación de rol fuera del autorizador y la admisión", () => {
   const offenders = sources
     .filter(({ file }) => !allowed.has(file) && !file.endsWith(".test.mts"))
     .filter(({ text }) =>
-      /rolAplicacion\s*[!=]==|===?\s*["'](?:AGENTE|CLASIFICADOR|ADMIN)["']|["'](?:AGENTE|CLASIFICADOR|ADMIN)["']\s*===?/.test(text),
+      /rolAplicacion\s*[!=]==|===?\s*["'](?:COLABORADOR|AGENTE|CLASIFICADOR|ADMIN)["']|["'](?:COLABORADOR|AGENTE|CLASIFICADOR|ADMIN)["']\s*===?/.test(text),
     )
     .map(({ file }) => file);
   assert.deepEqual(offenders, [], "Comparaciones de rol fuera del autorizador");

@@ -49,6 +49,8 @@ interface LockedTicket {
   idContactoPortal: string | null;
   idAsignado: string | null;
   idAreaDestino: string | null;
+  /** Decide quién lo recibe, y con eso el alcance `AREA` (scope.ts). */
+  idTipoReq: string | null;
   origenSistema: string;
   estado: TicketState;
   /** Quienes siguen el ticket (U11). Entra en el alcance de consulta. */
@@ -65,6 +67,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
       id_contacto_portal: string | null;
       id_asignado: string | null;
       id_area_destino: string | null;
+      id_tipo_req: string | null;
       origen_sistema: string;
       nombre_estado: string;
       id_observadores: string[];
@@ -75,6 +78,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
            ticket.id_contacto_portal::text,
            ticket.id_asignado::text,
            ticket.id_area_destino::text,
+           ticket.id_tipo_req::text,
            ticket.origen_sistema,
            estado.nombre_estado,
            ARRAY(
@@ -101,6 +105,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
     idContactoPortal: row.id_contacto_portal,
     idAsignado: row.id_asignado,
     idAreaDestino: row.id_area_destino,
+    idTipoReq: row.id_tipo_req,
     origenSistema: row.origen_sistema,
     estado: row.nombre_estado,
     idObservadores: row.id_observadores,

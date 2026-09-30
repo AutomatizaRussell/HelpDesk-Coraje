@@ -1,6 +1,37 @@
 # Handoff técnico
 
 ```
+CORTE:   30-sep-2026 (corte 24, U13 — rol COLABORADOR y visibilidad por
+         recepción, construida, SIN DESPLEGAR)
+SOBRE:   `57a13fd` (corte 23). U12 desplegada: `migrate` aplicó
+         `20260929100000_suplantacion_pruebas` el 30-sep a las 08:41;
+         `daniellopera@rbcol.co` habilitado por psql, y el selector «Trabajar
+         como» aparece en la bandeja (captura del usuario). El cambio de persona
+         sigue sin ejercitar: nadie más tiene rol
+RAMA:    main
+UNIDAD:  U13 · ROLES (`specs/permisos.md` §4.5). Decisión del usuario del 30-sep:
+         cada empleado ve solo lo suyo, quien recibe los tickets de un área ve
+         toda el área, y ADMIN ve todas las áreas. Hechos que la motivaron
+         (consultas pegadas por el usuario): PowerApps no tiene roles (solo
+         comparaciones de `User().Email` con `Recibe`, `Asignado A` y `Título`);
+         la encargada de ADMINISTRACIÓN-RECEPCIÓN pertenece a ADMINISTRACIÓN, y
+         «proyectos y ti» se enruta a alexbolanos@ y ti.gct@, que pertenecen a
+         ADMINISTRACIÓN. Construido:
+         - migración `20260930100000_rol_colaborador`: `AGENTE` → `COLABORADOR`
+           con RENAME VALUE; `ticket.consultar` de ADMIN pasa a `TOTAL`;
+         - `AREA` significa «lo que recibo» según la regla de
+           `resolver_responsable_tipo` (`authorization/recepcion.ts`), no el área
+           de la persona;
+         - la pestaña «Abiertos de mi área» pasa a «Abiertos» (todo lo abierto
+           de mi alcance).
+         Evidencia: `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test`
+         154/154 (nuevas: recepción, excepción por tipo, colaborador sin
+         recepción, contrato con `resolver_responsable_tipo`), `next build` con
+         `DATABASE_URL` ficticia. **Sin ejercitar.**
+SIGUE:   publicar el corte 24; dar `COLABORADOR` a dos personas de prueba y
+         ejercitar B.5 suplantándolas.
+
+--- Corte 23, para contexto:
 CORTE:   29-sep-2026 (corte 23, U12 — suplantación para pruebas, construida,
          SIN DESPLEGAR; bloque temporal)
 SOBRE:   `2be19d1` (corte 22). El corte 22 está desplegado: `migrate` aplicó
@@ -1230,7 +1261,7 @@ falla, se corrige antes de cerrar U10.
     Un chequeo en rojo por datos históricos se corrige o se reclasifica **antes de
     activar el workflow**. Después, activarlo.
 24. **`/salud`**: con la cuenta `ADMIN` del paso 8, la pestaña «Salud» aparece y la vista
-    carga; con `AGENTE` no aparece y `/salud` responde 404.
+    carga; con `COLABORADOR` no aparece y `/salud` responde 404.
 25. **Prueba negativa de permisos**, en una transacción revertida: con
     `SET LOCAL ROLE coraje_runtime`, `UPDATE helpdesk.sync_divergencia SET motivo = NULL
     WHERE false` y `SELECT helpdesk.registrar_revision_salud('[]', 'MANUAL')` dan

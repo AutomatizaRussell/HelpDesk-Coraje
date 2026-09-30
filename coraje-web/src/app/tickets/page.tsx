@@ -43,7 +43,7 @@ import { TICKET_STATES, TICKET_STATE_LABEL, isTicketState } from "@/server/ticke
 const VIEW_LABEL: Record<InboxView, string> = {
   pendientes: "Por atender",
   radicados: "Radicados por mí",
-  area: "Abiertos de mi área",
+  abiertos: "Abiertos",
   siguiendo: "Que sigo",
   terminados: "Terminados",
 };
@@ -51,7 +51,7 @@ const VIEW_LABEL: Record<InboxView, string> = {
 const EMPTY_MESSAGE: Record<InboxView, string> = {
   pendientes: "No tienes tickets por atender.",
   radicados: "No has radicado tickets.",
-  area: "Tu área no tiene tickets abiertos.",
+  abiertos: "No hay tickets abiertos a tu alcance.",
   siguiendo: "No sigues ningún ticket. Te añaden como observador, o al pedirte una validación.",
   terminados: "No hay tickets terminados en tu alcance.",
 };

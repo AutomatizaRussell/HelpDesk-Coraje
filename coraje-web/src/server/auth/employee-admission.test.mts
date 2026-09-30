@@ -25,7 +25,7 @@ test("evaluateAdmissionRules rechaza INACTIVE cuando estadoActivo es false", () 
   const result = evaluateAdmissionRules({
     ...baseRow,
     estadoActivo: false,
-    rolAplicacion: "AGENTE",
+    rolAplicacion: "COLABORADOR",
   });
   assert.deepEqual(result, { allowed: false, reason: "INACTIVE" });
 });
@@ -43,12 +43,12 @@ test("evaluateAdmissionRules admite cuando la fila está activa y tiene rol", ()
   const result = evaluateAdmissionRules({
     ...baseRow,
     estadoActivo: true,
-    rolAplicacion: "AGENTE",
+    rolAplicacion: "COLABORADOR",
   });
   assert.equal(result.allowed, true);
   if (result.allowed) {
     assert.equal(result.employee.idPersonal, baseRow.idPersonal);
-    assert.equal(result.employee.rolAplicacion, "AGENTE");
+    assert.equal(result.employee.rolAplicacion, "COLABORADOR");
   }
 });
 
@@ -56,7 +56,7 @@ test("evaluateAdmissionRules nunca admite por defecto: ninguna combinación cae 
   const casosNegativos = [
     null,
     { ...baseRow, estadoActivo: false, rolAplicacion: null },
-    { ...baseRow, estadoActivo: false, rolAplicacion: "AGENTE" },
+    { ...baseRow, estadoActivo: false, rolAplicacion: "COLABORADOR" },
     { ...baseRow, estadoActivo: true, rolAplicacion: null },
   ];
   for (const caso of casosNegativos) {
