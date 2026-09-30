@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Pencil, Plus } from "lucide-react";
 import { z } from "zod";
 
 import { iconStroke } from "@/design-system/foundations/iconography";
@@ -20,7 +20,7 @@ import {
   ResendMailForm,
   RespondForm,
 } from "@/features/tickets/TicketActionForms";
-import { InlineAction, RejectAction } from "@/features/tickets/TicketDetailActions";
+import { EditableField, RejectAction } from "@/features/tickets/TicketDetailActions";
 import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
@@ -31,8 +31,9 @@ import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
 import { getTicketDetail, listFollowCandidates, listReassignCandidates } from "@/server/tickets/ticket-queries";
 
 /**
- * Detalle de un ticket: historia a la izquierda, datos a la derecha, y cada
- * acción donde vive lo que cambia (opción B, 30-sep-2026). Un ticket
+ * Detalle de un ticket: descripción, cuadro para escribir e historia a la
+ * izquierda; datos a la derecha, cada uno con su acción al lado (opción B,
+ * 30-sep-2026). Un ticket
  * inexistente y uno fuera de alcance responden igual, con 404: la vista no le
  * dice a nadie qué tickets existen.
  */
@@ -45,6 +46,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+
+/** Quienes siguen el ticket, con la × para retirarlos si se puede. */
+function ObserverList({
+  observadores,
+  idTicket,
+  canRemove,
+}: {
+  observadores: { idPersonal: string; nombre: string }[];
+  idTicket: string;
+  canRemove: boolean;
+}) {
+  if (observadores.length === 0) return <span className="text-ink-muted">Nadie sigue este ticket</span>;
+  return (
+    <ul className="space-y-1">
+      {observadores.map((observador) => (
+        <li key={observador.idPersonal} className="flex items-center justify-between gap-2">
+          <span>{observador.nombre}</span>
+          {canRemove && <RemoveObserverForm idTicket={idTicket} idObservador={observador.idPersonal} nombre={observador.nombre} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default async function TicketDetailPage({
   params,
@@ -81,19 +105,33 @@ export default async function TicketDetailPage({
   const observerCandidates = followCandidates.filter((person) => !yaLoVen.has(person.idPersonal));
   const validationCandidates = followCandidates.filter((person) => person.idPersonal !== employee.idPersonal);
 
-  // Opción B (30-sep-2026): escribir va al final de la historia, donde se
-  // lee; cambiar responsable u observadores, junto a esos datos; rechazar,
-  // que no se deshace, en una ventana. Solo aparece lo que el estado y el
-  // alcance permiten (`capabilities`), con las mismas reglas del servicio.
+  // Opción B, ajustada el 30-sep-2026: todo lo que se escribe va en un cuadro
+  // debajo de la descripción, sobre la historia (que llega con lo más
+  // reciente primero); cambiar responsable u observadores, junto a esos datos;
+  // rechazar, junto al estado. Solo aparece lo que el estado y el alcance
+  // permiten (`capabilities`), con las mismas reglas del servicio.
   const composerTabs: TabbedPanelItem[] = [
     ...(capabilities.responder
       ? [{ id: "responder", label: "Responder al solicitante", content: <RespondForm idTicket={ticket.idTicket} /> }]
       : []),
-    ...(capabilities.comentarSolicitante
+    // Quien es a la vez responsable y solicitante responde o anota: dos
+    // formas de escribirle al mismo ticket confunden.
+    ...(capabilities.comentarSolicitante && !capabilities.responder
       ? [{ id: "comentar", label: "Escribir en el ticket", content: <RequesterCommentForm idTicket={ticket.idTicket} /> }]
       : []),
     ...(capabilities.notaInterna
       ? [{ id: "nota", label: "Nota interna", content: <InternalNoteForm idTicket={ticket.idTicket} /> }]
+      : []),
+    // Pedir validación es escribirle algo a una persona concreta: va con lo
+    // que se escribe, no con los datos.
+    ...(capabilities.solicitarValidacion
+      ? [
+          {
+            id: "validacion",
+            label: "Pedir validación",
+            content: <RequestValidationForm idTicket={ticket.idTicket} candidates={validationCandidates} />,
+          },
+        ]
       : []),
   ];
   // El espejo en PowerApps solo existe para los tickets de HelpDesk, y es
@@ -135,14 +173,15 @@ export default async function TicketDetailPage({
               <p className="mt-2 whitespace-pre-wrap break-words text-base text-ink">{ticket.descripcion}</p>
             </section>
 
+            {composerTabs.length > 0 && (
+              <section className={surface()} aria-label="Escribir en el ticket">
+                <TabbedPanel label="Escribir en el ticket" items={composerTabs} />
+              </section>
+            )}
+
             <section className={surface()} aria-labelledby="historia-titulo">
               <h2 id="historia-titulo" className={cn(sectionTitle, "mb-4")}>Historia</h2>
               <TicketHistory entries={ticket.history} />
-              {composerTabs.length > 0 && (
-                <div className="mt-6 border-t border-line pt-5">
-                  <TabbedPanel label="Escribir en el ticket" items={composerTabs} />
-                </div>
-              )}
             </section>
 
             {mirror && (mirror.spId !== null || mirror.divergencias.length > 0 || mirror.activo) && (
@@ -204,9 +243,13 @@ export default async function TicketDetailPage({
           </div>
 
           <aside className={cn(surface(), "h-fit")} aria-label="Datos del ticket">
-            <div className="flex flex-wrap items-center gap-2">
-              <TicketStateBadge state={ticket.estado} />
-              {ticket.sla && <SlaBadge status={ticket.sla} />}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <TicketStateBadge state={ticket.estado} />
+                {ticket.sla && <SlaBadge status={ticket.sla} />}
+              </div>
+              {/* Junto al estado, que es lo que cambia; lejos de «Responder y cerrar». */}
+              {capabilities.rechazar && <RejectAction idTicket={ticket.idTicket} />}
             </div>
             <dl className="mt-3 divide-y divide-line">
               <Field label="Vence">{ticket.fechaLimite ? formatDate(ticket.fechaLimite) : "Sin fecha límite"}</Field>
@@ -221,55 +264,35 @@ export default async function TicketDetailPage({
                 )}
               </Field>
               <Field label="Solicitante">{ticket.solicitante ?? "Sin solicitante"}</Field>
-              <Field label="Responsable">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span>{ticket.responsable ?? "Sin responsable"}</span>
-                  {capabilities.reasignar && (
-                    <InlineAction label="Cambiar" accessibleLabel="Cambiar la persona responsable">
-                      <ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />
-                    </InlineAction>
-                  )}
-                </div>
-              </Field>
-              <Field label="Observadores">
-                {ticket.observadores.length === 0 ? (
-                  <span className="text-ink-muted">Nadie sigue este ticket</span>
-                ) : (
-                  <ul className="space-y-2">
-                    {ticket.observadores.map((observador) => (
-                      <li key={observador.idPersonal} className="flex flex-wrap items-center justify-between gap-2">
-                        <span>{observador.nombre}</span>
-                        {capabilities.gestionarObservadores && (
-                          <RemoveObserverForm idTicket={ticket.idTicket} idObservador={observador.idPersonal} nombre={observador.nombre} />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {capabilities.gestionarObservadores && (
-                  <div className="mt-2">
-                    <InlineAction label="Añadir" accessibleLabel="Añadir observadores">
-                      <AddObserversForm idTicket={ticket.idTicket} candidates={observerCandidates} max={MAX_OBSERVERS_PER_ACTION} />
-                    </InlineAction>
-                  </div>
-                )}
-              </Field>
-              {capabilities.solicitarValidacion && (
-                <Field label="Validación">
-                  <InlineAction label="Pedir validación" accessibleLabel="Pedir a una persona que valide algo del ticket">
-                    <RequestValidationForm idTicket={ticket.idTicket} candidates={validationCandidates} />
-                  </InlineAction>
+              {capabilities.reasignar ? (
+                <EditableField
+                  label="Responsable"
+                  actionLabel="Cambiar responsable"
+                  icon={Pencil}
+                  form={<ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />}
+                >
+                  {ticket.responsable ?? "Sin responsable"}
+                </EditableField>
+              ) : (
+                <Field label="Responsable">{ticket.responsable ?? "Sin responsable"}</Field>
+              )}
+              {capabilities.gestionarObservadores ? (
+                <EditableField
+                  label="Observadores"
+                  actionLabel="Añadir observadores"
+                  icon={Plus}
+                  form={<AddObserversForm idTicket={ticket.idTicket} candidates={observerCandidates} max={MAX_OBSERVERS_PER_ACTION} />}
+                >
+                  <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove />
+                </EditableField>
+              ) : (
+                <Field label="Observadores">
+                  <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove={false} />
                 </Field>
               )}
               <Field label="Radicado">{formatDateTime(ticket.fechaCreacion)}</Field>
               {ticket.fechaResolucion && <Field label="Terminado">{formatDateTime(ticket.fechaResolucion)}</Field>}
             </dl>
-            {capabilities.rechazar && (
-              // Separado del resto: es la única acción que no se deshace.
-              <div className="mt-4 border-t border-line pt-4">
-                <RejectAction idTicket={ticket.idTicket} />
-              </div>
-            )}
           </aside>
         </div>
       </div>

@@ -1,7 +1,9 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useActionState, type ReactNode } from "react";
 
+import { IconButton } from "@/design-system/components/IconButton";
 import { buttonRecipe, type ButtonVariant } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { FormFeedback } from "@/features/forms/FormFeedback";
@@ -109,7 +111,8 @@ export function InternalNoteForm({ idTicket }: { idTicket: string }) {
       <input type="hidden" name="idTicket" value={idTicket} />
       <FormFeedback state={state} />
       <TextField name="nota" label="Nota interna" hint="Solo la ve el equipo. El solicitante no la recibe." state={state} />
-      <Submit pending={pending} variant="secondary">Guardar nota</Submit>
+      {/* Primaria dentro de su pestaña: cada pestaña es su propia tarea. */}
+      <Submit pending={pending} variant="primary">Guardar nota</Submit>
     </form>
   );
 }
@@ -229,22 +232,16 @@ export function AddObserversForm({
   );
 }
 
-/** Retirar a una persona: un botón junto a su nombre. */
+/** Retirar a una persona: una × junto a su nombre, con su nombre accesible. */
 export function RemoveObserverForm({ idTicket, idObservador, nombre }: { idTicket: string; idObservador: string; nombre: string }) {
   const [state, formAction, pending] = useActionState(removeObserverAction, IDLE_FORM_STATE);
+  const label = `Retirar a ${nombre} del seguimiento`;
   return (
     <form action={formAction} className="space-y-1">
       <input type="hidden" name="idTicket" value={idTicket} />
       <input type="hidden" name="idObservador" value={idObservador} />
       {state.status === "error" && <FormFeedback state={state} />}
-      <button
-        type="submit"
-        className={buttonRecipe({ variant: "secondary", size: "sm" })}
-        disabled={pending}
-        aria-label={`Retirar a ${nombre} del seguimiento`}
-      >
-        {pending ? "Retirando…" : "Retirar"}
-      </button>
+      <IconButton type="submit" label={label} icon={X} disabled={pending} />
     </form>
   );
 }
@@ -257,8 +254,8 @@ export function RequestValidationForm({ idTicket, candidates }: { idTicket: stri
       <FormFeedback state={state} />
       <PeoplePicker
         name="idDestinatario"
-        label="Persona que debe validar"
-        hint="Si todavía no ve el ticket, pasa a seguirlo para poder abrirlo."
+        label="A quién le pides que valide"
+        hint="Le llega un aviso y podrá abrir el ticket."
         candidates={candidates}
         mode="single"
         initialSelected={previousSelection(state, "idDestinatario")}
@@ -266,11 +263,11 @@ export function RequestValidationForm({ idTicket, candidates }: { idTicket: stri
       />
       <TextField
         name="comentario"
-        label="Qué necesitas que valide"
-        hint="Solo lo ve el equipo. El ticket no se detiene mientras tanto."
+        label="Qué necesitas que confirme"
+        hint="Solo lo ve el equipo. El ticket sigue su curso mientras tanto."
         state={state}
       />
-      <Submit pending={pending} variant="secondary">Solicitar validación</Submit>
+      <Submit pending={pending} variant="primary">Pedir validación</Submit>
     </form>
   );
 }

@@ -8,7 +8,9 @@ import type { TicketHistoryEntry } from "@/server/tickets/ticket-queries";
 import { formatDateTime } from "./format";
 
 /**
- * Historia del ticket, en orden cronológico.
+ * Historia del ticket, con lo más reciente primero (el orden lo da la
+ * consulta, `getTicketDetail`): va debajo del cuadro de respuesta, y lo
+ * último que pasó queda junto a donde se responde.
  *
  * La distinción entre lo que ve el solicitante y la nota interna es la más
  * cara de equivocar de toda la interfaz (design/sistema-helpdesk.md §6, V7).

@@ -1,6 +1,27 @@
 # Handoff técnico
 
 ```
+CORTE:   30-sep-2026 (corte 27, U14 — ajustes del detalle tras verlo
+         desplegado, construidos, SIN DESPLEGAR)
+SOBRE:   `6e08128` (corte 26)
+RAMA:    main
+UNIDAD:  U14. Observaciones del usuario sobre el corte 26 desplegado: la
+         validación estaba mal explicada y sola en la columna de datos, el
+         cuadro de respuesta quedaba bajo toda la historia, «Añadir» debía ser
+         un +, y «Rechazar» se perdía al fondo. Cambios:
+         - cuadro de escritura bajo la descripción, sobre la historia, con
+           «Pedir validación» como tercera pestaña y textos que dicen qué pasa;
+         - historia con lo más reciente primero (orden en la consulta);
+         - lápiz junto a «Responsable», + junto a «Observadores» y × por
+           observador (`IconButton`, nombre accesible y rótulo al pasar);
+         - «Rechazar» junto al estado, arriba de la columna;
+         - quien es responsable y solicitante a la vez no ve «Escribir en el
+           ticket»: responde o anota.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 154/154, `next build`.
+         **Sin ejercitar en el navegador.**
+SIGUE:   publicar el corte 27 y revisarlo sobre ADM-2026-7546.
+
+--- Corte 26, para contexto:
 CORTE:   30-sep-2026 (corte 26, U14 — acciones del detalle del ticket,
          opción B, construidas, SIN DESPLEGAR)
 SOBRE:   `63758b3` (corte 25)
@@ -23,8 +44,18 @@ UNIDAD:  U14 · DETALLE DEL TICKET. El usuario rechazó la lista de siete
            emparejarlo con SharePoint.
          Evidencia: `tsc`, `eslint`, `pnpm test` 154/154, `next build`.
          **Sin ejercitar en el navegador.**
-SIGUE:   publicar el corte 26, probarlo como Mayra sobre ADM-2026-7539 y
-         decidir si B se queda.
+SIGUE:   probar el corte 26 como Mayra sobre ADM-2026-7539 y decidir si B se
+         queda.
+EJERCITADO (30-sep, U12 y U13, suplantando): los correos de los tickets
+         ADM-2026-7539 y 7540 salieron del buzón real y solo a él, con
+         `[Prueba · para …]` (7 filas `ENVIADO`); un ticket «proyectos y ti»
+         llega a Santiago Toro y Mayra no lo ve; Mayra ve ADM-2025-0296
+         («proyectos y ti») porque es la responsable, no por recepción.
+         Decisión del usuario: la encargada de un área **no** ve los tipos que
+         se enrutan a otra persona (opción 1, permisos.md §4.5). Recepción
+         ejercitada: como Mayra, en «Abiertos», aparecen ADM-2026-1093
+         (contabilidad, de Santiago Toro) y ADM-2026-0998 (mercadeo, de Juliana
+         Tangarife), ninguno asignado a ella. **U13 queda cerrada.**
 
 --- Corte 25, para contexto:
 CORTE:   30-sep-2026 (corte 25, U14 — ajustes de la bandeja pedidos por el

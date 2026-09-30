@@ -398,7 +398,9 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     // El filtro de visibilidad va en la consulta: una nota interna no llega
     // nunca a la memoria de una petición que no debe verla.
     where: { idTicket: ticket.idTicket, visibilidad: { in: [...VISIBLE_BY_PROJECTION[projection]] } },
-    orderBy: { fechaRegistro: "asc" },
+    // Lo más reciente primero (30-sep-2026): la historia va debajo del cuadro
+    // de respuesta, y lo último que pasó tiene que quedar a su lado.
+    orderBy: [{ fechaRegistro: "desc" }, { idEvento: "desc" }],
     select: {
       idEvento: true,
       tipoEvento: true,
