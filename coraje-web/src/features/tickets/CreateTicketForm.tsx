@@ -13,6 +13,7 @@ import type { CreationCatalog, FollowCandidate } from "@/server/tickets/ticket-q
 import { IDLE_FORM_STATE } from "./action-state";
 import { createTicketAction } from "./actions";
 import { formatPriority } from "./format";
+import { useCloseDialog } from "./NewTicketDialog";
 import { PeoplePicker } from "./PeoplePicker";
 import { TipoRequerimientoFields } from "./TipoRequerimientoFields";
 
@@ -42,11 +43,14 @@ export function CreateTicketForm({
 }) {
   const [state, formAction, pending] = useActionState(createTicketAction, IDLE_FORM_STATE);
   const failed = state.status === "error" ? state : null;
+  // Dentro de la ventana emergente, «Cancelar» la cierra y el diálogo ya es la
+  // superficie; en la página completa, «Cancelar» vuelve a la bandeja.
+  const closeDialog = useCloseDialog();
 
   const describedBy = (field: string) => (failed?.fieldErrors[field] ? `${field}-error` : undefined);
 
   return (
-    <form action={formAction} className={surface()} noValidate>
+    <form action={formAction} className={closeDialog ? "p-5 lg:p-6" : surface()} noValidate>
       <div className="space-y-5">
         {failed && <p className={notice("danger")} role="alert">{failed.message}</p>}
 
@@ -121,7 +125,11 @@ export function CreateTicketForm({
           <button type="submit" className={buttonRecipe({ variant: "primary" })} disabled={pending}>
             {pending ? "Creando…" : "Crear ticket"}
           </button>
-          <Link href="/tickets" className={buttonRecipe({ variant: "secondary" })}>Cancelar</Link>
+          {closeDialog ? (
+            <button type="button" onClick={closeDialog} className={buttonRecipe({ variant: "secondary" })}>Cancelar</button>
+          ) : (
+            <Link href="/tickets" className={buttonRecipe({ variant: "secondary" })}>Cancelar</Link>
+          )}
         </div>
       </div>
     </form>

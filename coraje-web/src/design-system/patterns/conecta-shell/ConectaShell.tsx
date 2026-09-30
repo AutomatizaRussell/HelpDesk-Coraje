@@ -78,14 +78,11 @@ export function ConectaShell({
 
   return (
     <div className="min-h-dvh bg-canvas">
-      <nav
-        aria-label="Conecta"
-        className="fixed inset-y-0 left-0 z-(--hd-layer-rail) hidden w-rail flex-col border-r border-shell-line bg-shell-surface lg:flex"
-      >
+      <div className="fixed inset-y-0 left-0 z-(--hd-layer-rail) hidden w-rail flex-col border-r border-shell-line bg-shell-surface lg:flex">
         <div className="px-3 py-4">
           <BrandIsotype />
         </div>
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
+        <nav aria-label="Conecta" className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
           {sections.map((section) => (
             <div key={section.label} className="flex flex-col gap-0.5">
               {section.items.map((entry) => {
@@ -100,8 +97,26 @@ export function ConectaShell({
               })}
             </div>
           ))}
-        </div>
-      </nav>
+        </nav>
+        {/* Mejora sobre Conecta, que solo lo ofrece con la barra desplegada:
+            cerrar sesión queda al fondo de la columna, separado de la
+            navegación por una línea, como en Impulsa. Dice «de HelpDesk»
+            porque no cierra la sesión de Conecta. */}
+        <form action={signOutAction} className="border-t border-shell-divider px-3 py-4">
+          <button
+            type="submit"
+            aria-label="Cerrar sesión de HelpDesk"
+            title="Cerrar sesión de HelpDesk"
+            className={cn(
+              "flex w-full items-center justify-center rounded-shell-item px-2 py-2 text-shell-sign-out-ink hover:bg-shell-sign-out-hover-surface hover:text-shell-sign-out-hover-ink",
+              colorTransition,
+              focusRingInverse,
+            )}
+          >
+            <LogOut aria-hidden="true" className="size-5" strokeWidth={iconStroke.light} />
+          </button>
+        </form>
+      </div>
 
       <div className="flex min-h-dvh flex-col lg:pl-rail">
         <header className="sticky top-0 z-(--hd-layer-topbar)">

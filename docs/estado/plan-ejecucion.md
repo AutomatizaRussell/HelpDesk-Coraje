@@ -509,3 +509,6 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
 - 30-sep-2026 — U12 desplegada y habilitada. U13 construida (corte 24): `COLABORADOR`
   y visibilidad por recepción, antes de ejercitar U7 para no probar dos veces la
   bandeja. **La cabeza de la cola sigue siendo ejercitar U7-U11.**
+- 30-sep-2026 — U13 desplegada. U14 construida (corte 25): ajustes de bandeja y
+  shell pedidos por el usuario, entre ellos «Nuevo ticket» como ventana emergente.
+  No es una unidad de la cola: son correcciones de uso antes de las pruebas.

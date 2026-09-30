@@ -166,7 +166,12 @@ function pathnameDesdeArchivo(relativo: string): string {
   const segmentos = path
     .dirname(relativo)
     .split(path.sep)
-    .filter((s) => s !== "." && !(s.startsWith("(") && s.endsWith(")")));
+    // Tampoco aparecen en la URL: los slots de rutas paralelas (`@modal`) y
+    // el prefijo de una ruta interceptada (`(.)nuevo` es `nuevo` abierta sobre
+    // la vista actual). Una ruta interceptada responde en la misma URL que la
+    // original, así que se clasifica igual y tiene que resolver identidad igual.
+    .filter((s) => s !== "." && !(s.startsWith("(") && s.endsWith(")")) && !s.startsWith("@"))
+    .map((s) => s.replace(/^(?:\(\.{1,3}\))+/, ""));
   return segmentos.length === 0 ? "/" : `/${segmentos.join("/")}`;
 }
 

@@ -108,6 +108,9 @@ export const helpdeskTheme = {
     rail: "80px",
     accessPanel: "400px",
     contentMax: "1440px",
+    // Columna de un formulario de tarea (crear un ticket): centrada en el
+    // lienzo, con un largo de línea legible para etiquetas, ayudas y texto.
+    formMax: "768px",
   },
   layer: {
     rail: "20",

@@ -1,6 +1,5 @@
-import Form from "next/form";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { SegmentedLinks } from "@/design-system/components/SegmentedLinks";
 import { iconStroke } from "@/design-system/foundations/iconography";
@@ -8,10 +7,10 @@ import { SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-stat
 import { buttonRecipe } from "@/design-system/recipes/button";
 import { focusRing } from "@/design-system/recipes/interaction";
 import { badge } from "@/design-system/recipes/badge";
-import { fieldControl, fieldLabel } from "@/design-system/recipes/field";
 import { notice, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { formatDate } from "@/features/tickets/format";
+import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { resolveGrant } from "@/server/authorization/authorizer";
@@ -37,14 +36,15 @@ import { TICKET_STATES, TICKET_STATE_LABEL, isTicketState } from "@/server/ticke
  * vista.
  *
  * U11, a partir del prototipo de TI: contadores arriba, búsqueda y filtro por
- * estado, y la vista «Que sigo». La búsqueda es un formulario GET
- * (`next/form`): funciona sin JavaScript y no es una acción, solo otra URL.
+ * estado, y la vista «En seguimiento». La búsqueda filtra mientras se escribe
+ * (`InboxSearch`) y sigue siendo un formulario GET sin JavaScript: no es una
+ * acción, solo otra URL.
  */
 const VIEW_LABEL: Record<InboxView, string> = {
   pendientes: "Por atender",
   radicados: "Radicados por mí",
   abiertos: "Abiertos",
-  siguiendo: "Que sigo",
+  siguiendo: "En seguimiento",
   terminados: "Terminados",
 };
 
@@ -52,7 +52,7 @@ const EMPTY_MESSAGE: Record<InboxView, string> = {
   pendientes: "No tienes tickets por atender.",
   radicados: "No has radicado tickets.",
   abiertos: "No hay tickets abiertos a tu alcance.",
-  siguiendo: "No sigues ningún ticket. Te añaden como observador, o al pedirte una validación.",
+  siguiendo: "No tienes tickets en seguimiento. Aparecen aquí cuando te añaden como observador o te piden una validación.",
   terminados: "No hay tickets terminados en tu alcance.",
 };
 
@@ -132,39 +132,13 @@ export default async function TicketsPage({
             )}
           </div>
 
-          <Form action="/tickets" role="search" className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="vista" value={view} />
-            <div className="min-w-0 flex-1 basis-64">
-              <label htmlFor="busqueda" className={fieldLabel}>Buscar</label>
-              <input
-                id="busqueda"
-                name="q"
-                type="search"
-                defaultValue={filters.texto ?? ""}
-                maxLength={INBOX_SEARCH_MAX}
-                placeholder="Código, descripción o solicitante"
-                className={fieldControl()}
-              />
-            </div>
-            <div className="basis-48">
-              <label htmlFor="estado" className={fieldLabel}>Estado</label>
-              <select id="estado" name="estado" defaultValue={filters.estado ?? ""} className={fieldControl()}>
-                <option value="">Todos</option>
-                {TICKET_STATES.map((state) => (
-                  <option key={state} value={state}>{TICKET_STATE_LABEL[state]}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className={buttonRecipe({ variant: "secondary" })}>
-              <Search aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
-              Buscar
-            </button>
-            {filtering && (
-              <Link href={inboxHref(view, { texto: null, estado: null })} className={buttonRecipe({ variant: "secondary" })}>
-                Limpiar filtros
-              </Link>
-            )}
-          </Form>
+          <InboxSearch
+            view={view}
+            texto={filters.texto}
+            estado={filters.estado}
+            maxLength={INBOX_SEARCH_MAX}
+            clearHref={inboxHref(view, { texto: null, estado: null })}
+          />
 
           <section className={surface({ padded: false })} aria-label={VIEW_LABEL[view]}>
             {inbox.rows.length === 0 ? (
@@ -186,11 +160,22 @@ export default async function TicketsPage({
                   </thead>
                   <tbody className="divide-y divide-line">
                     {inbox.rows.map((row) => (
-                      <tr key={row.idTicket} className="align-top hover:bg-surface-sunken">
+                      // Toda la fila abre el ticket con un solo enlace, el del
+                      // código, que se extiende sobre la fila (`after:inset-0`).
+                      // Un enlace por fila y no un onClick en <tr>: funciona con
+                      // teclado, lector de pantalla y clic central para abrir en
+                      // otra pestaña. La fila no tiene otros controles.
+                      <tr
+                        key={row.idTicket}
+                        className="relative cursor-pointer align-top hover:bg-surface-sunken focus-within:bg-surface-sunken"
+                      >
                         <td className="max-w-md px-4 py-3">
                           <Link
                             href={`/tickets/${row.idTicket}`}
-                            className={cn("rounded-control font-bold text-heading underline-offset-2 hover:underline", focusRing)}
+                            className={cn(
+                              "rounded-control font-bold text-heading underline-offset-2 after:absolute after:inset-0 hover:underline",
+                              focusRing,
+                            )}
                           >
                             {row.codigoTicket ?? "Sin código"}
                           </Link>

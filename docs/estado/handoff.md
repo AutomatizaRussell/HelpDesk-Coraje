@@ -1,6 +1,31 @@
 # Handoff técnico
 
 ```
+CORTE:   30-sep-2026 (corte 25, U14 — ajustes de la bandeja pedidos por el
+         usuario, construidos, SIN DESPLEGAR)
+SOBRE:   `4034b33` (corte 24). U13 desplegada: `migrate` aplicó
+         `20260930100000_rol_colaborador` a las 10:28. `mayrajaramillo@` y
+         `ti.gct@` tienen `COLABORADOR` para las pruebas de B.5 (quitarlo al
+         terminar)
+RAMA:    main
+UNIDAD:  U14 · BANDEJA Y SHELL. Pedidos del usuario del 29-30-sep:
+         - búsqueda y filtro por estado aplicados mientras se escribe
+           (`InboxSearch`: pausa de 350 ms, `router.replace`, filtro en SQL como
+           antes; sin JavaScript sigue siendo un GET);
+         - toda la fila de la bandeja abre el ticket (un solo enlace extendido);
+         - pestaña «Que sigo» → «En seguimiento»;
+         - cerrar sesión de HelpDesk al fondo de la barra replegada, con línea
+           divisora (mejora sobre Conecta, autorizada por el usuario);
+         - «Nuevo ticket» como ventana emergente sobre la bandeja: ruta
+           interceptada `app/tickets/@modal/(.)nuevo`; `/tickets/nuevo` directa
+           sigue siendo la página completa, centrada con el token nuevo
+           `size.formMax`. Cerrar con algo escrito pide confirmación.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 154/154 (el inventario del
+         perímetro ahora ignora `@slot` y `(.)`), `next build` con
+         `DATABASE_URL` ficticia. **Sin ejercitar en el navegador.**
+SIGUE:   publicar el corte 25 y seguir con las pruebas de B.5.
+
+--- Corte 24, para contexto:
 CORTE:   30-sep-2026 (corte 24, U13 — rol COLABORADOR y visibilidad por
          recepción, construida, SIN DESPLEGAR)
 SOBRE:   `57a13fd` (corte 23). U12 desplegada: `migrate` aplicó
