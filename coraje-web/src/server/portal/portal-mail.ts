@@ -4,7 +4,7 @@ import { z } from "zod";
  * Entrega de los correos del portal a n8n (D4, decisión del usuario del
  * 28-sep-2026): un workflow del n8n de HelpDesk los envía por Microsoft Graph
  * desde el buzón sin dueño `automatizacionmedellin@`. El workflow versionado
- * es `n8n/HELPDESK - Portal - Enviar correo V1.json`.
+ * es `n8n/HELPDESK - Portal - Enviar correo V2.json`.
  *
  * **Por qué el envío es síncrono y sin cola.** Estos correos llevan un
  * secreto (enlace de invitación o código). Una cola con reintento exigiría
@@ -26,7 +26,14 @@ import { z } from "zod";
  * variable que falta falla en la operación que la necesita, con su nombre.
  */
 
-export type PortalMailKind = "INVITACION" | "CODIGO";
+/**
+ * `ESCALAMIENTO` (U15) no es del portal: es el correo diario a un empleado
+ * con pendientes sin atender (`notice-escalation.ts`). Va por este mismo
+ * transporte porque sale del mismo buzón sin dueño, con la misma credencial
+ * de n8n: un segundo workflow solo duplicaría la puesta en marcha. No lleva
+ * secreto, pero hereda sin coste que n8n no guarde el cuerpo.
+ */
+export type PortalMailKind = "INVITACION" | "CODIGO" | "ESCALAMIENTO";
 
 export class PortalMailError extends Error {
   constructor(message: string) {

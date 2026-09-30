@@ -18,8 +18,12 @@ import { cn } from "../../utilities/cn";
  * avatar: así no necesita posicionamiento por ancla, que no todos los
  * navegadores soportan.
  */
-/** Altura de la barra bajo la que se abre el menú, según el modo de entrada. */
-const anchors = {
+/**
+ * Altura de la barra bajo la que se abre el menú, según el modo de entrada.
+ * La comparte la campana de avisos (`NoticeBell`), que se abre en el mismo
+ * sitio.
+ */
+export const shellPopoverAnchors = {
   topbar: "top-topbar lg:top-topbar-wide",
   appBar: "top-app-bar lg:top-app-bar-wide",
 } as const;
@@ -33,7 +37,7 @@ export function UserMenu({
   displayName: string;
   /** Segunda línea del encabezado del menú; se omite si no hay. */
   roleLabel?: string;
-  anchor: keyof typeof anchors;
+  anchor: keyof typeof shellPopoverAnchors;
   signOutAction: () => Promise<void>;
 }) {
   const menuId = useId();
@@ -59,7 +63,7 @@ export function UserMenu({
         popover="auto"
         className={cn(
           "inset-auto right-4 m-0 w-64 overflow-hidden rounded-surface border border-shell-menu-line bg-surface p-0 text-ink shadow-shell-menu lg:right-8",
-          anchors[anchor],
+          shellPopoverAnchors[anchor],
         )}
       >
         <div className="flex items-center gap-3 border-b border-shell-menu-line bg-shell-menu-header-surface px-4 py-4">

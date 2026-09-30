@@ -2,8 +2,8 @@
  * Códigos de las acciones del catálogo (specs/permisos.md §3), tal como están
  * sembrados en `app.permiso_accion` por las migraciones
  * `20260926100000_permisos_y_creacion_ticket`,
- * `20260928110000_acceso_clientes`, `20260928130000_observabilidad` y
- * `20260928150000_seguimiento_ticket`.
+ * `20260928110000_acceso_clientes`, `20260928130000_observabilidad`,
+ * `20260928150000_seguimiento_ticket` y `20260930120000_avisos_ticket`.
  *
  * Este archivo **no** decide quién puede qué: eso vive en `app.permiso_regla`,
  * que es la única fuente operativa (permisos.md §1). Aquí solo se nombran los
@@ -59,11 +59,23 @@ export const SALUD_ACTIONS = {
   revisarDivergencia: "salud.divergencia.revisar",
 } as const;
 
+/**
+ * Avisos del centro de notificaciones (U15, migración
+ * `20260930120000_avisos_ticket`). Alcance `PROPIO`: cada persona ve sus
+ * avisos y ningún otro; las consultas filtran siempre por destinatario.
+ */
+export const AVISO_ACTIONS = {
+  /** Ver la campana y la página de avisos, y marcarlos como leídos. */
+  consultar: "aviso.consultar",
+} as const;
+
 export type TicketAction = (typeof TICKET_ACTIONS)[keyof typeof TICKET_ACTIONS];
 
 export type PortalAction = (typeof PORTAL_ACTIONS)[keyof typeof PORTAL_ACTIONS];
 
 export type SaludAction = (typeof SALUD_ACTIONS)[keyof typeof SALUD_ACTIONS];
 
+export type AvisoAction = (typeof AVISO_ACTIONS)[keyof typeof AVISO_ACTIONS];
+
 /** Cualquier acción del catálogo, sea sobre un ticket o no. */
-export type PermissionAction = TicketAction | PortalAction | SaludAction;
+export type PermissionAction = TicketAction | PortalAction | SaludAction | AvisoAction;

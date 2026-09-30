@@ -83,6 +83,7 @@
   --hd-size-access-panel: 400px;
   --hd-size-content-max: 1440px;
   --hd-size-form-max: 768px;
+  --hd-size-notice-panel: 384px;
 
   --hd-layer-rail: 20;
   --hd-layer-topbar: 30;
@@ -275,6 +276,7 @@
   --container-access-panel: var(--hd-size-access-panel);
   --container-content: var(--hd-size-content-max);
   --container-form: var(--hd-size-form-max);
+  --container-notice-panel: var(--hd-size-notice-panel);
 }
 
 @layer base {

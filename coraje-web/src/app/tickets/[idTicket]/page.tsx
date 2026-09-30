@@ -24,6 +24,7 @@ import { EditableField, RejectAction } from "@/features/tickets/TicketDetailActi
 import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
+import { markTicketNoticesRead } from "@/server/notifications/ticket-notices";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
 import { logEvent } from "@/server/observability/log";
 import { getMirrorStatus, type MirrorStatus } from "@/server/sync/sharepoint-mirror";
@@ -83,6 +84,11 @@ export default async function TicketDetailPage({
 
   const ticket = await getTicketDetail({ idPersonal: employee.idPersonal, idTicket });
   if (!ticket) notFound();
+
+  // U15: quien abre el ticket ya vio lo que decían sus avisos de él, llegue
+  // por la campana, por la bandeja o por un enlace. Antes del marco, para que
+  // el número de la campana de esta misma página ya lo descuente.
+  await markTicketNoticesRead({ idPersonal: employee.idPersonal, idTicket: ticket.idTicket });
 
   const { creado } = await searchParams;
   const { capabilities } = ticket;

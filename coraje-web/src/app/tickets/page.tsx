@@ -24,6 +24,7 @@ import {
   type InboxCounts,
   type InboxFilters,
   type InboxView,
+  viewAllowsStateFilter,
 } from "@/server/tickets/ticket-queries";
 import { TICKET_STATES, TICKET_STATE_LABEL, isTicketState } from "@/server/tickets/ticket-state";
 
@@ -43,23 +44,22 @@ import { TICKET_STATES, TICKET_STATE_LABEL, isTicketState } from "@/server/ticke
 const VIEW_LABEL: Record<InboxView, string> = {
   pendientes: "Por atender",
   radicados: "Radicados por mí",
-  abiertos: "Abiertos",
   siguiendo: "En seguimiento",
-  terminados: "Terminados",
+  alcance: "Todo mi alcance",
 };
 
 const EMPTY_MESSAGE: Record<InboxView, string> = {
   pendientes: "No tienes tickets por atender.",
   radicados: "No has radicado tickets.",
-  abiertos: "No hay tickets abiertos a tu alcance.",
   siguiendo: "No tienes tickets en seguimiento. Aparecen aquí cuando te añaden como observador o te piden una validación.",
-  terminados: "No hay tickets terminados en tu alcance.",
+  alcance: "No hay tickets a tu alcance.",
 };
 
 function inboxHref(view: InboxView, filters: InboxFilters, page = 1): string {
   const query = new URLSearchParams({ vista: view });
   if (filters.texto) query.set("q", filters.texto);
-  if (filters.estado) query.set("estado", filters.estado);
+  // El estado no viaja a la vista que lo fija ya: ahí no significaría nada.
+  if (filters.estado && viewAllowsStateFilter(view)) query.set("estado", filters.estado);
   if (page > 1) query.set("pagina", String(page));
   return `/tickets?${query.toString()}`;
 }
@@ -101,7 +101,8 @@ export default async function TicketsPage({
   // La URL es entrada externa: un texto demasiado largo se recorta y un
   // estado desconocido se ignora, en vez de fallar.
   const texto = params.q?.trim().slice(0, INBOX_SEARCH_MAX) || null;
-  const filters: InboxFilters = { texto, estado: params.estado && isTicketState(params.estado) ? params.estado : null };
+  const estado = params.estado && isTicketState(params.estado) && viewAllowsStateFilter(view) ? params.estado : null;
+  const filters: InboxFilters = { texto, estado };
   const filtering = filters.texto !== null || filters.estado !== null;
 
   const [inbox, counts, canCreate] = await Promise.all([
@@ -136,6 +137,7 @@ export default async function TicketsPage({
             view={view}
             texto={filters.texto}
             estado={filters.estado}
+            showEstado={viewAllowsStateFilter(view)}
             maxLength={INBOX_SEARCH_MAX}
             clearHref={inboxHref(view, { texto: null, estado: null })}
           />

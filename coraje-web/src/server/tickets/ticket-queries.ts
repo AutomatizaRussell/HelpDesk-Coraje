@@ -30,19 +30,29 @@ import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicket
  * nunca una ampliación: el filtro de la vista se combina con AND con el de
  * alcance.
  *
+ * Las vistas dicen **qué relación tengo con el ticket**; el estado se elige
+ * aparte, con el filtro (decisión del usuario del 30-sep-2026: antes había
+ * pestañas «Abiertos» y «Terminados» que eran filtros de estado, y combinadas
+ * con el filtro daban vistas vacías por construcción).
+ *
  * - `pendientes`: los que tengo que atender (soy responsable, siguen abiertos).
- *   Es la bandeja de trabajo del legacy (reglas-negocio-powerapps.md §6).
+ *   Es la bandeja de trabajo del legacy (reglas-negocio-powerapps.md §6). Es
+ *   la única que fija el estado, porque «por atender» ya lo implica: la vista
+ *   no ofrece el filtro de estado.
  * - `radicados`: los que abrí yo, en cualquier estado.
- * - `abiertos`: todos los abiertos de mi alcance. Para quien recibe un área
- *   es la carga de esa área; para `ADMIN`, la de toda la firma; para quien
- *   no recibe nada, lo suyo. La vista no mira el área: el alcance ya dice
- *   qué cabe (permisos.md §4.5).
- * - `terminados`: los cerrados o rechazados dentro de mi alcance.
  * - `siguiendo` (U11): los que sigo como observador, incluidos aquellos en
  *   los que me pidieron una validación. Abiertos primero.
+ * - `alcance`: todo lo que puedo consultar. Para quien recibe un área es esa
+ *   área; para `ADMIN`, toda la firma; para quien no recibe nada, lo suyo. La
+ *   vista no mira el área: el alcance ya dice qué cabe (permisos.md §4.5).
  */
-export const INBOX_VIEWS = ["pendientes", "radicados", "abiertos", "siguiendo", "terminados"] as const;
+export const INBOX_VIEWS = ["pendientes", "radicados", "siguiendo", "alcance"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
+
+/** ¿La vista admite elegir estado? Solo la que no lo fija ya. */
+export function viewAllowsStateFilter(view: InboxView): boolean {
+  return view !== "pendientes";
+}
 
 export function isInboxView(value: string | undefined): value is InboxView {
   return value !== undefined && (INBOX_VIEWS as readonly string[]).includes(value);
@@ -101,7 +111,6 @@ export interface InboxCounts {
   vencidos: number;
 }
 
-const TERMINAL_STATES = ["CERRADO", "RECHAZADO"] as const;
 
 function viewCondition(view: InboxView, idPersonal: string): Prisma.FactTicketWhereInput {
   const open = { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } };
@@ -110,10 +119,8 @@ function viewCondition(view: InboxView, idPersonal: string): Prisma.FactTicketWh
       return { idAsignado: idPersonal, ...open };
     case "radicados":
       return { idSolicitante: idPersonal };
-    case "abiertos":
-      return open;
-    case "terminados":
-      return { dimEstado: { nombreEstado: { in: [...TERMINAL_STATES] } } };
+    case "alcance":
+      return {};
     case "siguiendo":
       return { observadores: { some: { idPersonal } } };
   }
@@ -148,8 +155,9 @@ function filterConditions(filters: InboxFilters): Prisma.FactTicketWhereInput[] 
  * Una página de la bandeja, o `null` si la persona no puede consultar
  * tickets.
  *
- * Orden: los abiertos por vencimiento (lo más urgente arriba); los terminados
- * y los radicados, del más reciente al más antiguo.
+ * Orden: una lista solo de abiertos, por vencimiento (lo más urgente arriba);
+ * el seguimiento, abiertos primero; el resto
+ * (radicados y todo el alcance), del más reciente al más antiguo.
  */
 export async function listInbox(params: {
   idPersonal: string;
@@ -168,8 +176,12 @@ export async function listInbox(params: {
       ...filterConditions(params.filters),
     ],
   };
+  // Por vencimiento solo cuando todo lo listado está abierto: en una lista con
+  // terminados, la fecha límite de un ticket cerrado ya no ordena nada.
+  const onlyOpen =
+    params.view === "pendientes" || (params.filters.estado !== null && isOpenState(params.filters.estado));
   const orderBy: Prisma.FactTicketOrderByWithRelationInput[] =
-    params.view === "pendientes" || params.view === "abiertos"
+    onlyOpen
       ? [{ fechaLimite: { sort: "asc", nulls: "last" } }, { fechaCreacion: "asc" }]
       : params.view === "siguiendo"
         ? [{ fechaResolucion: { sort: "desc", nulls: "first" } }, { fechaCreacion: "desc" }]

@@ -140,7 +140,11 @@ model DimPersonal {
   ticketsObservados                      TicketObservador[]   @relation("ObservadorPersona")
   observadoresAgregados                  TicketObservador[]   @relation("ObservadorAgregadoPor")
   validacionesRecibidas                  TicketValidacion[]
+  avisosRecibidos                        TicketAviso[]        @relation("AvisoDestinatario")
+  avisosCausados                         TicketAviso[]        @relation("AvisoAutor")
+  avisoEscalamientos                     AvisoEscalamiento[]
   // SUPLANTACIÓN — bloque temporal para pruebas.
+  avisosSuplantando                      TicketAviso[]        @relation("AvisoSuplantador")
   suplantacionHabilitada                 SuplantacionHabilitada? @relation("SuplantacionHabilitada")
   suplantacionesComoDestino              SuplantacionActiva[]    @relation("SuplantacionActivaPersona")
   suplantacionAuditoriaReal              SuplantacionAuditoria[] @relation("SuplantacionAuditoriaReal")
@@ -613,6 +617,7 @@ model FactTicket {
   syncDivergencia      SyncDivergencia[]
   observadores         TicketObservador[]
   validaciones         TicketValidacion[]
+  avisos               TicketAviso[]
 
   // Sin índices sobre las FK (id_cliente_contai, id_solicitante, id_area_destino,
   // id_asignado, id_estado, id_prioridad, id_tipo_req): sql/db/06_helpdesk_facts.sql
@@ -656,6 +661,7 @@ model FactTicketEvento {
   estadoNuevo       DimEstado?        @relation("EventoEstadoNuevo", fields: [idEstadoNuevo], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   ticketNotificacion TicketNotificacion[]
   ticketValidacion  TicketValidacion?
+  avisos            TicketAviso[]
 
   @@index([idTicket, fechaRegistro], map: "ix_fact_ticket_evento_ticket_fecha")
   @@map("fact_ticket_evento")
@@ -695,6 +701,64 @@ model TicketValidacion {
 
   @@index([idDestinatario, createdAt(sort: Desc)], map: "ix_ticket_validacion_destinatario")
   @@map("ticket_validacion")
+  @@schema("helpdesk")
+}
+
+/// Aviso a un empleado en el centro de notificaciones (U15, specs/tickets.md
+/// §12). Una fila por destinatario y evento. `clase` separa lo que pide una
+/// acción (ATENCION, abierta hasta que se actúa; `resuelto_at` lo escribe el
+/// trigger `trg_resolver_avisos_ticket`) de lo que solo informa (NOVEDAD).
+/// El título y el detalle no se guardan: se derivan del tipo y del evento al
+/// leer. Los CHECK de tipo, de clase y de su coherencia viven en la migración
+/// `20260930120000_avisos_ticket`.
+model TicketAviso {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idTicket       String           @map("id_ticket") @db.Uuid
+  idEvento       String           @map("id_evento") @db.Uuid
+  idDestinatario String           @map("id_destinatario") @db.Uuid
+  idAutor        String           @map("id_autor") @db.Uuid
+  tipo           String           @db.VarChar(60)
+  clase          String           @db.VarChar(10)
+  /// SUPLANTACIÓN — bloque temporal: quien actuó de verdad, si suplantaba.
+  /// Un aviso de prueba no se escala por correo.
+  idSuplantador  String?          @map("id_suplantador") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  leidoAt        DateTime?        @map("leido_at") @db.Timestamptz(6)
+  resueltoAt     DateTime?        @map("resuelto_at") @db.Timestamptz(6)
+  factTicket     FactTicket       @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  evento         FactTicketEvento @relation(fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
+  destinatario   DimPersonal      @relation("AvisoDestinatario", fields: [idDestinatario], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+  autor          DimPersonal      @relation("AvisoAutor", fields: [idAutor], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+  suplantador    DimPersonal?     @relation("AvisoSuplantador", fields: [idSuplantador], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([idDestinatario, createdAt(sort: Desc)], map: "ix_ticket_aviso_destinatario")
+  @@index([idDestinatario], map: "ix_ticket_aviso_no_leido", where: raw("(leido_at IS NULL)"))
+  @@index([idDestinatario, createdAt], map: "ix_ticket_aviso_atencion_abierta", where: raw("(((clase)::text = 'ATENCION'::text) AND (resuelto_at IS NULL))"))
+  @@index([idTicket], map: "ix_ticket_aviso_atencion_ticket", where: raw("(((clase)::text = 'ATENCION'::text) AND (resuelto_at IS NULL))"))
+  @@map("ticket_aviso")
+  @@schema("helpdesk")
+}
+
+/// Correo de escalamiento de avisos (U15): uno por persona y día hábil, con
+/// sus pendientes de «Requiere tu atención». La fila la crea y la reclama
+/// `helpdesk.reclamar_escalamientos_avisos()`; la unicidad por día hace que
+/// repetir la revisión no repita el correo. El CHECK de `estado` vive en la
+/// migración.
+model AvisoEscalamiento {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPersonal  String      @map("id_personal") @db.Uuid
+  fecha       DateTime    @db.Date
+  avisos      Int
+  estado      String      @default("PENDIENTE") @db.VarChar(20)
+  intentos    Int         @default(0)
+  ultimoError String?     @map("ultimo_error") @db.VarChar(1000)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  enviadoAt   DateTime?   @map("enviado_at") @db.Timestamptz(6)
+  persona     DimPersonal @relation(fields: [idPersonal], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([idPersonal, fecha], map: "uq_aviso_escalamiento_persona_fecha")
+  @@map("aviso_escalamiento")
   @@schema("helpdesk")
 }
 

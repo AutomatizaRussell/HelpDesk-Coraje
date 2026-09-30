@@ -280,7 +280,7 @@ invariante 7), que no se pidió.
 > `automatizacionmedellin@rbcol.co`, por Microsoft Graph.** El correo del portal no
 > tiene remitente humano (el código lo pide el cliente a cualquier hora), así que sale
 > del buzón de la firma, como en Impulsa. Workflow versionado:
-> `n8n/HELPDESK - Portal - Enviar correo V1.json`.
+> `n8n/HELPDESK - Portal - Enviar correo V2.json`.
 >
 > - **Graph y no SMTP.** El flujo de prueba del usuario («Correo empresarial») envía por
 >   SMTP con usuario y contraseña, que es la autenticación que Microsoft anunció que

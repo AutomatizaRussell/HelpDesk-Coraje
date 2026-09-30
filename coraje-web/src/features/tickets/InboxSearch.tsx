@@ -35,12 +35,15 @@ export function InboxSearch({
   view,
   texto,
   estado,
+  showEstado,
   maxLength,
   clearHref,
 }: {
   view: string;
   texto: string | null;
   estado: string | null;
+  /** Falso en la vista que ya fija el estado («Por atender»). */
+  showEstado: boolean;
   maxLength: number;
   clearHref: string;
 }) {
@@ -112,25 +115,27 @@ export function InboxSearch({
           className={fieldControl()}
         />
       </div>
-      <div className="basis-48">
-        <label htmlFor="estado" className={fieldLabel}>Estado</label>
-        <select
-          id="estado"
-          name="estado"
-          value={estadoValue}
-          onChange={(event) => {
-            cancelPending();
-            setEstadoValue(event.target.value);
-            navigate({ texto: value, estado: event.target.value || null });
-          }}
-          className={fieldControl()}
-        >
-          <option value="">Todos</option>
-          {TICKET_STATES.map((state) => (
-            <option key={state} value={state}>{TICKET_STATE_LABEL[state]}</option>
-          ))}
-        </select>
-      </div>
+      {showEstado && (
+        <div className="basis-48">
+          <label htmlFor="estado" className={fieldLabel}>Estado</label>
+          <select
+            id="estado"
+            name="estado"
+            value={estadoValue}
+            onChange={(event) => {
+              cancelPending();
+              setEstadoValue(event.target.value);
+              navigate({ texto: value, estado: event.target.value || null });
+            }}
+            className={fieldControl()}
+          >
+            <option value="">Todos</option>
+            {TICKET_STATES.map((state) => (
+              <option key={state} value={state}>{TICKET_STATE_LABEL[state]}</option>
+            ))}
+          </select>
+        </div>
+      )}
       {filtering && (
         // Cancela la búsqueda pendiente: si no, llegaría después y volvería a
         // poner el texto que se acaba de limpiar.

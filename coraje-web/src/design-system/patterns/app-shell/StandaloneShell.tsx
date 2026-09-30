@@ -21,10 +21,12 @@ export type StandaloneShellProps = {
   displayName: string;
   moduleNav: readonly ModuleNavItem[];
   signOutAction: () => Promise<void>;
+  /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
+  noticeBell?: ReactNode;
   children: ReactNode;
 };
 
-export function StandaloneShell({ title, displayName, moduleNav, signOutAction, children }: StandaloneShellProps) {
+export function StandaloneShell({ title, displayName, moduleNav, signOutAction, noticeBell, children }: StandaloneShellProps) {
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="sticky top-0 z-(--hd-layer-topbar)">
@@ -33,6 +35,7 @@ export function StandaloneShell({ title, displayName, moduleNav, signOutAction, 
             <BrandLogo placement="appBar" />
             <div className="flex min-w-0 items-center gap-3">
               <p className="hidden max-w-56 truncate text-base font-bold text-heading sm:block">{displayName}</p>
+              {noticeBell}
               <UserMenu displayName={displayName} anchor="appBar" signOutAction={signOutAction} />
             </div>
           </div>

@@ -697,7 +697,7 @@ abajo para resolverlo con ella («Pendiente de resolver con TI»).
 | Avisos al observador | Al añadirlo, y cuando el ticket se responde o se rechaza. No al reasignar ni por notas internas: seguir no es recibir cada movimiento |
 | Solicitud de validación | `ticket.validacion.solicitar` (`AREA`), a una persona concreta, con comentario obligatorio. Evento `SOLICITUD_VALIDACION` (`INTERNO`) y destinatario en `helpdesk.ticket_validacion`. **No bloquea** y no tiene respuesta. Si el destinatario no veía el ticket, pasa a seguirlo |
 | Comentario del solicitante | El «Responder» de la vista del solicitante del prototipo: `ticket.solicitante.comentar` (`PROPIO` = haberlo radicado). Evento `COMENTARIO_SOLICITANTE`, visible para ambos; avisa a la persona responsable. No cambia estado ni plazo |
-| Bandeja | Vista «Que sigo», marca «Te pidieron validar», búsqueda por código, descripción o solicitante, filtro por estado y contadores por estado más vencidos |
+| Bandeja | Vista «Que sigo», marca «Te pidieron validar», búsqueda por código, descripción o solicitante, filtro por estado y contadores por estado más vencidos. **Corregido el 30-sep:** las vistas son por relación (Por atender, Radicados por mí, En seguimiento, Todo mi alcance) y el estado solo lo decide el filtro |
 
 Los cuatro tipos de evento nuevos tienen su rama en el escritor único, que exige lo
 que no depende del rol: actor `EMPLEADO`, visibilidad fija, ningún cambio de estado,
@@ -722,6 +722,53 @@ propias nuevas del catálogo — "ser observador" no es lo mismo que "Consultar"
 tiene su propia frontera de clientes, más amplia), y "solicitar validación" no es lo
 mismo que "Autorización excepcional" (§5). Se añaden al catálogo, no se disuelven en
 uno existente.
+
+## 12. `DECISIÓN` (30-sep-2026, U15) Avisos: centro de notificaciones y escalamiento
+
+```
+ESTADO:  construido, sin desplegar (corte 28). Migración 20260930120000_avisos_ticket
+```
+
+Decisiones del usuario del 30-sep-2026, con el modelo de Impulsa
+(`notification-inbox.service.ts`) como referencia conceptual.
+
+**12.1 Canal.** A los empleados les llega un **aviso en la campana**, no un correo.
+Al contacto de un cliente le sigue llegando su correo (U8): no tiene campana. Los
+correos a empleados anteriores a U15 quedan en `ticket_notificacion` con su reenvío.
+El comando declara a quién le toca saber (`TicketDelivery`) y `deliverTicketEvent`
+elige el canal, dentro de la transacción del evento.
+
+**12.2 Clases.**
+
+| Clase | Tipos | Cómo sale |
+|---|---|---|
+| `ATENCION` («Requiere tu atención») | ticket asignado al crear, reasignado, clasificado desde el portal; validación pedida | La cierra la base (`trg_resolver_avisos_ticket`): al terminar el ticket se cierra todo; al cambiar el responsable, lo de responsable de quien deja de serlo. **Leerla no la cierra** |
+| `NOVEDAD` | todo lo demás, incluido el comentario del solicitante al responsable | Se marca leída al abrirla, al abrir su ticket o con «Marcar todas como leídas» |
+
+La validación se cierra al terminar el ticket porque en la v1 no hay respuesta del
+validador (§11.1). El texto del aviso no se guarda: se compone del tipo, el ticket y el
+evento al leer, y solo con lo que el destinatario puede ver (el comentario `INTERNO` de
+una reasignación no entra en el aviso de quien radicó).
+
+**12.3 Escalamiento.** Un aviso de atención abierto **más de un día hábil** (llegó el
+lunes → el miércoles) produce **un correo por persona y día hábil** con esos pendientes,
+desde `automatizacionmedellin@` (D4). Regla e idempotencia en la base
+(`helpdesk.aviso_escalable`, `reclamar_escalamientos_avisos`: una fila por persona y
+día); la aplicación redacta y envía por el workflow del buzón
+(`HELPDESK - Portal - Enviar correo V2`); n8n solo dispara, lunes a viernes a las 7:00
+(`HELPDESK - Escalar avisos V1`). No hay proceso nuevo en la VPS. Un aviso creado
+suplantando (U12) no se escala.
+
+**12.4 Economía.** El número de la campana es un conteo sobre un índice parcial por
+página; la lista se consulta solo al abrir el panel. Sin sondeo.
+
+**Límite conocido:** un cambio aceptado desde PowerApps (U9) cierra avisos, porque lo
+hace el trigger, pero **no crea** avisos nuevos: la ingesta no pasa por los comandos.
+
+| # | Afirmación | Dónde | Veredicto |
+|---|---|---|---|
+| V21 | Tipos y clases de aviso iguales en código y en la base; el trigger cierra exactamente los de responsable | `ticket-notice-kinds.test.mts` contra la migración | **Verificado por prueba** (corte 28) |
+| V22 | Un aviso se crea en la transacción del evento, se cierra al actuar y se escala una vez por día | Base desplegada | **Sin ejercitar** |
 
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
@@ -796,3 +843,11 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   validación y comentario del solicitante, más búsqueda, filtro, contadores y vista
   «Que sigo» en la bandeja (§11.1). Lo que el prototipo trae y contradice §4, §4.1 y
   §5 queda listado para resolverlo con TI tras probar. V12 y V13 pasan a construidos.
+- 30-sep-2026 — U15 (corte 28). §12: avisos en la campana para empleados, con
+  «Requiere tu atención» cerrada por la base y escalamiento diario por correo tras un
+  día hábil. Los correos del ticket quedan solo para contactos de clientes. V21
+  verificado por prueba; V22 sin ejercitar.
+- 30-sep-2026 — corte 28, bandeja (§11.1): las vistas pasan a ser por relación
+  —Por atender, Radicados por mí, En seguimiento, Todo mi alcance— y el estado se
+  elige solo con el filtro. «Abiertos» y «Terminados» se retiran: eran filtros de
+  estado y, combinadas con el filtro, daban vistas vacías.

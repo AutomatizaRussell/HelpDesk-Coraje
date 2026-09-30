@@ -199,6 +199,18 @@ Construido en `20260930100000_rol_colaborador`, sin desplegar. Decisión del usu
 - **El área de la persona** sigue decidiendo a quién puede reasignar, como en el
   legacy.
 
+### 4.6 `DECISIÓN` (30-sep-2026, U15) Avisos
+
+Construido en `20260930120000_avisos_ticket`, sin desplegar. Una acción nueva,
+`aviso.consultar`, con alcance `PROPIO` para `COLABORADOR`, `CLASIFICADOR` y `ADMIN`
+(copia, no herencia: §4.2). La exigen la campana, la página `/avisos`, su ruta y sus
+acciones. `PROPIO` no se evalúa sobre un ticket: significa que toda consulta filtra por
+destinatario, así que nadie ve ni marca avisos ajenos (`specs/tickets.md` §12).
+
+La ruta del escalamiento (`/api/interno/avisos/escalar`) no pasa por el autorizador:
+no la llama una persona sino n8n, y su credencial es un secreto en cabecera
+(`public-paths.ts`).
+
 ## 5. Autorización excepcional
 
 Una acción fuera del alcance ordinario —intervención administrativa, acceso
@@ -331,3 +343,5 @@ están bloqueados por el levantamiento de PowerApps y que no se importan los de 
 - 28-sep-2026 — U11 (corte 22). §4.4: tres acciones de seguimiento para los tres
   roles; ser observador amplía solo la consulta. V7 verificado por prueba y V8 por
   inspección. §10 pasa de propuesta a decisión construida.
+- 30-sep-2026 — U15 (corte 28). §4.6: `aviso.consultar` con alcance `PROPIO` para los
+  tres roles.

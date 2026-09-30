@@ -246,7 +246,13 @@ negativa · reprocesar la ingesta legacy no duplica eventos.
 
 **Depende de:** U0, U2.
 
-### U7 · Ciclo interno del ticket — **desplegada, sin ejercitar**
+### U7 · Ciclo interno del ticket — **ejercitada y aprobada, salvo adjuntos**
+
+> **30-sep-2026, aprobación del usuario:** las pruebas B (ciclo con correos, negativa
+> del `INSERT`, calendario de 2026) quedan aprobadas. Evidencia en `estado/handoff.md`
+> («Acción inmediata», B: pasos 3, 4 y 6 del 29-sep; correos del ciclo del 30-sep,
+> corte 26). Lo único abierto de U7 son los **adjuntos**, que van inmediatamente
+> después de U15.
 
 Crear, bandeja, reasignar, responder (que cierra) y rechazar, más la nota interna,
 cada acción conectada al autorizador. Plazo por días hábiles, sin pausa. Correo como
@@ -446,6 +452,22 @@ enrutamiento, no un rol (`specs/permisos.md` §4.5). `AGENTE` pasa a `COLABORADO
 nada ve solo lo suyo; el encargado de recepción de un área ve toda esa área; quien
 recibe por tipo ve solo esos tipos; `ADMIN` ve todas las áreas.
 
+### U15 · Centro de notificaciones — **construida el 30-sep-2026 (corte 28), sin desplegar**
+
+**Objetivo:** que los empleados reciban los avisos del ticket en una campana y no por
+correo, con «Requiere tu atención» abierta hasta actuar y escalamiento por correo de lo
+que se queda sin atender (`specs/tickets.md` §12). Decisiones del usuario del 30-sep:
+solo escalamiento por correo a empleados; la clasificación de §12.2; más de un día
+hábil; desde el buzón de automatización.
+
+**Condición de cierre:** en el despliegue, suplantando, un ticket creado deja un
+pendiente en la campana de quien lo recibe; reasignarlo lo cierra y abre otro al nuevo
+responsable; responder cierra todo; quien radicó ve la novedad sin el comentario
+interno; y una ejecución manual del escalamiento con un pendiente viejo envía un correo,
+una segunda no repite.
+
+**Siguiente en la cola:** los adjuntos de U7, inmediatamente después.
+
 ---
 
 ## Riesgos y controles
@@ -512,3 +534,9 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
 - 30-sep-2026 — U13 desplegada. U14 construida (corte 25): ajustes de bandeja y
   shell pedidos por el usuario, entre ellos «Nuevo ticket» como ventana emergente.
   No es una unidad de la cola: son correcciones de uso antes de las pruebas.
+- 30-sep-2026 — el usuario da por aprobadas las pruebas B de U7. Orden decidido:
+  **U15 (centro de notificaciones) es la cabeza; los adjuntos de U7 van justo
+  después.**
+- 30-sep-2026 — U15 construida (corte 28): avisos en la campana, cierre de pendientes
+  en la base y escalamiento diario sin proceso nuevo. **Cabeza de la cola: desplegar y
+  ejercitar U15; después, los adjuntos de U7.**

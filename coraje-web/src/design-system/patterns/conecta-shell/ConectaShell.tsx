@@ -28,7 +28,8 @@ import {
  *   iconos del menú de Conecta, como en Conecta.
  * - **Topbar**: blanca y sin franja, como la de Conecta: hamburguesa,
  *   antetítulo y título, rol y nombre, y el avatar con su menú. Sin logotipo:
- *   la marca va en el sidebar.
+ *   la marca va en el sidebar. Antes del separador, la campana de avisos de
+ *   HelpDesk (U15): es de este módulo, no parte de la réplica de Conecta.
  * - **Navegación de HelpDesk**: fila de pestañas bajo la topbar (`ModuleNav`).
  * - **Sidebar desplegado**: en Conecta, la hamburguesa ensancha la columna y
  *   empuja el contenido. Aquí es un `<dialog>` modal que se **superpone** sin
@@ -49,6 +50,8 @@ export type ConectaShellProps = {
   sqfAccess: boolean;
   moduleNav: readonly ModuleNavItem[];
   signOutAction: () => Promise<void>;
+  /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
+  noticeBell?: ReactNode;
   children: ReactNode;
 };
 
@@ -61,6 +64,7 @@ export function ConectaShell({
   sqfAccess,
   moduleNav,
   signOutAction,
+  noticeBell,
   children,
 }: ConectaShellProps) {
   const sidebarRef = useRef<HTMLDialogElement>(null);
@@ -145,6 +149,7 @@ export function ConectaShell({
               </div>
 
               <div className="flex shrink-0 items-center gap-3 lg:gap-5">
+                {noticeBell}
                 <span aria-hidden="true" className="hidden h-10 w-px bg-shell-topbar-line sm:block" />
                 <div className="hidden text-right sm:block">
                   <p className="max-w-48 truncate text-base font-bold text-heading">{CONECTA_ROLE_LABEL}</p>

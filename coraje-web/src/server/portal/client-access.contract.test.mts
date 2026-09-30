@@ -21,7 +21,7 @@ const MIGRATIONS = path.join(WEB_DIR, "prisma/migrations");
 const VALUES_MIGRATION = readFileSync(path.join(MIGRATIONS, "20260928100000_valores_acceso_clientes/migration.sql"), "utf8");
 const MIGRATION = readFileSync(path.join(MIGRATIONS, "20260928110000_acceso_clientes/migration.sql"), "utf8");
 const WORKFLOW = JSON.parse(
-  readFileSync(path.resolve(WEB_DIR, "../n8n/HELPDESK - Portal - Enviar correo V1.json"), "utf8"),
+  readFileSync(path.resolve(WEB_DIR, "../n8n/HELPDESK - Portal - Enviar correo V2.json"), "utf8"),
 ) as { settings: Record<string, unknown>; nodes: { type: string; parameters?: Record<string, unknown> }[] };
 
 function stripSqlComments(sql: string): string {

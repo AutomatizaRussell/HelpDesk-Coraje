@@ -1,6 +1,56 @@
 # Handoff técnico
 
 ```
+CORTE:   30-sep-2026 (corte 28, U15 — centro de notificaciones, construido,
+         SIN DESPLEGAR)
+SOBRE:   `5e94473` (corte 27)
+RAMA:    main
+UNIDAD:  U15 · AVISOS (`specs/tickets.md` §12, `permisos.md` §4.6). Decisiones
+         del usuario del 30-sep: a los empleados, solo escalamiento por correo;
+         ATENCION = ticket que te llega (crear, reasignar, redirigir) y
+         validación pedida; NOVEDAD = el resto; escalar tras más de un día
+         hábil, uno por persona y día, desde automatizacionmedellin@. Además
+         da por aprobadas las pruebas B de U7 (pasos 3, 4 y 6 del 29-sep). Construido:
+         - migración `20260930120000_avisos_ticket`: `helpdesk.ticket_aviso`
+           (una tabla, no las dos de Impulsa: cada pendiente tiene un solo
+           destinatario), trigger `trg_resolver_avisos_ticket` que cierra
+           pendientes al terminar el ticket o cambiar el responsable (también
+           desde PowerApps), `aviso_escalamiento` + `aviso_escalable` +
+           `reclamar_escalamientos_avisos()`, permiso `aviso.consultar` PROPIO;
+         - `deliverTicketEvent`: empleados → aviso en la transacción del
+           evento; contactos → correo como antes. Los correos del ticket
+           quedan solo para clientes (`ticket-mail-content.ts`);
+         - campana en los dos shells (conteo por página, lista al abrir, sin
+           sondeo), página `/avisos`, abrir el ticket marca sus avisos leídos;
+         - `/api/interno/avisos/escalar` (pública, secreto en cabecera),
+           `n8n/HELPDESK - Escalar avisos V1.json` (L-V 7:00, separado de la
+           salud diaria para que un fallo de SharePoint no lo frene) y
+           `HELPDESK - Portal - Enviar correo V2.json` (acepta ESCALAMIENTO).
+         Evidencia: `prisma validate`/`generate`, `tsc`, `eslint`, `pnpm test`
+         164/164 (nuevas: contrato tipos↔migración, contenido de avisos y del
+         escalamiento, perímetro), `next build` con `DATABASE_URL` ficticia.
+         **Sin ejercitar.** La migración no se ha corrido contra ningún
+         PostgreSQL: su SQL solo se valida al desplegar (`migrate`).
+         Límite nombrado: un cambio aceptado desde PowerApps cierra avisos pero
+         no crea avisos nuevos.
+         En el mismo corte, a pedido del usuario (U14, bandeja): las
+         pestañas «Abiertos» y «Terminados» eran filtros de estado y,
+         combinadas con el filtro, daban vistas vacías. Las pestañas quedan por
+         relación (Por atender, Radicados por mí, En seguimiento, Todo mi
+         alcance) y el estado solo se elige con el filtro, que no aparece en
+         «Por atender» porque esa vista ya es «abiertos a mi cargo».
+SIGUE:   publicar el corte 28; puesta en marcha de `operacion.md`, «Avisos y
+         escalamiento» (secreto en Coolify y n8n, importar los dos workflows);
+         ejercitar la condición de cierre de U15 suplantando
+         (`plan-ejecucion.md`). Comprobar antes que la credencial «Graph
+         automatizacionmedellin» existe en el n8n de HelpDesk: sin ella no
+         sale ningún escalamiento. Después: adjuntos de U7.
+         Pendiente al cerrar las pruebas: quitar `COLABORADOR` a
+         mayrajaramillo@ y ti.gct@, limpiar los tickets «PRUEBA» (sus avisos
+         tienen FK RESTRICT: borrarlos antes); retirar la suplantación (U12)
+         antes del uso real, incluida la columna `ticket_aviso.id_suplantador`.
+
+--- Corte 27, para contexto:
 CORTE:   30-sep-2026 (corte 27, U14 — ajustes del detalle tras verlo
          desplegado, construidos, SIN DESPLEGAR)
 SOBRE:   `6e08128` (corte 26)
@@ -19,7 +69,20 @@ UNIDAD:  U14. Observaciones del usuario sobre el corte 26 desplegado: la
            ticket»: responde o anota.
          Evidencia: `tsc`, `eslint`, `pnpm test` 154/154, `next build`.
          **Sin ejercitar en el navegador.**
-SIGUE:   publicar el corte 27 y revisarlo sobre ADM-2026-7546.
+SIGUE:   (corte 27 publicado como `5e94473`) revisarlo sobre ADM-2026-7546.
+         30-sep: el usuario da por aprobadas las pruebas B de U7; de U7 solo
+         quedan los adjuntos, que van inmediatamente después de U15.
+         Cabeza de la cola (decidido 30-sep): U15 · centro de notificaciones (campana), con el modelo de
+         Impulsa (`notification-inbox.service.ts`: «Requiere tu atención»
+         abierta hasta actuar, «Novedades» leídas/no leídas). El correo queda
+         para contactos de clientes y como escalamiento de empleados, disparado
+         por la revisión diaria de U10, sin proceso nuevo. Va antes de ejercitar
+         U7-U11 para no repetir sus pruebas con otros efectos. Decisiones que
+         el usuario trae resueltas: qué sigue mandando correo, umbrales de
+         escalamiento, qué es «atención» y qué es «novedad».
+         Pendiente al cerrar las pruebas: quitar `COLABORADOR` a
+         mayrajaramillo@ y ti.gct@, limpiar los tickets «PRUEBA»; retirar la
+         suplantación (U12) antes del uso real.
 
 --- Corte 26, para contexto:
 CORTE:   30-sep-2026 (corte 26, U14 — acciones del detalle del ticket,

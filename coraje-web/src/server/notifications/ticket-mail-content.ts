@@ -2,25 +2,20 @@
  * Contenido de los correos del ticket. Puro, sin I/O: se prueba sin base ni
  * red (`ticket-mail-content.test.mts`).
  *
- * Qué correo produce cada acción, fiel al legacy
- * (reglas-negocio-powerapps.md §5-§7):
- * - crear → a quien recibe el ticket;
- * - reasignar → a la nueva persona responsable **y** a quien lo radicó;
- * - responder → a quien lo radicó, con la respuesta;
- * - rechazar → a quien lo radicó, con el motivo.
+ * **Desde U15 solo los recibe el contacto de un cliente** (tickets.md §12).
+ * A los empleados les llega un aviso a la campana (`ticket-notice-kinds.ts`)
+ * y, si un pendiente se queda sin atender, un correo de escalamiento
+ * (`ticket-notice-content.ts`). Los correos a empleados escritos antes de U15
+ * siguen en `helpdesk.ticket_notificacion` con su asunto y su cuerpo ya
+ * construidos, así que reenviarlos no necesita este módulo.
  *
- * Tickets del portal (U8): redirigir avisa a la persona responsable, como
- * crear un ticket interno; responder y rechazar avisan al contacto del
- * cliente, con un enlace al portal y no a la bandeja interna. El contacto
- * nunca recibe la clasificación ni el nombre del área interna que la hizo:
- * solo lo que le toca saber.
+ * Qué correo produce cada acción sobre un ticket del portal (U8):
+ * - responder → al contacto, con la respuesta;
+ * - rechazar → al contacto, con el motivo.
  *
- * Seguimiento (U11, tickets.md §11), siempre entre empleados:
- * - añadir un observador → a esa persona;
- * - solicitar validación → a quien se le pide, con el comentario;
- * - responder o rechazar → también a cada observador, que para eso sigue el
- *   ticket;
- * - el solicitante escribe en su ticket → a la persona responsable.
+ * El contacto nunca recibe la clasificación ni el nombre del área interna que
+ * la hizo: solo lo que le toca saber. El enlace lleva al portal, no a la
+ * bandeja interna.
  *
  * Todo texto que viene de una persona (descripción, respuesta, nombres) se
  * escapa antes de entrar al HTML: un ticket cuya descripción trae `<script>`
@@ -29,38 +24,14 @@
  *
  * HTML semántico sin estilos: cada cliente de correo pinta distinto, y un
  * mensaje sobrio con el enlace al ticket es lo que la persona necesita.
- * Lo que el solicitante no debe ver (el comentario interno de una
- * reasignación) nunca entra en su correo.
  */
-export type TicketMailKind =
-  | "CREACION_RESPONSABLE"
-  | "REASIGNACION_RESPONSABLE"
-  | "REASIGNACION_SOLICITANTE"
-  | "RESPUESTA_SOLICITANTE"
-  | "RECHAZO_SOLICITANTE"
-  | "REDIRECCION_RESPONSABLE"
-  | "RESPUESTA_CLIENTE"
-  | "RECHAZO_CLIENTE"
-  | "OBSERVADOR_AGREGADO"
-  | "SOLICITUD_VALIDACION"
-  | "RESPUESTA_OBSERVADOR"
-  | "RECHAZO_OBSERVADOR"
-  | "COMENTARIO_SOLICITANTE_RESPONSABLE";
+export type TicketMailKind = "RESPUESTA_CLIENTE" | "RECHAZO_CLIENTE";
 
 export interface TicketMailContext {
   codigo: string;
-  descripcion: string;
-  area: string | null;
-  tipo: string | null;
-  solicitante: string;
   remitente: string;
-  responsable: string | null;
-  /**
-   * Respuesta, motivo del rechazo, comentario de la reasignación o de la
-   * solicitud de validación, o lo que escribió el solicitante, según el caso.
-   */
+  /** La respuesta o el motivo del rechazo. */
   texto: string | null;
-  vence: string | null;
   url: string;
 }
 
@@ -74,90 +45,12 @@ export function escapeHtml(value: string): string {
 }
 
 /** Texto libre a párrafo HTML, conservando los saltos de línea. */
-function paragraph(value: string): string {
+export function paragraph(value: string): string {
   return `<p>${escapeHtml(value).replace(/\r?\n/g, "<br>")}</p>`;
-}
-
-function detailList(ctx: TicketMailContext, extra: [string, string | null][] = []): string {
-  const rows: [string, string | null][] = [
-    ["Ticket", ctx.codigo],
-    ["Área", ctx.area],
-    ["Tipo", ctx.tipo],
-    ["Radicado por", ctx.solicitante],
-    ...extra,
-  ];
-  return `<ul>${rows
-    .filter((row): row is [string, string] => Boolean(row[1]))
-    .map(([label, value]) => `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</li>`)
-    .join("")}</ul>`;
-}
-
-function link(ctx: TicketMailContext): string {
-  return `<p><a href="${escapeHtml(ctx.url)}">Abrir el ticket ${escapeHtml(ctx.codigo)} en HelpDesk</a></p>`;
 }
 
 export function buildTicketMail(kind: TicketMailKind, ctx: TicketMailContext): { subject: string; html: string } {
   switch (kind) {
-    case "CREACION_RESPONSABLE":
-      return {
-        subject: `Nuevo ticket ${ctx.codigo} asignado a ti`,
-        html: [
-          `<p>${escapeHtml(ctx.solicitante)} radicó un ticket que te corresponde atender.</p>`,
-          detailList(ctx, [["Vence", ctx.vence]]),
-          paragraph(ctx.descripcion),
-          link(ctx),
-        ].join(""),
-      };
-    case "REASIGNACION_RESPONSABLE":
-      return {
-        subject: `Se te reasignó el ticket ${ctx.codigo}`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} te reasignó este ticket. El plazo de respuesta no cambia.</p>`,
-          detailList(ctx, [["Vence", ctx.vence]]),
-          paragraph(ctx.descripcion),
-          ctx.texto ? `<p><strong>Comentario:</strong></p>${paragraph(ctx.texto)}` : "",
-          link(ctx),
-        ].join(""),
-      };
-    case "REASIGNACION_SOLICITANTE":
-      return {
-        subject: `Tu ticket ${ctx.codigo} tiene nueva persona responsable`,
-        html: [
-          `<p>Tu ticket ahora lo atiende ${escapeHtml(ctx.responsable ?? "otra persona del área")}.</p>`,
-          detailList(ctx),
-          link(ctx),
-        ].join(""),
-      };
-    case "RESPUESTA_SOLICITANTE":
-      return {
-        subject: `Respuesta a tu ticket ${ctx.codigo}`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} respondió tu ticket y quedó cerrado.</p>`,
-          paragraph(ctx.texto ?? ""),
-          detailList(ctx),
-          link(ctx),
-        ].join(""),
-      };
-    case "RECHAZO_SOLICITANTE":
-      return {
-        subject: `Tu ticket ${ctx.codigo} fue rechazado`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} rechazó tu ticket. Motivo:</p>`,
-          paragraph(ctx.texto ?? ""),
-          detailList(ctx),
-          link(ctx),
-        ].join(""),
-      };
-    case "REDIRECCION_RESPONSABLE":
-      return {
-        subject: `Nuevo ticket de cliente ${ctx.codigo} asignado a ti`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} clasificó un ticket del portal de clientes que te corresponde atender.</p>`,
-          detailList(ctx, [["Vence", ctx.vence]]),
-          paragraph(ctx.descripcion),
-          link(ctx),
-        ].join(""),
-      };
     case "RESPUESTA_CLIENTE":
       return {
         subject: `Respuesta a tu solicitud ${ctx.codigo}`,
@@ -174,56 +67,6 @@ export function buildTicketMail(kind: TicketMailKind, ctx: TicketMailContext): {
           `<p>${escapeHtml(ctx.remitente)} revisó tu solicitud y no se atenderá. Motivo:</p>`,
           paragraph(ctx.texto ?? ""),
           clientLink(ctx),
-        ].join(""),
-      };
-    case "OBSERVADOR_AGREGADO":
-      return {
-        subject: `Sigues el ticket ${ctx.codigo}`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} te añadió como observador de este ticket. Lo puedes consultar y te avisaremos cuando se responda o se rechace. No tienes que atenderlo.</p>`,
-          detailList(ctx, [["Responsable", ctx.responsable]]),
-          paragraph(ctx.descripcion),
-          link(ctx),
-        ].join(""),
-      };
-    case "SOLICITUD_VALIDACION":
-      return {
-        subject: `${ctx.remitente} te pide validar el ticket ${ctx.codigo}`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} te pide que valides algo de este ticket:</p>`,
-          paragraph(ctx.texto ?? ""),
-          detailList(ctx, [["Responsable", ctx.responsable]]),
-          link(ctx),
-        ].join(""),
-      };
-    case "RESPUESTA_OBSERVADOR":
-      return {
-        subject: `El ticket ${ctx.codigo} que sigues fue respondido`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} respondió el ticket y quedó cerrado.</p>`,
-          paragraph(ctx.texto ?? ""),
-          detailList(ctx),
-          link(ctx),
-        ].join(""),
-      };
-    case "RECHAZO_OBSERVADOR":
-      return {
-        subject: `El ticket ${ctx.codigo} que sigues fue rechazado`,
-        html: [
-          `<p>${escapeHtml(ctx.remitente)} rechazó el ticket. Motivo:</p>`,
-          paragraph(ctx.texto ?? ""),
-          detailList(ctx),
-          link(ctx),
-        ].join(""),
-      };
-    case "COMENTARIO_SOLICITANTE_RESPONSABLE":
-      return {
-        subject: `${ctx.solicitante} escribió en el ticket ${ctx.codigo}`,
-        html: [
-          `<p>${escapeHtml(ctx.solicitante)} escribió en su ticket. Sigue abierto y a tu cargo.</p>`,
-          paragraph(ctx.texto ?? ""),
-          detailList(ctx, [["Vence", ctx.vence]]),
-          link(ctx),
         ].join(""),
       };
   }

@@ -111,6 +111,10 @@ export const helpdeskTheme = {
     // Columna de un formulario de tarea (crear un ticket): centrada en el
     // lienzo, con un largo de línea legible para etiquetas, ayudas y texto.
     formMax: "768px",
+    // Panel de la campana (U15): la anchura de una columna de lectura corta,
+    // con título y una línea de detalle por aviso. En pantallas más estrechas
+    // lo limita el propio viewport, con su margen.
+    noticePanel: "384px",
   },
   layer: {
     rail: "20",

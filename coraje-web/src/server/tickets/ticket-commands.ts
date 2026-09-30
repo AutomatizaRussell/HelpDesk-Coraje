@@ -2,8 +2,9 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationDeniedError, requireGrant, requireTicketAction } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS, type TicketAction } from "@/server/authorization/catalog";
-import { enqueueTicketMail, type MailDelivery } from "@/server/notifications/ticket-notifications";
+import { deliverTicketEvent, type TicketDelivery } from "@/server/notifications/ticket-notices";
 import type { TicketMailKind } from "@/server/notifications/ticket-mail-content";
+import type { TicketNoticeKind } from "@/server/notifications/ticket-notice-kinds";
 import { logEvent } from "@/server/observability/log";
 import { recordPortalAudit } from "@/server/portal/portal-audit";
 import type { PortalAccess } from "@/server/portal/portal-access";
@@ -26,10 +27,11 @@ import { OPEN_STATES, TICKET_STATES, isOperableInHelpDesk, isTicketState, type T
  *    el evento a través de `helpdesk.registrar_evento_ticket`, que valida la
  *    transición y escribe la proyección del estado.
  *
- * 5. Registrar, en la misma transacción, los correos que la acción produce
- *    (`enqueueTicketMail`). Nada sale de la base dentro de la transacción:
- *    la acción de servidor los envía después del commit, con los ids que
- *    devuelven estos comandos.
+ * 5. Registrar, en la misma transacción, a quién le toca saber de la acción
+ *    (`deliverTicketEvent`, U15): un aviso en la campana para cada empleado
+ *    y un correo para el contacto de un cliente. Nada sale de la base dentro
+ *    de la transacción: la acción de servidor envía los correos después del
+ *    commit, con los ids que devuelven estos comandos.
  */
 
 type Tx = Prisma.TransactionClient;
@@ -194,22 +196,22 @@ async function writeEvent(
 
 /**
  * El aviso a quien radicó, sea un empleado o el contacto de un cliente. Los
- * dos casos no se mezclan: el empleado recibe el enlace a la bandeja y el
- * vocabulario interno; el contacto, el enlace al portal.
+ * dos casos no se mezclan: el empleado recibe un aviso en la campana, con el
+ * vocabulario interno; el contacto, un correo con el enlace al portal (U15).
  */
 function requesterDelivery(
   ticket: LockedTicket,
-  internalKind: TicketMailKind,
+  internalKind: TicketNoticeKind,
   clientKind: TicketMailKind,
-): MailDelivery | null {
-  if (ticket.idSolicitante) return { kind: internalKind, destinatario: { tipo: "EMPLEADO", idPersonal: ticket.idSolicitante } };
-  if (ticket.idContactoPortal) return { kind: clientKind, destinatario: { tipo: "CONTACTO", idContacto: ticket.idContactoPortal } };
+): TicketDelivery | null {
+  if (ticket.idSolicitante) return { tipo: "EMPLEADO", kind: internalKind, idPersonal: ticket.idSolicitante };
+  if (ticket.idContactoPortal) return { tipo: "CONTACTO", kind: clientKind, idContacto: ticket.idContactoPortal };
   return null;
 }
 
 /** Un aviso por observador, para las acciones que terminan el ticket (U11). */
-function observerDeliveries(ticket: LockedTicket, kind: TicketMailKind): MailDelivery[] {
-  return ticket.idObservadores.map((idPersonal) => ({ kind, destinatario: { tipo: "EMPLEADO", idPersonal } }));
+function observerDeliveries(ticket: LockedTicket, kind: TicketNoticeKind): TicketDelivery[] {
+  return ticket.idObservadores.map((idPersonal) => ({ tipo: "EMPLEADO", kind, idPersonal }));
 }
 
 /**
@@ -263,14 +265,15 @@ async function addObserversInTx(
     estadoNuevo: null,
   });
 
-  const mailIds = await enqueueTicketMail(tx, {
+  const mailIds = await deliverTicketEvent(tx, {
     idTicket: ticket.idTicket,
     idEvento,
-    idRemitente: params.idAutor,
+    idAutor: params.idAutor,
     texto: null,
     deliveries: personas.map((persona) => ({
+      tipo: "EMPLEADO" as const,
       kind: "OBSERVADOR_AGREGADO" as const,
-      destinatario: { tipo: "EMPLEADO" as const, idPersonal: persona.idPersonal },
+      idPersonal: persona.idPersonal,
     })),
   });
 
@@ -332,13 +335,13 @@ export async function createInternalTicket(params: {
         select: { idEvento: true, factTicket: { select: { idAsignado: true } } },
       });
       const mailIds = creado.factTicket.idAsignado
-        ? await enqueueTicketMail(tx, {
+        ? await deliverTicketEvent(tx, {
             idTicket: row.id_ticket,
             idEvento: creado.idEvento,
-            idRemitente: params.idPersonal,
+            idAutor: params.idPersonal,
             texto: null,
             deliveries: [
-              { kind: "CREACION_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: creado.factTicket.idAsignado } },
+              { tipo: "EMPLEADO", kind: "CREACION_RESPONSABLE", idPersonal: creado.factTicket.idAsignado },
             ],
           })
         : [];
@@ -455,16 +458,15 @@ export async function redirectTicket(params: {
         where: { idTicket: ticket.idTicket },
         select: { idAsignado: true, codigoTicket: true },
       });
-      // Como al crear un ticket interno: avisa a la persona que lo recibe,
-      // desde el buzón de quien clasificó.
+      // Como al crear un ticket interno: avisa a la persona que lo recibe.
       const mailIds = redirigido.idAsignado
-        ? await enqueueTicketMail(tx, {
+        ? await deliverTicketEvent(tx, {
             idTicket: ticket.idTicket,
             idEvento,
-            idRemitente: params.idPersonal,
+            idAutor: params.idPersonal,
             texto: null,
             deliveries: [
-              { kind: "REDIRECCION_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: redirigido.idAsignado } },
+              { tipo: "EMPLEADO", kind: "REDIRECCION_RESPONSABLE", idPersonal: redirigido.idAsignado },
             ],
           })
         : [];
@@ -561,19 +563,19 @@ export async function reassignTicket(params: {
     });
 
     // Como en el legacy, avisan a la nueva persona responsable y a quien radicó.
-    // El comentario solo entra en el correo del equipo (ticket-mail-content.ts).
-    const mailIds = await enqueueTicketMail(tx, {
+    // El comentario solo entra en el aviso del equipo (ticket-notice-content.ts).
+    const mailIds = await deliverTicketEvent(tx, {
       idTicket: ticket.idTicket,
       idEvento,
-      idRemitente: params.idPersonal,
+      idAutor: params.idPersonal,
       texto: params.comentario,
       deliveries: [
-        { kind: "REASIGNACION_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: destino.idPersonal } },
+        { tipo: "EMPLEADO", kind: "REASIGNACION_RESPONSABLE", idPersonal: destino.idPersonal },
         // Solo al solicitante interno. Al contacto de un cliente no se le
         // avisa de un movimiento dentro del equipo: sigue viendo su ticket en
         // atención, y quién lo atiende es asunto interno.
         ...(ticket.idSolicitante
-          ? [{ kind: "REASIGNACION_SOLICITANTE" as const, destinatario: { tipo: "EMPLEADO" as const, idPersonal: ticket.idSolicitante } }]
+          ? [{ tipo: "EMPLEADO" as const, kind: "REASIGNACION_SOLICITANTE" as const, idPersonal: ticket.idSolicitante }]
           : []),
       ],
     });
@@ -622,10 +624,10 @@ export async function respondTicket(params: {
     });
 
     const delivery = requesterDelivery(ticket, "RESPUESTA_SOLICITANTE", "RESPUESTA_CLIENTE");
-    const mailIds = await enqueueTicketMail(tx, {
+    const mailIds = await deliverTicketEvent(tx, {
       idTicket: ticket.idTicket,
       idEvento,
-      idRemitente: params.idPersonal,
+      idAutor: params.idPersonal,
       texto: params.respuesta,
       deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RESPUESTA_OBSERVADOR")],
     });
@@ -674,10 +676,10 @@ export async function rejectTicket(params: {
     });
 
     const delivery = requesterDelivery(ticket, "RECHAZO_SOLICITANTE", "RECHAZO_CLIENTE");
-    const mailIds = await enqueueTicketMail(tx, {
+    const mailIds = await deliverTicketEvent(tx, {
       idTicket: ticket.idTicket,
       idEvento,
-      idRemitente: params.idPersonal,
+      idAutor: params.idPersonal,
       texto: params.motivo,
       deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RECHAZO_OBSERVADOR")],
     });
@@ -756,8 +758,8 @@ export async function addObservers(params: {
 }
 
 /**
- * Retira a una persona del seguimiento. No le avisa: dejar de recibir correos
- * de un ticket no necesita otro correo.
+ * Retira a una persona del seguimiento. No le avisa: dejar de recibir avisos
+ * de un ticket no necesita otro aviso.
  */
 export async function removeObserver(params: {
   idPersonal: string;
@@ -806,7 +808,7 @@ export async function removeObserver(params: {
  * audita como excepción.
  *
  * Quien la recibe pasa a seguir el ticket si no lo veía ya: sin eso, el
- * correo le llevaría a un ticket que no puede abrir. Esa incorporación no
+ * aviso le llevaría a un ticket que no puede abrir. Esa incorporación no
  * escribe un evento propio; el de la solicitud ya dice por qué está ahí.
  */
 export async function requestValidation(params: {
@@ -855,12 +857,12 @@ export async function requestValidation(params: {
       });
     }
 
-    const mailIds = await enqueueTicketMail(tx, {
+    const mailIds = await deliverTicketEvent(tx, {
       idTicket: ticket.idTicket,
       idEvento,
-      idRemitente: params.idPersonal,
+      idAutor: params.idPersonal,
       texto: params.comentario,
-      deliveries: [{ kind: "SOLICITUD_VALIDACION", destinatario: { tipo: "EMPLEADO", idPersonal: destinatario.idPersonal } }],
+      deliveries: [{ tipo: "EMPLEADO", kind: "SOLICITUD_VALIDACION", idPersonal: destinatario.idPersonal }],
     });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };
@@ -901,13 +903,13 @@ export async function commentAsRequester(params: {
     });
 
     const mailIds = ticket.idAsignado
-      ? await enqueueTicketMail(tx, {
+      ? await deliverTicketEvent(tx, {
           idTicket: ticket.idTicket,
           idEvento,
-          idRemitente: params.idPersonal,
+          idAutor: params.idPersonal,
           texto: params.comentario,
           deliveries: [
-            { kind: "COMENTARIO_SOLICITANTE_RESPONSABLE", destinatario: { tipo: "EMPLEADO", idPersonal: ticket.idAsignado } },
+            { tipo: "EMPLEADO", kind: "COMENTARIO_SOLICITANTE_RESPONSABLE", idPersonal: ticket.idAsignado },
           ],
         })
       : [];
