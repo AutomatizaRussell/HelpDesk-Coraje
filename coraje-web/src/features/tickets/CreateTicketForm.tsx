@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
+import { useFormDialogClose } from "@/design-system/patterns/form-dialog/FormDialog";
 import { buttonRecipe } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { notice, surface } from "@/design-system/recipes/surface";
@@ -13,7 +14,6 @@ import type { CreationCatalog, FollowCandidate } from "@/server/tickets/ticket-q
 import { IDLE_FORM_STATE } from "./action-state";
 import { createTicketAction } from "./actions";
 import { formatPriority } from "./format";
-import { useCloseDialog } from "./NewTicketDialog";
 import { PeoplePicker } from "./PeoplePicker";
 import { TipoRequerimientoFields } from "./TipoRequerimientoFields";
 
@@ -45,7 +45,7 @@ export function CreateTicketForm({
   const failed = state.status === "error" ? state : null;
   // Dentro de la ventana emergente, «Cancelar» la cierra y el diálogo ya es la
   // superficie; en la página completa, «Cancelar» vuelve a la bandeja.
-  const closeDialog = useCloseDialog();
+  const closeDialog = useFormDialogClose();
 
   const describedBy = (field: string) => (failed?.fieldErrors[field] ? `${field}-error` : undefined);
 

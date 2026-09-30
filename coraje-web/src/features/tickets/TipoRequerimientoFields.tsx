@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { fieldControl, fieldError, fieldLabel } from "@/design-system/recipes/field";
 import type { CreationCatalog } from "@/server/tickets/ticket-queries";
 
+import { formatCatalogLabel } from "./format";
+
 /**
  * Selección en cascada área → tipo → categoría 1 → categoría 2, que resuelve
  * un único tipo de requerimiento. La usan crear un ticket interno (T2) y
@@ -94,7 +96,7 @@ export function TipoRequerimientoFields({
         >
           <option value="">{idArea ? "Elige un tipo" : "Primero elige un área"}</option>
           {tipos.map((value) => (
-            <option key={value} value={value}>{value}</option>
+            <option key={value} value={value}>{formatCatalogLabel(value)}</option>
           ))}
         </select>
         {error && <p id="idTipoReq-error" className={fieldError}>Elige el tipo y las categorías del requerimiento.</p>}
@@ -114,7 +116,7 @@ export function TipoRequerimientoFields({
           >
             <option value="">Elige una categoría</option>
             {categorias1.map((value) => (
-              <option key={key(value)} value={key(value)}>{value ?? "Sin categoría"}</option>
+              <option key={key(value)} value={key(value)}>{value ? formatCatalogLabel(value) : "Sin categoría"}</option>
             ))}
           </select>
         </div>
@@ -126,7 +128,7 @@ export function TipoRequerimientoFields({
           <select id="categoria2" className={fieldControl()} value={categoria2} onChange={(event) => setCategoria2(event.target.value)}>
             <option value="">Elige una subcategoría</option>
             {categorias2.map((value) => (
-              <option key={key(value)} value={key(value)}>{value ?? "Sin subcategoría"}</option>
+              <option key={key(value)} value={key(value)}>{value ? formatCatalogLabel(value) : "Sin subcategoría"}</option>
             ))}
           </select>
         </div>

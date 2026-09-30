@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/features/tickets/format";
+import { formatCatalogLabel, formatDate } from "@/features/tickets/format";
 import { AuthorizationDeniedError, requireGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
 import { publicPortalUrl, publicTicketUrl } from "@/server/auth/conecta-return";
@@ -161,7 +161,7 @@ export async function enqueueTicketMail(
     codigo: ticket.codigoTicket ?? "sin código",
     descripcion: ticket.descripcionProblema,
     area: ticket.dimArea?.nombreArea ?? null,
-    tipo: ticket.dimTipoRequerimiento?.tipoRequerimiento ?? null,
+    tipo: ticket.dimTipoRequerimiento ? formatCatalogLabel(ticket.dimTipoRequerimiento.tipoRequerimiento) : null,
     solicitante,
     remitente,
     responsable: ticket.dimPersonalAsignado?.nombreCompleto ?? null,

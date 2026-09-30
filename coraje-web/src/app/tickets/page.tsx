@@ -9,7 +9,7 @@ import { focusRing } from "@/design-system/recipes/interaction";
 import { badge } from "@/design-system/recipes/badge";
 import { notice, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
-import { formatDate } from "@/features/tickets/format";
+import { formatCatalogLabel, formatDate } from "@/features/tickets/format";
 import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
@@ -198,7 +198,7 @@ export default async function TicketsPage({
                         </td>
                         <td className="px-4 py-3">
                           <p>{row.area ?? "Sin área"}</p>
-                          {row.tipo && <p className="text-sm text-ink-muted">{row.tipo}</p>}
+                          {row.tipo && <p className="text-sm text-ink-muted">{formatCatalogLabel(row.tipo)}</p>}
                         </td>
                         <td className="px-4 py-3">{row.solicitante ?? "—"}</td>
                         <td className="px-4 py-3">{row.responsable ?? "Sin responsable"}</td>

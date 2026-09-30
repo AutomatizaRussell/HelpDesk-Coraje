@@ -1,6 +1,32 @@
 # Handoff técnico
 
 ```
+CORTE:   30-sep-2026 (corte 26, U14 — acciones del detalle del ticket,
+         opción B, construidas, SIN DESPLEGAR)
+SOBRE:   `63758b3` (corte 25)
+RAMA:    main
+UNIDAD:  U14 · DETALLE DEL TICKET. El usuario rechazó la lista de siete
+         secciones plegables («Acciones») y eligió la opción B, para decidir
+         con ella ya construida:
+         - responder, nota interna y comentario del solicitante en un cuadro
+           con pestañas al final de la historia (`TabbedPanel`, paneles
+           montados para no perder lo escrito); el botón sigue diciendo
+           «Responder y cerrar»;
+         - cambiar responsable, añadir observadores y pedir validación junto
+           a su dato, en la columna derecha (`InlineAction`);
+         - «Rechazar» separado al fondo de la columna, en ventana con el motivo;
+         - `FormDialog` nuevo en el sistema de diseño, compartido con «Nuevo
+           ticket»: Escape, clic fuera y la X confirman antes de descartar;
+         - tipos y categorías con mayúscula inicial al mostrarlos
+           (`formatCatalogLabel`), en formularios, bandeja, detalle y correos.
+           El dato sigue en minúsculas: la ingesta lo normaliza para
+           emparejarlo con SharePoint.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 154/154, `next build`.
+         **Sin ejercitar en el navegador.**
+SIGUE:   publicar el corte 26, probarlo como Mayra sobre ADM-2026-7539 y
+         decidir si B se queda.
+
+--- Corte 25, para contexto:
 CORTE:   30-sep-2026 (corte 25, U14 — ajustes de la bandeja pedidos por el
          usuario, construidos, SIN DESPLEGAR)
 SOBRE:   `4034b33` (corte 24). U13 desplegada: `migrate` aplicó
