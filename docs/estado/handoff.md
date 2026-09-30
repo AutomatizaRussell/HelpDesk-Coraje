@@ -1,6 +1,24 @@
 # Handoff técnico
 
 ```
+CORTE:   30-sep-2026 (corte 29, corrección del detalle del ticket, SIN
+         DESPLEGAR)
+SOBRE:   `57824ed` (corte 28)
+RAMA:    main
+UNIDAD:  Defecto del corte 27 visto por el usuario con el corte 28 desplegado:
+         todo detalle de ticket con acciones respondía error («Functions
+         cannot be passed directly to Client Components», digest 377804759).
+         La página, de servidor, pasaba `icon={Pencil}` / `icon={Plus}` a
+         `EditableField`, de cliente. Ahora pasa el nombre (`"editar"`,
+         `"anadir"`) y el componente elige el icono. Prueba nueva en
+         `contract.test.mts`: ningún archivo de servidor pasa un icono de
+         lucide dentro del valor de una prop JSX; falla con el código viejo.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 166/166, `next build`.
+         **Sin ejercitar en el navegador.**
+SIGUE:   lo mismo que el corte 28 (abajo), empezando por abrir un ticket de
+         prueba con acciones.
+
+--- Corte 28, para contexto:
 CORTE:   30-sep-2026 (corte 28, U15 — centro de notificaciones, construido,
          SIN DESPLEGAR)
 SOBRE:   `5e94473` (corte 27)

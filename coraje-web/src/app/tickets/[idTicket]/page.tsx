@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Pencil, Plus } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
 import { iconStroke } from "@/design-system/foundations/iconography";
@@ -274,7 +274,7 @@ export default async function TicketDetailPage({
                 <EditableField
                   label="Responsable"
                   actionLabel="Cambiar responsable"
-                  icon={Pencil}
+                  icon="editar"
                   form={<ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />}
                 >
                   {ticket.responsable ?? "Sin responsable"}
@@ -286,7 +286,7 @@ export default async function TicketDetailPage({
                 <EditableField
                   label="Observadores"
                   actionLabel="Añadir observadores"
-                  icon={Plus}
+                  icon="anadir"
                   form={<AddObserversForm idTicket={ticket.idTicket} candidates={observerCandidates} max={MAX_OBSERVERS_PER_ACTION} />}
                 >
                   <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove />

@@ -268,3 +268,51 @@ function listSourceFiles(dir: string): string[] {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Frontera servidor → cliente
+// ---------------------------------------------------------------------------
+
+/**
+ * Un icono de lucide es un componente (una función): un archivo de servidor
+ * puede dibujarlo (`<Pencil />`), pero no pasarlo como valor a un componente
+ * de cliente (`icon={Pencil}`), porque las props que cruzan esa frontera se
+ * serializan. El error solo aparece al dibujar la página en el servidor, así
+ * que ni `tsc` ni `next build` lo ven: rompió el detalle del ticket en el
+ * corte 27 sin que nada fallara antes del despliegue.
+ *
+ * Regla que se comprueba: en un archivo sin `"use client"`, cada nombre
+ * importado de `lucide-react` aparece solo como etiqueta JSX.
+ */
+function lucideValueUses(source: string): string[] {
+  const imported = source.match(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/)?.[1] ?? "";
+  const names = imported
+    .split(",")
+    .map((part) => part.trim().replace(/^type\s+/, ""))
+    .filter((name) => /^[A-Z]\w*$/.test(name));
+  const body = source.replace(/import[^;]*;/g, "");
+  // Dentro del valor de una prop JSX (`attr={… Nombre …}`). Un icono elegido en
+  // una variable y dibujado en el propio servidor (`const Icon = a ? B : C;
+  // <Icon />`) es válido y no se marca. Un icono metido en un objeto que luego
+  // viaja como prop no lo detecta: la regla cubre el caso que ocurrió.
+  return names.filter((name) => new RegExp(`\\w=\\{[^{}]*\\b${name}\\b(?!\\s*[.<])[^{}]*\\}`).test(body));
+}
+
+test("el detector de iconos pasados como valor distingue etiqueta de valor", () => {
+  const withImport = (jsx: string) => `import { Lock, Pencil } from "lucide-react";\n${jsx}`;
+  assert.deepEqual(lucideValueUses(withImport("<X icon={Pencil} />")), ["Pencil"]);
+  assert.deepEqual(lucideValueUses(withImport("<X icon={open ? Lock : Pencil} />")), ["Lock", "Pencil"]);
+  assert.deepEqual(lucideValueUses(withImport('<Pencil aria-hidden className="size-4" />')), []);
+  assert.deepEqual(lucideValueUses(withImport("const Icon = a ? Lock : Pencil;\n<Icon />")), []);
+});
+
+test("ningún archivo de servidor pasa un icono de lucide como valor", () => {
+  const offenders = listSourceFiles(SRC_DIR)
+    .filter((file) => file.endsWith(".tsx"))
+    .map((file) => ({ file, source: readFileSync(file, "utf8") }))
+    .filter(({ source }) => !/^\s*["']use client["']/.test(source))
+    .flatMap(({ file, source }) =>
+      lucideValueUses(stripComments(source)).map((name) => `${path.relative(SRC_DIR, file)} → ${name}`),
+    );
+  assert.deepEqual(offenders, [], "Iconos pasados como valor desde un componente de servidor");
+});
