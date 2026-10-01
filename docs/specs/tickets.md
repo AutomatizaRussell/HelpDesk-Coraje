@@ -757,8 +757,8 @@ lunes → el miércoles) produce **un correo por persona y día hábil** con eso
 desde `automatizacionmedellin@` (D4). Regla e idempotencia en la base
 (`helpdesk.aviso_escalable`, `reclamar_escalamientos_avisos`: una fila por persona y
 día); la aplicación redacta y envía por el workflow del buzón
-(`HELPDESK - Portal - Enviar correo V2`); n8n solo dispara, lunes a viernes a las 7:00
-(`HELPDESK - Escalar avisos V1`). No hay proceso nuevo en la VPS. Un aviso creado
+(`HELPDESK - Portal - Enviar correo V3`); n8n solo dispara, lunes a viernes a las 7:00
+(`HELPDESK - Escalar avisos V2`). No hay proceso nuevo en la VPS. Un aviso creado
 suplantando (U12) no se escala.
 
 **12.4 Número y economía.** La campana cuenta **pendientes abiertos más novedades sin

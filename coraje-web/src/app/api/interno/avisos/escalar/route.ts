@@ -7,7 +7,7 @@ import { logEvent } from "@/server/observability/log";
 
 /**
  * Disparo del escalamiento diario de avisos (U15, specs/tickets.md §12.3).
- * Lo llama el workflow `n8n/HELPDESK - Escalar avisos V1.json` una vez al día.
+ * Lo llama el workflow `n8n/HELPDESK - Escalar avisos V2.json` una vez al día.
  *
  * Es pública en el perímetro (`public-paths.ts`) porque quien llama no es una
  * persona con sesión, sino n8n. La credencial es la cabecera

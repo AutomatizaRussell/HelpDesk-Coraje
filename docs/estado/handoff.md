@@ -1,6 +1,35 @@
 # Handoff técnico
 
 ```
+CORTE:   01-oct-2026 (corte 32, secretos de n8n como credenciales, SIN
+         IMPORTAR EN n8n)
+SOBRE:   `2d3d028` (corte 31)
+RAMA:    main
+UNIDAD:  Decisión del usuario del 01-oct: en n8n no se usan variables de
+         entorno, solo credenciales, como en Impulsa (webhook con
+         *Authentication: Header Auth*; llamadas salientes con *Generic
+         Credential Type → Header Auth*). Tres workflows leían `$env`:
+         - `CORAJE - SALIDA` (mismo archivo, como siempre): webhook con
+           «HelpDesk salida · x-coraje-secret»; fuera `IF - Validate CORAJE
+           Secret` y `Respond - Unauthorized` (n8n responde 403 solo);
+         - `HELPDESK - Portal - Enviar correo` V2 → V3: webhook con «HelpDesk
+           correo · x-helpdesk-secret»; la comprobación del evento pasa al
+           Code;
+         - `HELPDESK - Escalar avisos` V1 → V2: `HTTP - Escalar avisos` con
+           «HelpDesk escalamiento · x-helpdesk-secret».
+         La aplicación no cambia: sigue mandando las mismas cabeceras con los
+         secretos de Coolify. `n8n-workflows.contract.test.mts`: ningún
+         workflow lee `$env` y todo webhook usa Header Auth (falla con la
+         salida anterior, verificado). Evidencia: `tsc`, `eslint`,
+         `pnpm test` 170/170.
+SIGUE:   pruebas en pausa por decisión del usuario. Al retomar, el paso 1 del
+         guion cambia: en n8n se crean las tres credenciales de
+         `operacion.md` («Variables de entorno»), se importan la salida, el
+         correo V3 y el escalamiento V2, y **después** se borran las
+         variables de entorno de n8n (`CORAJE_OUTBOX_KICK_SECRET`,
+         `HELPDESK_PORTAL_MAIL_SECRET`, `HELPDESK_ESCALAR_AVISOS_SECRET`).
+
+--- Corte 31, para contexto:
 CORTE:   01-oct-2026 (corte 31, ajustes tras probar U15 en el navegador,
          SIN DESPLEGAR)
 SOBRE:   `c62a8e3` (corte 30)

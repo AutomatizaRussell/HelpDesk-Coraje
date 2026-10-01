@@ -16,7 +16,7 @@ import { loadNoticesByIds } from "./ticket-notices";
  *   por persona y día y la reclama. Una segunda pasada el mismo día solo
  *   reintenta lo que no salió.
  * - **La aplicación redacta** el correo, con el mismo texto que la campana.
- * - **n8n dispara** una vez al día (`n8n/HELPDESK - Escalar avisos V1.json`)
+ * - **n8n dispara** una vez al día (`n8n/HELPDESK - Escalar avisos V2.json`)
  *   y **envía** desde el buzón sin dueño (`sendPortalMail`). No hay proceso
  *   nuevo en la VPS.
  *

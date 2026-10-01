@@ -191,11 +191,28 @@ igual que Impulsa**, solo falta construirlas (U2):
 | `POSTGRES_*` | Raíz | Contenedor de PostgreSQL local |
 | `DATABASE_URL` | `coraje-web` | Conexión de Prisma |
 | `N8N_OUTBOX_KICK_URL` | `coraje-web` | Webhook que despierta el consumo del outbox |
-| `N8N_OUTBOX_KICK_SECRET` | `coraje-web` | Secreto de ese webhook |
-| `N8N_PORTAL_MAIL_WEBHOOK_URL` | `coraje-web` (Coolify) | U8: URL **HTTPS** del webhook `helpdesk/portal/correo-v1` del workflow `HELPDESK - Portal - Enviar correo V2`. Sin ella, ni invitaciones ni códigos salen: el fallo queda en `app.portal_auditoria` con el nombre de la variable |
-| `N8N_PORTAL_MAIL_SECRET` | `coraje-web` (Coolify) | U8: secreto de ese webhook, cabecera `x-helpdesk-secret`. **El mismo valor** va en n8n como `HELPDESK_PORTAL_MAIL_SECRET` |
-| `HELPDESK_PORTAL_MAIL_SECRET` | n8n (variable de entorno de la instancia) | U8: lo compara el nodo `IF - Validate HelpDesk Secret`, igual que `CORAJE_OUTBOX_KICK_SECRET` en la salida |
-| `HELPDESK_ESCALAR_AVISOS_SECRET` | `coraje-web` (Coolify) **y** n8n (instancia), mismo valor | U15: secreto de `/api/interno/avisos/escalar`, cabecera `x-helpdesk-secret`. Sin él, la ruta responde 503 y no escala nada |
+| `N8N_OUTBOX_KICK_SECRET` | `coraje-web` | Secreto de ese webhook, cabecera `x-coraje-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk salida · x-coraje-secret» |
+| `N8N_PORTAL_MAIL_WEBHOOK_URL` | `coraje-web` (Coolify) | U8: URL **HTTPS** del webhook `helpdesk/portal/correo-v1` del workflow `HELPDESK - Portal - Enviar correo V3`. Sin ella, ni invitaciones ni códigos salen: el fallo queda en `app.portal_auditoria` con el nombre de la variable |
+| `N8N_PORTAL_MAIL_SECRET` | `coraje-web` (Coolify) | U8: secreto de ese webhook, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk correo · x-helpdesk-secret» |
+| `HELPDESK_ESCALAR_AVISOS_SECRET` | `coraje-web` (Coolify) | U15: secreto de `/api/interno/avisos/escalar`, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk escalamiento · x-helpdesk-secret». Sin él, la ruta responde 503 y no escala nada |
+
+> **En n8n no hay variables de entorno de HelpDesk** (decisión del usuario del 01-oct-2026,
+> igual que en Impulsa). Cada secreto compartido es una credencial *Header Auth* de n8n:
+> cifrada, fuera de las exportaciones y de las expresiones, y sin reiniciar la instancia
+> al cambiarla. Los webhooks se protegen con *Authentication: Header Auth* y n8n rechaza
+> con 403 sin ejecutar nada. Las llamadas salientes la usan como *Generic Credential Type*.
+> `n8n-workflows.contract.test.mts` falla si un workflow del repositorio vuelve a leer
+> `$env`.
+>
+> | Credencial (*Header Auth*) | *Name* | *Value* | La usa |
+> |---|---|---|---|
+> | HelpDesk salida · x-coraje-secret | `x-coraje-secret` | = `N8N_OUTBOX_KICK_SECRET` | Webhook de `CORAJE - SALIDA` |
+> | HelpDesk correo · x-helpdesk-secret | `x-helpdesk-secret` | = `N8N_PORTAL_MAIL_SECRET` | Webhook de `HELPDESK - Portal - Enviar correo V3` |
+> | HelpDesk escalamiento · x-helpdesk-secret | `x-helpdesk-secret` | = `HELPDESK_ESCALAR_AVISOS_SECRET` | `HTTP - Escalar avisos` de `HELPDESK - Escalar avisos V2` |
+>
+> Retirar de la instancia `CORAJE_OUTBOX_KICK_SECRET`, `HELPDESK_PORTAL_MAIL_SECRET` y
+> `HELPDESK_ESCALAR_AVISOS_SECRET` **después** de importar la salida nueva: antes, el
+> webhook de la salida todavía las lee.
 
 > **El código del portal usa `HELPDESK_TOKEN_ENCRYPTION_KEY`** (ya configurada desde U3)
 > a través de una subclave derivada (`deriveSubkey("portal-otp-v1")`). **Rotar esa clave
@@ -278,7 +295,7 @@ Apagar es `SET activo_desde = NULL`. Solo se refleja lo encolado desde `activo_d
 
 **Despertar la salida en cada cambio:** la aplicación llama al webhook
 `coraje/outbox/kick` con `N8N_OUTBOX_KICK_URL` y `N8N_OUTBOX_KICK_SECRET` (Coolify; el
-secreto coincide con `CORAJE_OUTBOX_KICK_SECRET` en n8n). Sin ellas, lo encolado sale en
+secreto coincide con la credencial «HelpDesk salida · x-coraje-secret» del webhook en n8n). Sin ellas, lo encolado sale en
 la pasada programada, cada 12 horas.
 
 **Mirar el estado:**
@@ -295,7 +312,7 @@ SELECT * FROM helpdesk.v_actividad_powerapps ORDER BY semana DESC LIMIT 12;
 
 ### Correo del portal de clientes (U8)
 
-Workflow `n8n/HELPDESK - Portal - Enviar correo V2.json`. Envía invitaciones y códigos
+Workflow `n8n/HELPDESK - Portal - Enviar correo V3.json`. Envía invitaciones y códigos
 desde el buzón sin dueño `automatizacionmedellin@rbcol.co` (D4,
 `specs/acceso-clientes.md` §11). **Puesta en marcha, una sola vez:**
 
@@ -310,7 +327,8 @@ desde el buzón sin dueño `automatizacionmedellin@rbcol.co` (D4,
 3. **Importar el workflow**, abrir el nodo `HTTP - Graph sendMail` y elegir esa
    credencial (el export trae `REEMPLAZAR_AL_IMPORTAR`). Confirmar en *Settings* que
    **Save successful/failed executions = Do not save**: el cuerpo lleva el código.
-4. Variable `HELPDESK_PORTAL_MAIL_SECRET` en la instancia, y las dos `N8N_PORTAL_MAIL_*`
+4. Credencial *Header Auth* «HelpDesk correo · x-helpdesk-secret» en el nodo `Webhook`
+   (*Name* `x-helpdesk-secret`, *Value* igual a `N8N_PORTAL_MAIL_SECRET`), y las dos `N8N_PORTAL_MAIL_*`
    en Coolify (tabla de variables).
 5. Activar el workflow.
 
@@ -427,14 +445,16 @@ Los avisos a empleados no necesitan nada en n8n: se escriben en la base con cada
 acción. El **escalamiento** diario sí. **Puesta en marcha, una sola vez:**
 
 1. Generar un secreto (`openssl rand -hex 32`) y ponerlo como
-   `HELPDESK_ESCALAR_AVISOS_SECRET` en Coolify (`coraje-web`) **y** como variable de la
-   instancia de n8n, con el mismo valor. Redesplegar `web`.
-2. Importar `n8n/HELPDESK - Portal - Enviar correo V2.json`, elegir la credencial
-   `Graph automatizacionmedellin` en `HTTP - Graph sendMail`, activarlo y **desactivar
-   V1**. Mismo webhook (`helpdesk/portal/correo-v1`): no cambia ninguna variable. V2 solo
-   añade el tipo `ESCALAMIENTO`; sin él, el escalamiento falla con «Tipo de correo no
-   soportado».
-3. Importar `n8n/HELPDESK - Escalar avisos V1.json`, comprobar que *Settings → Error
+   `HELPDESK_ESCALAR_AVISOS_SECRET` en Coolify (`coraje-web`). Redesplegar `web`.
+2. En n8n, crear la credencial *Header Auth* «HelpDesk escalamiento ·
+   x-helpdesk-secret»: *Name* `x-helpdesk-secret`, *Value* el mismo secreto.
+3. Importar `n8n/HELPDESK - Portal - Enviar correo V3.json`: elegir
+   `Graph automatizacionmedellin` en `HTTP - Graph sendMail` y «HelpDesk correo ·
+   x-helpdesk-secret» en `Webhook`, activarlo y **desactivar las versiones anteriores**.
+   Mismo webhook (`helpdesk/portal/correo-v1`): no cambia ninguna variable de Coolify.
+   Sin V3, el escalamiento falla con «Tipo de correo no soportado».
+4. Importar `n8n/HELPDESK - Escalar avisos V2.json`, elegir «HelpDesk escalamiento ·
+   x-helpdesk-secret» en `HTTP - Escalar avisos`, comprobar que *Settings → Error
    workflow* es `Alertas de errores a Teams` y activarlo. Corre de lunes a viernes a las
    7:00; la base descarta los festivos.
 

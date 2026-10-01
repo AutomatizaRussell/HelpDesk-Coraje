@@ -249,44 +249,11 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "01a4264c-a05a-4ed8-b80a-fbe08d523155",
-              "leftValue": "={{ ($json.headers[\"x-coraje-secret\"] || \"\").trim() }}",
-              "rightValue": "={{ $env.CORAJE_OUTBOX_KICK_SECRET }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -208,
-        -848
-      ],
-      "id": "621c5b6a-f5ef-4cfe-8e66-20baf14d69b2",
-      "name": "IF - Validate CORAJE Secret"
-    },
-    {
-      "parameters": {
         "httpMethod": "POST",
         "path": "coraje/outbox/kick",
         "responseMode": "responseNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -296,7 +263,13 @@
       ],
       "id": "fc095eec-bad1-4850-a281-542121832dbf",
       "name": "Webhook",
-      "webhookId": "0ffddf87-646f-40a1-84a3-02aca85549da"
+      "webhookId": "0ffddf87-646f-40a1-84a3-02aca85549da",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "HelpDesk salida · x-coraje-secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -354,23 +327,6 @@
       ],
       "id": "02a6e421-d06b-438b-834e-d7067b31eee2",
       "name": "Loop - Process Up To 20"
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "{\n  \"ok\": false,\n  \"error\": \"Unauthorized\"\n}",
-        "options": {
-          "responseCode": 403
-        }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        -16,
-        -752
-      ],
-      "id": "e796c24c-3733-491f-945d-7edef68794cc",
-      "name": "Respond - Unauthorized"
     },
     {
       "parameters": {
@@ -692,29 +648,11 @@
         ]
       ]
     },
-    "IF - Validate CORAJE Secret": {
-      "main": [
-        [
-          {
-            "node": "Respond - Accepted",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond - Unauthorized",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Webhook": {
       "main": [
         [
           {
-            "node": "IF - Validate CORAJE Secret",
+            "node": "Respond - Accepted",
             "type": "main",
             "index": 0
           }
