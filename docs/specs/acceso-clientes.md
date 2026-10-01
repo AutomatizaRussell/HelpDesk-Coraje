@@ -285,10 +285,18 @@ invariante 7), que no se pidió.
 > - **Graph y no SMTP.** El flujo de prueba del usuario («Correo empresarial») envía por
 >   SMTP con usuario y contraseña, que es la autenticación que Microsoft anunció que
 >   retira de Exchange Online. El workflow usa una credencial *Microsoft OAuth2* de n8n
->   con la App Registration compartida con Conecta, autorizada **iniciando sesión como
->   el buzón**, con permisos **delegados** (`Mail.Send`). No se añade ningún permiso de
->   aplicación: con el secreto compartido, un `Mail.Send` de aplicación sin restringir
->   permitiría enviar como cualquier buzón del tenant.
+>   con la App Registration compartida con Conecta y permisos **delegados**. No se añade
+>   ningún permiso de aplicación: con el secreto compartido, un `Mail.Send` de aplicación
+>   sin restringir permitiría enviar como cualquier buzón del tenant.
+> - **Corregido el 01-oct-2026: el buzón es compartido y no tiene inicio de sesión
+>   propio.** Esta decisión suponía autorizar la credencial entrando como el buzón, y no
+>   se puede. La autoriza **una persona con *Send As*** sobre el buzón, con
+>   `Mail.Send.Shared` (ya consentido en la App Registration), y el workflow envía a
+>   `/users/automatizacionmedellin@rbcol.co/sendMail`: el correo sale desde el buzón.
+>   Es lo mismo que hacía «CuentaJulian» por SMTP, sin guardar una contraseña. **Riesgo
+>   aceptado:** el envío depende de la cuenta de esa persona; si cambia la contraseña,
+>   le revocan las sesiones o deja la firma, se reautoriza la credencial con otra
+>   persona que tenga *Send As*.
 > - **Sin cola y sin reintento, a propósito.** Estos correos llevan un secreto (enlace
 >   de un solo uso o código), y una cola exigiría guardarlo (invariante 4). La
 >   aplicación entrega el correo a n8n en el momento y audita el resultado; un envío

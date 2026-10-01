@@ -318,12 +318,17 @@ desde el buzón sin dueño `automatizacionmedellin@rbcol.co` (D4,
 
 1. **App Registration «GCT - Conecta RBG»**, en *Authentication*: añadir la redirect URI
    de n8n, `https://<n8n-de-helpdesk>/rest/oauth2-credential/callback`. **No** añadir
-   ningún permiso de aplicación: bastan los delegados que ya tiene (`Mail.Send`,
+   ningún permiso de aplicación: bastan los delegados que ya tiene (`Mail.Send.Shared`,
    `offline_access`).
 2. **Credencial en n8n**, tipo *Microsoft OAuth2 API*, con el nombre
    `Graph automatizacionmedellin`: client ID y secreto de esa App Registration, scope
-   `https://graph.microsoft.com/Mail.Send offline_access`. Autorizarla **iniciando
-   sesión como `automatizacionmedellin@rbcol.co`**, no con una cuenta personal.
+   `https://graph.microsoft.com/Mail.Send.Shared offline_access`. El buzón es compartido
+   y **no tiene inicio de sesión propio**: la autoriza **una persona con *Send As***
+   sobre `automatizacionmedellin@rbcol.co`, con su propia cuenta. El nodo
+   `HTTP - Graph sendMail` envía a `/users/automatizacionmedellin@rbcol.co/sendMail`, así
+   que el correo sale desde el buzón, no desde esa persona. Comprobar el *Send As* antes:
+   en Outlook web, enviar un correo eligiendo el buzón en «De»; si llega «X en nombre
+   de…», es *Send on Behalf* y no sirve.
 3. **Importar el workflow**, abrir el nodo `HTTP - Graph sendMail` y elegir esa
    credencial (el export trae `REEMPLAZAR_AL_IMPORTAR`). Confirmar en *Settings* que
    **Save successful/failed executions = Do not save**: el cuerpo lleva el código.
@@ -334,7 +339,7 @@ desde el buzón sin dueño `automatizacionmedellin@rbcol.co` (D4,
 
 **Consecuencia de compartir la App Registration:** su secreto vive ahora también en la
 credencial de n8n. **Rotarlo exige actualizar tres sitios**: Conecta, HelpDesk (Coolify)
-y esta credencial. Si la credencial deja de valer (contraseña del buzón cambiada,
+y esta credencial. Si la credencial deja de valer (contraseña de la persona que la autorizó cambiada,
 sesiones revocadas, unos 90 días sin enviar), los códigos no llegan: se reautoriza la
 credencial en n8n.
 

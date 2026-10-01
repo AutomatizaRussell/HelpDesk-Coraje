@@ -1,6 +1,27 @@
 # Handoff técnico
 
 ```
+CORTE:   01-oct-2026 (corte 33, correo desde el buzón compartido, SIN
+         IMPORTAR EN n8n)
+SOBRE:   `6921c16` (corte 32)
+RAMA:    main
+UNIDAD:  El usuario aclaró que `automatizacionmedellin@` es un buzón
+         compartido sin inicio de sesión propio, y que «CuentaJulian» es una
+         persona con *Send As* sobre él. D4 suponía autorizar la credencial
+         entrando como el buzón: no se puede. Corregido: `HTTP - Graph
+         sendMail` envía a `/users/automatizacionmedellin@rbcol.co/sendMail`,
+         y la credencial «Graph automatizacionmedellin» la autoriza una
+         persona con *Send As*, scope `Mail.Send.Shared offline_access` (ya
+         consentido). Sin App Registration nueva ni permiso de aplicación
+         (decisión del usuario). Riesgo aceptado: el envío depende de la
+         cuenta de esa persona. Corregidos `CLAUDE.md`, D4
+         (`acceso-clientes.md` §11) y `operacion.md`; prueba nueva que fija
+         la URL del remitente. Evidencia: `tsc`, `eslint`, `pnpm test`
+         171/171.
+SIGUE:   lo mismo que el corte 32. Antes de autorizar la credencial,
+         comprobar que la persona tiene *Send As* (Outlook web, «De»).
+
+--- Corte 32, para contexto:
 CORTE:   01-oct-2026 (corte 32, secretos de n8n como credenciales, SIN
          IMPORTAR EN n8n)
 SOBRE:   `2d3d028` (corte 31)

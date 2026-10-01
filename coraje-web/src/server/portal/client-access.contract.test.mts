@@ -22,7 +22,7 @@ const VALUES_MIGRATION = readFileSync(path.join(MIGRATIONS, "20260928100000_valo
 const MIGRATION = readFileSync(path.join(MIGRATIONS, "20260928110000_acceso_clientes/migration.sql"), "utf8");
 const WORKFLOW = JSON.parse(
   readFileSync(path.resolve(WEB_DIR, "../n8n/HELPDESK - Portal - Enviar correo V3.json"), "utf8"),
-) as { settings: Record<string, unknown>; nodes: { type: string; parameters?: Record<string, unknown> }[] };
+) as { settings: Record<string, unknown>; nodes: { name: string; type: string; parameters?: Record<string, unknown> }[] };
 
 function stripSqlComments(sql: string): string {
   return sql.replace(/--[^\n]*/g, "");
@@ -105,6 +105,13 @@ test("el workflow de correo del portal no guarda los datos de sus ejecuciones", 
   assert.equal(WORKFLOW.settings.saveManualExecutions, false);
   const code = WORKFLOW.nodes.find((node) => node.type === "n8n-nodes-base.code")?.parameters?.jsCode;
   assert.match(String(code), /saveToSentItems: false/);
+});
+
+test("el correo sale desde el buzón compartido, no desde quien autorizó la credencial", () => {
+  // El buzón no tiene inicio de sesión propio (01-oct-2026): la credencial la
+  // autoriza una persona con Send As. Con /me, el correo saldría de esa persona.
+  const http = WORKFLOW.nodes.find((node) => node.name === "HTTP - Graph sendMail");
+  assert.equal(http?.parameters?.url, "https://graph.microsoft.com/v1.0/users/automatizacionmedellin@rbcol.co/sendMail");
 });
 
 /** Archivos de src/server/portal sin pruebas. */

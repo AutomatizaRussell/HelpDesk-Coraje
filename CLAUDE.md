@@ -84,10 +84,13 @@ Reglas al traer algo de Impulsa:
 > carga de Graph de los adjuntos, no existe aquí hasta que se cree. Al 26-sep-2026, el
 > n8n de HelpDesk tiene credenciales `microsoftSharePointOAuth2Api` (API REST de
 > SharePoint), de PostgreSQL y de webhook, y **ninguna de Microsoft Graph**.
-> **Corregido el 28-sep-2026:** también tiene una credencial SMTP («CuentaJulian», que
-> entra como el buzón sin dueño `automatizacionmedellin@rbcol.co`, no como una
-> persona), usada en un flujo de prueba. U8 pide crear una de Graph delegada para ese
-> mismo buzón (`docs/estado/operacion.md`, «Correo del portal de clientes»); hasta que
+> **Corregido el 28-sep-2026:** también tiene una credencial SMTP («CuentaJulian»), usada
+> en un flujo de prueba que envía desde el buzón compartido `automatizacionmedellin@rbcol.co`.
+> **Corregido otra vez el 01-oct-2026, por el usuario:** «CuentaJulian» es la cuenta de
+> una **persona** con permiso *Send As* sobre ese buzón, no el buzón: el buzón es
+> compartido y no tiene inicio de sesión propio. U8 pide crear una credencial de Graph
+> delegada, autorizada por una persona con *Send As* (`Mail.Send.Shared`), que envía como
+> ese mismo buzón (`docs/estado/operacion.md`, «Correo del portal de clientes»); hasta que
 > exista, sigue sin haber ninguna de Graph.
 >
 > **Excepción: en consumo de recursos, tampoco.** Impulsa corre app, worker de
