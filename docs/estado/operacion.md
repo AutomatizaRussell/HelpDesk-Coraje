@@ -171,6 +171,13 @@ igual que Impulsa**, solo falta construirlas (U2):
 
 ## Variables de entorno
 
+> **Una variable de Coolify llega al contenedor `web` solo si `coraje-web/docker-compose.yaml`
+> la declara en `environment`** (el compose la usa para interpolar; no la reenvía sola).
+> Hasta el corte 30 faltaban `N8N_OUTBOX_KICK_*`, `N8N_PORTAL_MAIL_*` y
+> `HELPDESK_ESCALAR_AVISOS_SECRET`: el código las veía vacías. `src/server/env.contract.test.mts`
+> exige ahora que cada variable que lee `src/` esté en esa lista. **Variable nueva = Coolify +
+> compose, en el mismo commit.**
+
 | Variable | Dónde | Para qué |
 |---|---|---|
 | `POSTGRES_*` | Raíz | Contenedor de PostgreSQL local |
