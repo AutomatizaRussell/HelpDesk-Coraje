@@ -2,13 +2,15 @@
 
 ```
 ESTADO:      modelo de eventos y escritor único desplegados y ejercitados (U6). Ciclo
-             interno (T2, T4, T7, T8, nota interna) desplegado, sin ejercitar (U7,
+             interno (T2, T4, T7, T8, nota interna) desplegado y aprobado por el
+             usuario el 30-sep, salvo adjuntos (U7,
              corte 18). Tickets del portal (T1 por el cliente, T3) desplegados, sin
              ejercitar (U8, corte 19). Seguimiento —observadores, solicitud de
-             validación, comentario del solicitante— construido, sin desplegar (U11,
-             corte 22, §11). Las secciones fechadas antes del 24-sep son
+             validación, comentario del solicitante— desplegado, sin ejercitar (U11,
+             corte 22, §11). Avisos desplegados, sin ejercitar (U15, §12). Las
+             secciones fechadas antes del 24-sep son
              antecedente: §1 describe el estado del 03-sep
-CORTE:       28-sep-2026
+CORTE:       01-oct-2026
 EVIDENCIA:   lectura directa de `sql/db/06_helpdesk_facts.sql`, `sql/db/07_seed.sql` y
              `coraje-web/prisma/schema.prisma` en este corte. Los conteos vienen de
              `docs/legacy/baseline-calidad.md`, conciliados en su momento
@@ -759,7 +761,9 @@ día); la aplicación redacta y envía por el workflow del buzón
 (`HELPDESK - Escalar avisos V1`). No hay proceso nuevo en la VPS. Un aviso creado
 suplantando (U12) no se escala.
 
-**12.4 Economía.** El número de la campana es un conteo sobre un índice parcial por
+**12.4 Número y economía.** La campana cuenta **pendientes abiertos más novedades sin
+leer** (corregido el 01-oct-2026 tras probarlo: contar solo lo no leído escondía un
+pendiente en cuanto se abría su ticket). Son dos conteos sobre índices parciales por
 página; la lista se consulta solo al abrir el panel. Sin sondeo.
 
 **Límite conocido:** un cambio aceptado desde PowerApps (U9) cierra avisos, porque lo

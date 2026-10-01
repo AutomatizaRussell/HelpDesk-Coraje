@@ -67,7 +67,7 @@ export function PeoplePicker({
   }
 
   if (candidates.length === 0) {
-    return <p className="text-base text-ink-muted">No hay otras personas con acceso a HelpDesk para elegir.</p>;
+    return <NoCandidatesNotice />;
   }
 
   const describedBy = error ? `${baseId}-error` : hint ? `${baseId}-hint` : undefined;
@@ -121,4 +121,13 @@ export function PeoplePicker({
       {error && <p id={`${baseId}-error`} className={fieldError}>{error}</p>}
     </fieldset>
   );
+}
+
+/**
+ * Lo que se muestra cuando no hay a quién elegir. Lo usan también los
+ * formularios que envuelven al selector, para no ofrecer un botón que solo
+ * puede fallar.
+ */
+export function NoCandidatesNotice() {
+  return <p className="text-base text-ink-muted">No hay otras personas con acceso a HelpDesk para elegir.</p>;
 }

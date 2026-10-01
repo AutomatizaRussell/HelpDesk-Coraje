@@ -22,7 +22,7 @@ import {
   resendTicketMailAction,
   respondTicketAction,
 } from "./actions";
-import { PeoplePicker } from "./PeoplePicker";
+import { NoCandidatesNotice, PeoplePicker } from "./PeoplePicker";
 
 /**
  * Formularios de las acciones sobre un ticket. Solo se dibujan los que el
@@ -213,6 +213,8 @@ export function AddObserversForm({
   max: number;
 }) {
   const { state, formAction, pending, formKey } = useTicketForm(addObserversAction);
+  // Sin nadie a quien elegir, enviar solo podría fallar: ni formulario ni botón.
+  if (candidates.length === 0) return <NoCandidatesNotice />;
   return (
     <form key={formKey} action={formAction} className="space-y-3">
       <input type="hidden" name="idTicket" value={idTicket} />
@@ -248,6 +250,8 @@ export function RemoveObserverForm({ idTicket, idObservador, nombre }: { idTicke
 
 export function RequestValidationForm({ idTicket, candidates }: { idTicket: string; candidates: readonly FollowCandidate[] }) {
   const { state, formAction, pending, formKey } = useTicketForm(requestValidationAction);
+  // Sin nadie a quien elegir, enviar solo podría fallar: ni formulario ni botón.
+  if (candidates.length === 0) return <NoCandidatesNotice />;
   return (
     <form key={formKey} action={formAction} className="space-y-3">
       <input type="hidden" name="idTicket" value={idTicket} />

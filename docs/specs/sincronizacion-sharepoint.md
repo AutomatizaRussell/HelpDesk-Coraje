@@ -1,10 +1,10 @@
 # Sincronización con SharePoint y convivencia con PowerApps
 
 ```
-ESTADO:      regla de precedencia DECIDIDA y CONSTRUIDA, SIN DESPLEGAR (U9, corte 20,
+ESTADO:      regla de precedencia DECIDIDA, CONSTRUIDA y DESPLEGADA el 28-sep, SIN EJERCITAR (U9, corte 20,
              §4.3). La ingesta está ejercitada con datos reales; la salida nueva
              (crear y actualizar el espejo) nunca se ha ejecutado
-CORTE:       28-sep-2026 (las secciones 1-4.2 describen el estado del 03-sep; §4.3
+CORTE:       01-oct-2026 (las secciones 1-4.2 describen el estado del 03-sep; §4.3
              las supera)
 EVIDENCIA:   lectura directa de `sql/elt/06_transform_ticket.sql`,
              `sql/db/06_helpdesk_facts.sql`, `src/app/redireccion/[id]/actions.ts` y
@@ -309,3 +309,5 @@ procedencia (§4.1) y el riesgo de duplicado por eco (§4.2).
   protección contra pisar cambios de PowerApps, y vista de actividad como señal de
   corte. La salida anterior se sustituye: solo creaba, solo del portal, y llevaba un
   marcador de prueba.
+- 01-oct-2026 — ESTADO conciliado: U9 está desplegada desde el 28-sep, sin ejercitar;
+  la cabecera seguía diciendo «sin desplegar».

@@ -281,7 +281,7 @@ quien actúa (D6) y adjuntos. **Depende de:** U6, `specs/permisos.md`.
 > salida de n8n— se hacen junto con las de U8 (`estado/handoff.md`, «Acción
 > inmediata»). Los adjuntos siguen bloqueados.
 
-### U8 · Acceso de clientes — **construida, sin desplegar**
+### U8 · Acceso de clientes — **desplegada el 28-sep-2026 (corte 19), sin ejercitar**
 
 Implementa `specs/acceso-clientes.md` y retira `/portal` actual. Incluye redirigir
 (T3), que solo producen los tickets de clientes, con su permiso y el rol que lo tenga.
@@ -302,7 +302,7 @@ y U3.
 > **No abrir el portal a clientes reales** antes de desplegar U9 **y** de decidir si se
 > enciende el espejo: sin espejo, lo que radiquen los clientes solo se ve en HelpDesk.
 
-### U9 · Regla de precedencia con SharePoint — **construida, sin desplegar**
+### U9 · Regla de precedencia con SharePoint — **desplegada el 28-sep-2026 (corte 20), sin ejercitar**
 
 > **Decidida y construida el 28-sep-2026** (corte 20). Un dueño por ticket: lo que nace
 > en PowerApps es de SharePoint y se consulta en HelpDesk hasta el corte; lo que nace en
@@ -430,7 +430,7 @@ probar. Los adjuntos siguen bloqueados en U7.
 handoff.md`, «Acción inmediata», G) y sus correcciones quedan decididas: construidas o
 descartadas con motivo.
 
-### U12 · Suplantación para pruebas — **construida el 29-sep-2026 (corte 23), bloque temporal**
+### U12 · Suplantación para pruebas — **desplegada y habilitada el 30-sep-2026 (corte 23), bloque temporal**
 
 **Objetivo:** ejercitar U7-U11 sin una cuenta por persona. Decisión del usuario del
 29-sep-2026: selector de empleado como el de Impulsa, sin acotar a un área, en
@@ -442,7 +442,7 @@ retira antes de que HelpDesk sea la herramienta de trabajo de cualquier área
 en `app.suplantacion_auditoria`, y un correo generado suplantando llega solo a quien
 suplanta.
 
-### U13 · Rol `COLABORADOR` y visibilidad por recepción — **construida el 30-sep-2026 (corte 24), sin desplegar**
+### U13 · Rol `COLABORADOR` y visibilidad por recepción — **cerrada el 30-sep-2026 (corte 24), ejercitada suplantando**
 
 **Objetivo:** que cada empleado vea solo lo suyo y que ver un área lo decida el
 enrutamiento, no un rol (`specs/permisos.md` §4.5). `AGENTE` pasa a `COLABORADOR` y
@@ -452,7 +452,7 @@ enrutamiento, no un rol (`specs/permisos.md` §4.5). `AGENTE` pasa a `COLABORADO
 nada ve solo lo suyo; el encargado de recepción de un área ve toda esa área; quien
 recibe por tipo ve solo esos tipos; `ADMIN` ve todas las áreas.
 
-### U15 · Centro de notificaciones — **construida el 30-sep-2026 (corte 28), sin desplegar**
+### U15 · Centro de notificaciones — **desplegada el 30-sep-2026 (corte 28), sin ejercitar**
 
 **Objetivo:** que los empleados reciban los avisos del ticket en una campana y no por
 correo, con «Requiere tu atención» abierta hasta actuar y escalamiento por correo de lo
@@ -540,3 +540,7 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
 - 30-sep-2026 — U15 construida (corte 28): avisos en la campana, cierre de pendientes
   en la base y escalamiento diario sin proceso nuevo. **Cabeza de la cola: desplegar y
   ejercitar U15; después, los adjuntos de U7.**
+- 01-oct-2026 — cabeceras conciliadas con el changelog y el handoff: U8 y U9 estaban
+  desplegadas desde el 28-sep (cortes 19-21) aunque su cabecera decía «sin desplegar»;
+  U12 desplegada y habilitada; U13 cerrada (handoff, corte 26); U15 desplegada. Manda el
+  registro fechado de cada despliegue, no la cabecera que no se actualizó.

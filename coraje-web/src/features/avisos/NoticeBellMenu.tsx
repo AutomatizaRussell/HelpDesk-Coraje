@@ -42,7 +42,7 @@ export function NoticeBellMenu({ count, anchor }: { count: number; anchor: "topb
 
   // Mientras no se abre por primera vez, manda el número de la página; después,
   // el de la última lectura, que es más reciente.
-  const shownCount = panel.status === "ready" ? panel.data.sinLeer : count;
+  const shownCount = panel.status === "ready" ? panel.data.total : count;
 
   return (
     <NoticeBell count={shownCount} anchor={anchor} allHref="/avisos" onOpen={load}>

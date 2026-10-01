@@ -27,7 +27,7 @@ export async function GET() {
 
   const bell = await listBellNotices(employee.idPersonal);
   const body: BellNoticesResponse = {
-    sinLeer: bell.sinLeer,
+    total: bell.total,
     atencion: bell.atencion,
     items: bell.items.map((item) => ({
       id: item.id,

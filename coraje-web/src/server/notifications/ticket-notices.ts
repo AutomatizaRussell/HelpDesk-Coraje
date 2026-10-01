@@ -162,21 +162,36 @@ function toItems(rows: readonly NoticeRow[]): NoticeItem[] {
 const openAttentionWhere = (idPersonal: string) =>
   ({ idDestinatario: idPersonal, clase: "ATENCION", resueltoAt: null }) satisfies Prisma.TicketAvisoWhereInput;
 
+const unreadNoveltyWhere = (idPersonal: string) =>
+  ({ idDestinatario: idPersonal, clase: "NOVEDAD", leidoAt: null }) satisfies Prisma.TicketAvisoWhereInput;
+
 /**
- * El número de la campana: avisos sin leer. Una consulta de conteo sobre el
- * índice parcial `ix_ticket_aviso_no_leido`, en cada página del shell. No hay
- * sondeo: el número se actualiza al navegar.
+ * El número de la campana: **pendientes abiertos más novedades sin leer**.
+ *
+ * Corregido el 01-oct-2026 tras probarlo: antes contaba solo lo no leído, y
+ * abrir un ticket marca sus avisos como leídos. Un pendiente seguía abierto
+ * —sin atender— y la campana no lo contaba. Un pendiente cuenta hasta que se
+ * actúa, se haya visto o no; una novedad, hasta que se lee.
+ *
+ * Dos conteos sobre índices parciales (`ix_ticket_aviso_atencion_abierta` y
+ * `ix_ticket_aviso_no_leido`), en cada página del shell. No hay sondeo: el
+ * número se actualiza al navegar.
  */
-export function countUnreadNotices(idPersonal: string): Promise<number> {
-  return prisma.ticketAviso.count({ where: { idDestinatario: idPersonal, leidoAt: null } });
+export async function countBellNotices(idPersonal: string): Promise<number> {
+  const [atencion, novedades] = await Promise.all([
+    prisma.ticketAviso.count({ where: openAttentionWhere(idPersonal) }),
+    prisma.ticketAviso.count({ where: unreadNoveltyWhere(idPersonal) }),
+  ]);
+  return atencion + novedades;
 }
 
 /**
  * Lo que muestra la campana al abrirla: primero lo que pide atención, después
- * las novedades sin leer, hasta `BELL_LIMIT`.
+ * las novedades sin leer, hasta `BELL_LIMIT`. `total` es el mismo número que
+ * `countBellNotices`.
  */
-export async function listBellNotices(idPersonal: string): Promise<{ items: NoticeItem[]; atencion: number; sinLeer: number }> {
-  const [atencionRows, novedadRows, atencion, sinLeer] = await Promise.all([
+export async function listBellNotices(idPersonal: string): Promise<{ items: NoticeItem[]; atencion: number; total: number }> {
+  const [atencionRows, novedadRows, atencion, novedadesSinLeer] = await Promise.all([
     prisma.ticketAviso.findMany({
       where: openAttentionWhere(idPersonal),
       orderBy: { createdAt: "desc" },
@@ -184,15 +199,19 @@ export async function listBellNotices(idPersonal: string): Promise<{ items: Noti
       select: NOTICE_SELECT,
     }),
     prisma.ticketAviso.findMany({
-      where: { idDestinatario: idPersonal, clase: "NOVEDAD", leidoAt: null },
+      where: unreadNoveltyWhere(idPersonal),
       orderBy: { createdAt: "desc" },
       take: BELL_LIMIT,
       select: NOTICE_SELECT,
     }),
     prisma.ticketAviso.count({ where: openAttentionWhere(idPersonal) }),
-    countUnreadNotices(idPersonal),
+    prisma.ticketAviso.count({ where: unreadNoveltyWhere(idPersonal) }),
   ]);
-  return { items: toItems([...atencionRows, ...novedadRows].slice(0, BELL_LIMIT)), atencion, sinLeer };
+  return {
+    items: toItems([...atencionRows, ...novedadRows].slice(0, BELL_LIMIT)),
+    atencion,
+    total: atencion + novedadesSinLeer,
+  };
 }
 
 /** Una sección de la página de avisos. */

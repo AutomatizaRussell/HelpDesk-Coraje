@@ -8,11 +8,15 @@ import { fileURLToPath } from "node:url";
  * Contrato entre las variables de entorno que lee el servidor y las que el
  * despliegue le entrega (F7).
  *
- * En Coolify, con Docker Compose, una variable definida en la interfaz solo
- * llega al contenedor si `docker-compose.yaml` la declara en `environment`: el
- * compose la usa para interpolar y no la reenvía sola. Faltaban cinco desde
- * U8, U9 y U15, y el código no fallaba al arrancar: las veía vacías y fallaba
- * después, en la operación que las necesitaba, o se degradaba sin avisar.
+ * `docker-compose.yaml` es la lista explícita de lo que `web` necesita: quien
+ * despliega lee ahí qué variables tiene que crear en Coolify. Le faltaban
+ * cinco de U8, U9 y U15.
+ *
+ * Corregido el 01-oct-2026: la primera versión de este comentario afirmaba que
+ * sin estar en esa lista una variable de Coolify no llegaba al contenedor. Es
+ * falso: Coolify inyecta las que tiene definidas (las de `N8N_OUTBOX_KICK_*`
+ * llegaban). Lo que faltaba de verdad era crear `N8N_PORTAL_MAIL_*` en Coolify.
+ * La prueba vale igual: impide que la lista deje de estar completa.
  */
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));

@@ -5,7 +5,8 @@
  * horaria, no el navegador.
  */
 export type BellNoticesResponse = {
-  sinLeer: number;
+  /** Lo que cuenta la campana: pendientes abiertos más novedades sin leer. */
+  total: number;
   atencion: number;
   items: { id: string; titulo: string; detalle: string; fecha: string; leido: boolean; atencion: boolean }[];
 };

@@ -171,12 +171,20 @@ igual que Impulsa**, solo falta construirlas (U2):
 
 ## Variables de entorno
 
-> **Una variable de Coolify llega al contenedor `web` solo si `coraje-web/docker-compose.yaml`
-> la declara en `environment`** (el compose la usa para interpolar; no la reenvía sola).
-> Hasta el corte 30 faltaban `N8N_OUTBOX_KICK_*`, `N8N_PORTAL_MAIL_*` y
-> `HELPDESK_ESCALAR_AVISOS_SECRET`: el código las veía vacías. `src/server/env.contract.test.mts`
-> exige ahora que cada variable que lee `src/` esté en esa lista. **Variable nueva = Coolify +
-> compose, en el mismo commit.**
+> **`coraje-web/docker-compose.yaml` es la lista completa de variables de `web`**, y
+> `src/server/env.contract.test.mts` falla si el código lee una que no está. Coolify
+> inyecta además las que tiene definidas (comprobado el 01-oct-2026 con `printenv`), así que
+> la lista **no crea** ninguna: una variable que no existe en Coolify llega vacía.
+> **Variable nueva = crearla en Coolify + declararla en el compose.** Comprobar en la VPS
+> qué tiene `web` de verdad, sin imprimir valores:
+>
+> ```bash
+> docker exec $(docker ps --filter "name=web" --format "{{.Names}}" | head -1) printenv | cut -d= -f1 | grep -E "N8N_|HELPDESK_|ENTRA_" | sort
+> ```
+>
+> Corrección del 01-oct: el corte 30 afirmó aquí que sin estar en el compose una variable
+> no llegaba. Era falso. Lo que faltaba era **crear** `N8N_PORTAL_MAIL_*` en Coolify: el
+> portal nunca ha podido enviar invitaciones ni códigos.
 
 | Variable | Dónde | Para qué |
 |---|---|---|

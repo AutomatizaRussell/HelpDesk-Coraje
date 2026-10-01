@@ -27,7 +27,7 @@ import { shellPopoverAnchors } from "../user-menu/UserMenu";
  * leer no es una urgencia.
  */
 export type NoticeBellProps = {
-  /** Avisos sin leer. Con 0 no se dibuja el número. */
+  /** Pendientes abiertos más novedades sin leer. Con 0 no se dibuja el número. */
   count: number;
   anchor: keyof typeof shellPopoverAnchors;
   /** La página con todos los avisos. */
@@ -42,7 +42,7 @@ const MAX_BADGE = 99;
 export function NoticeBell({ count, anchor, allHref, onOpen, children }: NoticeBellProps) {
   const panelId = useId();
   const titleId = useId();
-  const label = count > 0 ? `Avisos, ${count} sin leer` : "Avisos";
+  const label = count > 0 ? `Avisos, ${count} por revisar` : "Avisos";
 
   const handleToggle = (event: ToggleEvent<HTMLDivElement>) => {
     if (event.newState === "open") onOpen?.();

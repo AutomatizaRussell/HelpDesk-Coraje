@@ -7,7 +7,7 @@ import { readEntryContext } from "@/server/auth/entry-cookie";
 import { signOutAction } from "@/server/auth/sign-out-action";
 import { resolveGrants } from "@/server/authorization/authorizer";
 import { AVISO_ACTIONS, PORTAL_ACTIONS, SALUD_ACTIONS, TICKET_ACTIONS } from "@/server/authorization/catalog";
-import { countUnreadNotices } from "@/server/notifications/ticket-notices";
+import { countBellNotices } from "@/server/notifications/ticket-notices";
 import { NoticeBellMenu } from "@/features/avisos/NoticeBellMenu";
 // SUPLANTACIÓN — bloque temporal para pruebas.
 import { SuplantacionSelector } from "@/features/suplantacion/SuplantacionSelector";
@@ -56,11 +56,11 @@ export async function AppFrame({
     getSuplantacionPanel(employee),
     // FIN SUPLANTACIÓN
   ]);
-  // U15: el número de la campana, un conteo sobre un índice parcial. Va
+  // U15: el número de la campana, dos conteos sobre índices parciales. Va
   // después de los permisos porque sin `aviso.consultar` no hay campana.
-  const unreadNotices = grants.has(AVISO_ACTIONS.consultar) ? await countUnreadNotices(employee.idPersonal) : null;
+  const bellCount = grants.has(AVISO_ACTIONS.consultar) ? await countBellNotices(employee.idPersonal) : null;
   const noticeBell = (anchor: "topbar" | "appBar") =>
-    unreadNotices === null ? undefined : <NoticeBellMenu count={unreadNotices} anchor={anchor} />;
+    bellCount === null ? undefined : <NoticeBellMenu count={bellCount} anchor={anchor} />;
 
   const sections = helpdeskSections({
     clasificar: grants.has(TICKET_ACTIONS.redirigir),

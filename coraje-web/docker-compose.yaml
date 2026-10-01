@@ -40,11 +40,12 @@ services:
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET}
       ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI}
       HELPDESK_TOKEN_ENCRYPTION_KEY: ${HELPDESK_TOKEN_ENCRYPTION_KEY}
-      # Una variable de Coolify llega al contenedor solo si aparece aquí: el
-      # compose la usa para interpolar, no la reenvía por su cuenta. Faltaban
-      # estas cinco desde U8, U9 y U15, y sin ellas el código las veía vacías
-      # (env.contract.test.mts exige que cada variable que lee `src/` esté en
-      # esta lista).
+      # Lista explícita de lo que web necesita. Coolify inyecta además las
+      # variables que tiene definidas (comprobado el 01-oct-2026: las de
+      # N8N_OUTBOX_KICK_* llegaban sin estar aquí), así que esta lista no las
+      # crea: si una no existe en Coolify, aquí llega vacía.
+      # env.contract.test.mts exige que cada variable que lee `src/` esté
+      # declarada, para que la lista sea completa.
       # Espejo en PowerApps (U9): despierta la salida de n8n en cada cambio.
       N8N_OUTBOX_KICK_URL: ${N8N_OUTBOX_KICK_URL}
       N8N_OUTBOX_KICK_SECRET: ${N8N_OUTBOX_KICK_SECRET}
