@@ -784,8 +784,9 @@ paso de uno a otro se lea como una transición suave. Construido, sin desplegar.
 - **Qué es de Coraje:** el ticket con cliente (`id_cliente_contai`). Por §7.1, cada
   ticket cae en un modo y solo en uno (`tickets/ticket-mode.ts`).
 - **Qué cambia:** los tickets que lista la bandeja (`?modo=coraje`), sus vistas, las
-  pestañas (Accesos de clientes en Coraje; Salud en HelpDesk) y el color: lienzo navy,
-  con el mismo acento del área (`design/sistema-helpdesk.md` §5.2). En Coraje no hay
+  pestañas (Accesos de clientes en Coraje; Salud en HelpDesk) y el color: barra
+  superior y pestañas en navy, con el contenido claro de siempre
+  (`design/sistema-helpdesk.md` §5.2). En Coraje no hay
   «Radicados por mí» ni «Nuevo ticket»: un empleado no radica a nombre de un cliente.
 - **«Por redirigir»** sustituye a la sección «Clasificación»: es la primera vista de la
   bandeja de Coraje para quien puede redirigir, del más antiguo al más reciente. El

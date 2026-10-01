@@ -50,11 +50,11 @@ export function StandaloneShell({
   return (
     <div data-area={areaTheme} data-mode={mode} className={cn("flex min-h-dvh flex-col bg-canvas", modeTransition)}>
       <header className="sticky top-0 z-(--hd-layer-topbar)">
-        <div className={cn("border-b border-line bg-surface", modeTransition)}>
+        <div className={cn("border-b border-shell-topbar-line bg-shell-topbar-surface", modeTransition)}>
           <div className="flex h-app-bar items-center justify-between gap-4 pr-4 lg:h-app-bar-wide lg:pr-8">
             <BrandLogo placement={mode === "coraje" ? "appBarInverse" : "appBar"} />
             <div className="flex min-w-0 items-center gap-3">
-              <p className="hidden max-w-56 truncate text-base font-bold text-heading sm:block">{displayName}</p>
+              <p className="hidden max-w-56 truncate text-base font-bold text-shell-topbar-ink sm:block">{displayName}</p>
               {noticeBell}
               <UserMenu displayName={displayName} anchor="appBar" signOutAction={signOutAction} />
             </div>

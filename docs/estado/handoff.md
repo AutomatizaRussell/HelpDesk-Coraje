@@ -1,6 +1,32 @@
 # Handoff técnico
 
 ```
+CORTE:   01-oct-2026 (corte 36, color de Coraje corregido, SIN DESPLEGAR)
+SOBRE:   `ac479cd` (corte 35)
+RAMA:    main
+UNIDAD:  U17 · MODO CORAJE, color. El usuario lo vio desplegado y el lienzo
+         navy entero no le convenció. Ahora en Coraje pasan a navy solo la
+         barra superior y la fila de pestañas (continúan la columna de
+         Conecta), y el lienzo se tiñe apenas (`#edf0f8`); tarjetas, texto,
+         botones y estados quedan como siempre (`design/sistema-helpdesk.md`
+         §5.2). La topbar tiene tinta y foco propios (`shell.topbarInk`,
+         `topbarFocus`, `focusRingTopbar`) porque sus menús cuelgan de ella; la
+         fila de pestañas recibe los tokens redefinidos (`data-shell-band`).
+         Legal y Contabilidad, solo en Coraje, toman su tinta clara como
+         acento. También decidido: U18, dominio `soporte.rbgct.cloud` para
+         clientes (plan), sin construir.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 188/188 (la prueba de la
+         paleta del modo, reescrita para los tres bloques), `next build` y CSS
+         generado con los bloques. **Sin ejercitar en el navegador.**
+EJERCITADO (corte 35, 01-oct): migración `20261001100000_rol_redirector`
+         aplicada (16:10); felipezuluaga@ con `REDIRECTOR`. El usuario probó
+         el modo con todos los empleados de prueba: ven los tickets de clientes
+         en Coraje.
+SIGUE:   ver el color nuevo; paso 5 del guion (portal) con Juan Felipe
+         redirigiendo; la condición de cierre de U17 (plan); después, los
+         adjuntos de U7.
+
+--- Corte 35, para contexto:
 CORTE:   01-oct-2026 (corte 35, U17 modo Coraje, SIN DESPLEGAR)
 SOBRE:   `476fe75` (corte 34)
 RAMA:    main

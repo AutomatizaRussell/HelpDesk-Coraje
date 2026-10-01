@@ -280,24 +280,28 @@ atenuada no alcanza 3:1; la sidebar, último paso si se decide.
 
 ### 5.2 `DECISIÓN` (01-oct-2026, U17) Modo Coraje
 
-Un modo oscuro de marca para el trabajo con clientes (`specs/tickets.md` §13): lienzo
-navy, superficies de navy algo más claro y texto claro, con la misma estructura y el
-mismo acento del área. El shell pone `data-mode="coraje"` en su raíz y `globals.css`
-redefine, con el mismo nombre, cada variable que cambia (`coraje` en el tema). Ninguna
-vista sabe en qué modo está.
+El trabajo con clientes (`specs/tickets.md` §13) cambia el **marco**, no el contenido:
+la barra superior y la fila de pestañas pasan a navy, continuando la columna de
+Conecta, y el lienzo se tiñe apenas de azul (`#edf0f8`). Tarjetas, texto, botones,
+estados y acentos de área siguen igual. El shell pone `data-mode="coraje"` en su raíz y
+`globals.css` redefine, con el mismo nombre, cada variable que cambia (`coraje` en el
+tema): ninguna vista sabe en qué modo está.
 
-- **Neutros:** blanco sobre navy a una opacidad fija (`brandOverNavy`), no tintas del
-  manual, que solo las define sobre blanco.
-- **Se invierten** el botón principal (blanco con texto navy), el foco (blanco), los
-  estados (sus versiones claras) y la topbar y las pestañas, que se funden con las
-  superficies. La barra propia usa el logotipo blanco.
-- **Legal y Contabilidad** toman su tinta aprobada más clara (navy al 40 %, magenta al
-  60 %): sobre navy, su color pleno da 1:1 y 2,2:1. Los demás acentos no cambian.
-- **Transición:** el lienzo, las barras y las superficies cambian de color con
-  `--hd-motion-normal`; el movimiento reducido la anula.
+- **Primera versión, retirada el mismo día tras verla:** lienzo y tarjetas en navy,
+  como un modo oscuro. Pesaba, tarjeta y lienzo apenas se separaban (1,2:1) y cambiaba
+  todo, en contra de «que en esencia cambie poco».
+- **La topbar** usa variables propias (`shell.topbarInk`, `topbarFocus`): sus menús
+  cuelgan de ella y no deben volverse navy. **La fila de pestañas** (`data-shell-band`)
+  recibe redefinidos los tokens de siempre solo dentro de ella. La barra propia usa el
+  logotipo blanco.
+- **Legal y Contabilidad**, solo en este modo, toman su tinta aprobada más clara como
+  acento (navy al 40 %, magenta al 60 %): sobre navy su color pleno da 1:1 y 2,2:1. El
+  punto del área del ticket no cambia, porque está sobre blanco.
+- **Transición:** lienzo y barras cambian de color con `--hd-motion-normal`; el
+  movimiento reducido la anula.
 
-`coraje-palette.test.mts` exige cada clave en el tema base, el bloque CSS completo y
-los contrastes (texto ≥ 4,5:1; marcas de área y foco ≥ 3:1).
+`coraje-palette.test.mts` exige cada clave en el tema base, los tres bloques CSS
+completos y los contrastes (texto ≥ 4,5:1; acentos y foco ≥ 3:1).
 
 ## 6. Vistas que el contrato tiene que sostener
 

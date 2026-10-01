@@ -1,19 +1,11 @@
 import { brandOverNavy, brandPrimitives, tint } from "../foundations/brand";
 import { typography } from "../foundations/typography";
 
-// Neutros del modo Coraje (U17): blanco sobre navy a distintas opacidades. Se
-// nombran aquí porque la topbar y el menú del avatar repiten los de la
-// superficie, y el valor tiene que ser el mismo.
-const corajeSurface = brandOverNavy(brandPrimitives.white, 0.08);
-const corajeSurfaceSunken = brandOverNavy(brandPrimitives.white, 0.04);
-const corajeLine = brandOverNavy(brandPrimitives.white, 0.18);
-const corajeInkMuted = brandOverNavy(brandPrimitives.white, 0.68);
-const corajeDanger = "#fda29b";
-const corajeDangerSurface = brandOverNavy("#f04438", 0.22);
-// Navy y magenta no se distinguen sobre navy (1:1 y 2,2:1): en Coraje, Legal y
-// Contabilidad toman su tinta aprobada más clara que se lee con tinta navy.
-const corajeLegalMark = tint("navy", 40);
-const corajeContabilidadMark = tint("mindMagenta", 60);
+// Marco navy del modo Coraje (U17): la barra superior y la fila de pestañas
+// comparten estos valores, así que se nombran una vez.
+const corajeBandLine = brandOverNavy(brandPrimitives.white, 0.14);
+const corajeBandMuted = brandOverNavy(brandPrimitives.white, 0.72);
+const corajeBandHover = brandOverNavy(brandPrimitives.white, 0.1);
 
 /**
  * Tema de HelpDesk: la asignación concreta de cada decisión visual.
@@ -184,6 +176,11 @@ export const helpdeskTheme = {
     topbarLine: "#e2e8f0",
     topbarMuted: "#64748b",
     controlHoverSurface: "#f1f5f9",
+    // Texto principal y foco de la topbar. Son el navy de siempre; existen
+    // aparte porque el modo Coraje pinta la topbar en navy (U17) sin tocar
+    // el texto ni el foco del contenido.
+    topbarInk: brandPrimitives.navy,
+    topbarFocus: brandPrimitives.navy,
 
     // Menú del avatar.
     menuLine: "#e2e8f0",
@@ -231,71 +228,58 @@ export const helpdeskTheme = {
 
   /**
    * Modo Coraje (U17, decisión del usuario del 01-oct-2026): el trabajo con
-   * clientes en la misma aplicación, como un modo oscuro de marca. Lienzo
-   * navy, superficies de navy algo más claro y texto claro; la estructura y
-   * el acento del área de quien entra no cambian.
+   * clientes en la misma aplicación, como un modo claro u oscuro. Cambia el
+   * **marco**, no el contenido: la barra superior y la fila de pestañas pasan
+   * a navy, continuando la columna de Conecta, y el lienzo se tiñe apenas de
+   * azul. Tarjetas, texto, botones y estados no cambian («que en esencia
+   * cambie poco», corregido el mismo día tras verlo: el lienzo navy entero
+   * pesaba y no se distinguía de las tarjetas).
    *
-   * Cada clave **redefine la variable del mismo nombre** del tema base dentro
-   * de `[data-mode="coraje"]` (`globals.css`): `coraje.color.canvas` es el
-   * `color.canvas` de este modo. No hay variables nuevas que consumir: una
-   * vista que usa `bg-surface` se pinta bien en los dos modos sin saber en
-   * cuál está. `design-system/coraje-palette.test.mts` exige que cada clave
-   * exista en el tema base, que el bloque CSS las redefina todas y solo esas,
-   * y mide los contrastes.
+   * Cuatro grupos, cada uno con su selector en `globals.css`:
    *
-   * Lo que no aparece aquí no cambia: el shell navy de la réplica de Conecta,
-   * el acento de cada área (salvo Legal y Contabilidad, que sobre navy no se
-   * verían) y `info`, que es el mismo Sky Blue.
+   * - `color` y `shell`, en `[data-mode="coraje"]`: cada clave redefine la
+   *   variable del mismo nombre del tema base (`coraje.color.canvas` es el
+   *   `color.canvas` del modo).
+   * - `band`, en `[data-mode="coraje"] [data-shell-band]`: la fila de
+   *   pestañas, que reutiliza los componentes de siempre (`bg-surface`,
+   *   `text-heading`…), los recibe redefinidos solo dentro de ella. La topbar
+   *   no puede hacer lo mismo porque sus menús cuelgan de ella y quedarían
+   *   navy; usa sus propias variables (`shell.topbar*`).
+   * - `accent`, en `[data-mode="coraje"][data-area="…"]`: Legal y
+   *   Contabilidad no se ven sobre navy (1:1 y 2,2:1) y toman su tinta
+   *   aprobada más clara, con tinta navy encima.
+   *
+   * `design-system/coraje-palette.test.mts` exige que cada clave exista en el
+   * tema base, que los bloques CSS las redefinan todas y solo esas, y mide los
+   * contrastes.
    */
   coraje: {
     color: {
-      canvas: brandPrimitives.navy,
-      surface: corajeSurface,
-      surfaceSunken: corajeSurfaceSunken,
-      ink: brandOverNavy(brandPrimitives.white, 0.9),
-      inkMuted: corajeInkMuted,
-      heading: brandPrimitives.white,
-      line: corajeLine,
-      lineStrong: brandOverNavy(brandPrimitives.white, 0.4),
-      infoSurface: brandOverNavy(brandPrimitives.skyBlue, 0.3),
-      // Sobre navy, el anillo navy desaparece; el blanco da 15:1.
-      focus: brandPrimitives.white,
-      // La acción principal se invierte: botón blanco con texto navy.
-      action: brandPrimitives.white,
-      actionHover: tint("navy", 20),
-      onAction: brandPrimitives.navy,
-      // Estados: las versiones claras, legibles sobre navy y sobre su fondo.
-      danger: corajeDanger,
-      dangerSurface: corajeDangerSurface,
-      warning: "#fec84b",
-      warningSurface: brandOverNavy("#f79009", 0.22),
-      success: "#75e0a7",
-      successSurface: brandOverNavy("#17b26a", 0.22),
-    },
-    area: {
-      revisoria: { surface: brandOverNavy(brandPrimitives.earthOrange, 0.32) },
-      contabilidad: {
-        mark: corajeContabilidadMark,
-        surface: brandOverNavy(corajeContabilidadMark, 0.32),
-        onMark: brandPrimitives.navy,
-      },
-      bpo: { surface: brandOverNavy(brandPrimitives.seaGreen, 0.32) },
-      legal: { mark: corajeLegalMark, surface: brandOverNavy(corajeLegalMark, 0.32), onMark: brandPrimitives.navy },
-      general: { surface: brandOverNavy(brandPrimitives.skyBlue, 0.32) },
+      // Neutro, como el lienzo de siempre: un punto más azul.
+      canvas: "#edf0f8",
     },
     shell: {
-      // La topbar y la fila de pestañas se funden con las superficies.
-      topbarSurface: corajeSurface,
-      topbarLine: corajeLine,
-      topbarMuted: corajeInkMuted,
-      controlHoverSurface: brandOverNavy(brandPrimitives.white, 0.14),
-      menuLine: corajeLine,
-      menuHeaderSurface: corajeSurfaceSunken,
-      menuDangerInk: corajeDanger,
-      menuDangerHoverInk: "#fecdca",
-      menuDangerHoverSurface: corajeDangerSurface,
-      scrollbarThumb: brandOverNavy(brandPrimitives.white, 0.3),
-      scrollbarThumbHover: brandOverNavy(brandPrimitives.white, 0.45),
+      topbarSurface: brandPrimitives.navy,
+      topbarLine: corajeBandLine,
+      topbarInk: brandPrimitives.white,
+      topbarMuted: corajeBandMuted,
+      topbarFocus: brandPrimitives.white,
+      controlHoverSurface: corajeBandHover,
+    },
+    band: {
+      surface: brandPrimitives.navy,
+      surfaceSunken: corajeBandHover,
+      line: corajeBandLine,
+      heading: brandPrimitives.white,
+      inkMuted: corajeBandMuted,
+      // La opción activa del interruptor: el tinte del área sería claro
+      // debajo de texto blanco.
+      accentSurface: brandOverNavy(brandPrimitives.white, 0.18),
+      focus: brandPrimitives.white,
+    },
+    accent: {
+      legal: { accent: tint("navy", 40), onAccent: brandPrimitives.navy },
+      contabilidad: { accent: tint("mindMagenta", 60), onAccent: brandPrimitives.navy },
     },
   },
 

@@ -6,7 +6,7 @@ import { useMemo, useRef, type MouseEvent, type ReactNode } from "react";
 import { BrandIsotype } from "../../components/BrandIsotype";
 import { BrandLogo } from "../../components/BrandLogo";
 import { iconStroke } from "../../foundations/iconography";
-import { colorTransition, focusRing, focusRingInverse, modeTransition } from "../../recipes/interaction";
+import { colorTransition, focusRingInverse, focusRingTopbar, modeTransition } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 import { ModuleNav, type ModuleNavItem } from "../module-nav/ModuleNav";
 import type { ColorMode } from "../mode-switch/ModeSwitch";
@@ -28,7 +28,7 @@ import {
  *
  * - **Columna replegada** (≥ lg): navy, con el isotipo blanco arriba y los
  *   iconos del menú de Conecta, como en Conecta.
- * - **Topbar**: blanca y sin franja, como la de Conecta: hamburguesa,
+ * - **Topbar**: blanca (navy en modo Coraje, U17) y sin franja, como la de Conecta: hamburguesa,
  *   antetítulo y título, rol y nombre, y el avatar con su menú. Sin logotipo:
  *   la marca va en el sidebar. Antes del separador, la campana de avisos de
  *   HelpDesk (U15): es de este módulo, no parte de la réplica de Conecta.
@@ -145,9 +145,9 @@ export function ConectaShell({
                   aria-haspopup="dialog"
                   aria-label="Abrir menú"
                   className={cn(
-                    "rounded-shell-item p-2 text-shell-topbar-muted hover:bg-shell-control-hover-surface hover:text-heading",
+                    "rounded-shell-item p-2 text-shell-topbar-muted hover:bg-shell-control-hover-surface hover:text-shell-topbar-ink",
                     colorTransition,
-                    focusRing,
+                    focusRingTopbar,
                   )}
                 >
                   <Menu aria-hidden="true" className="size-5" strokeWidth={iconStroke.regular} />
@@ -156,7 +156,7 @@ export function ConectaShell({
                   <p className="hidden text-2xs font-black uppercase tracking-widest text-shell-topbar-muted sm:block">
                     {moduleName}
                   </p>
-                  <h1 className="truncate text-md font-black tracking-tight text-heading lg:text-lg">{title}</h1>
+                  <h1 className="truncate text-md font-black tracking-tight text-shell-topbar-ink lg:text-lg">{title}</h1>
                 </div>
               </div>
 
@@ -164,7 +164,7 @@ export function ConectaShell({
                 {noticeBell}
                 <span aria-hidden="true" className="hidden h-10 w-px bg-shell-topbar-line sm:block" />
                 <div className="hidden text-right sm:block">
-                  <p className="max-w-48 truncate text-base font-bold text-heading">{CONECTA_ROLE_LABEL}</p>
+                  <p className="max-w-48 truncate text-base font-bold text-shell-topbar-ink">{CONECTA_ROLE_LABEL}</p>
                   <p className="mt-0.5 max-w-56 truncate text-xs text-shell-topbar-muted">{displayName}</p>
                 </div>
                 <UserMenu

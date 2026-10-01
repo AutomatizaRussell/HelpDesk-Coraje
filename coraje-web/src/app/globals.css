@@ -130,6 +130,8 @@
   --hd-shell-topbar-line: #e2e8f0;
   --hd-shell-topbar-muted: #64748b;
   --hd-shell-control-hover-surface: #f1f5f9;
+  --hd-shell-topbar-ink: #001871;
+  --hd-shell-topbar-focus: #001871;
   --hd-shell-menu-line: #e2e8f0;
   --hd-shell-menu-header-surface: #f8fafc;
   --hd-shell-menu-shadow: 0 16px 48px -16px rgba(15, 23, 42, 0.22);
@@ -139,47 +141,26 @@
   --hd-shell-scrollbar-thumb: #cbd5e1;
   --hd-shell-scrollbar-thumb-hover: #94a3b8;
 
-  /* Modo Coraje (U17, themes/helpdesk.ts `coraje`): los valores que el bloque
-     [data-mode="coraje"] pone en lugar de los de arriba. */
-  --hd-coraje-color-canvas: #001871;
-  --hd-coraje-color-surface: #142a7c;
-  --hd-coraje-color-surface-sunken: #0a2177;
-  --hd-coraje-color-ink: #e6e8f1;
-  --hd-coraje-color-ink-muted: #adb5d2;
-  --hd-coraje-color-heading: #ffffff;
-  --hd-coraje-color-line: #2e428b;
-  --hd-coraje-color-line-strong: #6674aa;
-  --hd-coraje-color-info-surface: #00448d;
-  --hd-coraje-color-focus: #ffffff;
-  --hd-coraje-color-action: #ffffff;
-  --hd-coraje-color-action-hover: #ccd1e3;
-  --hd-coraje-color-on-action: #001871;
-  --hd-coraje-color-danger: #fda29b;
-  --hd-coraje-color-danger-surface: #352264;
-  --hd-coraje-color-warning: #fec84b;
-  --hd-coraje-color-warning-surface: #36325a;
-  --hd-coraje-color-success: #75e0a7;
-  --hd-coraje-color-success-surface: #053a6f;
-  --hd-coraje-area-revisoria-surface: #4c3d4d;
-  --hd-coraje-area-contabilidad-mark: #c177c1;
-  --hd-coraje-area-contabilidad-surface: #3e368b;
-  --hd-coraje-area-contabilidad-on-mark: #001871;
-  --hd-coraje-area-bpo-surface: #004d86;
-  --hd-coraje-area-legal-mark: #99a3c6;
-  --hd-coraje-area-legal-surface: #31448c;
-  --hd-coraje-area-legal-on-mark: #001871;
-  --hd-coraje-area-general-surface: #00468f;
-  --hd-coraje-shell-topbar-surface: #142a7c;
-  --hd-coraje-shell-topbar-line: #2e428b;
-  --hd-coraje-shell-topbar-muted: #adb5d2;
-  --hd-coraje-shell-control-hover-surface: #243885;
-  --hd-coraje-shell-menu-line: #2e428b;
-  --hd-coraje-shell-menu-header-surface: #0a2177;
-  --hd-coraje-shell-menu-danger-ink: #fda29b;
-  --hd-coraje-shell-menu-danger-hover-ink: #fecdca;
-  --hd-coraje-shell-menu-danger-hover-surface: #352264;
-  --hd-coraje-shell-scrollbar-thumb: #4d5d9c;
-  --hd-coraje-shell-scrollbar-thumb-hover: #7380b1;
+  /* Modo Coraje (U17, themes/helpdesk.ts `coraje`): los valores que ponen en
+     su lugar los bloques [data-mode="coraje"] de abajo. */
+  --hd-coraje-color-canvas: #edf0f8;
+  --hd-coraje-shell-topbar-surface: #001871;
+  --hd-coraje-shell-topbar-line: #243885;
+  --hd-coraje-shell-topbar-ink: #ffffff;
+  --hd-coraje-shell-topbar-muted: #b8bed7;
+  --hd-coraje-shell-topbar-focus: #ffffff;
+  --hd-coraje-shell-control-hover-surface: #1a2f7f;
+  --hd-coraje-band-surface: #001871;
+  --hd-coraje-band-surface-sunken: #1a2f7f;
+  --hd-coraje-band-line: #243885;
+  --hd-coraje-band-heading: #ffffff;
+  --hd-coraje-band-ink-muted: #b8bed7;
+  --hd-coraje-band-accent-surface: #2e428b;
+  --hd-coraje-band-focus: #ffffff;
+  --hd-coraje-accent-legal-accent: #99a3c6;
+  --hd-coraje-accent-legal-on-accent: #001871;
+  --hd-coraje-accent-contabilidad-accent: #c177c1;
+  --hd-coraje-accent-contabilidad-on-accent: #001871;
 
   --hd-stripe-0: #001871;
   --hd-stripe-1: #981d97;
@@ -235,53 +216,43 @@
   --hd-color-on-accent: var(--hd-area-general-on-mark);
 }
 
-/* Modo Coraje (U17). El shell pone `data-mode="coraje"` en su raíz y aquí se
-   redefine cada variable que cambia en ese modo, con el mismo nombre: ninguna
-   vista sabe en qué modo está. También en `:root` mientras el shell esté en
-   la página, para que el fondo de `html` y su barra de desplazamiento, que
-   quedan fuera del shell, sigan al modo. Va después de `[data-area]`: Legal y
-   Contabilidad cambian de color en este modo, y el acento los lee de aquí. */
+/* Modo Coraje (U17). El shell pone `data-mode="coraje"` en su raíz y estos
+   bloques redefinen, con el mismo nombre, cada variable que cambia en ese
+   modo: ninguna vista sabe en cuál está.
+
+   1. El lienzo y la topbar. También en `:root` mientras el shell esté en la
+      página, para que el fondo de `html`, que queda fuera del shell, siga al
+      modo. */
 [data-mode="coraje"],
 :root:has([data-mode="coraje"]) {
   --hd-color-canvas: var(--hd-coraje-color-canvas);
-  --hd-color-surface: var(--hd-coraje-color-surface);
-  --hd-color-surface-sunken: var(--hd-coraje-color-surface-sunken);
-  --hd-color-ink: var(--hd-coraje-color-ink);
-  --hd-color-ink-muted: var(--hd-coraje-color-ink-muted);
-  --hd-color-heading: var(--hd-coraje-color-heading);
-  --hd-color-line: var(--hd-coraje-color-line);
-  --hd-color-line-strong: var(--hd-coraje-color-line-strong);
-  --hd-color-info-surface: var(--hd-coraje-color-info-surface);
-  --hd-color-focus: var(--hd-coraje-color-focus);
-  --hd-color-action: var(--hd-coraje-color-action);
-  --hd-color-action-hover: var(--hd-coraje-color-action-hover);
-  --hd-color-on-action: var(--hd-coraje-color-on-action);
-  --hd-color-danger: var(--hd-coraje-color-danger);
-  --hd-color-danger-surface: var(--hd-coraje-color-danger-surface);
-  --hd-color-warning: var(--hd-coraje-color-warning);
-  --hd-color-warning-surface: var(--hd-coraje-color-warning-surface);
-  --hd-color-success: var(--hd-coraje-color-success);
-  --hd-color-success-surface: var(--hd-coraje-color-success-surface);
-  --hd-area-revisoria-surface: var(--hd-coraje-area-revisoria-surface);
-  --hd-area-contabilidad-mark: var(--hd-coraje-area-contabilidad-mark);
-  --hd-area-contabilidad-surface: var(--hd-coraje-area-contabilidad-surface);
-  --hd-area-contabilidad-on-mark: var(--hd-coraje-area-contabilidad-on-mark);
-  --hd-area-bpo-surface: var(--hd-coraje-area-bpo-surface);
-  --hd-area-legal-mark: var(--hd-coraje-area-legal-mark);
-  --hd-area-legal-surface: var(--hd-coraje-area-legal-surface);
-  --hd-area-legal-on-mark: var(--hd-coraje-area-legal-on-mark);
-  --hd-area-general-surface: var(--hd-coraje-area-general-surface);
   --hd-shell-topbar-surface: var(--hd-coraje-shell-topbar-surface);
   --hd-shell-topbar-line: var(--hd-coraje-shell-topbar-line);
+  --hd-shell-topbar-ink: var(--hd-coraje-shell-topbar-ink);
   --hd-shell-topbar-muted: var(--hd-coraje-shell-topbar-muted);
+  --hd-shell-topbar-focus: var(--hd-coraje-shell-topbar-focus);
   --hd-shell-control-hover-surface: var(--hd-coraje-shell-control-hover-surface);
-  --hd-shell-menu-line: var(--hd-coraje-shell-menu-line);
-  --hd-shell-menu-header-surface: var(--hd-coraje-shell-menu-header-surface);
-  --hd-shell-menu-danger-ink: var(--hd-coraje-shell-menu-danger-ink);
-  --hd-shell-menu-danger-hover-ink: var(--hd-coraje-shell-menu-danger-hover-ink);
-  --hd-shell-menu-danger-hover-surface: var(--hd-coraje-shell-menu-danger-hover-surface);
-  --hd-shell-scrollbar-thumb: var(--hd-coraje-shell-scrollbar-thumb);
-  --hd-shell-scrollbar-thumb-hover: var(--hd-coraje-shell-scrollbar-thumb-hover);
+}
+/* 2. La fila de pestañas (`data-shell-band`): sus componentes usan los
+      tokens de siempre, redefinidos solo dentro de ella. */
+[data-mode="coraje"] [data-shell-band] {
+  --hd-color-surface: var(--hd-coraje-band-surface);
+  --hd-color-surface-sunken: var(--hd-coraje-band-surface-sunken);
+  --hd-color-line: var(--hd-coraje-band-line);
+  --hd-color-heading: var(--hd-coraje-band-heading);
+  --hd-color-ink-muted: var(--hd-coraje-band-ink-muted);
+  --hd-color-accent-surface: var(--hd-coraje-band-accent-surface);
+  --hd-color-focus: var(--hd-coraje-band-focus);
+}
+/* 3. Las áreas cuyo acento no se ve sobre navy. Va después de [data-area]
+      y con más especificidad: gana sobre el acento de siempre. */
+[data-mode="coraje"][data-area="legal"] {
+  --hd-color-accent: var(--hd-coraje-accent-legal-accent);
+  --hd-color-on-accent: var(--hd-coraje-accent-legal-on-accent);
+}
+[data-mode="coraje"][data-area="contabilidad"] {
+  --hd-color-accent: var(--hd-coraje-accent-contabilidad-accent);
+  --hd-color-on-accent: var(--hd-coraje-accent-contabilidad-on-accent);
 }
 
 @theme inline {
@@ -373,6 +344,8 @@
   --color-shell-topbar-line: var(--hd-shell-topbar-line);
   --color-shell-topbar-muted: var(--hd-shell-topbar-muted);
   --color-shell-control-hover-surface: var(--hd-shell-control-hover-surface);
+  --color-shell-topbar-ink: var(--hd-shell-topbar-ink);
+  --color-shell-topbar-focus: var(--hd-shell-topbar-focus);
   --color-shell-menu-line: var(--hd-shell-menu-line);
   --color-shell-menu-header-surface: var(--hd-shell-menu-header-surface);
   --color-shell-menu-danger-ink: var(--hd-shell-menu-danger-ink);

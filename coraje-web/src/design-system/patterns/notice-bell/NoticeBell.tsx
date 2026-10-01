@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useId, type ReactNode, type ToggleEvent } from "react";
 
 import { iconStroke } from "../../foundations/iconography";
-import { colorTransition, focusRing } from "../../recipes/interaction";
+import { colorTransition, focusRing, focusRingTopbar } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 import { shellPopoverAnchors } from "../user-menu/UserMenu";
 
@@ -59,16 +59,16 @@ export function NoticeBell({ count, anchor, allHref, onOpen, children }: NoticeB
         aria-label={label}
         title="Avisos"
         className={cn(
-          "relative flex size-10 shrink-0 items-center justify-center rounded-pill text-shell-topbar-muted hover:bg-shell-control-hover-surface hover:text-heading",
+          "relative flex size-10 shrink-0 items-center justify-center rounded-pill text-shell-topbar-muted hover:bg-shell-control-hover-surface hover:text-shell-topbar-ink",
           colorTransition,
-          focusRing,
+          focusRingTopbar,
         )}
       >
         <Bell aria-hidden="true" className="size-5" strokeWidth={iconStroke.regular} />
         {count > 0 ? (
           <span
             aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-pill bg-accent px-1 text-2xs font-bold tabular-nums text-on-accent ring-2 ring-surface"
+            className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-pill bg-accent px-1 text-2xs font-bold tabular-nums text-on-accent ring-2 ring-shell-topbar-surface"
           >
             {count > MAX_BADGE ? `${MAX_BADGE}+` : count}
           </span>

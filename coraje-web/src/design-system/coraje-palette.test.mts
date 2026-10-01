@@ -9,35 +9,23 @@ import { helpdeskTheme } from "./themes/helpdesk";
 
 /**
  * Paleta del modo Coraje (U17): que cada clave redefina una variable que
- * existe, que `globals.css` las redefina todas y solo esas, y que lo que se
- * lee en ese modo se lea. Mismo papel que `area-palette.test.mts` para el
- * color por área.
+ * existe, que `globals.css` las redefina todas y solo esas en su selector, y
+ * que lo que se lee en ese modo se lea. Mismo papel que
+ * `area-palette.test.mts` para el color por área.
  */
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(path.resolve(THIS_DIR, "../app/globals.css"), "utf8").replace(/\r\n/g, "\n");
+const { coraje } = helpdeskTheme;
 
 const kebab = (key: string) => key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+const escape = (text: string) => text.replace(/[[\]().*+?^$|{}\\]/g, "\\$&");
 
-/** `{ color: { canvas: … } }` → `[["color", "canvas"], …]`. */
-function leafPaths(node: object, prefix: string[] = []): string[][] {
-  return Object.entries(node).flatMap(([key, value]) =>
-    value !== null && typeof value === "object" ? leafPaths(value, [...prefix, key]) : [[...prefix, key]],
-  );
-}
-
-function at(node: unknown, keys: readonly string[]): unknown {
-  return keys.reduce<unknown>((current, key) => (current as Record<string, unknown> | undefined)?.[key], node);
-}
-
-const corajePaths = leafPaths(helpdeskTheme.coraje);
-const variable = (keys: readonly string[]) => keys.map(kebab).join("-");
-
-/** El valor que una variable toma en modo Coraje: el redefinido, o el de siempre. */
-function inCoraje(...keys: string[]): string {
-  const value = at(helpdeskTheme.coraje, keys) ?? at(helpdeskTheme, keys);
-  assert.equal(typeof value, "string", keys.join("."));
-  return value as string;
+/** Las redefiniciones `--destino ← --origen` de un bloque CSS, ordenadas. */
+function redefinitions(selector: string): string[] {
+  const block = css.match(new RegExp(`${escape(selector)}\\s*\\{([^}]*)\\}`))?.[1];
+  assert.ok(block, `Falta el bloque ${selector} en globals.css`);
+  return [...block.matchAll(/(--hd-[a-z0-9-]+):\s*var\((--hd-[a-z0-9-]+)\);/g)].map(([, name, source]) => `${name} ← ${source}`).sort();
 }
 
 /** Luminancia relativa de WCAG 2.x. */
@@ -55,52 +43,63 @@ function assertContrast(ink: string, background: string, minimum: number, label:
   assert.ok(ratio >= minimum, `${label}: ${ratio.toFixed(2)}:1, mínimo ${minimum}:1`);
 }
 
+/** El acento de un área en modo Coraje: el redefinido, o la marca de siempre. */
+function corajeAccent(area: (typeof AREA_THEME_KEYS)[number]) {
+  const override = (coraje.accent as Partial<Record<string, { accent: string; onAccent: string }>>)[area];
+  return override ?? { accent: helpdeskTheme.area[area].mark, onAccent: helpdeskTheme.area[area].onMark };
+}
+
 test("cada clave del modo redefine una variable que existe en el tema base", () => {
-  for (const keys of corajePaths) assert.equal(typeof at(helpdeskTheme, keys), "string", `coraje.${keys.join(".")} no existe fuera del modo`);
+  for (const key of Object.keys(coraje.color)) assert.ok(key in helpdeskTheme.color, `color.${key}`);
+  for (const key of Object.keys(coraje.shell)) assert.ok(key in helpdeskTheme.shell, `shell.${key}`);
+  for (const key of Object.keys(coraje.band)) assert.ok(key in helpdeskTheme.color, `band.${key} no es un color`);
+  for (const area of Object.keys(coraje.accent)) assert.ok((AREA_THEME_KEYS as readonly string[]).includes(area), area);
 });
 
-test("globals.css redefine en [data-mode=\"coraje\"] exactamente las claves del modo", () => {
-  const block = css.match(/\[data-mode="coraje"\],\s*:root:has\(\[data-mode="coraje"\]\)\s*\{([^}]*)\}/)?.[1];
-  assert.ok(block, 'Falta el bloque [data-mode="coraje"] en globals.css');
-  const declared = [...block.matchAll(/(--hd-[a-z0-9-]+):\s*var\((--hd-[a-z0-9-]+)\);/g)].map(([, name, source]) => `${name} ← ${source}`);
-  const expected = corajePaths.map((keys) => `--hd-${variable(keys)} ← --hd-coraje-${variable(keys)}`);
-  assert.deepEqual(declared.sort(), expected.sort());
-});
+test("globals.css redefine en cada bloque exactamente las claves del modo", () => {
+  const sameName = (group: "color" | "shell") =>
+    Object.keys(coraje[group]).map((key) => `--hd-${group}-${kebab(key)} ← --hd-coraje-${group}-${kebab(key)}`);
+  assert.deepEqual(redefinitions('[data-mode="coraje"],\n:root:has([data-mode="coraje"])'), [...sameName("color"), ...sameName("shell")].sort());
 
-test("el texto se lee sobre el lienzo y las superficies (≥ 4,5:1)", () => {
-  for (const ink of ["ink", "inkMuted", "heading"]) {
-    for (const background of ["canvas", "surface", "surfaceSunken"]) {
-      assertContrast(inCoraje("color", ink), inCoraje("color", background), 4.5, `${ink} sobre ${background}`);
-    }
+  const band = Object.keys(coraje.band).map((key) => `--hd-color-${kebab(key)} ← --hd-coraje-band-${kebab(key)}`);
+  assert.deepEqual(redefinitions('[data-mode="coraje"] [data-shell-band]'), band.sort());
+
+  for (const [area, keys] of Object.entries(coraje.accent)) {
+    const expected = Object.keys(keys).map((key) => `--hd-color-${kebab(key)} ← --hd-coraje-accent-${area}-${kebab(key)}`);
+    assert.deepEqual(redefinitions(`[data-mode="coraje"][data-area="${area}"]`), expected.sort());
   }
 });
 
-test("los estados se leen sobre su fondo y sobre la superficie (≥ 4,5:1)", () => {
-  for (const tone of ["danger", "warning", "success"]) {
-    assertContrast(inCoraje("color", tone), inCoraje("color", `${tone}Surface`), 4.5, `${tone} sobre su fondo`);
-    assertContrast(inCoraje("color", tone), inCoraje("color", "surface"), 4.5, `${tone} sobre surface`);
+test("el contenido se lee sobre el lienzo teñido (≥ 4,5:1)", () => {
+  for (const ink of ["ink", "inkMuted", "heading", "danger", "warning", "success"] as const) {
+    assertContrast(helpdeskTheme.color[ink], coraje.color.canvas, 4.5, `${ink} sobre el lienzo`);
   }
-  assertContrast(inCoraje("color", "heading"), inCoraje("color", "infoSurface"), 4.5, "heading sobre infoSurface");
 });
 
-test("cada área se ve sobre navy y su tinta se lee sobre ella", () => {
+test("la topbar navy se lee y su foco se ve", () => {
+  const { topbarSurface, topbarInk, topbarMuted, topbarFocus, controlHoverSurface } = coraje.shell;
+  for (const background of [topbarSurface, controlHoverSurface]) {
+    assertContrast(topbarInk, background, 4.5, "título de la topbar");
+    assertContrast(topbarMuted, background, 4.5, "iconos de la topbar");
+  }
+  assertContrast(topbarFocus, topbarSurface, 3, "foco en la topbar");
+});
+
+test("la fila de pestañas navy se lee y su foco se ve", () => {
+  const { surface, surfaceSunken, heading, inkMuted, accentSurface, focus } = coraje.band;
+  for (const background of [surface, surfaceSunken, accentSurface]) {
+    assertContrast(heading, background, 4.5, "pestaña activa");
+    assertContrast(inkMuted, background, 4.5, "pestaña inactiva");
+  }
+  assertContrast(focus, surface, 3, "foco en las pestañas");
+});
+
+test("el acento de cada área se ve sobre el marco navy y su tinta se lee sobre él", () => {
   for (const area of AREA_THEME_KEYS) {
-    const mark = inCoraje("area", area, "mark");
-    // El punto y el avatar sobre el lienzo: componente no textual, 3:1.
-    assertContrast(mark, inCoraje("color", "canvas"), 3, `${area}: marca sobre el lienzo`);
-    assertContrast(mark, inCoraje("area", area, "onMark"), 4.5, `${area}: inicial sobre la marca`);
-    assertContrast(inCoraje("color", "heading"), inCoraje("area", area, "surface"), 4.5, `${area}: texto sobre la selección`);
+    const { accent, onAccent } = corajeAccent(area);
+    // Subrayado de la pestaña, avatar y número: componente no textual, 3:1.
+    assertContrast(accent, coraje.shell.topbarSurface, 3, `${area}: acento sobre la topbar`);
+    assertContrast(accent, coraje.band.surface, 3, `${area}: acento sobre las pestañas`);
+    assertContrast(onAccent, accent, 4.5, `${area}: inicial sobre el acento`);
   }
-});
-
-test("acción, foco, topbar y menú se leen en el modo", () => {
-  assertContrast(inCoraje("color", "onAction"), inCoraje("color", "action"), 4.5, "botón principal");
-  assertContrast(inCoraje("color", "onAction"), inCoraje("color", "actionHover"), 4.5, "botón principal al pasar el ratón");
-  for (const background of ["canvas", "surface"]) {
-    assertContrast(inCoraje("color", "focus"), inCoraje("color", background), 3, `foco sobre ${background}`);
-  }
-  assertContrast(inCoraje("shell", "topbarMuted"), inCoraje("shell", "topbarSurface"), 4.5, "iconos de la topbar");
-  assertContrast(inCoraje("shell", "topbarMuted"), inCoraje("shell", "controlHoverSurface"), 4.5, "icono con el ratón encima");
-  assertContrast(inCoraje("shell", "menuDangerInk"), inCoraje("color", "surface"), 4.5, "cerrar sesión en el menú");
-  assertContrast(inCoraje("shell", "menuDangerHoverInk"), inCoraje("shell", "menuDangerHoverSurface"), 4.5, "cerrar sesión con el ratón encima");
 });

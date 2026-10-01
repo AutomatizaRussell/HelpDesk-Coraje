@@ -21,7 +21,9 @@ import { cn } from "../../utilities/cn";
  * acento sobre blanco no alcanza el contraste de un indicador por sí solo.
  *
  * Al final de la fila va `trailing`: el interruptor de modo (U17), que no es
- * una sección más sino la forma de cambiar de qué tickets tratan todas.
+ * una sección más sino la forma de cambiar de qué tickets tratan todas. En
+ * modo Coraje la fila es navy: `data-shell-band` le redefine los tokens que
+ * usa (`globals.css`), así que este componente no sabe en qué modo está.
  *
  * `<Link>` y no `<a>`: son rutas de HelpDesk, y Link antepone el basePath.
  */
@@ -40,7 +42,7 @@ export function ModuleNav({ items, trailing }: { items: readonly ModuleNavItem[]
   const pathname = usePathname();
 
   return (
-    <nav aria-label="HelpDesk" className={cn("flex items-center gap-4 border-b border-line bg-surface pr-4 lg:pr-8", modeTransition)}>
+    <nav aria-label="HelpDesk" data-shell-band className={cn("flex items-center gap-4 border-b border-line bg-surface pr-4 lg:pr-8", modeTransition)}>
       <ul className="flex h-11 min-w-0 flex-1 items-stretch gap-6 overflow-x-auto px-4 lg:px-8">
         {items.map((item) => {
           const paths = item.activePaths ?? [item.href];

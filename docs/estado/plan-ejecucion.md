@@ -478,25 +478,40 @@ BPO, Legal, Administración), el acento, el avatar y el número de la campana to
 color; «Asignado» se ve igual en todas; la columna «Área y tipo» lleva el punto del área
 del ticket.
 
-### U17 · Modo Coraje — **construida el 01-oct-2026 (corte 35), sin desplegar**
+### U17 · Modo Coraje — **desplegada el 01-oct-2026 (corte 35); color corregido en el corte 36, sin desplegar**
 
 Coraje (el trabajo con clientes) como **modo** de la misma aplicación, al estilo de
 claro/oscuro, no como pestaña ni aplicación aparte, y que en esencia cambie poco para
 que el paso de uno a otro se lea como una transición suave. Decisiones del usuario: en
 modo Coraje cambian los tickets que se listan (los de clientes), aparecen sus secciones
-y la interfaz pasa a fondo navy con el mismo acento del área; el interruptor lo ve
+y la interfaz cambia de color con el mismo acento del área; el interruptor lo ve
 quien tiene tickets de clientes a su alcance o puede redirigir o administrar accesos
 (por permiso, no por rol). Condiciones de diseño: el modo no esconde trabajo (la
 campana es global, el interruptor lleva el número del otro modo, un enlace a un ticket
 abre su modo); la estructura de la bandeja y del detalle es la misma. El mismo día:
 `CLASIFICADOR` pasa a `REDIRECTOR` y la sección «Clasificación», a la vista «Por
 redirigir» de la bandeja de Coraje. Construido: `specs/tickets.md` §13,
-`specs/permisos.md` §4.7, `design/sistema-helpdesk.md` §5.2.
+`specs/permisos.md` §4.7, `design/sistema-helpdesk.md` §5.2. Corregido el mismo día
+tras verlo desplegado: el lienzo y las tarjetas en navy no convencieron al usuario; en
+Coraje pasan a navy solo la barra superior y las pestañas, y el contenido sigue claro.
 
 **Condición de cierre:** con el rol `REDIRECTOR`, Juan Felipe redirige desde «Por
 redirigir» un ticket radicado en el portal; quien lo recibe lo ve en su «Por atender»
 de Coraje, y el interruptor de HelpDesk le muestra el número; un enlace al ticket desde
-la campana lo abre en navy; alguien sin tickets de clientes no ve el interruptor.
+la campana lo abre en modo Coraje; alguien sin tickets de clientes no ve el interruptor.
+
+### U18 · Dominio de clientes — **nombre decidido el 01-oct-2026, sin construir**
+
+El portal de clientes sale del origen de Conecta a `soporte.rbgct.cloud` (decisión del
+usuario, «de momento»). Dos razones: un cliente no sabe qué es Conecta, y compartir
+origen con la intranet le da al portal externo el mismo almacenamiento del navegador
+que los empleados. **Los empleados se quedan en `conecta.rbgct.cloud/helpdesk`:** la
+entrada sin clics lee `gct_empleado` del `localStorage` de Conecta, que solo existe en
+su origen (`contexto-canonico.md` §1.1). Hace falta: el subdominio y su certificado
+(quien administre `rbgct.cloud`), el dominio en Coolify, una URL pública aparte para los
+correos del portal, la cookie del portal limitada a ese dominio, el perímetro rechazando
+allí las rutas de empleados y decidir si se quita `/helpdesk` de sus rutas. **Condición
+que la vuelve urgente:** invitar a un cliente real.
 
 ---
 
@@ -579,3 +594,7 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
 - 01-oct-2026 — U16 cerrada con la prueba del usuario. U17 construida (corte 35): modo
   Coraje, rol `REDIRECTOR` y vista «Por redirigir». **Cabeza de la cola: desplegar y
   ejercitar U17 junto con el portal (U8); después, los adjuntos de U7.**
+- 01-oct-2026 — U17 desplegada (corte 35); el color de Coraje se corrige a barra y
+  pestañas en navy (corte 36). U18 (dominio de clientes, `soporte.rbgct.cloud`)
+  decidida. **Cabeza de la cola: ejercitar U17 con el portal (U8); después, los
+  adjuntos de U7; U18 antes de invitar a un cliente real.**

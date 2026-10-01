@@ -4,7 +4,7 @@ import { LogOut } from "lucide-react";
 import { useId } from "react";
 
 import { iconStroke } from "../../foundations/iconography";
-import { colorTransition, focusRing } from "../../recipes/interaction";
+import { colorTransition, focusRing, focusRingTopbar } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 
 /**
@@ -52,7 +52,7 @@ export function UserMenu({
         className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-pill bg-accent text-base font-black text-on-accent hover:ring-2 hover:ring-accent-surface",
           colorTransition,
-          focusRing,
+          focusRingTopbar,
         )}
       >
         {initial}
@@ -76,7 +76,7 @@ export function UserMenu({
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-ink">{displayName}</p>
             {roleLabel ? (
-              <p className="mt-0.5 truncate text-2xs font-bold uppercase tracking-wider text-shell-topbar-muted">
+              <p className="mt-0.5 truncate text-2xs font-bold uppercase tracking-wider text-ink-muted">
                 {roleLabel}
               </p>
             ) : null}
