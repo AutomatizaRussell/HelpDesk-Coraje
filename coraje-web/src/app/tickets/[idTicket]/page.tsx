@@ -4,10 +4,12 @@ import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
 import { iconStroke } from "@/design-system/foundations/iconography";
+import { AreaName } from "@/design-system/patterns/area/AreaName";
 import { MailStateBadge, SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
 import { focusRing } from "@/design-system/recipes/interaction";
 import { notice, sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
+import { areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate, formatDateTime, formatPriority } from "@/features/tickets/format";
 import { TabbedPanel, type TabbedPanelItem } from "@/design-system/patterns/tabbed-panel/TabbedPanel";
 import {
@@ -260,7 +262,7 @@ export default async function TicketDetailPage({
             <dl className="mt-3 divide-y divide-line">
               <Field label="Vence">{ticket.fechaLimite ? formatDate(ticket.fechaLimite) : "Sin fecha límite"}</Field>
               <Field label="Prioridad">{ticket.prioridad ? formatPriority(ticket.prioridad) : "Sin prioridad"}</Field>
-              <Field label="Área">{ticket.area ?? "Sin área"}</Field>
+              <Field label="Área">{ticket.area ? <AreaName area={areaThemeKey(ticket.area)} name={ticket.area} /> : "Sin área"}</Field>
               <Field label="Tipo">
                 {ticket.tipo ? formatCatalogLabel(ticket.tipo) : "Sin tipo"}
                 {ticket.categoria1 && (

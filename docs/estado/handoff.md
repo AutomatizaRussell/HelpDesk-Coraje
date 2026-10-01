@@ -1,6 +1,35 @@
 # Handoff técnico
 
 ```
+CORTE:   01-oct-2026 (corte 34, U16 color por área, SIN DESPLEGAR)
+SOBRE:   `864f880` (corte 33)
+RAMA:    main
+UNIDAD:  U16 · COLOR POR ÁREA (`design/sistema-helpdesk.md` §5.1). Decisión
+         del usuario: Revisoría naranja, Contabilidad magenta, BPO Sea Green,
+         Legal navy, el resto Sky Blue. Construido:
+         - tema `area` (mark / surface / onMark) en los dos adaptadores;
+           `[data-area]` en la raíz de los dos shells redefine el acento;
+         - el acento sigue el área de quien entra (`getPersonAreaName`):
+           pestaña y selección activas, avatar y número de la campana;
+         - `AreaName`: punto del color del área del ticket en «Área y tipo»
+           de la bandeja y en el detalle;
+         - `badge("info")` pasa a un token `info` fijo: «Asignado» y
+           «Requiere tu atención» no cambian con el área.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 178/178 (nuevas: contrastes
+         de la paleta ≥ 4,5:1, reglas `[data-area]` contra el tema,
+         correspondencia de nombres de área), `next build` y CSS generado con
+         las cinco reglas. **Sin ejercitar en el navegador.**
+         También decidido (plan, U17): Coraje como modo de la aplicación, sin
+         construir. U15 cerrada con las pruebas del usuario de hoy.
+EJERCITADO HOY (01-oct, pasos 2 y 4 del guion): la campana cuenta un pendiente
+         abierto aunque ya se haya visto el ticket; escalamiento con un aviso
+         envejecido → un correo «Tienes un pendiente sin atender en HelpDesk»
+         desde el buzón, y `aviso_escalamiento` con una fila `ENVIADO`,
+         `intentos = 1`, sin segundo envío.
+SIGUE:   paso 5 del guion (portal de clientes); ejercitar U16 suplantando a
+         una persona de cada área; después U17.
+
+--- Corte 33, para contexto:
 CORTE:   01-oct-2026 (corte 33, correo desde el buzón compartido, SIN
          IMPORTAR EN n8n)
 SOBRE:   `6921c16` (corte 32)
@@ -20,6 +49,16 @@ UNIDAD:  El usuario aclaró que `automatizacionmedellin@` es un buzón
          171/171.
 SIGUE:   lo mismo que el corte 32. Antes de autorizar la credencial,
          comprobar que la persona tiene *Send As* (Outlook web, «De»).
+EJERCITADO (01-oct, el usuario): «Graph automatizacionmedellin» autorizada
+         con daniellopera@ (con *Send As*), tras cambiar `/common` por el ID del
+         tenant en las dos URLs (`AADSTS50194`, anotado en `operacion.md`).
+         `printenv` de `web`: las seis variables `N8N_*`/`HELPDESK_*`. `curl`
+         al webhook del correo V3 con la cabecera → `{"ok":true,"accepted":
+         true,"id":"prueba-1","executionId":"16445"}` y el correo llegó como
+         «Automatización Medellín». «Escalar avisos V2» a mano → `ok: true`,
+         0/0/0 (sin avisos escalables). Las tres credenciales Header Auth
+         creadas, la salida reimportada y las variables de entorno de n8n
+         retiradas, según el usuario. Sin probar: el 403 sin cabecera.
 
 --- Corte 32, para contexto:
 CORTE:   01-oct-2026 (corte 32, secretos de n8n como credenciales, SIN

@@ -322,7 +322,10 @@ desde el buzón sin dueño `automatizacionmedellin@rbcol.co` (D4,
    `offline_access`).
 2. **Credencial en n8n**, tipo *Microsoft OAuth2 API*, con el nombre
    `Graph automatizacionmedellin`: client ID y secreto de esa App Registration, scope
-   `https://graph.microsoft.com/Mail.Send.Shared offline_access`. El buzón es compartido
+   `https://graph.microsoft.com/Mail.Send.Shared offline_access`. **Cambiar `common` por el
+   ID del tenant** (`ENTRA_TENANT_ID`) en *Authorization URL* y *Access Token URL*: la App
+   Registration es de un solo tenant y `/common` falla con `AADSTS50194` (visto el
+   01-oct-2026). El buzón es compartido
    y **no tiene inicio de sesión propio**: la autoriza **una persona con *Send As***
    sobre `automatizacionmedellin@rbcol.co`, con su propia cuenta. El nodo
    `HTTP - Graph sendMail` envía a `/users/automatizacionmedellin@rbcol.co/sendMail`, así

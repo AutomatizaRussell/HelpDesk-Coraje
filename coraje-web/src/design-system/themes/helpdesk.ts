@@ -36,6 +36,16 @@ export const helpdeskTheme = {
     // selección) y su tinta al 20 % como fondo de selección.
     accent: brandPrimitives.skyBlue,
     accentSurface: tint("skyBlue", 20),
+    // Tinta sobre un relleno del acento (la inicial del avatar, el número de
+    // la campana). Navy sobre Sky Blue da 5,9:1; el blanco no llegaría. Cada
+    // área la redefine junto con el acento (`area`, abajo).
+    onAccent: brandPrimitives.navy,
+
+    // Información de estado («Asignado», «Requiere tu atención»). Es Sky Blue
+    // como el acento por defecto, pero **no** sigue al área (U16): un estado
+    // tiene que verse igual para todas las personas.
+    info: brandPrimitives.skyBlue,
+    infoSurface: tint("skyBlue", 20),
 
     // El foco es navy y no el acento: un anillo de foco necesita 3:1 contra
     // lo que lo rodea (WCAG 1.4.11) y Sky Blue no lo alcanza sobre blanco.
@@ -173,6 +183,36 @@ export const helpdeskTheme = {
     // transparente, pulgar gris que se oscurece al pasar el ratón.
     scrollbarThumb: "#cbd5e1",
     scrollbarThumbHover: "#94a3b8",
+  },
+
+  /**
+   * Color de cada área de la firma (U16, decisión del usuario del 01-oct-2026).
+   * El manual de marca (§3.2) reserva los colores complementarios «para
+   * representar las diferentes áreas que conforman a la firma»; la asignación
+   * la dio el usuario:
+   *   · revisoria (Auditoría y Revisoría Fiscal) → Earth Orange;
+   *   · contabilidad → Mind Magenta;
+   *   · bpo → Sea Green;
+   *   · legal → Space Blue (navy);
+   *   · general (Administración, su recepción, Impuestos y sin área) → Sky Blue.
+   *
+   * Dos usos (`patterns/area/area.ts`): el acento de la aplicación sigue el
+   * área **de quien entra** (`[data-area]` redefine `--hd-color-accent*` en
+   * `globals.css`), y el punto de la columna «Área» sigue el área **del
+   * ticket**. Los estados no cambian: usan `info`, fijo.
+   *
+   * `mark` es el color pleno: punto, avatar, número de la campana; nunca
+   * texto, porque naranja, Sea Green y Sky Blue no llegan a 4,5:1 sobre
+   * blanco. `onMark` es la tinta legible sobre `mark`. `surface` es su tinta
+   * al 20 %, fondo de la pestaña o la selección activas, con texto navy.
+   * `design-system/area-palette.test.mts` mide los contrastes.
+   */
+  area: {
+    revisoria: { mark: brandPrimitives.earthOrange, surface: tint("earthOrange", 20), onMark: brandPrimitives.navy },
+    contabilidad: { mark: brandPrimitives.mindMagenta, surface: tint("mindMagenta", 20), onMark: brandPrimitives.white },
+    bpo: { mark: brandPrimitives.seaGreen, surface: tint("seaGreen", 20), onMark: brandPrimitives.navy },
+    legal: { mark: brandPrimitives.navy, surface: tint("navy", 20), onMark: brandPrimitives.white },
+    general: { mark: brandPrimitives.skyBlue, surface: tint("skyBlue", 20), onMark: brandPrimitives.navy },
   },
 
   /**

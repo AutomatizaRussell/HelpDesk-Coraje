@@ -10,7 +10,9 @@ import { cn } from "../utilities/cn";
  */
 const tones = {
   neutral: "border-line-strong bg-surface-sunken text-ink",
-  info: "border-accent bg-accent-surface text-heading",
+  // `info` y no `accent`: el acento sigue al área de quien mira (U16); un
+  // estado tiene que verse igual para todos.
+  info: "border-info bg-info-surface text-heading",
   success: "border-success bg-success-surface text-success",
   warning: "border-warning bg-warning-surface text-warning",
   danger: "border-danger bg-danger-surface text-danger",

@@ -9,6 +9,7 @@ import { iconStroke } from "../../foundations/iconography";
 import { colorTransition, focusRing, focusRingInverse } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 import { ModuleNav, type ModuleNavItem } from "../module-nav/ModuleNav";
+import type { AreaThemeKey } from "../area/area";
 import { UserMenu } from "../user-menu/UserMenu";
 import {
   CONECTA_BADGE,
@@ -50,6 +51,8 @@ export type ConectaShellProps = {
   sqfAccess: boolean;
   moduleNav: readonly ModuleNavItem[];
   signOutAction: () => Promise<void>;
+  /** Área de quien entra (U16): redefine el acento de todo el shell. */
+  areaTheme: AreaThemeKey;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
   children: ReactNode;
@@ -65,6 +68,7 @@ export function ConectaShell({
   moduleNav,
   signOutAction,
   noticeBell,
+  areaTheme,
   children,
 }: ConectaShellProps) {
   const sidebarRef = useRef<HTMLDialogElement>(null);
@@ -81,7 +85,7 @@ export function ConectaShell({
   };
 
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div data-area={areaTheme} className="min-h-dvh bg-canvas">
       <div className="fixed inset-y-0 left-0 z-(--hd-layer-rail) hidden w-rail flex-col border-r border-shell-line bg-shell-surface lg:flex">
         <div className="px-3 py-4">
           <BrandIsotype />

@@ -8,6 +8,8 @@ import { signOutAction } from "@/server/auth/sign-out-action";
 import { resolveGrants } from "@/server/authorization/authorizer";
 import { AVISO_ACTIONS, PORTAL_ACTIONS, SALUD_ACTIONS, TICKET_ACTIONS } from "@/server/authorization/catalog";
 import { countBellNotices } from "@/server/notifications/ticket-notices";
+import { getPersonAreaName } from "@/server/personal/person-area";
+import { areaThemeKey } from "@/features/areas/area-theme";
 import { NoticeBellMenu } from "@/features/avisos/NoticeBellMenu";
 // SUPLANTACIÓN — bloque temporal para pruebas.
 import { SuplantacionSelector } from "@/features/suplantacion/SuplantacionSelector";
@@ -44,7 +46,7 @@ export async function AppFrame({
   title: string;
   children: ReactNode;
 }) {
-  const [entry, grants, suplantacion] = await Promise.all([
+  const [entry, grants, areaName, suplantacion] = await Promise.all([
     readEntryContext(),
     resolveGrants(employee.idPersonal, [
       TICKET_ACTIONS.redirigir,
@@ -52,6 +54,8 @@ export async function AppFrame({
       SALUD_ACTIONS.consultar,
       AVISO_ACTIONS.consultar,
     ]),
+    // U16: el color de la interfaz sigue el área de quien entra.
+    getPersonAreaName(employee.idPersonal),
     // SUPLANTACIÓN — bloque temporal para pruebas.
     getSuplantacionPanel(employee),
     // FIN SUPLANTACIÓN
@@ -61,6 +65,8 @@ export async function AppFrame({
   const bellCount = grants.has(AVISO_ACTIONS.consultar) ? await countBellNotices(employee.idPersonal) : null;
   const noticeBell = (anchor: "topbar" | "appBar") =>
     bellCount === null ? undefined : <NoticeBellMenu count={bellCount} anchor={anchor} />;
+
+  const areaTheme = areaThemeKey(areaName);
 
   const sections = helpdeskSections({
     clasificar: grants.has(TICKET_ACTIONS.redirigir),
@@ -90,6 +96,7 @@ export async function AppFrame({
         subtitle={profile?.subtitle ?? null}
         sqfAccess={profile?.sqfAccess ?? false}
         moduleNav={sections}
+        areaTheme={areaTheme}
         noticeBell={noticeBell("topbar")}
         signOutAction={signOutAction}
       >
@@ -103,6 +110,7 @@ export async function AppFrame({
       title={title}
       displayName={employee.nombreCompleto}
       moduleNav={sections}
+      areaTheme={areaTheme}
       noticeBell={noticeBell("appBar")}
       signOutAction={signOutAction}
     >

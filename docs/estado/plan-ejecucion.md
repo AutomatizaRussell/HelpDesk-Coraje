@@ -452,7 +452,7 @@ enrutamiento, no un rol (`specs/permisos.md` §4.5). `AGENTE` pasa a `COLABORADO
 nada ve solo lo suyo; el encargado de recepción de un área ve toda esa área; quien
 recibe por tipo ve solo esos tipos; `ADMIN` ve todas las áreas.
 
-### U15 · Centro de notificaciones — **desplegada el 30-sep-2026 (corte 28), sin ejercitar**
+### U15 · Centro de notificaciones — **ejercitada y cerrada el 01-oct-2026** (pendiente que se cierra al reasignar y al responder, novedad sin el comentario interno, campana que cuenta lo abierto, escalamiento enviado una sola vez desde el buzón)
 
 **Objetivo:** que los empleados reciban los avisos del ticket en una campana y no por
 correo, con «Requiere tu atención» abierta hasta actuar y escalamiento por correo de lo
@@ -467,6 +467,28 @@ interno; y una ejecución manual del escalamiento con un pendiente viejo envía 
 una segunda no repite.
 
 **Siguiente en la cola:** los adjuntos de U7, inmediatamente después.
+
+### U16 · Color por área — **construida el 01-oct-2026 (corte 34), sin desplegar**
+
+**Objetivo:** que la interfaz tome el color del área de quien entra y que cada ticket
+muestre el color de su área (`design/sistema-helpdesk.md` §5.1). Decisión del usuario.
+
+**Condición de cierre:** suplantando a una persona de cada área (Revisoría, Contabilidad,
+BPO, Legal, Administración), el acento, el avatar y el número de la campana toman su
+color; «Asignado» se ve igual en todas; la columna «Área y tipo» lleva el punto del área
+del ticket.
+
+### U17 · Modo Coraje — **decidido el 01-oct-2026, sin construir**
+
+Coraje (el trabajo con clientes) como **modo** de la misma aplicación, al estilo de
+claro/oscuro, no como pestaña ni aplicación aparte. Decisiones del usuario: en modo
+Coraje cambian los tickets que se listan (los de clientes), aparecen sus secciones
+(Clasificación, Accesos de clientes) y la interfaz pasa a fondo navy con el mismo
+acento del área; el interruptor lo ve quien tiene tickets de clientes a su alcance o
+puede clasificar o administrar accesos (por permiso, no por rol). Condiciones de
+diseño: el modo no esconde trabajo (la campana es global, el interruptor lleva el
+número del otro modo, un enlace a un ticket abre su modo); la estructura de la
+bandeja y del detalle es la misma.
 
 ---
 
@@ -544,3 +566,5 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   desplegadas desde el 28-sep (cortes 19-21) aunque su cabecera decía «sin desplegar»;
   U12 desplegada y habilitada; U13 cerrada (handoff, corte 26); U15 desplegada. Manda el
   registro fechado de cada despliegue, no la cabecera que no se actualizó.
+- 01-oct-2026 — U16 construida (corte 34): color por área. U17 (modo Coraje)
+  decidida. **Cabeza de la cola: ejercitar U8 (portal) y U16; después U17 y los adjuntos.**

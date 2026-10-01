@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 import { SegmentedLinks } from "@/design-system/components/SegmentedLinks";
+import { AreaName } from "@/design-system/patterns/area/AreaName";
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
 import { buttonRecipe } from "@/design-system/recipes/button";
@@ -9,6 +10,7 @@ import { focusRing } from "@/design-system/recipes/interaction";
 import { badge } from "@/design-system/recipes/badge";
 import { notice, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
+import { areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate } from "@/features/tickets/format";
 import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
@@ -199,8 +201,13 @@ export default async function TicketsPage({
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <p>{row.area ?? "Sin área"}</p>
-                          {row.tipo && <p className="text-sm text-ink-muted">{formatCatalogLabel(row.tipo)}</p>}
+                          {row.area ? (
+                            <AreaName area={areaThemeKey(row.area)} name={row.area} />
+                          ) : (
+                            <p>Sin área</p>
+                          )}
+                          {/* Con sangría bajo el nombre, no bajo el punto. */}
+                          {row.tipo && <p className={cn("text-sm text-ink-muted", row.area && "pl-4.5")}>{formatCatalogLabel(row.tipo)}</p>}
                         </td>
                         <td className="px-4 py-3">{row.solicitante ?? "—"}</td>
                         <td className="px-4 py-3">{row.responsable ?? "Sin responsable"}</td>

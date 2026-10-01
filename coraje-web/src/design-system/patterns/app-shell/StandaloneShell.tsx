@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { BrandLogo } from "../../components/BrandLogo";
 import { ModuleNav, type ModuleNavItem } from "../module-nav/ModuleNav";
+import type { AreaThemeKey } from "../area/area";
 import { UserMenu } from "../user-menu/UserMenu";
 
 /**
@@ -21,14 +22,16 @@ export type StandaloneShellProps = {
   displayName: string;
   moduleNav: readonly ModuleNavItem[];
   signOutAction: () => Promise<void>;
+  /** Área de quien entra (U16): redefine el acento de todo el shell. */
+  areaTheme: AreaThemeKey;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
   children: ReactNode;
 };
 
-export function StandaloneShell({ title, displayName, moduleNav, signOutAction, noticeBell, children }: StandaloneShellProps) {
+export function StandaloneShell({ title, displayName, moduleNav, signOutAction, noticeBell, areaTheme, children }: StandaloneShellProps) {
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas">
+    <div data-area={areaTheme} className="flex min-h-dvh flex-col bg-canvas">
       <header className="sticky top-0 z-(--hd-layer-topbar)">
         <div className="border-b border-line bg-surface">
           <div className="flex h-app-bar items-center justify-between gap-4 pr-4 lg:h-app-bar-wide lg:pr-8">

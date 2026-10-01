@@ -247,6 +247,37 @@ Lo que un helpdesk necesita y una plataforma documental no:
 > su cuenta divergen en la primera adición, y el usuario aprende dos códigos de color
 > para el mismo dato.
 
+### 5.1 `DECISIÓN` (01-oct-2026, U16) Color por área
+
+El manual de marca (§3.2) reserva los colores complementarios «para representar las
+diferentes áreas que conforman a la firma». La asignación la dio el usuario:
+
+| Área | Color | Hex |
+|---|---|---|
+| REVISORÍA (Auditoría y Revisoría Fiscal) | Earth Orange | `#ed8b00` |
+| CONTABILIDAD | Mind Magenta | `#981d97` |
+| BPO | Sea Green | `#00bfb3` |
+| LEGAL | Space Blue | `#001871` |
+| ADMINISTRACIÓN, ADMINISTRACIÓN-RECEPCIÓN, IMPUESTOS, sin área o área nueva | Sky Blue | `#00a9ce` |
+
+Dos usos con significado distinto:
+
+- **El acento de la interfaz sigue el área de quien entra** (con suplantación, la de la
+  persona suplantada): pestaña y selección activas, avatar y número de la campana. El
+  shell pone `data-area` en su raíz y `globals.css` redefine `--hd-color-accent*`.
+- **El punto de la columna «Área y tipo» y del detalle sigue el área del ticket**
+  (`AreaName`).
+
+Lo que **no** cambia con el área: el navy del shell y de los botones, y los colores de
+estado. «Asignado» y «Requiere tu atención» pasan del acento a un token `info` fijo:
+un estado se ve igual para todos. El color pleno nunca es texto (naranja, Sea Green y
+Sky Blue no llegan a 4,5:1 sobre blanco); la tinta sobre él es navy o blanca según el
+área. `area-palette.test.mts` mide los contrastes. Riesgo aceptado: en Revisoría el
+acento naranja convive con el ámbar de «por vencer», que sigue siendo otro token.
+
+Pendiente y no comprometido: la hamburguesa no toma el color del área, porque
+atenuada no alcanza 3:1; la sidebar, último paso si se decide.
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |
@@ -323,3 +354,5 @@ mesa de ayuda y la autoridad única de color de estado (§5).
   Impulsa es naranja, no teal, y Lato no tiene 500/600 — pesos 400/700/900. Los cinco
   colores son utilizables porque HelpDesk es de toda la firma, con contención; el uso
   semántico por área exige confirmar antes el mapeo con el usuario.
+- 01-oct-2026 — U16. §5.1: color por área (acento de quien entra, punto del área del
+  ticket), con el token `info` fijo para los estados.

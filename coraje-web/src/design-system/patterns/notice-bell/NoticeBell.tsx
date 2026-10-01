@@ -22,9 +22,10 @@ import { shellPopoverAnchors } from "../user-menu/UserMenu";
  * Mismo mecanismo que el menú del avatar: la API nativa `popover`, con cierre
  * al pulsar fuera y con Esc, y anclada bajo la barra.
  *
- * El número va en navy y no en rojo: en HelpDesk el registro cálido es la
- * señal de plazo y urgencia (design/sistema-helpdesk.md, D5), y un aviso sin
- * leer no es una urgencia.
+ * El número va en el acento del área de quien entra (U16), con su tinta
+ * legible (`on-accent`), y nunca en el rojo de peligro: un aviso pendiente no
+ * es una urgencia (design/sistema-helpdesk.md, D5). En Revisoría el acento es
+ * naranja; sigue sin ser el ámbar de «por vencer», que es otro token.
  */
 export type NoticeBellProps = {
   /** Pendientes abiertos más novedades sin leer. Con 0 no se dibuja el número. */
@@ -67,7 +68,7 @@ export function NoticeBell({ count, anchor, allHref, onOpen, children }: NoticeB
         {count > 0 ? (
           <span
             aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-pill bg-action px-1 text-2xs font-bold tabular-nums text-on-action ring-2 ring-surface"
+            className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-pill bg-accent px-1 text-2xs font-bold tabular-nums text-on-accent ring-2 ring-surface"
           >
             {count > MAX_BADGE ? `${MAX_BADGE}+` : count}
           </span>

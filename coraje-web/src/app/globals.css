@@ -37,6 +37,26 @@
   --hd-color-line-strong: #b3bccb;
   --hd-color-accent: #00a9ce;
   --hd-color-accent-surface: #cceef5;
+  --hd-color-on-accent: #001871;
+  --hd-color-info: #00a9ce;
+  --hd-color-info-surface: #cceef5;
+
+  /* Color de cada área (U16, themes/helpdesk.ts `area`). */
+  --hd-area-revisoria-mark: #ed8b00;
+  --hd-area-revisoria-surface: #fbe8cc;
+  --hd-area-revisoria-on-mark: #001871;
+  --hd-area-contabilidad-mark: #981d97;
+  --hd-area-contabilidad-surface: #ead2ea;
+  --hd-area-contabilidad-on-mark: #ffffff;
+  --hd-area-bpo-mark: #00bfb3;
+  --hd-area-bpo-surface: #ccf2f0;
+  --hd-area-bpo-on-mark: #001871;
+  --hd-area-legal-mark: #001871;
+  --hd-area-legal-surface: #ccd1e3;
+  --hd-area-legal-on-mark: #ffffff;
+  --hd-area-general-mark: #00a9ce;
+  --hd-area-general-surface: #cceef5;
+  --hd-area-general-on-mark: #001871;
   --hd-color-focus: #001871;
   --hd-color-focus-inverse: #ffffff;
   --hd-color-action: #001871;
@@ -144,6 +164,35 @@
   --hd-type-xl-line-height: 2rem;
 }
 
+/* Acento por área de quien entra (U16). El shell pone `data-area` en su raíz
+   y aquí se redefine el acento de todo lo que cuelga de él. Solo el acento:
+   los estados usan `--hd-color-info`, que no cambia. */
+[data-area="revisoria"] {
+  --hd-color-accent: var(--hd-area-revisoria-mark);
+  --hd-color-accent-surface: var(--hd-area-revisoria-surface);
+  --hd-color-on-accent: var(--hd-area-revisoria-on-mark);
+}
+[data-area="contabilidad"] {
+  --hd-color-accent: var(--hd-area-contabilidad-mark);
+  --hd-color-accent-surface: var(--hd-area-contabilidad-surface);
+  --hd-color-on-accent: var(--hd-area-contabilidad-on-mark);
+}
+[data-area="bpo"] {
+  --hd-color-accent: var(--hd-area-bpo-mark);
+  --hd-color-accent-surface: var(--hd-area-bpo-surface);
+  --hd-color-on-accent: var(--hd-area-bpo-on-mark);
+}
+[data-area="legal"] {
+  --hd-color-accent: var(--hd-area-legal-mark);
+  --hd-color-accent-surface: var(--hd-area-legal-surface);
+  --hd-color-on-accent: var(--hd-area-legal-on-mark);
+}
+[data-area="general"] {
+  --hd-color-accent: var(--hd-area-general-mark);
+  --hd-color-accent-surface: var(--hd-area-general-surface);
+  --hd-color-on-accent: var(--hd-area-general-on-mark);
+}
+
 @theme inline {
   /* Anulación de las familias por defecto: lo no declarado no existe. */
   --color-*: initial;
@@ -189,6 +238,15 @@
   --color-line-strong: var(--hd-color-line-strong);
   --color-accent: var(--hd-color-accent);
   --color-accent-surface: var(--hd-color-accent-surface);
+  --color-on-accent: var(--hd-color-on-accent);
+  --color-info: var(--hd-color-info);
+  --color-info-surface: var(--hd-color-info-surface);
+  /* El punto del área de un ticket (`patterns/area`). */
+  --color-area-revisoria: var(--hd-area-revisoria-mark);
+  --color-area-contabilidad: var(--hd-area-contabilidad-mark);
+  --color-area-bpo: var(--hd-area-bpo-mark);
+  --color-area-legal: var(--hd-area-legal-mark);
+  --color-area-general: var(--hd-area-general-mark);
   --color-focus: var(--hd-color-focus);
   --color-focus-inverse: var(--hd-color-focus-inverse);
   --color-action: var(--hd-color-action);
