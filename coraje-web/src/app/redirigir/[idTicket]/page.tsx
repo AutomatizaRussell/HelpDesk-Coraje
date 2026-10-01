@@ -7,37 +7,39 @@ import { iconStroke } from "@/design-system/foundations/iconography";
 import { focusRing } from "@/design-system/recipes/interaction";
 import { sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
-import { RedirectForm } from "@/features/clasificacion/RedirectForm";
+import { RedirectForm } from "@/features/redireccion/RedirectForm";
 import { formatDateTime } from "@/features/tickets/format";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
-import { getUnclassifiedTicket } from "@/server/tickets/classification-queries";
+import { getTicketToRedirect } from "@/server/tickets/redirect-queries";
+import { inboxPath } from "@/server/tickets/ticket-mode";
 import { getCreationCatalog } from "@/server/tickets/ticket-queries";
 
 /**
- * Un ticket del portal por clasificar. Si ya se clasificó, no existe o la
- * persona no puede clasificar, responde 404: las tres respuestas son iguales.
+ * Redirigir al área un ticket del portal (T3). Si ya se redirigió, no existe
+ * o la persona no puede redirigir, responde 404: las tres respuestas son
+ * iguales. Siempre en modo Coraje (U17): es trabajo con clientes.
  */
-export default async function ClassifyTicketPage({ params }: { params: Promise<{ idTicket: string }> }) {
+export default async function RedirectTicketPage({ params }: { params: Promise<{ idTicket: string }> }) {
   const { idTicket } = await params;
-  const employee = await requireCurrentEmployee(`/clasificacion/${idTicket}`);
+  const employee = await requireCurrentEmployee(`/redirigir/${idTicket}`);
   if (!z.uuid().safeParse(idTicket).success) notFound();
 
   const [ticket, catalog] = await Promise.all([
-    getUnclassifiedTicket({ idPersonal: employee.idPersonal, idTicket }),
+    getTicketToRedirect({ idPersonal: employee.idPersonal, idTicket }),
     getCreationCatalog(),
   ]);
   if (!ticket) notFound();
 
   return (
-    <AppFrame employee={employee} title={`Clasificar · ${ticket.cliente}`}>
+    <AppFrame employee={employee} title={`Redirigir · ${ticket.cliente}`} mode="coraje">
       <div className="space-y-4">
         <Link
-          href="/clasificacion"
+          href={inboxPath("coraje", "redirigir")}
           className={cn("inline-flex items-center gap-1 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
         >
           <ChevronLeft aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
-          Volver a la cola
+          Volver a la bandeja
         </Link>
 
         <div className="grid gap-4 lg:grid-cols-3">
@@ -46,9 +48,9 @@ export default async function ClassifyTicketPage({ params }: { params: Promise<{
               <h2 id="descripcion-titulo" className={sectionTitle}>Lo que escribió el cliente</h2>
               <p className="mt-2 whitespace-pre-wrap break-words text-base text-ink">{ticket.descripcion}</p>
             </section>
-            <section className={surface()} aria-labelledby="clasificar-titulo">
-              <h2 id="clasificar-titulo" className={cn(sectionTitle, "mb-4")}>Clasificación</h2>
-              <RedirectForm idTicket={ticket.idTicket} catalog={catalog} />
+            <section className={surface()} aria-labelledby="redirigir-titulo">
+              <h2 id="redirigir-titulo" className={cn(sectionTitle, "mb-4")}>Área que lo atiende</h2>
+              <RedirectForm idTicket={ticket.idTicket} catalog={catalog} backHref={inboxPath("coraje", "redirigir")} />
             </section>
           </div>
 

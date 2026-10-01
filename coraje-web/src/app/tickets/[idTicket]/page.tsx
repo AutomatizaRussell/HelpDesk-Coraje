@@ -31,6 +31,7 @@ import { listTicketMail } from "@/server/notifications/ticket-notifications";
 import { logEvent } from "@/server/observability/log";
 import { getMirrorStatus, type MirrorStatus } from "@/server/sync/sharepoint-mirror";
 import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
+import { inboxPath } from "@/server/tickets/ticket-mode";
 import { getTicketDetail, listFollowCandidates, listReassignCandidates } from "@/server/tickets/ticket-queries";
 
 /**
@@ -155,10 +156,12 @@ export default async function TicketDetailPage({
   }
 
   return (
-    <AppFrame employee={employee} title={ticket.codigoTicket ?? "Ticket sin código"}>
+    // U17: el ticket abre en su modo, llegue de donde llegue (la campana, un
+    // enlace, la otra bandeja), y vuelve a la bandeja de ese modo.
+    <AppFrame employee={employee} title={ticket.codigoTicket ?? "Ticket sin código"} mode={ticket.modo}>
       <div className="space-y-4">
         <Link
-          href="/tickets"
+          href={inboxPath(ticket.modo)}
           className={cn("inline-flex items-center gap-1 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
         >
           <ChevronLeft aria-hidden className="size-4" strokeWidth={iconStroke.regular} />

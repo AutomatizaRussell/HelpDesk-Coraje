@@ -2,13 +2,16 @@ import type { ReactNode } from "react";
 
 import { StandaloneShell } from "@/design-system/patterns/app-shell/StandaloneShell";
 import { ConectaShell } from "@/design-system/patterns/conecta-shell/ConectaShell";
+import { ModeSwitch } from "@/design-system/patterns/mode-switch/ModeSwitch";
 import type { EmployeeSessionContext } from "@/server/auth/employee-session";
 import { readEntryContext } from "@/server/auth/entry-cookie";
 import { signOutAction } from "@/server/auth/sign-out-action";
 import { resolveGrants } from "@/server/authorization/authorizer";
-import { AVISO_ACTIONS, PORTAL_ACTIONS, SALUD_ACTIONS, TICKET_ACTIONS } from "@/server/authorization/catalog";
+import { AVISO_ACTIONS, SALUD_ACTIONS } from "@/server/authorization/catalog";
 import { countBellNotices } from "@/server/notifications/ticket-notices";
 import { getPersonAreaName } from "@/server/personal/person-area";
+import { countModePending, getModeAccess } from "@/server/tickets/mode-access";
+import { TICKET_MODES, TICKET_MODE_LABEL, inboxPath, type TicketMode } from "@/server/tickets/ticket-mode";
 import { areaThemeKey } from "@/features/areas/area-theme";
 import { NoticeBellMenu } from "@/features/avisos/NoticeBellMenu";
 // SUPLANTACIÓN — bloque temporal para pruebas.
@@ -36,24 +39,28 @@ import { helpdeskSections } from "./helpdesk-sections";
  * —mostrar pestañas que luego responden «no autorizado»— hace que la interfaz
  * mienta (permisos.md §4). La campana de avisos (U15) añade un conteo; su
  * lista solo se consulta al abrirla.
+ *
+ * `mode` (U17) lo decide la vista: la bandeja, por la URL; el detalle, por el
+ * ticket; los accesos de clientes son siempre Coraje. El interruptor de modo
+ * aparece solo para quien tiene trabajo con clientes (`getModeAccess`), y
+ * lleva el número de lo que espera en el otro modo: un conteo más, sobre lo
+ * asignado a la persona.
  */
 export async function AppFrame({
   employee,
   title,
+  mode = "helpdesk",
   children,
 }: {
   employee: EmployeeSessionContext;
   title: string;
+  mode?: TicketMode;
   children: ReactNode;
 }) {
-  const [entry, grants, areaName, suplantacion] = await Promise.all([
+  const [entry, grants, modeAccess, areaName, suplantacion] = await Promise.all([
     readEntryContext(),
-    resolveGrants(employee.idPersonal, [
-      TICKET_ACTIONS.redirigir,
-      PORTAL_ACTIONS.administrarAccesos,
-      SALUD_ACTIONS.consultar,
-      AVISO_ACTIONS.consultar,
-    ]),
+    resolveGrants(employee.idPersonal, [SALUD_ACTIONS.consultar, AVISO_ACTIONS.consultar]),
+    getModeAccess(employee.idPersonal),
     // U16: el color de la interfaz sigue el área de quien entra.
     getPersonAreaName(employee.idPersonal),
     // SUPLANTACIÓN — bloque temporal para pruebas.
@@ -62,15 +69,34 @@ export async function AppFrame({
   ]);
   // U15: el número de la campana, dos conteos sobre índices parciales. Va
   // después de los permisos porque sin `aviso.consultar` no hay campana.
-  const bellCount = grants.has(AVISO_ACTIONS.consultar) ? await countBellNotices(employee.idPersonal) : null;
+  // U17: el número del interruptor es lo que espera en el otro modo; sin
+  // acceso a Coraje no hay interruptor ni conteo.
+  const otherMode: TicketMode = mode === "coraje" ? "helpdesk" : "coraje";
+  const [bellCount, otherPending] = await Promise.all([
+    grants.has(AVISO_ACTIONS.consultar) ? countBellNotices(employee.idPersonal) : null,
+    modeAccess.coraje ? countModePending(employee.idPersonal, otherMode) : null,
+  ]);
+  // La campana es la misma en los dos modos; «Ver todos» deja en el modo actual.
   const noticeBell = (anchor: "topbar" | "appBar") =>
-    bellCount === null ? undefined : <NoticeBellMenu count={bellCount} anchor={anchor} />;
+    bellCount === null ? undefined : (
+      <NoticeBellMenu count={bellCount} anchor={anchor} allHref={mode === "coraje" ? "/avisos?modo=coraje" : "/avisos"} />
+    );
+  const modeSwitch =
+    otherPending === null ? undefined : (
+      <ModeSwitch
+        items={TICKET_MODES.map((item) => ({
+          label: TICKET_MODE_LABEL[item],
+          href: inboxPath(item),
+          current: item === mode,
+          pending: item === otherMode ? otherPending : 0,
+        }))}
+      />
+    );
 
   const areaTheme = areaThemeKey(areaName);
 
-  const sections = helpdeskSections({
-    clasificar: grants.has(TICKET_ACTIONS.redirigir),
-    administrarAccesos: grants.has(PORTAL_ACTIONS.administrarAccesos),
+  const sections = helpdeskSections(mode, {
+    administrarAccesos: modeAccess.administrarAccesos,
     consultarSalud: grants.has(SALUD_ACTIONS.consultar),
   });
   // SUPLANTACIÓN — bloque temporal para pruebas. Encima del contenido y no
@@ -97,6 +123,9 @@ export async function AppFrame({
         sqfAccess={profile?.sqfAccess ?? false}
         moduleNav={sections}
         areaTheme={areaTheme}
+        mode={mode}
+        moduleName={TICKET_MODE_LABEL[mode]}
+        modeSwitch={modeSwitch}
         noticeBell={noticeBell("topbar")}
         signOutAction={signOutAction}
       >
@@ -111,6 +140,8 @@ export async function AppFrame({
       displayName={employee.nombreCompleto}
       moduleNav={sections}
       areaTheme={areaTheme}
+      mode={mode}
+      modeSwitch={modeSwitch}
       noticeBell={noticeBell("appBar")}
       signOutAction={signOutAction}
     >

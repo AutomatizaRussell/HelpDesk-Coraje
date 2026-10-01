@@ -29,3 +29,11 @@ export const focusRingInset =
 
 /** Transición de color para estados hover/activo. */
 export const colorTransition = "transition-colors duration-(--hd-motion-fast) ease-standard";
+
+/**
+ * Transición del cambio de modo (U17): el lienzo, las barras y las
+ * superficies pasan de un modo al otro en vez de saltar. Más lenta que la de
+ * un control, porque cambia la pantalla entera; la preferencia de movimiento
+ * reducido la anula, como a todas (`globals.css`).
+ */
+export const modeTransition = "transition-colors duration-(--hd-motion-normal) ease-standard";

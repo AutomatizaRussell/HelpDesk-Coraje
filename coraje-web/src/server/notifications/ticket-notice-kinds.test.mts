@@ -58,5 +58,6 @@ test("el trigger cierra, al cambiar de responsable, exactamente los avisos de re
 test("el permiso de los avisos está sembrado para los tres roles con alcance PROPIO", () => {
   const seed = between(/INSERT INTO "app"\."permiso_regla"/, /;\s*$/);
   assert.match(seed, /'aviso\.consultar', 'PROPIO'/);
+  // CLASIFICADOR es el nombre que tenía al sembrarse; hoy es REDIRECTOR (U17).
   for (const rol of ["COLABORADOR", "CLASIFICADOR", "ADMIN"]) assert.ok(seed.includes(`'${rol}'`), `Falta ${rol}`);
 });

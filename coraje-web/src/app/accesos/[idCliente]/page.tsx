@@ -98,7 +98,7 @@ export default async function ClientAccessPage({ params }: { params: Promise<{ i
   if (!cliente) notFound();
 
   return (
-    <AppFrame employee={employee} title={cliente.nombre}>
+    <AppFrame employee={employee} title={cliente.nombre} mode="coraje">
       <div className="space-y-4">
         <Link
           href="/accesos"

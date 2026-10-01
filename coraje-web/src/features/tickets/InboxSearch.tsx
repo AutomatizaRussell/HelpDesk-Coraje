@@ -32,6 +32,7 @@ import { TICKET_STATES, TICKET_STATE_LABEL } from "@/server/tickets/ticket-state
 const SEARCH_DEBOUNCE_MS = 350;
 
 export function InboxSearch({
+  modo,
   view,
   texto,
   estado,
@@ -39,6 +40,8 @@ export function InboxSearch({
   maxLength,
   clearHref,
 }: {
+  /** `coraje` en la bandeja de clientes (U17); `null` en la de siempre, que no lleva parámetro. */
+  modo: string | null;
   view: string;
   texto: string | null;
   estado: string | null;
@@ -82,7 +85,7 @@ export function InboxSearch({
   useEffect(() => cancelPending, []);
 
   function navigate(next: { texto: string; estado: string | null }) {
-    const query = new URLSearchParams({ vista: view });
+    const query = new URLSearchParams({ ...(modo ? { modo } : {}), vista: view });
     const trimmed = next.texto.trim();
     if (trimmed) query.set("q", trimmed);
     if (next.estado) query.set("estado", next.estado);
@@ -100,6 +103,7 @@ export function InboxSearch({
 
   return (
     <Form action="/tickets" role="search" className="flex flex-wrap items-end gap-3" aria-busy={pending}>
+      {modo && <input type="hidden" name="modo" value={modo} />}
       <input type="hidden" name="vista" value={view} />
       <div className="min-w-0 flex-1 basis-64">
         <label htmlFor="busqueda" className={fieldLabel}>Buscar</label>

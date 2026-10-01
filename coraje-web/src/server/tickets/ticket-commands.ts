@@ -374,7 +374,7 @@ export async function createInternalTicket(params: {
  * El ticket nace ABIERTO y sin plazo: espera a que alguien lo clasifique
  * (T3), y el plazo del cliente empieza entonces (tickets.md §5). No avisa a
  * nadie por correo: no hay un empleado que lo envíe desde su buzón (D6), y
- * la cola de clasificación es donde se ve lo que llega.
+ * la vista «Por redirigir» de la bandeja es donde se ve lo que llega.
  */
 export async function createPortalTicket(params: { access: PortalAccess; descripcion: string }): Promise<{ idTicket: string }> {
   try {
@@ -412,14 +412,14 @@ export async function createPortalTicket(params: { access: PortalAccess; descrip
 // ---------------------------------------------------------------------------
 
 /**
- * Clasifica un ticket del portal: el tipo de requerimiento decide el área,
+ * Redirige un ticket del portal: el tipo de requerimiento decide el área,
  * la regla de enrutamiento decide la persona, y empieza el plazo de 3 días
  * hábiles. Todo eso lo hace `helpdesk.redirigir_ticket`, en una sola regla
  * compartida con la creación interna.
  *
  * Autoriza `ticket.redirigir` contra la fila bloqueada. Un ticket sin
  * clasificar no tiene responsable ni área, así que solo el alcance `TOTAL`
- * lo cubre (scope.ts); en la v1 lo tiene `CLASIFICADOR`.
+ * lo cubre (scope.ts); en la v1 lo tiene `REDIRECTOR`.
  *
  * No encola nada hacia SharePoint por su cuenta: al fijar el área, el
  * trigger `trg_encolar_espejo_sharepoint` encola la creación del ítem en
@@ -438,10 +438,10 @@ export async function redirectTicket(params: {
         idPersonal: params.idPersonal,
         action: TICKET_ACTIONS.redirigir,
         allowedStates: ["ABIERTO"],
-        stateMessage: "Este ticket ya fue clasificado.",
+        stateMessage: "Este ticket ya fue redirigido.",
       });
       if (ticket.idContactoPortal === null || ticket.idAreaDestino !== null) {
-        throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya fue clasificado o no viene del portal.");
+        throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya fue redirigido o no viene del portal.");
       }
 
       const rows = await tx.$queryRaw<{ id_evento: string | null }[]>`
@@ -484,7 +484,7 @@ export async function redirectTicket(params: {
     if (translated) throw translated;
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("HD_NO_REDIRIGIBLE")) {
-      throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya fue clasificado.");
+      throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya fue redirigido.");
     }
     throw error;
   }

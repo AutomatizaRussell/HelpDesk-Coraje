@@ -278,6 +278,27 @@ acento naranja convive con el ámbar de «por vencer», que sigue siendo otro to
 Pendiente y no comprometido: la hamburguesa no toma el color del área, porque
 atenuada no alcanza 3:1; la sidebar, último paso si se decide.
 
+### 5.2 `DECISIÓN` (01-oct-2026, U17) Modo Coraje
+
+Un modo oscuro de marca para el trabajo con clientes (`specs/tickets.md` §13): lienzo
+navy, superficies de navy algo más claro y texto claro, con la misma estructura y el
+mismo acento del área. El shell pone `data-mode="coraje"` en su raíz y `globals.css`
+redefine, con el mismo nombre, cada variable que cambia (`coraje` en el tema). Ninguna
+vista sabe en qué modo está.
+
+- **Neutros:** blanco sobre navy a una opacidad fija (`brandOverNavy`), no tintas del
+  manual, que solo las define sobre blanco.
+- **Se invierten** el botón principal (blanco con texto navy), el foco (blanco), los
+  estados (sus versiones claras) y la topbar y las pestañas, que se funden con las
+  superficies. La barra propia usa el logotipo blanco.
+- **Legal y Contabilidad** toman su tinta aprobada más clara (navy al 40 %, magenta al
+  60 %): sobre navy, su color pleno da 1:1 y 2,2:1. Los demás acentos no cambian.
+- **Transición:** el lienzo, las barras y las superficies cambian de color con
+  `--hd-motion-normal`; el movimiento reducido la anula.
+
+`coraje-palette.test.mts` exige cada clave en el tema base, el bloque CSS completo y
+los contrastes (texto ≥ 4,5:1; marcas de área y foco ≥ 3:1).
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |

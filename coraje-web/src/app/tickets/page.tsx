@@ -11,16 +11,18 @@ import { badge } from "@/design-system/recipes/badge";
 import { notice, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaThemeKey } from "@/features/areas/area-theme";
-import { formatCatalogLabel, formatDate } from "@/features/tickets/format";
+import { formatCatalogLabel, formatDate, formatDateTime } from "@/features/tickets/format";
 import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
+import { getModeAccess } from "@/server/tickets/mode-access";
+import { modeQuery, parseTicketMode, type TicketMode } from "@/server/tickets/ticket-mode";
 import { resolveGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
 import {
   INBOX_SEARCH_MAX,
-  INBOX_VIEWS,
   countInbox,
+  inboxViews,
   isInboxView,
   listInbox,
   type InboxCounts,
@@ -42,23 +44,47 @@ import { TICKET_STATES, TICKET_STATE_LABEL, isTicketState } from "@/server/ticke
  * estado, y la vista «En seguimiento». La búsqueda filtra mientras se escribe
  * (`InboxSearch`) y sigue siendo un formulario GET sin JavaScript: no es una
  * acción, solo otra URL.
+ *
+ * U17: la misma bandeja sirve a los dos modos. `?modo=coraje` lista los
+ * tickets de clientes, con sus vistas (`inboxViews`), y el shell se pinta en
+ * navy; sin parámetro es la bandeja de siempre. Quien no tiene trabajo con
+ * clientes que pida `modo=coraje` ve la de siempre.
  */
 const VIEW_LABEL: Record<InboxView, string> = {
   pendientes: "Por atender",
+  redirigir: "Por redirigir",
   radicados: "Radicados por mí",
   siguiendo: "En seguimiento",
   alcance: "Todo mi alcance",
 };
 
-const EMPTY_MESSAGE: Record<InboxView, string> = {
-  pendientes: "No tienes tickets por atender.",
-  radicados: "No has radicado tickets.",
-  siguiendo: "No tienes tickets en seguimiento. Aparecen aquí cuando te añaden como observador o te piden una validación.",
-  alcance: "No hay tickets a tu alcance.",
-};
+function emptyMessage(view: InboxView, mode: TicketMode): string {
+  const tickets = mode === "coraje" ? "tickets de clientes" : "tickets";
+  switch (view) {
+    case "pendientes":
+      return `No tienes ${tickets} por atender.`;
+    case "redirigir":
+      return "No hay tickets de clientes por redirigir.";
+    case "radicados":
+      return "No has radicado tickets.";
+    case "siguiendo":
+      return `No tienes ${tickets} en seguimiento. Aparecen aquí cuando te añaden como observador o te piden una validación.`;
+    case "alcance":
+      return `No hay ${tickets} a tu alcance.`;
+  }
+}
 
-function inboxHref(view: InboxView, filters: InboxFilters, page = 1): string {
-  const query = new URLSearchParams({ vista: view });
+/**
+ * Forma de `codigo_ticket` («{codigo_area}-{año}-{consecutivo}»,
+ * helpdesk.next_codigo_ticket). El aviso de «redirigido» solo repite el
+ * parámetro si tiene esa forma: un enlace fabricado no puede poner texto
+ * propio en esta pantalla, igual que en `/login`.
+ */
+const TICKET_CODE = /^[A-Z0-9]{1,10}-\d{4}-\d{4,6}$/;
+
+function inboxHref(mode: TicketMode, view: InboxView, filters: InboxFilters, page = 1): string {
+  const query = modeQuery(mode);
+  query.set("vista", view);
   if (filters.texto) query.set("q", filters.texto);
   // El estado no viaja a la vista que lo fija ya: ahí no significaría nada.
   if (filters.estado && viewAllowsStateFilter(view)) query.set("estado", filters.estado);
@@ -93,11 +119,23 @@ function InboxCountCards({ counts }: { counts: InboxCounts }) {
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vista?: string; pagina?: string; q?: string; estado?: string }>;
+  searchParams: Promise<{
+    modo?: string;
+    vista?: string;
+    pagina?: string;
+    q?: string;
+    estado?: string;
+    redirigido?: string;
+    correo?: string;
+  }>;
 }) {
   const employee = await requireCurrentEmployee("/tickets");
   const params = await searchParams;
-  const view: InboxView = isInboxView(params.vista) ? params.vista : "pendientes";
+  const access = await getModeAccess(employee.idPersonal);
+  const mode: TicketMode = parseTicketMode(params.modo) === "coraje" && access.coraje ? "coraje" : "helpdesk";
+  const views = inboxViews(mode, access);
+  // Una vista de otro modo, o desconocida, abre la primera de este.
+  const view: InboxView = isInboxView(params.vista) && views.includes(params.vista) ? params.vista : views[0];
   const requestedPage = Number.parseInt(params.pagina ?? "1", 10);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   // La URL es entrada externa: un texto demasiado largo se recorta y un
@@ -108,24 +146,36 @@ export default async function TicketsPage({
   const filtering = filters.texto !== null || filters.estado !== null;
 
   const [inbox, counts, canCreate] = await Promise.all([
-    listInbox({ idPersonal: employee.idPersonal, view, page, filters }),
-    countInbox(employee.idPersonal),
+    listInbox({ idPersonal: employee.idPersonal, view, mode, page, filters }),
+    countInbox(employee.idPersonal, mode),
     // Misma regla que exige la creación: no se ofrece lo que se va a rechazar.
-    resolveGrant(employee.idPersonal, TICKET_ACTIONS.crear).then(Boolean),
+    // Solo en HelpDesk: un empleado no radica a nombre de un cliente
+    // (tickets.md §7.1).
+    mode === "helpdesk" ? resolveGrant(employee.idPersonal, TICKET_ACTIONS.crear).then(Boolean) : false,
   ]);
 
   return (
-    <AppFrame employee={employee} title="Bandeja de tickets">
+    <AppFrame employee={employee} title={mode === "coraje" ? "Tickets de clientes" : "Bandeja de tickets"} mode={mode}>
       {inbox === null ? (
         <p className={notice("warning")}>No tienes permiso para consultar tickets.</p>
       ) : (
         <div className="space-y-4">
+          {params.redirigido && (
+            <p className={notice("success")} role="status">
+              {TICKET_CODE.test(params.redirigido)
+                ? `Ticket ${params.redirigido} redirigido a su área.`
+                : "Ticket redirigido a su área."}
+            </p>
+          )}
+          {params.correo === "fallido" && (
+            <p className={notice("warning")}>Un correo de este cambio no salió. Queda registrado en el ticket para reenviarlo.</p>
+          )}
           {counts && <InboxCountCards counts={counts} />}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <SegmentedLinks
               label="Vistas de la bandeja"
-              items={INBOX_VIEWS.map((item) => ({ label: VIEW_LABEL[item], href: inboxHref(item, filters), current: item === view }))}
+              items={views.map((item) => ({ label: VIEW_LABEL[item], href: inboxHref(mode, item, filters), current: item === view }))}
             />
             {canCreate && (
               <Link href="/tickets/nuevo" className={buttonRecipe({ variant: "primary" })}>
@@ -136,18 +186,19 @@ export default async function TicketsPage({
           </div>
 
           <InboxSearch
+            modo={mode === "coraje" ? "coraje" : null}
             view={view}
             texto={filters.texto}
             estado={filters.estado}
             showEstado={viewAllowsStateFilter(view)}
             maxLength={INBOX_SEARCH_MAX}
-            clearHref={inboxHref(view, { texto: null, estado: null })}
+            clearHref={inboxHref(mode, view, { texto: null, estado: null })}
           />
 
           <section className={surface({ padded: false })} aria-label={VIEW_LABEL[view]}>
             {inbox.rows.length === 0 ? (
               <p className="px-5 py-10 text-center text-ink-muted">
-                {filtering ? "Ningún ticket de esta vista coincide con la búsqueda." : EMPTY_MESSAGE[view]}
+                {filtering ? "Ningún ticket de esta vista coincide con la búsqueda." : emptyMessage(view, mode)}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -156,7 +207,8 @@ export default async function TicketsPage({
                     <tr>
                       <th scope="col" className="px-4 py-2.5 font-bold">Ticket</th>
                       <th scope="col" className="px-4 py-2.5 font-bold">Estado</th>
-                      <th scope="col" className="px-4 py-2.5 font-bold">Plazo</th>
+                      {/* Lo que espera área todavía no tiene plazo: empieza al redirigirlo. */}
+                      <th scope="col" className="px-4 py-2.5 font-bold">{view === "redirigir" ? "Radicado" : "Plazo"}</th>
                       <th scope="col" className="px-4 py-2.5 font-bold">Área y tipo</th>
                       <th scope="col" className="px-4 py-2.5 font-bold">Solicitante</th>
                       <th scope="col" className="px-4 py-2.5 font-bold">Responsable</th>
@@ -175,7 +227,7 @@ export default async function TicketsPage({
                       >
                         <td className="max-w-md px-4 py-3">
                           <Link
-                            href={`/tickets/${row.idTicket}`}
+                            href={view === "redirigir" ? `/redirigir/${row.idTicket}` : `/tickets/${row.idTicket}`}
                             className={cn(
                               "rounded-control font-bold text-heading underline-offset-2 after:absolute after:inset-0 hover:underline",
                               focusRing,
@@ -191,7 +243,9 @@ export default async function TicketsPage({
                           <TicketStateBadge state={row.estado} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
-                          {row.fechaLimite ? (
+                          {view === "redirigir" ? (
+                            <span className="tabular-nums">{formatDateTime(row.fechaCreacion)}</span>
+                          ) : row.fechaLimite ? (
                             <div className="flex flex-col items-start gap-1">
                               <span className="tabular-nums">{formatDate(row.fechaLimite)}</span>
                               {row.sla && row.sla !== "EN_PLAZO" && <SlaBadge status={row.sla} />}
@@ -226,12 +280,12 @@ export default async function TicketsPage({
               </span>
               <div className="flex gap-2">
                 {inbox.page > 1 && (
-                  <Link href={inboxHref(view, filters, inbox.page - 1)} className={buttonRecipe({ variant: "secondary", size: "sm" })}>
+                  <Link href={inboxHref(mode, view, filters, inbox.page - 1)} className={buttonRecipe({ variant: "secondary", size: "sm" })}>
                     Anterior
                   </Link>
                 )}
                 {inbox.page < inbox.pageCount && (
-                  <Link href={inboxHref(view, filters, inbox.page + 1)} className={buttonRecipe({ variant: "secondary", size: "sm" })}>
+                  <Link href={inboxHref(mode, view, filters, inbox.page + 1)} className={buttonRecipe({ variant: "secondary", size: "sm" })}>
                     Siguiente
                   </Link>
                 )}

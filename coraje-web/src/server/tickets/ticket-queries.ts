@@ -11,7 +11,9 @@ import {
 } from "@/server/authorization/scope";
 
 import { FOLLOWER_WHERE } from "./follow-rules";
+import { UNREDIRECTED_WHERE, canRedirect } from "./redirect-queries";
 import { slaStatus, type SlaStatus } from "./sla";
+import { modeCondition, ticketModeOf, type TicketMode } from "./ticket-mode";
 import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
 
 /**
@@ -45,13 +47,27 @@ import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicket
  * - `alcance`: todo lo que puedo consultar. Para quien recibe un área es esa
  *   área; para `ADMIN`, toda la firma; para quien no recibe nada, lo suyo. La
  *   vista no mira el área: el alcance ya dice qué cabe (permisos.md §4.5).
+ * - `redirigir` (U17, solo en modo Coraje): los tickets del portal que
+ *   esperan área. Es la única que **no** sale del alcance de consulta: un
+ *   ticket sin área no lo cubre ninguno, y la vista la ve quien puede
+ *   redirigir (`redirect-queries.ts`). Fija el estado, como «Por atender».
+ *
+ * Cada modo ofrece las suyas (`inboxViews`): en Coraje no hay «Radicados por
+ * mí», porque un empleado no radica tickets de clientes (tickets.md §7.1).
  */
-export const INBOX_VIEWS = ["pendientes", "radicados", "siguiendo", "alcance"] as const;
+export const INBOX_VIEWS = ["pendientes", "redirigir", "radicados", "siguiendo", "alcance"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
 
-/** ¿La vista admite elegir estado? Solo la que no lo fija ya. */
+/** Las vistas de la bandeja en un modo, en orden; la primera es la de entrada. */
+export function inboxViews(mode: TicketMode, access: { redirigir: boolean }): InboxView[] {
+  if (mode === "helpdesk") return ["pendientes", "radicados", "siguiendo", "alcance"];
+  // Quien redirige entra por lo que espera área: es su trabajo diario.
+  return [...(access.redirigir ? (["redirigir"] as const) : []), "pendientes", "siguiendo", "alcance"];
+}
+
+/** ¿La vista admite elegir estado? Solo las que no lo fijan ya. */
 export function viewAllowsStateFilter(view: InboxView): boolean {
-  return view !== "pendientes";
+  return view !== "pendientes" && view !== "redirigir";
 }
 
 export function isInboxView(value: string | undefined): value is InboxView {
@@ -112,7 +128,7 @@ export interface InboxCounts {
 }
 
 
-function viewCondition(view: InboxView, idPersonal: string): Prisma.FactTicketWhereInput {
+function viewCondition(view: Exclude<InboxView, "redirigir">, idPersonal: string): Prisma.FactTicketWhereInput {
   const open = { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } };
   switch (view) {
     case "pendientes":
@@ -124,6 +140,27 @@ function viewCondition(view: InboxView, idPersonal: string): Prisma.FactTicketWh
     case "siguiendo":
       return { observadores: { some: { idPersonal } } };
   }
+}
+
+/**
+ * Qué lista la vista: el alcance de consulta, el modo y la vista, o `null`
+ * si la persona no tiene con qué verla. «Por redirigir» no pasa por el
+ * alcance de consulta sino por quién puede redirigir.
+ */
+async function inboxWhere(params: {
+  idPersonal: string;
+  view: InboxView;
+  mode: TicketMode;
+}): Promise<Prisma.FactTicketWhereInput | null> {
+  if (params.view === "redirigir") {
+    return params.mode === "coraje" && (await canRedirect(params.idPersonal)) ? UNREDIRECTED_WHERE : null;
+  }
+  const grant = await resolveGrant(params.idPersonal, TICKET_ACTIONS.consultar);
+  if (!grant) return null;
+  const scope = consultScopeConditions(grant.alcance, grant.actor);
+  return {
+    AND: [scope === null ? {} : { OR: scope }, modeCondition(params.mode), viewCondition(params.view, params.idPersonal)],
+  };
 }
 
 /**
@@ -155,37 +192,34 @@ function filterConditions(filters: InboxFilters): Prisma.FactTicketWhereInput[] 
  * Una página de la bandeja, o `null` si la persona no puede consultar
  * tickets.
  *
- * Orden: una lista solo de abiertos, por vencimiento (lo más urgente arriba);
- * el seguimiento, abiertos primero; el resto
- * (radicados y todo el alcance), del más reciente al más antiguo.
+ * Orden: lo que espera área, del más antiguo al más reciente (su plazo no
+ * empieza hasta que se redirige, así que lo más viejo es lo más urgente); una
+ * lista solo de abiertos, por vencimiento (lo más urgente arriba); el
+ * seguimiento, abiertos primero; el resto (radicados y todo el alcance), del
+ * más reciente al más antiguo.
  */
 export async function listInbox(params: {
   idPersonal: string;
   view: InboxView;
+  mode: TicketMode;
   page: number;
   filters: InboxFilters;
 }): Promise<InboxPage | null> {
-  const grant = await resolveGrant(params.idPersonal, TICKET_ACTIONS.consultar);
-  if (!grant) return null;
-
-  const scope = consultScopeConditions(grant.alcance, grant.actor);
-  const where: Prisma.FactTicketWhereInput = {
-    AND: [
-      scope === null ? {} : { OR: scope },
-      viewCondition(params.view, params.idPersonal),
-      ...filterConditions(params.filters),
-    ],
-  };
+  const base = await inboxWhere(params);
+  if (!base) return null;
+  const where: Prisma.FactTicketWhereInput = { AND: [base, ...filterConditions(params.filters)] };
   // Por vencimiento solo cuando todo lo listado está abierto: en una lista con
   // terminados, la fecha límite de un ticket cerrado ya no ordena nada.
   const onlyOpen =
     params.view === "pendientes" || (params.filters.estado !== null && isOpenState(params.filters.estado));
   const orderBy: Prisma.FactTicketOrderByWithRelationInput[] =
-    onlyOpen
-      ? [{ fechaLimite: { sort: "asc", nulls: "last" } }, { fechaCreacion: "asc" }]
-      : params.view === "siguiendo"
-        ? [{ fechaResolucion: { sort: "desc", nulls: "first" } }, { fechaCreacion: "desc" }]
-        : [{ fechaCreacion: "desc" }];
+    params.view === "redirigir"
+      ? [{ fechaCreacion: "asc" }]
+      : onlyOpen
+        ? [{ fechaLimite: { sort: "asc", nulls: "last" } }, { fechaCreacion: "asc" }]
+        : params.view === "siguiendo"
+          ? [{ fechaResolucion: { sort: "desc", nulls: "first" } }, { fechaCreacion: "desc" }]
+          : [{ fechaCreacion: "desc" }];
 
   const [total, tickets] = await Promise.all([
     prisma.factTicket.count({ where }),
@@ -243,18 +277,18 @@ export async function listInbox(params: {
 
 /**
  * Los contadores de arriba de la bandeja, sobre **todo** mi alcance de
- * consulta, no sobre la vista ni los filtros: responden «cómo está lo mío»,
- * y cambiar de pestaña no debe cambiarlos. Dos consultas agregadas en la
- * base, sin traer tickets a memoria.
+ * consulta en el modo, no sobre la vista ni los filtros: responden «cómo está
+ * lo mío», y cambiar de pestaña no debe cambiarlos. Dos consultas agregadas
+ * en la base, sin traer tickets a memoria.
  *
  * `null` si la persona no puede consultar tickets.
  */
-export async function countInbox(idPersonal: string): Promise<InboxCounts | null> {
+export async function countInbox(idPersonal: string, mode: TicketMode): Promise<InboxCounts | null> {
   const grant = await resolveGrant(idPersonal, TICKET_ACTIONS.consultar);
   if (!grant) return null;
 
   const scope = consultScopeConditions(grant.alcance, grant.actor);
-  const where: Prisma.FactTicketWhereInput = scope === null ? {} : { OR: scope };
+  const where: Prisma.FactTicketWhereInput = { AND: [scope === null ? {} : { OR: scope }, modeCondition(mode)] };
 
   const [grupos, estados, vencidos] = await Promise.all([
     prisma.factTicket.groupBy({ by: ["idEstado"], where, _count: { _all: true } }),
@@ -353,6 +387,8 @@ export interface TicketDetail {
   projection: HistoryProjection;
   history: TicketHistoryEntry[];
   capabilities: TicketCapabilities;
+  /** Modo al que pertenece (U17): Coraje si es de un cliente. Decide cómo se dibuja. */
+  modo: TicketMode;
   /** Quienes siguen el ticket (U11). Los ve cualquiera que pueda consultarlo. */
   observadores: { idPersonal: string; nombre: string }[];
 }
@@ -379,6 +415,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       fechaCreacion: true,
       fechaLimite: true,
       fechaResolucion: true,
+      idClienteContai: true,
       origenSistema: true,
       dimEstado: { select: { nombreEstado: true } },
       dimPrioridad: { select: { nombrePrioridad: true } },
@@ -478,6 +515,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     fechaLimite: ticket.fechaLimite,
     fechaResolucion: ticket.fechaResolucion,
     sla: slaStatus({ state: estado, fechaLimite: ticket.fechaLimite, now: new Date() }),
+    modo: ticketModeOf(ticket.idClienteContai),
     operable,
     projection,
     history: eventos.map((evento) => ({

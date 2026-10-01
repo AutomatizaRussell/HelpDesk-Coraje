@@ -7,7 +7,8 @@ ESTADO:      modelo de eventos y escritor único desplegados y ejercitados (U6).
              corte 18). Tickets del portal (T1 por el cliente, T3) desplegados, sin
              ejercitar (U8, corte 19). Seguimiento —observadores, solicitud de
              validación, comentario del solicitante— desplegado, sin ejercitar (U11,
-             corte 22, §11). Avisos desplegados, sin ejercitar (U15, §12). Las
+             corte 22, §11). Avisos desplegados y ejercitados (U15, §12). Modo
+             Coraje construido, sin desplegar (U17, §13). Las
              secciones fechadas antes del 24-sep son
              antecedente: §1 describe el estado del 03-sep
 CORTE:       01-oct-2026
@@ -774,6 +775,29 @@ hace el trigger, pero **no crea** avisos nuevos: la ingesta no pasa por los coma
 | V21 | Tipos y clases de aviso iguales en código y en la base; el trigger cierra exactamente los de responsable | `ticket-notice-kinds.test.mts` contra la migración | **Verificado por prueba** (corte 28) |
 | V22 | Un aviso se crea en la transacción del evento, se cierra al actuar y se escala una vez por día | Base desplegada | **Sin ejercitar** |
 
+## 13. `DECISIÓN` (01-oct-2026, U17) Modo Coraje
+
+Coraje es el trabajo con clientes, y es un **modo** de la misma aplicación, como el
+claro y el oscuro: la bandeja y el detalle son los mismos y cambia poco, para que el
+paso de uno a otro se lea como una transición suave. Construido, sin desplegar.
+
+- **Qué es de Coraje:** el ticket con cliente (`id_cliente_contai`). Por §7.1, cada
+  ticket cae en un modo y solo en uno (`tickets/ticket-mode.ts`).
+- **Qué cambia:** los tickets que lista la bandeja (`?modo=coraje`), sus vistas, las
+  pestañas (Accesos de clientes en Coraje; Salud en HelpDesk) y el color: lienzo navy,
+  con el mismo acento del área (`design/sistema-helpdesk.md` §5.2). En Coraje no hay
+  «Radicados por mí» ni «Nuevo ticket»: un empleado no radica a nombre de un cliente.
+- **«Por redirigir»** sustituye a la sección «Clasificación»: es la primera vista de la
+  bandeja de Coraje para quien puede redirigir, del más antiguo al más reciente. El
+  ticket se redirige en `/redirigir/{id}` y se vuelve a esa vista.
+- **El modo no esconde trabajo.** La campana es la misma en los dos. El interruptor
+  lleva el número de lo que espera en el otro modo: lo asignado y abierto y, en Coraje,
+  lo que espera área si la persona puede redirigir. Un enlace a un ticket lo abre en su
+  modo, venga de donde venga.
+- **Quién ve el interruptor:** `specs/permisos.md` §4.7. El modo es un filtro más
+  sobre el alcance; nunca lo amplía.
+- **Sin persistencia:** el modo vive en la URL. Una sesión nueva entra en HelpDesk.
+
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
 escritor único (§3); propone el vocabulario mínimo de siete estados contra los tres
@@ -855,3 +879,5 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   —Por atender, Radicados por mí, En seguimiento, Todo mi alcance— y el estado se
   elige solo con el filtro. «Abiertos» y «Terminados» se retiran: eran filtros de
   estado y, combinadas con el filtro, daban vistas vacías.
+- 01-oct-2026 — U17 (corte 35). §13: modo Coraje. La bandeja filtra por cliente y
+  «Clasificación» pasa a ser la vista «Por redirigir» de la bandeja de Coraje.

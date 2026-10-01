@@ -30,6 +30,13 @@ const placements = {
     image: "w-logo-app-bar-compact lg:w-logo-app-bar",
     width: helpdeskTheme.size.logoAppBar,
   },
+  // La misma barra en modo Coraje (U17), que es navy.
+  appBarInverse: {
+    source: logoWhite,
+    frame: "p-logo-clear-app-bar-compact lg:p-logo-clear-app-bar",
+    image: "w-logo-app-bar-compact lg:w-logo-app-bar",
+    width: helpdeskTheme.size.logoAppBar,
+  },
   sidebar: {
     source: logoWhite,
     frame: "p-logo-clear-sidebar md:p-logo-clear-sidebar-md lg:p-logo-clear-sidebar-lg xl:p-logo-clear-sidebar-xl",

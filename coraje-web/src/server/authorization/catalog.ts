@@ -16,7 +16,7 @@
 export const TICKET_ACTIONS = {
   consultar: "ticket.consultar",
   crear: "ticket.crear",
-  /** T3: clasificar un ticket del portal. Solo `TOTAL` lo cubre (scope.ts). */
+  /** T3: redirigir al área un ticket del portal. Solo `TOTAL` lo cubre (scope.ts). */
   redirigir: "ticket.redirigir",
   reasignar: "ticket.reasignar",
   responder: "ticket.responder",

@@ -60,13 +60,9 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
     acceso: "EMPLEADO",
     razon: "Detalle de un ticket dentro del alcance de ticket.consultar",
   },
-  "/clasificacion": {
+  "/redirigir/[idTicket]": {
     acceso: "EMPLEADO",
-    razon: "Cola de tickets del portal por clasificar; exige ticket.redirigir",
-  },
-  "/clasificacion/[idTicket]": {
-    acceso: "EMPLEADO",
-    razon: "Clasificar un ticket del portal (T3); exige ticket.redirigir",
+    razon: "Redirigir al área un ticket del portal (T3); exige ticket.redirigir",
   },
   "/accesos": {
     acceso: "EMPLEADO",

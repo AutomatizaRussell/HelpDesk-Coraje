@@ -22,10 +22,12 @@ enum RolAplicacion {
   // que radicó, lo que le asignaron, lo que sigue y lo que recibe según el
   // enrutamiento.
   COLABORADOR
-  // U8 (28-sep-2026): CLASIFICADOR clasifica los tickets del portal; ADMIN
-  // administra los accesos de clientes y, desde el 30-sep-2026, consulta todos
-  // los tickets. Ambos parten de una copia de las reglas de COLABORADOR.
-  CLASIFICADOR
+  // U8 (28-sep-2026): REDIRECTOR redirige al área que corresponde los tickets
+  // que los clientes radican en el portal (se llamaba CLASIFICADOR hasta el
+  // 01-oct-2026); ADMIN administra los accesos de clientes y, desde el
+  // 30-sep-2026, consulta todos los tickets. Ambos parten de una copia de las
+  // reglas de COLABORADOR.
+  REDIRECTOR
   ADMIN
 
   @@map("rol_aplicacion")

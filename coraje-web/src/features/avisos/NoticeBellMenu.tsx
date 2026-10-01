@@ -21,7 +21,7 @@ type PanelState =
   | { status: "error" }
   | { status: "ready"; data: BellNoticesResponse };
 
-export function NoticeBellMenu({ count, anchor }: { count: number; anchor: "topbar" | "appBar" }) {
+export function NoticeBellMenu({ count, anchor, allHref }: { count: number; anchor: "topbar" | "appBar"; allHref: string }) {
   const [panel, setPanel] = useState<PanelState>({ status: "idle" });
   // Una apertura nueva descarta la respuesta de la anterior si llega tarde.
   const requestRef = useRef(0);
@@ -45,7 +45,7 @@ export function NoticeBellMenu({ count, anchor }: { count: number; anchor: "topb
   const shownCount = panel.status === "ready" ? panel.data.total : count;
 
   return (
-    <NoticeBell count={shownCount} anchor={anchor} allHref="/avisos" onOpen={load}>
+    <NoticeBell count={shownCount} anchor={anchor} allHref={allHref} onOpen={load}>
       <div className="max-h-96 overflow-y-auto">
         {(panel.status === "idle" || panel.status === "loading") && (
           <p className="px-4 py-8 text-center text-sm text-ink-muted" role="status">

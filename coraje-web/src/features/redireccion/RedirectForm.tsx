@@ -13,11 +13,20 @@ import type { CreationCatalog } from "@/server/tickets/ticket-queries";
 import { redirectTicketAction } from "./actions";
 
 /**
- * Clasificar un ticket del portal (T3): elegir el tipo de requerimiento. El
+ * Redirigir un ticket del portal (T3): elegir el tipo de requerimiento. El
  * tipo decide el área, y la regla de enrutamiento decide la persona, igual
- * que al crear un ticket interno. Quien clasifica no elige a la persona.
+ * que al crear un ticket interno. Quien redirige no elige a la persona.
  */
-export function RedirectForm({ idTicket, catalog }: { idTicket: string; catalog: Pick<CreationCatalog, "areas" | "tipos"> }) {
+export function RedirectForm({
+  idTicket,
+  catalog,
+  backHref,
+}: {
+  idTicket: string;
+  catalog: Pick<CreationCatalog, "areas" | "tipos">;
+  /** «Por redirigir» en la bandeja de Coraje. */
+  backHref: string;
+}) {
   const [state, formAction, pending] = useActionState(redirectTicketAction, IDLE_FORM_STATE);
   const failed = state.status === "error" ? state : null;
 
@@ -32,14 +41,14 @@ export function RedirectForm({ idTicket, catalog }: { idTicket: string; catalog:
         error={failed?.fieldErrors.idTipoReq}
       />
       <p className={fieldHint}>
-        Al clasificarlo, el ticket pasa a la persona que recibe ese tipo de requerimiento y empieza el plazo de 3 días
-        hábiles para responder al cliente.
+        El tipo decide el área y la persona que atiende el ticket. Al redirigirlo empieza el plazo de 3 días hábiles para
+        responder al cliente.
       </p>
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
         <button type="submit" className={buttonRecipe({ variant: "primary" })} disabled={pending}>
-          {pending ? "Clasificando…" : "Clasificar y asignar"}
+          {pending ? "Redirigiendo…" : "Redirigir al área"}
         </button>
-        <Link href="/clasificacion" className={buttonRecipe({ variant: "secondary" })}>Volver a la cola</Link>
+        <Link href={backHref} className={buttonRecipe({ variant: "secondary" })}>Volver a la bandeja</Link>
       </div>
     </form>
   );

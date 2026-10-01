@@ -97,6 +97,12 @@ test("un ticket sin clasificar solo lo cubre el alcance TOTAL de ticket.redirigi
   assert.match(MIGRATION, /\('ADMIN', 'portal\.acceso\.administrar', 'TOTAL'\)/);
 });
 
+test("CLASIFICADOR se renombra a REDIRECTOR sin tocar sus reglas (U17)", () => {
+  // RENAME VALUE y nada más: la regla de arriba sigue siendo de quien la tenía.
+  const sql = stripSqlComments(readFileSync(path.join(MIGRATIONS, "20261001100000_rol_redirector/migration.sql"), "utf8")).trim();
+  assert.equal(sql, `ALTER TYPE "core"."rol_aplicacion" RENAME VALUE 'CLASIFICADOR' TO 'REDIRECTOR';`);
+});
+
 test("el workflow de correo del portal no guarda los datos de sus ejecuciones", () => {
   // El cuerpo lleva un código o un enlace de un solo uso (observación B8 de
   // Impulsa): n8n no debe conservarlo, dependa o no de la instancia.

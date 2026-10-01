@@ -468,7 +468,7 @@ una segunda no repite.
 
 **Siguiente en la cola:** los adjuntos de U7, inmediatamente después.
 
-### U16 · Color por área — **construida el 01-oct-2026 (corte 34), sin desplegar**
+### U16 · Color por área — **cerrada el 01-oct-2026** (corte 34; el usuario la probó suplantando a una persona por área: «funciona, es sutil y se ve bien»)
 
 **Objetivo:** que la interfaz tome el color del área de quien entra y que cada ticket
 muestre el color de su área (`design/sistema-helpdesk.md` §5.1). Decisión del usuario.
@@ -478,17 +478,25 @@ BPO, Legal, Administración), el acento, el avatar y el número de la campana to
 color; «Asignado» se ve igual en todas; la columna «Área y tipo» lleva el punto del área
 del ticket.
 
-### U17 · Modo Coraje — **decidido el 01-oct-2026, sin construir**
+### U17 · Modo Coraje — **construida el 01-oct-2026 (corte 35), sin desplegar**
 
 Coraje (el trabajo con clientes) como **modo** de la misma aplicación, al estilo de
-claro/oscuro, no como pestaña ni aplicación aparte. Decisiones del usuario: en modo
-Coraje cambian los tickets que se listan (los de clientes), aparecen sus secciones
-(Clasificación, Accesos de clientes) y la interfaz pasa a fondo navy con el mismo
-acento del área; el interruptor lo ve quien tiene tickets de clientes a su alcance o
-puede clasificar o administrar accesos (por permiso, no por rol). Condiciones de
-diseño: el modo no esconde trabajo (la campana es global, el interruptor lleva el
-número del otro modo, un enlace a un ticket abre su modo); la estructura de la
-bandeja y del detalle es la misma.
+claro/oscuro, no como pestaña ni aplicación aparte, y que en esencia cambie poco para
+que el paso de uno a otro se lea como una transición suave. Decisiones del usuario: en
+modo Coraje cambian los tickets que se listan (los de clientes), aparecen sus secciones
+y la interfaz pasa a fondo navy con el mismo acento del área; el interruptor lo ve
+quien tiene tickets de clientes a su alcance o puede redirigir o administrar accesos
+(por permiso, no por rol). Condiciones de diseño: el modo no esconde trabajo (la
+campana es global, el interruptor lleva el número del otro modo, un enlace a un ticket
+abre su modo); la estructura de la bandeja y del detalle es la misma. El mismo día:
+`CLASIFICADOR` pasa a `REDIRECTOR` y la sección «Clasificación», a la vista «Por
+redirigir» de la bandeja de Coraje. Construido: `specs/tickets.md` §13,
+`specs/permisos.md` §4.7, `design/sistema-helpdesk.md` §5.2.
+
+**Condición de cierre:** con el rol `REDIRECTOR`, Juan Felipe redirige desde «Por
+redirigir» un ticket radicado en el portal; quien lo recibe lo ve en su «Por atender»
+de Coraje, y el interruptor de HelpDesk le muestra el número; un enlace al ticket desde
+la campana lo abre en navy; alguien sin tickets de clientes no ve el interruptor.
 
 ---
 
@@ -568,3 +576,6 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   registro fechado de cada despliegue, no la cabecera que no se actualizó.
 - 01-oct-2026 — U16 construida (corte 34): color por área. U17 (modo Coraje)
   decidida. **Cabeza de la cola: ejercitar U8 (portal) y U16; después U17 y los adjuntos.**
+- 01-oct-2026 — U16 cerrada con la prueba del usuario. U17 construida (corte 35): modo
+  Coraje, rol `REDIRECTOR` y vista «Por redirigir». **Cabeza de la cola: desplegar y
+  ejercitar U17 junto con el portal (U8); después, los adjuntos de U7.**

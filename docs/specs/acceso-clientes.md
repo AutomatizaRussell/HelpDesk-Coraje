@@ -1,4 +1,4 @@
-# Acceso de clientes al portal
+| 7 | Radicar (T1) y redirigir (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`; desde U17, la vista «Por redirigir» de la bandeja de Coraje y `/redirigir/{id}`, rol `REDIRECTOR`) |# Acceso de clientes al portal
 
 ```
 ESTADO:      aprobado y CONSTRUIDO, SIN DESPLEGAR (U8, corte 19). Las tres decisiones
@@ -253,13 +253,14 @@ contactos ni tickets ajenos · limitación de tasa tolerante y recuperable.
 | 4 | Activación, dispositivo recordado y OTP | 2 | Construido (`/portal/activar`, `/portal/ingreso`) |
 | ~~5~~ | ~~Retirar `/portal` actual y su cookie de cliente~~ | | **Hecho el 22-sep-2026, fuera de orden** |
 | 6 | Consola interna de accesos: consultar, reenviar, revocar | 4 | Construido, más solo lectura |
-| 7 | Radicar (T1) y clasificar (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`, `/clasificacion`, rol `CLASIFICADOR`) |
+| 7 | Radicar (T1) y redirigir (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`; desde U17, vista «Por redirigir» de la bandeja de Coraje y `/redirigir/{id}`, rol `REDIRECTOR`) |
 
 **Roles (decisión del usuario, 28-sep-2026).** `CLASIFICADOR` redirige los tickets del
 portal (`ticket.redirigir`, `TOTAL`); `ADMIN` administra los accesos
 (`portal.acceso.administrar`). Separados a propósito: quien reparte el trabajo no
 concede acceso externo. No se llama `RECEPCION` para no confundirlo con la recepción
 física de la firma. Los dos parten de una **copia** de las reglas de `AGENTE`.
+Desde el 01-oct-2026 (U17) `CLASIFICADOR` se llama `REDIRECTOR` (`specs/permisos.md` §4.7).
 
 **Fuera de la v1, registrado:** varios correos por contacto desde la consola (el
 modelo los admite, pero la vista da de alta uno); desactivar un contacto (hoy se

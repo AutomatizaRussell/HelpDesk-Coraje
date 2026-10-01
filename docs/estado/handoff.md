@@ -1,6 +1,45 @@
 # Handoff técnico
 
 ```
+CORTE:   01-oct-2026 (corte 35, U17 modo Coraje, SIN DESPLEGAR)
+SOBRE:   `476fe75` (corte 34)
+RAMA:    main
+UNIDAD:  U17 · MODO CORAJE (`specs/tickets.md` §13, `permisos.md` §4.7,
+         `design/sistema-helpdesk.md` §5.2). Construido:
+         - `ticket-mode.ts`: un ticket es de Coraje si tiene cliente; el modo
+           viaja en la URL (`?modo=coraje`) y es un filtro más sobre el alcance;
+         - `mode-access.ts`: ve el interruptor quien puede redirigir, puede
+           administrar accesos o tiene un ticket de cliente en su alcance; el
+           número es lo que espera en el otro modo;
+         - bandeja por modo; en Coraje, «Por redirigir» (antes la sección
+           «Clasificación», ahora `/redirigir/{id}`), sin «Radicados por mí»
+           ni «Nuevo ticket»; el detalle abre en el modo de su ticket;
+         - tema `coraje` y `[data-mode="coraje"]` en `globals.css`: navy, con
+           Legal y Contabilidad en su tinta clara; logotipo blanco en la barra
+           propia; transición de color al cambiar de modo;
+         - migración `20261001100000_rol_redirector`: `CLASIFICADOR` →
+           `REDIRECTOR` (`RENAME VALUE`).
+         Evidencia: `tsc`, `eslint`, `pnpm test` 188/188 (nuevas: paleta y
+         bloque CSS del modo, reglas del modo, migración del rol), `next build`
+         y CSS generado con el bloque. **Sin ejercitar en el navegador.**
+         U16 cerrada: el usuario la probó suplantando a una persona por área.
+DATOS DE PRUEBA (01-oct, a mano por el usuario; quitar en la limpieza):
+         - `COLABORADOR` a una persona por área para suplantarla (la de más
+           tickets asignados en 12 meses): danielvelez@ (BPO), norbeygranada@
+           (Contabilidad), manuelramirez@ (Impuestos), alexandracalle@ (Legal),
+           esneiderlopez@ (Revisoría). Antes no tenían rol.
+         - cliente `PRUEBA HELPDESK` sin NIT (la ingesta no lo toca),
+           `eded7371-c783-43c2-b95f-a1e825f11c1f`. Con tickets no se borra:
+           se desactiva (`estado_cliente = false`).
+         No es de prueba y se queda: felipezuluaga@ con `CLASIFICADOR`, que la
+         migración renombra a `REDIRECTOR`. Choque abierto: `/salud` exige
+         `ADMIN` y un rol por persona; con `REDIRECTOR` no la ve. Se resuelve
+         en el catálogo, no a mano.
+SIGUE:   comprobar en el log de `migrate` la migración del rol; paso 5 del
+         guion (portal) con Juan Felipe redirigiendo; la condición de cierre de
+         U17 (plan); después, los adjuntos de U7.
+
+--- Corte 34, para contexto:
 CORTE:   01-oct-2026 (corte 34, U16 color por área, SIN DESPLEGAR)
 SOBRE:   `864f880` (corte 33)
 RAMA:    main

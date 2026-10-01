@@ -78,7 +78,7 @@ export interface ScopeTicket {
  *
  * - Redirigir (T3): cae en «ser su responsable», y un ticket sin clasificar
  *   no tiene responsable ni área. Por eso solo `TOTAL` lo cubre, y es el
- *   alcance que la migración de U8 le da a `CLASIFICADOR`. No es un caso
+ *   alcance que la migración de U8 le da a `REDIRECTOR`. No es un caso
  *   especial: es la regla general aplicada a un ticket que todavía no es de
  *   nadie.
  *

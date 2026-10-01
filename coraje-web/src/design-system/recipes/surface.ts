@@ -1,4 +1,5 @@
 import { cn } from "../utilities/cn";
+import { modeTransition } from "./interaction";
 
 /**
  * Superficie: la tarjeta que agrupa una entidad o una tarea real (una ficha de
@@ -6,7 +7,7 @@ import { cn } from "../utilities/cn";
  * no con tarjetas anidadas.
  */
 export function surface({ padded = true }: { padded?: boolean } = {}): string {
-  return cn("rounded-surface border border-line bg-surface", padded && "p-5 lg:p-6");
+  return cn("rounded-surface border border-line bg-surface", modeTransition, padded && "p-5 lg:p-6");
 }
 
 /** Título de sección dentro de una superficie. */

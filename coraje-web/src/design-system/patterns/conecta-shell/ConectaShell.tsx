@@ -6,9 +6,10 @@ import { useMemo, useRef, type MouseEvent, type ReactNode } from "react";
 import { BrandIsotype } from "../../components/BrandIsotype";
 import { BrandLogo } from "../../components/BrandLogo";
 import { iconStroke } from "../../foundations/iconography";
-import { colorTransition, focusRing, focusRingInverse } from "../../recipes/interaction";
+import { colorTransition, focusRing, focusRingInverse, modeTransition } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 import { ModuleNav, type ModuleNavItem } from "../module-nav/ModuleNav";
+import type { ColorMode } from "../mode-switch/ModeSwitch";
 import type { AreaThemeKey } from "../area/area";
 import { UserMenu } from "../user-menu/UserMenu";
 import {
@@ -53,12 +54,16 @@ export type ConectaShellProps = {
   signOutAction: () => Promise<void>;
   /** Área de quien entra (U16): redefine el acento de todo el shell. */
   areaTheme: AreaThemeKey;
+  /** Modo (U17): `coraje` pinta en navy la topbar, las pestañas y el contenido. */
+  mode: ColorMode;
+  /** Antetítulo de la topbar: el nombre del modo. */
+  moduleName: string;
+  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Coraje. */
+  modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
   children: ReactNode;
 };
-
-const MODULE_NAME = "HelpDesk";
 
 export function ConectaShell({
   title,
@@ -69,6 +74,9 @@ export function ConectaShell({
   signOutAction,
   noticeBell,
   areaTheme,
+  mode,
+  moduleName,
+  modeSwitch,
   children,
 }: ConectaShellProps) {
   const sidebarRef = useRef<HTMLDialogElement>(null);
@@ -85,7 +93,7 @@ export function ConectaShell({
   };
 
   return (
-    <div data-area={areaTheme} className="min-h-dvh bg-canvas">
+    <div data-area={areaTheme} data-mode={mode} className={cn("min-h-dvh bg-canvas", modeTransition)}>
       <div className="fixed inset-y-0 left-0 z-(--hd-layer-rail) hidden w-rail flex-col border-r border-shell-line bg-shell-surface lg:flex">
         <div className="px-3 py-4">
           <BrandIsotype />
@@ -128,7 +136,7 @@ export function ConectaShell({
 
       <div className="flex min-h-dvh flex-col lg:pl-rail">
         <header className="sticky top-0 z-(--hd-layer-topbar)">
-          <div className="border-b border-shell-topbar-line bg-shell-topbar-surface">
+          <div className={cn("border-b border-shell-topbar-line bg-shell-topbar-surface", modeTransition)}>
             <div className="flex h-topbar items-center justify-between gap-4 px-4 lg:h-topbar-wide lg:px-8">
               <div className="flex min-w-0 items-center gap-3">
                 <button
@@ -146,7 +154,7 @@ export function ConectaShell({
                 </button>
                 <div className="min-w-0">
                   <p className="hidden text-2xs font-black uppercase tracking-widest text-shell-topbar-muted sm:block">
-                    {MODULE_NAME}
+                    {moduleName}
                   </p>
                   <h1 className="truncate text-md font-black tracking-tight text-heading lg:text-lg">{title}</h1>
                 </div>
@@ -168,7 +176,7 @@ export function ConectaShell({
               </div>
             </div>
           </div>
-          <ModuleNav items={moduleNav} />
+          <ModuleNav items={moduleNav} trailing={modeSwitch} />
         </header>
 
         <main id="contenido" className="mx-auto w-full max-w-content flex-1 px-6 py-8 lg:px-10 lg:py-10">

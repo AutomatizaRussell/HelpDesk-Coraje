@@ -11,6 +11,8 @@ import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { resolveGrant } from "@/server/authorization/authorizer";
 import { AVISO_ACTIONS } from "@/server/authorization/catalog";
 import { isNoticeSection, listNotices, type NoticeSection } from "@/server/notifications/ticket-notices";
+import { getModeAccess } from "@/server/tickets/mode-access";
+import { modeQuery, parseTicketMode, type TicketMode } from "@/server/tickets/ticket-mode";
 
 /**
  * Avisos de la persona (U15, specs/tickets.md §12), en dos secciones:
@@ -28,8 +30,10 @@ const SECTION_LABEL: Record<NoticeSection, string> = {
   novedades: "Novedades",
 };
 
-function sectionHref(section: NoticeSection, page = 1): string {
-  const query = new URLSearchParams({ seccion: section });
+/** Las secciones y páginas conservan el modo en que se abrió la página (U17). */
+function sectionHref(mode: TicketMode, section: NoticeSection, page = 1): string {
+  const query = modeQuery(mode);
+  query.set("seccion", section);
   if (page > 1) query.set("pagina", String(page));
   return `/avisos?${query.toString()}`;
 }
@@ -37,17 +41,20 @@ function sectionHref(section: NoticeSection, page = 1): string {
 export default async function NoticesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ seccion?: string; pagina?: string }>;
+  searchParams: Promise<{ modo?: string; seccion?: string; pagina?: string }>;
 }) {
   const employee = await requireCurrentEmployee("/avisos");
-  const { seccion, pagina } = await searchParams;
+  const { modo, seccion, pagina } = await searchParams;
+  // Los avisos son los mismos en los dos modos (U17): el modo solo dice cómo
+  // se dibuja la página, la que tenía quien pulsó «Ver todos».
+  const mode: TicketMode = parseTicketMode(modo) === "coraje" && (await getModeAccess(employee.idPersonal)).coraje ? "coraje" : "helpdesk";
   const section: NoticeSection = isNoticeSection(seccion) ? seccion : "atencion";
   const page = Math.max(1, Number.parseInt(pagina ?? "1", 10) || 1);
 
   const allowed = await resolveGrant(employee.idPersonal, AVISO_ACTIONS.consultar);
   if (!allowed) {
     return (
-      <AppFrame employee={employee} title="Avisos">
+      <AppFrame employee={employee} title="Avisos" mode={mode}>
         <p className={notice("warning")}>No tienes permiso para consultar avisos.</p>
       </AppFrame>
     );
@@ -56,7 +63,7 @@ export default async function NoticesPage({
   const { items, hasMore, counts } = await listNotices({ idPersonal: employee.idPersonal, section, page });
 
   return (
-    <AppFrame employee={employee} title="Avisos">
+    <AppFrame employee={employee} title="Avisos" mode={mode}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SegmentedLinks
@@ -64,12 +71,12 @@ export default async function NoticesPage({
             items={[
               {
                 label: counts.atencion > 0 ? `${SECTION_LABEL.atencion} (${counts.atencion})` : SECTION_LABEL.atencion,
-                href: sectionHref("atencion"),
+                href: sectionHref(mode, "atencion"),
                 current: section === "atencion",
               },
               {
                 label: counts.novedades > 0 ? `${SECTION_LABEL.novedades} (${counts.novedades} sin leer)` : SECTION_LABEL.novedades,
-                href: sectionHref("novedades"),
+                href: sectionHref(mode, "novedades"),
                 current: section === "novedades",
               },
             ]}
@@ -118,13 +125,13 @@ export default async function NoticesPage({
             <span>Página {page}</span>
             <div className="flex gap-2">
               {page > 1 && (
-                <Link href={sectionHref("novedades", page - 1)} className={buttonRecipe({ variant: "secondary", size: "sm" })}>
+                <Link href={sectionHref(mode, "novedades", page - 1)} className={buttonRecipe({ variant: "secondary", size: "sm" })}>
                   Anterior
                 </Link>
               )}
               {hasMore && (
                 <Link
-                  href={sectionHref("novedades", page + 1)}
+                  href={sectionHref(mode, "novedades", page + 1)}
                   className={buttonRecipe({ variant: "secondary", size: "sm" })}
                 >
                   Siguiente

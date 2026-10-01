@@ -25,7 +25,7 @@ export default async function AccessSearchPage({ searchParams }: { searchParams:
   if (results === null) notFound();
 
   return (
-    <AppFrame employee={employee} title="Accesos de clientes">
+    <AppFrame employee={employee} title="Accesos de clientes" mode="coraje">
       <div className="space-y-4">
         <form className={cn(surface(), "flex flex-wrap items-end gap-3")} role="search">
           <div className="min-w-64 flex-1">

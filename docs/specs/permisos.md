@@ -8,8 +8,9 @@ ESTADO:      construido, sin desplegar (corte 18, 26-sep-2026): catálogo en
              Corte 21 (U10): acciones `salud.*` para `ADMIN` (§4.3). Corte 22
              (U11): observadores, validación y comentario del solicitante (§4.4).
              Corte 24 (U13): `COLABORADOR` y visibilidad por recepción (§4.5),
-             sin desplegar
-CORTE:       30-sep-2026
+             sin desplegar. Corte 35 (U17): `CLASIFICADOR` → `REDIRECTOR` y
+             acceso al modo Coraje por permiso (§4.7), sin desplegar
+CORTE:       01-oct-2026
 EVIDENCIA:   `tsc`, `lint`, `pnpm test` (alcance, catálogo sembrado y consultado,
              sin comparaciones de rol). Sin ejercitar contra la base
 BLOQUEO:     parcialmente levantado (03-sep-2026) — el usuario confirmó directamente,
@@ -210,6 +211,19 @@ destinatario, así que nadie ve ni marca avisos ajenos (`specs/tickets.md` §12)
 La ruta del escalamiento (`/api/interno/avisos/escalar`) no pasa por el autorizador:
 no la llama una persona sino n8n, y su credencial es un secreto en cabecera
 (`public-paths.ts`).
+
+### 4.7 `DECISIÓN` (01-oct-2026, U17) `REDIRECTOR` y modo Coraje
+
+Construido en `20261001100000_rol_redirector`, sin desplegar. Decisión del usuario:
+
+- **`CLASIFICADOR` pasa a llamarse `REDIRECTOR`**: su trabajo es redirigir al área los
+  tickets del portal, y ahora el rol se llama como su permiso (`ticket.redirigir`).
+  `RENAME VALUE`: las reglas no cambian. Las tablas de §4.2–§4.6 conservan el nombre
+  que tenía al sembrarse.
+- **Quién ve el modo Coraje lo decide el permiso, no el rol** (`tickets/mode-access.ts`):
+  puede redirigir, puede administrar accesos o tiene algún ticket de cliente en su
+  alcance de consulta. El modo no amplía nada: es un filtro más sobre el alcance
+  (`specs/tickets.md` §13).
 
 ## 5. Autorización excepcional
 
