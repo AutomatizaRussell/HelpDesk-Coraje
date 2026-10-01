@@ -1,8 +1,32 @@
 # Handoff técnico
 
 ```
+CORTE:   01-oct-2026 (corte 37, U18 dominio de clientes, SIN DESPLEGAR)
+SOBRE:   `88aa77f` (corte 36)
+RAMA:    main
+UNIDAD:  U18 · DOMINIO DEL PORTAL (`soporte.rbgct.cloud`, plan). Construido en
+         código, apagado hasta que exista `PORTAL_PUBLIC_ORIGIN`:
+         - `security/portal-host.ts`: en el dominio del portal solo se sirven
+           `/portal/*` y las imágenes de marca (lo demás, 404); en Conecta,
+           un GET al portal redirige (308) a su dominio con la misma ruta;
+         - `publicPortalUrl`: los correos del portal llevan su dominio;
+         - `next.config.ts`: la raíz (`/`, fuera del `basePath`) lleva a
+           `/helpdesk/portal`; solo le llega por un dominio entero de HelpDesk;
+         - compose: `PORTAL_PUBLIC_ORIGIN: ${PORTAL_PUBLIC_ORIGIN:-}`.
+         Los empleados se quedan en Conecta (`localStorage` de su origen).
+         `/helpdesk` se queda en las rutas del portal.
+         Evidencia: `tsc`, `eslint`, `pnpm test` 193/193 (nuevas: reglas por
+         dominio, host de la petición, validación de la variable), `next
+         build` con la redirección en `routes-manifest.json`. **Sin DNS ni
+         dominio en Coolify: nada ejercitado.**
+SIGUE:   ver el color de Coraje (corte 36); los tres pasos de
+         `operacion.md`, «Dominio del portal de clientes (U18)», en su orden;
+         paso 5 del guion (portal) ya en `soporte`.
+
+--- Corte 36, para contexto:
 CORTE:   01-oct-2026 (corte 36, color de Coraje corregido, SIN DESPLEGAR)
-SOBRE:   `ac479cd` (corte 35)
+SOBRE:   `b389158` (corte 35 más el `.env.example` del usuario; decía
+         `ac479cd` por error)
 RAMA:    main
 UNIDAD:  U17 · MODO CORAJE, color. El usuario lo vio desplegado y el lienzo
          navy entero no le convenció. Ahora en Coraje pasan a navy solo la

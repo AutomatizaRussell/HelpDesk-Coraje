@@ -254,6 +254,7 @@ contactos ni tickets ajenos · limitación de tasa tolerante y recuperable.
 | ~~5~~ | ~~Retirar `/portal` actual y su cookie de cliente~~ | | **Hecho el 22-sep-2026, fuera de orden** |
 | 6 | Consola interna de accesos: consultar, reenviar, revocar | 4 | Construido, más solo lectura |
 | 7 | Radicar (T1) y redirigir (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`; desde U17, vista «Por redirigir» de la bandeja de Coraje y `/redirigir/{id}`, rol `REDIRECTOR`) |
+| 8 | Dominio propio del portal: `soporte.rbgct.cloud` (U18) | Infraestructura | Construido en código, activado por `PORTAL_PUBLIC_ORIGIN`; falta DNS y Coolify (`estado/operacion.md`) |
 
 **Roles (decisión del usuario, 28-sep-2026).** `CLASIFICADOR` redirige los tickets del
 portal (`ticket.redirigir`, `TOTAL`); `ADMIN` administra los accesos

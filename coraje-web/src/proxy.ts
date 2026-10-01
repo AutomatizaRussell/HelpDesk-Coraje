@@ -4,6 +4,7 @@ import { redirectFromProxy } from "@/server/auth/app-redirect";
 import { SESSION_COOKIE_NAME } from "@/server/auth/session-cookie";
 import { PORTAL_DEVICE_COOKIE } from "@/server/portal/portal-cookie";
 import { isPublicAssetPath } from "@/server/security/public-assets";
+import { portalHostDecision, portalPublicOrigin, requestHost } from "@/server/security/portal-host";
 import { classifyPath, normalizeAppPathname } from "@/server/security/public-paths";
 
 /**
@@ -57,6 +58,25 @@ function isDocumentNavigation(request: NextRequest): boolean {
 
 export function proxy(request: NextRequest) {
   const pathname = normalizeAppPathname(request.nextUrl.pathname);
+
+  // U18: cada dominio sirve lo suyo antes de mirar credenciales. En el del
+  // portal solo existe el portal; en el de Conecta, el portal se manda a su
+  // dominio. Sin `PORTAL_PUBLIC_ORIGIN`, pasa todo como antes.
+  const byHost = portalHostDecision({
+    host: requestHost(request.headers),
+    pathname,
+    search: request.nextUrl.search,
+    method: request.method,
+    portalOrigin: portalPublicOrigin(),
+  });
+  if (byHost.kind === "NOT_FOUND") {
+    return new NextResponse("Not Found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  }
+  if (byHost.kind === "REDIRECT") {
+    // Absoluta a propósito: es otro origen. El origen sale de la variable,
+    // nunca de la petición (`portal-host.ts`).
+    return NextResponse.redirect(byHost.location, 308);
+  }
 
   // Imágenes corporativas de la lista exacta: no contienen dato alguno de
   // personas ni de clientes, y la pantalla de acceso las necesita sin sesión.

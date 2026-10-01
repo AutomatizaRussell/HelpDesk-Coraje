@@ -500,7 +500,7 @@ redirigir» un ticket radicado en el portal; quien lo recibe lo ve en su «Por a
 de Coraje, y el interruptor de HelpDesk le muestra el número; un enlace al ticket desde
 la campana lo abre en modo Coraje; alguien sin tickets de clientes no ve el interruptor.
 
-### U18 · Dominio de clientes — **nombre decidido el 01-oct-2026, sin construir**
+### U18 · Dominio de clientes — **código construido el 01-oct-2026 (corte 37), sin desplegar; falta el DNS y Coolify**
 
 El portal de clientes sale del origen de Conecta a `soporte.rbgct.cloud` (decisión del
 usuario, «de momento»). Dos razones: un cliente no sabe qué es Conecta, y compartir
@@ -512,6 +512,16 @@ su origen (`contexto-canonico.md` §1.1). Hace falta: el subdominio y su certifi
 correos del portal, la cookie del portal limitada a ese dominio, el perímetro rechazando
 allí las rutas de empleados y decidir si se quita `/helpdesk` de sus rutas. **Condición
 que la vuelve urgente:** invitar a un cliente real.
+
+Construido: `PORTAL_PUBLIC_ORIGIN` activa el dominio (sin ella, todo sigue como antes);
+en él solo existe el portal, y en Conecta el portal redirige allí con la misma ruta; los
+correos del portal llevan su dominio; la raíz lleva a `/helpdesk/portal`. `/helpdesk`
+se queda en las rutas: quitarlo exigiría reescrituras en Traefik. Pasos de
+infraestructura en `operacion.md`, «Dominio del portal de clientes (U18)».
+
+**Condición de cierre:** con la variable activa, una invitación nueva llega con enlace
+a `soporte.rbgct.cloud`, el contacto entra y radica allí, `/helpdesk/tickets` responde
+404 en ese dominio y el portal en Conecta redirige.
 
 ---
 
@@ -598,3 +608,5 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   pestañas en navy (corte 36). U18 (dominio de clientes, `soporte.rbgct.cloud`)
   decidida. **Cabeza de la cola: ejercitar U17 con el portal (U8); después, los
   adjuntos de U7; U18 antes de invitar a un cliente real.**
+- 01-oct-2026 — U18 construida en código (corte 37): dominio propio del portal,
+  activado por variable. **Pendiente: DNS y Coolify (operacion.md).**

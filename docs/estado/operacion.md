@@ -310,6 +310,44 @@ FROM helpdesk.sync_divergencia ORDER BY detectado_at DESC LIMIT 20;
 SELECT * FROM helpdesk.v_actividad_powerapps ORDER BY semana DESC LIMIT 12;
 ```
 
+### Dominio del portal de clientes (U18)
+
+El portal de clientes pasa a `soporte.rbgct.cloud`; los empleados siguen en
+`conecta.rbgct.cloud/helpdesk`. La aplicación lo activa con `PORTAL_PUBLIC_ORIGIN`
+(`portal-host.ts`): sin ella, todo sigue en Conecta. **El orden importa:** la variable
+va al final, cuando el dominio ya responde, porque desde ese momento el portal de Conecta
+redirige allí.
+
+1. **DNS** (quien administre `rbgct.cloud`): registro `A` de `soporte` hacia la misma IP
+   que `conecta`. Comprobar: `dig +short soporte.rbgct.cloud` devuelve la misma IP que
+   `dig +short conecta.rbgct.cloud`.
+2. **Coolify**, recurso de HelpDesk, servicio `web`, campo de dominios: añadir
+   `https://soporte.rbgct.cloud` **sin ruta**, junto a `https://conecta.rbgct.cloud/helpdesk`,
+   que no se toca. Redesplegar; Traefik emite el certificado. Comprobar:
+   ```bash
+   curl -sI https://soporte.rbgct.cloud/ | grep -i -E "^HTTP|^location"
+   # HTTP/2 307 · location: /helpdesk/portal
+   curl -sI https://soporte.rbgct.cloud/helpdesk/portal/ingreso | head -1
+   # HTTP/2 200
+   ```
+   Hasta el paso 3, ese dominio también sirve las rutas de empleados: hacerlo seguido.
+3. **Coolify, variable** `PORTAL_PUBLIC_ORIGIN=https://soporte.rbgct.cloud` (solo el
+   origen, https, sin barra ni ruta; un valor inválido se ignora con
+   `portal.origen_invalido` en el registro). Redesplegar. Comprobar:
+   ```bash
+   curl -sI https://soporte.rbgct.cloud/helpdesk/tickets | head -1
+   # HTTP/2 404
+   curl -sI https://conecta.rbgct.cloud/helpdesk/portal/ingreso | grep -i -E "^HTTP|^location"
+   # HTTP/2 308 · location: https://soporte.rbgct.cloud/helpdesk/portal/ingreso
+   ```
+   Y una invitación nueva llega con el enlace en `soporte.rbgct.cloud`.
+
+**Consecuencia:** las cookies son de cada dominio. Un contacto con el navegador
+recordado en Conecta vuelve a entrar por código en `soporte`. Los enlaces de invitación
+enviados antes siguen valiendo: la redirección conserva la ruta.
+
+**Para volver atrás:** borrar `PORTAL_PUBLIC_ORIGIN` y redesplegar.
+
 ### Correo del portal de clientes (U8)
 
 Workflow `n8n/HELPDESK - Portal - Enviar correo V3.json`. Envía invitaciones y códigos

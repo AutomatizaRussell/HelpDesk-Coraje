@@ -1,3 +1,5 @@
+import { portalPublicOrigin } from "@/server/security/portal-host";
+
 import { APP_BASE_PATH } from "./base-path";
 
 /**
@@ -38,10 +40,11 @@ export function publicNoticesUrl(): string {
 
 /**
  * Enlace absoluto a una ruta del portal de clientes (`/portal/...`), para los
- * correos que reciben los contactos. Mismo origen fijo y por el mismo motivo:
- * un enlace de activación armado con una cabecera de la petición mandaría al
- * cliente a donde dijera esa cabecera.
+ * correos que reciben los contactos. En el dominio propio del portal si está
+ * configurado (U18, `portal-host.ts`); si no, en el de Conecta. Nunca de una
+ * cabecera de la petición: un enlace de activación armado con ella mandaría
+ * al cliente a donde dijera esa cabecera.
  */
 export function publicPortalUrl(pathname: `/portal${string}`): string {
-  return `${PUBLIC_ORIGIN}${APP_BASE_PATH}${pathname}`;
+  return `${portalPublicOrigin() ?? PUBLIC_ORIGIN}${APP_BASE_PATH}${pathname}`;
 }

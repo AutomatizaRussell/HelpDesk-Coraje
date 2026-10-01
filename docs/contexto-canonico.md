@@ -81,7 +81,9 @@ consigue con el ingreso silencioso contra el mismo tenant, no compartiendo crede
 
 **Mecanismo de navegación/URL — decidido (18-sep-2026), parcialmente construido.**
 HelpDesk cuelga de `https://conecta.rbgct.cloud/helpdesk`: una subruta del dominio de
-Conecta, no un subdominio propio. **Conserva el sidebar y el topbar de Conecta**
+Conecta, no un subdominio propio. **Excepción (01-oct-2026, U18): el portal de clientes**
+pasa a `soporte.rbgct.cloud`; un cliente no sabe qué es Conecta ni debe compartir origen
+con la intranet. Los empleados se quedan aquí (`estado/plan-ejecucion.md`, U18). **Conserva el sidebar y el topbar de Conecta**
 —decisión explícita del usuario, coherente con "es o parece parte de Conecta" arriba—,
 con la posibilidad de replegar el sidebar específicamente en las vistas de HelpDesk.
 Esto es responsabilidad de `U5` (contrato de diseño) cuando llegue: por ahora, `/login`
