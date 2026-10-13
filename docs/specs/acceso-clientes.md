@@ -1,6 +1,9 @@
 | 7 | Radicar (T1) y redirigir (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`; desde U17, la vista «Por redirigir» de la bandeja de Coraje y `/redirigir/{id}`, rol `REDIRECTOR`) |# Acceso de clientes al portal
 
 ```
+DESCONECTADO: desde el 13-oct-2026 (U20), por decisión del usuario: PowerApps nunca
+             tuvo portal. Código, tablas y contactos se conservan; se reconecta con
+             `PORTAL_CLIENTES_CONECTADO=true` (`server/portal/portal-connection.ts`)
 ESTADO:      aprobado y CONSTRUIDO, SIN DESPLEGAR (U8, corte 19). Las tres decisiones
              que lo bloqueaban se tomaron el 28-sep-2026: D2 (§3.1), D3 (§7) y D4
              (§11)
@@ -254,7 +257,7 @@ contactos ni tickets ajenos · limitación de tasa tolerante y recuperable.
 | ~~5~~ | ~~Retirar `/portal` actual y su cookie de cliente~~ | | **Hecho el 22-sep-2026, fuera de orden** |
 | 6 | Consola interna de accesos: consultar, reenviar, revocar | 4 | Construido, más solo lectura |
 | 7 | Radicar (T1) y redirigir (T3) tickets del portal | 2, `specs/tickets.md` | Construido (`/portal/tickets`; desde U17, vista «Por redirigir» de la bandeja de Coraje y `/redirigir/{id}`, rol `REDIRECTOR`) |
-| 8 | Dominio propio del portal: `soporte.rbgct.cloud` (U18) | Infraestructura | Construido en código, activado por `PORTAL_PUBLIC_ORIGIN`; falta DNS y Coolify (`estado/operacion.md`) |
+| ~~8~~ | ~~Dominio propio del portal: `soporte.rbgct.cloud` (U18)~~ | Infraestructura | **Retirado el 13-oct-2026 (U20)** sin llegar a tener DNS. Si se reconecta, el portal vive en el origen de Conecta |
 
 **Roles (decisión del usuario, 28-sep-2026).** `CLASIFICADOR` redirige los tickets del
 portal (`ticket.redirigir`, `TOTAL`); `ADMIN` administra los accesos

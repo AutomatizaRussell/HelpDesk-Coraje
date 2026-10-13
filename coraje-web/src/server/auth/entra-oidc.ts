@@ -80,8 +80,15 @@ export function createAuthorizationRequest(options: {
   mode: AuthorizationMode;
   /** Correo ya saneado (`login-hint.ts`). Nunca se envía en modo `select`. */
   loginHint?: string | null;
+  /**
+   * Dirección de retorno del dominio directo (U20, `public-origins.ts`); sin
+   * ella, `ENTRA_REDIRECT_URI`. Las dos tienen que estar registradas en la App
+   * Registration, o Entra rechaza el ingreso con AADSTS50011.
+   */
+  redirectUri?: string | null;
 }): AuthorizationRequest {
   const config = resolveConfig();
+  const redirectUri = options.redirectUri ?? config.redirectUri;
 
   const state = randomBytes(32).toString("base64url");
   const nonce = randomBytes(32).toString("base64url");
@@ -93,7 +100,7 @@ export function createAuthorizationRequest(options: {
   const params = new URLSearchParams({
     client_id: config.clientId,
     response_type: "code",
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     response_mode: "query",
     scope: SCOPES,
     state,
@@ -133,6 +140,8 @@ export interface EntraTokenSet {
 export async function exchangeAuthorizationCode(params: {
   code: string;
   codeVerifier: string;
+  /** La misma que se envió a `/authorize`; sin ella, `ENTRA_REDIRECT_URI`. */
+  redirectUri?: string | null;
 }): Promise<EntraTokenSet> {
   const config = resolveConfig();
 
@@ -141,7 +150,7 @@ export async function exchangeAuthorizationCode(params: {
     client_secret: config.clientSecret,
     grant_type: "authorization_code",
     code: params.code,
-    redirect_uri: config.redirectUri,
+    redirect_uri: params.redirectUri ?? config.redirectUri,
     code_verifier: params.codeVerifier,
     scope: SCOPES,
   });

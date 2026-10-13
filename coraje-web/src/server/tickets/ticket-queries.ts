@@ -47,12 +47,12 @@ import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicket
  * - `alcance`: todo lo que puedo consultar. Para quien recibe un área es esa
  *   área; para `ADMIN`, toda la firma; para quien no recibe nada, lo suyo. La
  *   vista no mira el área: el alcance ya dice qué cabe (permisos.md §4.5).
- * - `redirigir` (U17, solo en modo Coraje): los tickets del portal que
+ * - `redirigir` (U17, solo en modo Externo): los tickets del portal que
  *   esperan área. Es la única que **no** sale del alcance de consulta: un
  *   ticket sin área no lo cubre ninguno, y la vista la ve quien puede
  *   redirigir (`redirect-queries.ts`). Fija el estado, como «Por atender».
  *
- * Cada modo ofrece las suyas (`inboxViews`): en Coraje no hay «Radicados por
+ * Cada modo ofrece las suyas (`inboxViews`): en Externo no hay «Radicados por
  * mí», porque un empleado no radica tickets de clientes (tickets.md §7.1).
  */
 export const INBOX_VIEWS = ["pendientes", "redirigir", "radicados", "siguiendo", "alcance"] as const;
@@ -60,7 +60,7 @@ export type InboxView = (typeof INBOX_VIEWS)[number];
 
 /** Las vistas de la bandeja en un modo, en orden; la primera es la de entrada. */
 export function inboxViews(mode: TicketMode, access: { redirigir: boolean }): InboxView[] {
-  if (mode === "helpdesk") return ["pendientes", "radicados", "siguiendo", "alcance"];
+  if (mode === "interno") return ["pendientes", "radicados", "siguiendo", "alcance"];
   // Quien redirige entra por lo que espera área: es su trabajo diario.
   return [...(access.redirigir ? (["redirigir"] as const) : []), "pendientes", "siguiendo", "alcance"];
 }
@@ -153,7 +153,7 @@ async function inboxWhere(params: {
   mode: TicketMode;
 }): Promise<Prisma.FactTicketWhereInput | null> {
   if (params.view === "redirigir") {
-    return params.mode === "coraje" && (await canRedirect(params.idPersonal)) ? UNREDIRECTED_WHERE : null;
+    return params.mode === "externo" && (await canRedirect(params.idPersonal)) ? UNREDIRECTED_WHERE : null;
   }
   const grant = await resolveGrant(params.idPersonal, TICKET_ACTIONS.consultar);
   if (!grant) return null;
@@ -387,7 +387,7 @@ export interface TicketDetail {
   projection: HistoryProjection;
   history: TicketHistoryEntry[];
   capabilities: TicketCapabilities;
-  /** Modo al que pertenece (U17): Coraje si es de un cliente. Decide cómo se dibuja. */
+  /** Modo al que pertenece (U17): Externo si es de un cliente. Decide cómo se dibuja. */
   modo: TicketMode;
   /** Quienes siguen el ticket (U11). Los ve cualquiera que pueda consultarlo. */
   observadores: { idPersonal: string; nombre: string }[];

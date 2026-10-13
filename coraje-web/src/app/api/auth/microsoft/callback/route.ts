@@ -57,6 +57,8 @@ function retryInteractively(state: SealedOidcState) {
     via,
     loginHint: profile?.email,
     conectaProfile: profile,
+    // El reintento sigue en el dominio donde empezó el ingreso (U20).
+    redirectUri: state.redirectUri ?? null,
   });
 }
 
@@ -97,6 +99,7 @@ export async function GET(request: NextRequest) {
     const tokenSet = await exchangeAuthorizationCode({
       code,
       codeVerifier: state.codeVerifier,
+      redirectUri: state.redirectUri ?? null,
     });
     const claims = await validateIdToken({
       idToken: tokenSet.idToken,

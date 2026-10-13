@@ -22,7 +22,7 @@ export const focusRingInverse = `${focusBase} focus-visible:outline-focus-invers
 
 /**
  * Foco de los controles de la topbar: navy sobre la topbar blanca y blanco
- * sobre la navy del modo Coraje (U17). Sigue a la topbar, no al contenido.
+ * sobre la navy del modo Externo (U17). Sigue a la topbar, no al contenido.
  */
 export const focusRingTopbar = `${focusBase} focus-visible:outline-shell-topbar-focus`;
 

@@ -1,10 +1,10 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { APP_BASE_PATH } from "./base-path";
-import { CONECTA_HOME_URL } from "./conecta-return";
+import { signOutDestination } from "./conecta-return";
 import { revokeCurrentEmployeeSession } from "./employee-session";
 import { ENTRY_COOKIE_NAME } from "./entry-cookie";
 
@@ -21,10 +21,11 @@ import { ENTRY_COOKIE_NAME } from "./entry-cookie";
  * el contexto de entrada: el próximo ingreso vuelve a decidir si llega desde
  * Conecta o directo (specs/integracion-conecta.md §2).
  *
- * Termina en Conecta, no en `/login` (`conecta-return.ts`).
+ * Termina en Conecta, no en `/login`; o en el `/login` del dominio directo si
+ * se entró por él (U20, `signOutDestination`).
  */
 export async function signOutAction() {
   await revokeCurrentEmployeeSession("LOGOUT");
   (await cookies()).delete({ name: ENTRY_COOKIE_NAME, path: APP_BASE_PATH });
-  redirect(CONECTA_HOME_URL);
+  redirect(signOutDestination(await headers()));
 }

@@ -1,11 +1,11 @@
 import { brandOverNavy, brandPrimitives, tint } from "../foundations/brand";
 import { typography } from "../foundations/typography";
 
-// Marco navy del modo Coraje (U17): la barra superior y la fila de pestañas
+// Marco navy del modo Externo (U17): la barra superior y la fila de pestañas
 // comparten estos valores, así que se nombran una vez.
-const corajeBandLine = brandOverNavy(brandPrimitives.white, 0.14);
-const corajeBandMuted = brandOverNavy(brandPrimitives.white, 0.72);
-const corajeBandHover = brandOverNavy(brandPrimitives.white, 0.1);
+const externoBandLine = brandOverNavy(brandPrimitives.white, 0.14);
+const externoBandMuted = brandOverNavy(brandPrimitives.white, 0.72);
+const externoBandHover = brandOverNavy(brandPrimitives.white, 0.1);
 
 /**
  * Tema de HelpDesk: la asignación concreta de cada decisión visual.
@@ -177,7 +177,7 @@ export const helpdeskTheme = {
     topbarMuted: "#64748b",
     controlHoverSurface: "#f1f5f9",
     // Texto principal y foco de la topbar. Son el navy de siempre; existen
-    // aparte porque el modo Coraje pinta la topbar en navy (U17) sin tocar
+    // aparte porque el modo Externo pinta la topbar en navy (U17) sin tocar
     // el texto ni el foco del contenido.
     topbarInk: brandPrimitives.navy,
     topbarFocus: brandPrimitives.navy,
@@ -227,7 +227,7 @@ export const helpdeskTheme = {
   },
 
   /**
-   * Modo Coraje (U17, decisión del usuario del 01-oct-2026): el trabajo con
+   * Modo Externo (U17, decisión del usuario del 01-oct-2026): el trabajo con
    * clientes en la misma aplicación, como un modo claro u oscuro. Cambia el
    * **marco**, no el contenido: la barra superior y la fila de pestañas pasan
    * a navy, continuando la columna de Conecta, y el lienzo se tiñe apenas de
@@ -237,41 +237,41 @@ export const helpdeskTheme = {
    *
    * Cuatro grupos, cada uno con su selector en `globals.css`:
    *
-   * - `color` y `shell`, en `[data-mode="coraje"]`: cada clave redefine la
-   *   variable del mismo nombre del tema base (`coraje.color.canvas` es el
+   * - `color` y `shell`, en `[data-mode="externo"]`: cada clave redefine la
+   *   variable del mismo nombre del tema base (`externo.color.canvas` es el
    *   `color.canvas` del modo).
-   * - `band`, en `[data-mode="coraje"] [data-shell-band]`: la fila de
+   * - `band`, en `[data-mode="externo"] [data-shell-band]`: la fila de
    *   pestañas, que reutiliza los componentes de siempre (`bg-surface`,
    *   `text-heading`…), los recibe redefinidos solo dentro de ella. La topbar
    *   no puede hacer lo mismo porque sus menús cuelgan de ella y quedarían
    *   navy; usa sus propias variables (`shell.topbar*`).
-   * - `accent`, en `[data-mode="coraje"][data-area="…"]`: Legal y
+   * - `accent`, en `[data-mode="externo"][data-area="…"]`: Legal y
    *   Contabilidad no se ven sobre navy (1:1 y 2,2:1) y toman su tinta
    *   aprobada más clara, con tinta navy encima.
    *
-   * `design-system/coraje-palette.test.mts` exige que cada clave exista en el
+   * `design-system/externo-palette.test.mts` exige que cada clave exista en el
    * tema base, que los bloques CSS las redefinan todas y solo esas, y mide los
    * contrastes.
    */
-  coraje: {
+  externo: {
     color: {
       // Neutro, como el lienzo de siempre: un punto más azul.
       canvas: "#edf0f8",
     },
     shell: {
       topbarSurface: brandPrimitives.navy,
-      topbarLine: corajeBandLine,
+      topbarLine: externoBandLine,
       topbarInk: brandPrimitives.white,
-      topbarMuted: corajeBandMuted,
+      topbarMuted: externoBandMuted,
       topbarFocus: brandPrimitives.white,
-      controlHoverSurface: corajeBandHover,
+      controlHoverSurface: externoBandHover,
     },
     band: {
       surface: brandPrimitives.navy,
-      surfaceSunken: corajeBandHover,
-      line: corajeBandLine,
+      surfaceSunken: externoBandHover,
+      line: externoBandLine,
       heading: brandPrimitives.white,
-      inkMuted: corajeBandMuted,
+      inkMuted: externoBandMuted,
       // La opción activa del interruptor: el tinte del área sería claro
       // debajo de texto blanco.
       accentSurface: brandOverNavy(brandPrimitives.white, 0.18),

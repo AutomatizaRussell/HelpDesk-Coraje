@@ -4,6 +4,7 @@ import { redirectWithinApp } from "@/server/auth/app-redirect";
 import { beginAuthorization, SILENT_ATTEMPT_COOKIE_NAME } from "@/server/auth/authorization-start";
 import { parseConectaProfile } from "@/server/auth/entry-context";
 import { sanitizeDestination } from "@/server/auth/sanitize-destination";
+import { directRedirectUri } from "@/server/security/public-origins";
 
 /**
  * Inicio del ingreso OIDC (specs/acceso-empleados.md §5, pasos 1-2;
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
     via: "conecta",
     loginHint: profile.email,
     conectaProfile: profile,
+    redirectUri: directRedirectUri(request.headers),
   });
 }
 
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
     return redirectWithinApp("/ingreso", { destino }, 303);
   }
 
-  return beginAuthorization({ destino, mode: "select", via: "directo" });
+  return beginAuthorization({ destino, mode: "select", via: "directo", redirectUri: directRedirectUri(request.headers) });
 }
 
 function asText(value: FormDataEntryValue | null): string | null {

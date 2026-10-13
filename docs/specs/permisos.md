@@ -225,6 +225,11 @@ Construido en `20261001100000_rol_redirector`, sin desplegar. Decisión del usua
   alcance de consulta. El modo no amplía nada: es un filtro más sobre el alcance
   (`specs/tickets.md` §13).
 
+> **13-oct-2026 (U20):** el modo se llama Externo, y con el portal desconectado
+> `ticket.redirigir` y `portal.acceso.administrar` no se ofrecen ni cuentan para verlo
+> (`canRedirect`, `getModeAccess`). Siguen en el catálogo, en las reglas y en el rol
+> `REDIRECTOR`: reconectar el portal no exige migración (`specs/tickets.md` §13.1).
+
 ## 5. Autorización excepcional
 
 Una acción fuera del alcance ordinario —intervención administrativa, acceso

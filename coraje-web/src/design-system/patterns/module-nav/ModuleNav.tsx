@@ -22,7 +22,7 @@ import { cn } from "../../utilities/cn";
  *
  * Al final de la fila va `trailing`: el interruptor de modo (U17), que no es
  * una sección más sino la forma de cambiar de qué tickets tratan todas. En
- * modo Coraje la fila es navy: `data-shell-band` le redefine los tokens que
+ * modo Externo la fila es navy: `data-shell-band` le redefine los tokens que
  * usa (`globals.css`), así que este componente no sabe en qué modo está.
  *
  * `<Link>` y no `<a>`: son rutas de HelpDesk, y Link antepone el basePath.
@@ -32,7 +32,7 @@ export type ModuleNavItem = {
   href: string;
   /**
    * Rutas en las que la pestaña está activa, si no basta con su `href`: la
-   * bandeja de Coraje es `/tickets?modo=coraje`, y una ruta no lleva la
+   * bandeja de Externo es `/tickets?modo=externo`, y una ruta no lleva la
    * consulta.
    */
   activePaths?: readonly string[];

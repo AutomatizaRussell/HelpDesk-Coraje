@@ -45,10 +45,10 @@ import { TICKET_STATES, TICKET_STATE_LABEL, isTicketState } from "@/server/ticke
  * (`InboxSearch`) y sigue siendo un formulario GET sin JavaScript: no es una
  * acción, solo otra URL.
  *
- * U17: la misma bandeja sirve a los dos modos. `?modo=coraje` lista los
+ * U17: la misma bandeja sirve a los dos modos. `?modo=externo` lista los
  * tickets de clientes, con sus vistas (`inboxViews`), y el shell se pinta en
  * navy; sin parámetro es la bandeja de siempre. Quien no tiene trabajo con
- * clientes que pida `modo=coraje` ve la de siempre.
+ * clientes que pida `modo=externo` ve la de siempre.
  */
 const VIEW_LABEL: Record<InboxView, string> = {
   pendientes: "Por atender",
@@ -59,7 +59,7 @@ const VIEW_LABEL: Record<InboxView, string> = {
 };
 
 function emptyMessage(view: InboxView, mode: TicketMode): string {
-  const tickets = mode === "coraje" ? "tickets de clientes" : "tickets";
+  const tickets = mode === "externo" ? "tickets de clientes" : "tickets";
   switch (view) {
     case "pendientes":
       return `No tienes ${tickets} por atender.`;
@@ -132,7 +132,7 @@ export default async function TicketsPage({
   const employee = await requireCurrentEmployee("/tickets");
   const params = await searchParams;
   const access = await getModeAccess(employee.idPersonal);
-  const mode: TicketMode = parseTicketMode(params.modo) === "coraje" && access.coraje ? "coraje" : "helpdesk";
+  const mode: TicketMode = parseTicketMode(params.modo) === "externo" && access.externo ? "externo" : "interno";
   const views = inboxViews(mode, access);
   // Una vista de otro modo, o desconocida, abre la primera de este.
   const view: InboxView = isInboxView(params.vista) && views.includes(params.vista) ? params.vista : views[0];
@@ -149,13 +149,14 @@ export default async function TicketsPage({
     listInbox({ idPersonal: employee.idPersonal, view, mode, page, filters }),
     countInbox(employee.idPersonal, mode),
     // Misma regla que exige la creación: no se ofrece lo que se va a rechazar.
-    // Solo en HelpDesk: un empleado no radica a nombre de un cliente
-    // (tickets.md §7.1).
-    mode === "helpdesk" ? resolveGrant(employee.idPersonal, TICKET_ACTIONS.crear).then(Boolean) : false,
+    // Solo en Interno, por ahora: la creación todavía no recibe cliente
+    // (`chk_fact_ticket_origen_exclusivo`, tickets.md §7.1). En PowerApps un
+    // empleado sí radica a nombre de un cliente; eso llega con U21.
+    mode === "interno" ? resolveGrant(employee.idPersonal, TICKET_ACTIONS.crear).then(Boolean) : false,
   ]);
 
   return (
-    <AppFrame employee={employee} title={mode === "coraje" ? "Tickets de clientes" : "Bandeja de tickets"} mode={mode}>
+    <AppFrame employee={employee} title={mode === "externo" ? "Tickets de clientes" : "Bandeja de tickets"} mode={mode}>
       {inbox === null ? (
         <p className={notice("warning")}>No tienes permiso para consultar tickets.</p>
       ) : (
@@ -186,7 +187,7 @@ export default async function TicketsPage({
           </div>
 
           <InboxSearch
-            modo={mode === "coraje" ? "coraje" : null}
+            modo={mode === "externo" ? "externo" : null}
             view={view}
             texto={filters.texto}
             estado={filters.estado}

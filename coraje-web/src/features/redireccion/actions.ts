@@ -52,7 +52,7 @@ export async function redirectTicketAction(_prev: TicketFormState, formData: For
   // que le corresponde, que puede no ser la de quien lo redirigió, y su
   // detalle le respondería como a cualquiera fuera de alcance. El aviso lo
   // nombra por su código, que acaba de nacer con el área.
-  const query = modeQuery("coraje");
+  const query = modeQuery("externo");
   query.set("vista", "redirigir");
   query.set("redirigido", result.codigoTicket ?? "1");
   if (failures.length > 0) query.set("correo", "fallido");

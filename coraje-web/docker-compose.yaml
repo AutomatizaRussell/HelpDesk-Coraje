@@ -54,9 +54,14 @@ services:
       N8N_PORTAL_MAIL_SECRET: ${N8N_PORTAL_MAIL_SECRET}
       # Escalamiento diario de avisos (U15): secreto de la ruta que llama n8n.
       HELPDESK_ESCALAR_AVISOS_SECRET: ${HELPDESK_ESCALAR_AVISOS_SECRET}
-      # Dominio propio del portal de clientes (U18), p. ej. https://soporte.rbgct.cloud.
-      # Opcional: sin ella el portal sigue en el origen de Conecta.
-      PORTAL_PUBLIC_ORIGIN: ${PORTAL_PUBLIC_ORIGIN:-}
+      # Entrada directa, sin pasar por Conecta (U20): https://helpdesk.rbgct.cloud.
+      # Opcional: sin ella solo se entra por conecta.rbgct.cloud/helpdesk. Va al
+      # final, cuando el DNS, el dominio en Coolify y la dirección de retorno
+      # en Entra ya existen (operacion.md, «Entrada directa»).
+      HELPDESK_DIRECT_ORIGIN: ${HELPDESK_DIRECT_ORIGIN:-}
+      # Portal de clientes, consola de accesos y redirección (U8), desconectados
+      # desde U20. Solo `true` los conecta; sin ella, sus rutas responden 404.
+      PORTAL_CLIENTES_CONECTADO: ${PORTAL_CLIENTES_CONECTADO:-}
 
     expose:
       - "3000"

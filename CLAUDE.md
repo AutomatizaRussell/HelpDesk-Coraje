@@ -6,9 +6,11 @@ unificada**, junto a Impulsa, no como aplicación independiente. El portal de cl
 es el canal externo de recepción de tickets; el equipo interno trabaja desde la
 plataforma.
 
-`Coraje` es el nombre del **módulo** que hoy contiene el portal de clientes y la
-redirección de tickets, y el nombre de la carpeta de la aplicación (`coraje-web/`).
-No es el nombre del producto: el producto es HelpDesk.
+`Coraje` era el nombre del **módulo** del portal de clientes y la redirección de
+tickets, y sigue siendo el de la carpeta de la aplicación (`coraje-web/`). No es el
+nombre del producto: el producto es HelpDesk. Desde U20 (13-oct-2026) el portal y la
+redirección están **desconectados, no borrados**, y los modos se llaman Interno y
+Externo.
 
 > **Autorización destructiva vigente.** Todo lo que existe hoy en `coraje-web/` —
 > vistas, componentes, mecanismos de acceso y estilos — se puede **eliminar y
@@ -259,8 +261,11 @@ firma. **Desde aquí se lee; nunca se escribe por iniciativa propia.**
   o su base. Primero se presenta el diff concreto; aprobar uno no aprueba el siguiente.
 - **Un cambio aprobado va solo en la rama `lulox`**, nunca en `main` ni en `stiben`.
   Coolify despliega Conecta desde `main`, a mano: eso es trabajo de su equipo.
-- `Daniezen` tiene acceso **Read** (24-sep-2026). Si un push funcionara, el permiso está
-  mal: se avisa, no se aprovecha.
+- `Daniezen` tiene rol **Write** (verificado con `gh` el 06-oct-2026) y es la cuenta con
+  la que el usuario trabaja en Conecta, en `lulox` y con PR a `main`. **Ninguna rama está
+  protegida, `main` incluida**: el único control es la aprobación de cada diff. Las
+  reglas de ese trabajo viven en la capa local de Conecta (`RBGCT-REACT/CLAUDE.local.md`
+  y `RBGCT-REACT/.claude/docs/`).
 
 **Qué integra HelpDesk con Conecta y cómo**: `docs/specs/integracion-conecta.md`.
 - **Parte 1, construida:** se lee `gct_empleado` del `localStorage` compartido por
@@ -281,10 +286,11 @@ una copia vieja: la primera réplica salió de un `main` reescrito después con 
   perímetro *deny-by-default* en `coraje-web/src/proxy.ts`: toda ruta es privada salvo
   las de `src/server/security/public-paths.ts`. **Para volver pública una ruta se edita
   esa lista y nada más** — no se añade un guard, no se inventa una excepción local.
-- **No hay acceso de clientes, ni abierto ni cerrado.** El portal sin credencial se
-  eliminó entero en U4, junto con la clave compartida de redirección. No los busques ni
-  los tomes de referencia: el acceso externo se construye desde cero en
-  `docs/specs/acceso-clientes.md`, bloqueado por tres decisiones de negocio.
+- **El acceso de clientes existe (U8), pero está desconectado** desde U20: sus rutas
+  responden 404 salvo con `PORTAL_CLIENTES_CONECTADO=true`
+  (`src/server/portal/portal-connection.ts`). El portal sin credencial de antes de U4 no
+  vuelve. PowerApps nunca tuvo portal: allí los tickets de cliente los radica un
+  empleado (U21).
 - **El contrato de diseño existe como código (U5)**: `coraje-web/src/design-system/`
   más el `:root` y el `@theme` de `globals.css`. El `@theme` **anula la paleta, los
   pesos, los tamaños, los radios y las sombras por defecto de Tailwind**: `bg-slate-200`
@@ -295,6 +301,8 @@ una copia vieja: la primera réplica salió de un `main` reescrito después con 
   el navegador, se entra sin clics dentro del shell de Conecta. Sin ella, se entra por
   `/login` eligiendo cuenta, con la barra propia de HelpDesk. El perfil que Conecta deja en
   `localStorage` (`gct_empleado`) **solo decide qué se muestra, nunca un permiso**.
+  `helpdesk.rbgct.cloud` es la entrada de emergencia, siempre en modo directo (U20,
+  `HELPDESK_DIRECT_ORIGIN`). Los correos llevan siempre el origen de Conecta.
 - **El proxy redirige con `redirectFromProxy`, nunca con `redirectWithinApp`**
   (F15, 28-sep-2026). En Next 16 el adaptador lee el `Location` del proxy con
   `new NextURL()` sin base: uno relativo da 500 a todo el que llega sin sesión. El

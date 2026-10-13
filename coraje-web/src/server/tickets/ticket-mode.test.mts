@@ -3,22 +3,22 @@ import assert from "node:assert/strict";
 
 import { inboxPath, modeCondition, parseTicketMode, ticketModeOf } from "./ticket-mode";
 
-test("solo `coraje` abre el modo Coraje: cualquier otro valor es HelpDesk", () => {
-  assert.equal(parseTicketMode("coraje"), "coraje");
-  for (const value of [undefined, "", "Coraje", "helpdesk", "clientes", "coraje "]) assert.equal(parseTicketMode(value), "helpdesk");
+test("solo `externo` abre el modo Externo: cualquier otro valor es Interno", () => {
+  assert.equal(parseTicketMode("externo"), "externo");
+  for (const value of [undefined, "", "Coraje", "interno", "clientes", "coraje "]) assert.equal(parseTicketMode(value), "interno");
 });
 
-test("un ticket es de Coraje si y solo si tiene cliente", () => {
-  assert.equal(ticketModeOf("6c69866d-91ab-4258-acd7-0766bb62d72f"), "coraje");
-  assert.equal(ticketModeOf(null), "helpdesk");
+test("un ticket es Externo si y solo si tiene cliente", () => {
+  assert.equal(ticketModeOf("6c69866d-91ab-4258-acd7-0766bb62d72f"), "externo");
+  assert.equal(ticketModeOf(null), "interno");
   // El filtro de la base dice lo mismo que la regla en memoria.
-  assert.deepEqual(modeCondition("coraje"), { idClienteContai: { not: null } });
-  assert.deepEqual(modeCondition("helpdesk"), { idClienteContai: null });
+  assert.deepEqual(modeCondition("externo"), { idClienteContai: { not: null } });
+  assert.deepEqual(modeCondition("interno"), { idClienteContai: null });
 });
 
-test("la bandeja de HelpDesk no lleva parámetro y la de Coraje sí", () => {
-  assert.equal(inboxPath("helpdesk"), "/tickets");
-  assert.equal(inboxPath("coraje"), "/tickets?modo=coraje");
-  assert.equal(inboxPath("coraje", "redirigir"), "/tickets?modo=coraje&vista=redirigir");
-  assert.equal(inboxPath("helpdesk", "radicados"), "/tickets?vista=radicados");
+test("la bandeja Interna no lleva parámetro y la Externa sí", () => {
+  assert.equal(inboxPath("interno"), "/tickets");
+  assert.equal(inboxPath("externo"), "/tickets?modo=externo");
+  assert.equal(inboxPath("externo", "redirigir"), "/tickets?modo=externo&vista=redirigir");
+  assert.equal(inboxPath("interno", "radicados"), "/tickets?vista=radicados");
 });

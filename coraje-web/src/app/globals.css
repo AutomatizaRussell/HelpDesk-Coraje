@@ -141,26 +141,26 @@
   --hd-shell-scrollbar-thumb: #cbd5e1;
   --hd-shell-scrollbar-thumb-hover: #94a3b8;
 
-  /* Modo Coraje (U17, themes/helpdesk.ts `coraje`): los valores que ponen en
-     su lugar los bloques [data-mode="coraje"] de abajo. */
-  --hd-coraje-color-canvas: #edf0f8;
-  --hd-coraje-shell-topbar-surface: #001871;
-  --hd-coraje-shell-topbar-line: #243885;
-  --hd-coraje-shell-topbar-ink: #ffffff;
-  --hd-coraje-shell-topbar-muted: #b8bed7;
-  --hd-coraje-shell-topbar-focus: #ffffff;
-  --hd-coraje-shell-control-hover-surface: #1a2f7f;
-  --hd-coraje-band-surface: #001871;
-  --hd-coraje-band-surface-sunken: #1a2f7f;
-  --hd-coraje-band-line: #243885;
-  --hd-coraje-band-heading: #ffffff;
-  --hd-coraje-band-ink-muted: #b8bed7;
-  --hd-coraje-band-accent-surface: #2e428b;
-  --hd-coraje-band-focus: #ffffff;
-  --hd-coraje-accent-legal-accent: #99a3c6;
-  --hd-coraje-accent-legal-on-accent: #001871;
-  --hd-coraje-accent-contabilidad-accent: #c177c1;
-  --hd-coraje-accent-contabilidad-on-accent: #001871;
+  /* Modo Externo (U17, themes/helpdesk.ts `externo`): los valores que ponen en
+     su lugar los bloques [data-mode="externo"] de abajo. */
+  --hd-externo-color-canvas: #edf0f8;
+  --hd-externo-shell-topbar-surface: #001871;
+  --hd-externo-shell-topbar-line: #243885;
+  --hd-externo-shell-topbar-ink: #ffffff;
+  --hd-externo-shell-topbar-muted: #b8bed7;
+  --hd-externo-shell-topbar-focus: #ffffff;
+  --hd-externo-shell-control-hover-surface: #1a2f7f;
+  --hd-externo-band-surface: #001871;
+  --hd-externo-band-surface-sunken: #1a2f7f;
+  --hd-externo-band-line: #243885;
+  --hd-externo-band-heading: #ffffff;
+  --hd-externo-band-ink-muted: #b8bed7;
+  --hd-externo-band-accent-surface: #2e428b;
+  --hd-externo-band-focus: #ffffff;
+  --hd-externo-accent-legal-accent: #99a3c6;
+  --hd-externo-accent-legal-on-accent: #001871;
+  --hd-externo-accent-contabilidad-accent: #c177c1;
+  --hd-externo-accent-contabilidad-on-accent: #001871;
 
   --hd-stripe-0: #001871;
   --hd-stripe-1: #981d97;
@@ -216,43 +216,43 @@
   --hd-color-on-accent: var(--hd-area-general-on-mark);
 }
 
-/* Modo Coraje (U17). El shell pone `data-mode="coraje"` en su raíz y estos
+/* Modo Externo (U17). El shell pone `data-mode="externo"` en su raíz y estos
    bloques redefinen, con el mismo nombre, cada variable que cambia en ese
    modo: ninguna vista sabe en cuál está.
 
    1. El lienzo y la topbar. También en `:root` mientras el shell esté en la
       página, para que el fondo de `html`, que queda fuera del shell, siga al
       modo. */
-[data-mode="coraje"],
-:root:has([data-mode="coraje"]) {
-  --hd-color-canvas: var(--hd-coraje-color-canvas);
-  --hd-shell-topbar-surface: var(--hd-coraje-shell-topbar-surface);
-  --hd-shell-topbar-line: var(--hd-coraje-shell-topbar-line);
-  --hd-shell-topbar-ink: var(--hd-coraje-shell-topbar-ink);
-  --hd-shell-topbar-muted: var(--hd-coraje-shell-topbar-muted);
-  --hd-shell-topbar-focus: var(--hd-coraje-shell-topbar-focus);
-  --hd-shell-control-hover-surface: var(--hd-coraje-shell-control-hover-surface);
+[data-mode="externo"],
+:root:has([data-mode="externo"]) {
+  --hd-color-canvas: var(--hd-externo-color-canvas);
+  --hd-shell-topbar-surface: var(--hd-externo-shell-topbar-surface);
+  --hd-shell-topbar-line: var(--hd-externo-shell-topbar-line);
+  --hd-shell-topbar-ink: var(--hd-externo-shell-topbar-ink);
+  --hd-shell-topbar-muted: var(--hd-externo-shell-topbar-muted);
+  --hd-shell-topbar-focus: var(--hd-externo-shell-topbar-focus);
+  --hd-shell-control-hover-surface: var(--hd-externo-shell-control-hover-surface);
 }
 /* 2. La fila de pestañas (`data-shell-band`): sus componentes usan los
       tokens de siempre, redefinidos solo dentro de ella. */
-[data-mode="coraje"] [data-shell-band] {
-  --hd-color-surface: var(--hd-coraje-band-surface);
-  --hd-color-surface-sunken: var(--hd-coraje-band-surface-sunken);
-  --hd-color-line: var(--hd-coraje-band-line);
-  --hd-color-heading: var(--hd-coraje-band-heading);
-  --hd-color-ink-muted: var(--hd-coraje-band-ink-muted);
-  --hd-color-accent-surface: var(--hd-coraje-band-accent-surface);
-  --hd-color-focus: var(--hd-coraje-band-focus);
+[data-mode="externo"] [data-shell-band] {
+  --hd-color-surface: var(--hd-externo-band-surface);
+  --hd-color-surface-sunken: var(--hd-externo-band-surface-sunken);
+  --hd-color-line: var(--hd-externo-band-line);
+  --hd-color-heading: var(--hd-externo-band-heading);
+  --hd-color-ink-muted: var(--hd-externo-band-ink-muted);
+  --hd-color-accent-surface: var(--hd-externo-band-accent-surface);
+  --hd-color-focus: var(--hd-externo-band-focus);
 }
 /* 3. Las áreas cuyo acento no se ve sobre navy. Va después de [data-area]
       y con más especificidad: gana sobre el acento de siempre. */
-[data-mode="coraje"][data-area="legal"] {
-  --hd-color-accent: var(--hd-coraje-accent-legal-accent);
-  --hd-color-on-accent: var(--hd-coraje-accent-legal-on-accent);
+[data-mode="externo"][data-area="legal"] {
+  --hd-color-accent: var(--hd-externo-accent-legal-accent);
+  --hd-color-on-accent: var(--hd-externo-accent-legal-on-accent);
 }
-[data-mode="coraje"][data-area="contabilidad"] {
-  --hd-color-accent: var(--hd-coraje-accent-contabilidad-accent);
-  --hd-color-on-accent: var(--hd-coraje-accent-contabilidad-on-accent);
+[data-mode="externo"][data-area="contabilidad"] {
+  --hd-color-accent: var(--hd-externo-accent-contabilidad-accent);
+  --hd-color-on-accent: var(--hd-externo-accent-contabilidad-on-accent);
 }
 
 @theme inline {

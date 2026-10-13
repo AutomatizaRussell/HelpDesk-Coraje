@@ -4,12 +4,12 @@ import { colorTransition, focusRing } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 
 /**
- * Modo de color de la aplicación (U17). `coraje` es el modo navy del trabajo
+ * Modo de color de la aplicación (U17). `externo` es el modo navy del trabajo
  * con clientes; el shell lo pone en `data-mode` y `globals.css` redefine el
  * tema. Qué tickets pertenecen a cada modo lo decide el dominio, no el
  * sistema de diseño.
  */
-export type ColorMode = "helpdesk" | "coraje";
+export type ColorMode = "interno" | "externo";
 
 /**
  * Interruptor entre los dos modos, al final de la fila de pestañas. Dos

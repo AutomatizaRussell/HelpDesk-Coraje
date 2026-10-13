@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveGrant } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS } from "@/server/authorization/catalog";
 import { isTicketWithinScope } from "@/server/authorization/scope";
+import { isClientPortalConnected } from "@/server/portal/portal-connection";
 
 import { PORTAL_ORIGIN } from "./ticket-state";
 
@@ -11,7 +12,7 @@ import { PORTAL_ORIGIN } from "./ticket-state";
  * Lecturas de los tickets por redirigir (T3): lo que los clientes radicaron
  * en el portal y todavía no tiene área. Hasta el 01-oct-2026 se llamaba
  * «clasificación» y tenía una sección propia; desde U17 es la vista «Por
- * redirigir» de la bandeja en modo Coraje (`listInbox`).
+ * redirigir» de la bandeja en modo Externo (`listInbox`).
  *
  * Estos tickets no pasan por `ticket.consultar`, a propósito: un ticket sin
  * redirigir no tiene responsable ni área, así que ningún alcance de consulta
@@ -38,6 +39,10 @@ export const UNREDIRECTED_WHERE = {
  * (`cache`): la piden el marco, la bandeja y el interruptor de modo.
  */
 export const canRedirect = cache(async (idPersonal: string): Promise<boolean> => {
+  // U20: sin portal no llegan tickets que redirigir. El permiso sigue en el
+  // catálogo y en las reglas; solo deja de ofrecerse, y la ruta responde 404
+  // en el perímetro (`portal-connection.ts`).
+  if (!isClientPortalConnected()) return false;
   const grant = await resolveGrant(idPersonal, TICKET_ACTIONS.redirigir);
   return (
     grant !== null &&

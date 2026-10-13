@@ -280,6 +280,10 @@ atenuada no alcanza 3:1; la sidebar, último paso si se decide.
 
 ### 5.2 `DECISIÓN` (01-oct-2026, U17) Modo Coraje
 
+> **13-oct-2026 (U20):** se llama modo **Externo**. Donde abajo dice `coraje`, el código
+> dice `externo`: `data-mode="externo"`, la clave `externo` del tema, las variables
+> `--hd-externo-*` y `externo-palette.test.mts`. Los colores no cambian.
+
 El trabajo con clientes (`specs/tickets.md` §13) cambia el **marco**, no el contenido:
 la barra superior y la fila de pestañas pasan a navy, continuando la columna de
 Conecta, y el lienzo se tiñe apenas de azul (`#edf0f8`). Tarjetas, texto, botones,

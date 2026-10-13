@@ -280,6 +280,12 @@ quien actúa (D6) y adjuntos. **Depende de:** U6, `specs/permisos.md`.
 > pendiente). Sus pruebas —negativa del `INSERT`, calendario, ciclo en el navegador,
 > salida de n8n— se hacen junto con las de U8 (`estado/handoff.md`, «Acción
 > inmediata»). Los adjuntos siguen bloqueados.
+>
+> **06-oct-2026: adjuntos diseñados y aprobados, sin construir** (`specs/tickets.md`
+> §14): carga directa del navegador a una biblioteca de SharePoint por sesión de Graph
+> creada en n8n, descarga autorizada por HelpDesk, 5 archivos de 25 MB, solo empleados.
+> **Son la prioridad siguiente.** Esperan dos datos del usuario (§14.6): la biblioteca de
+> destino y los permisos de Graph de las App Registrations de n8n.
 
 ### U8 · Acceso de clientes — **desplegada el 28-sep-2026 (corte 19), sin ejercitar**
 
@@ -478,7 +484,11 @@ BPO, Legal, Administración), el acento, el avatar y el número de la campana to
 color; «Asignado» se ve igual en todas; la columna «Área y tipo» lleva el punto del área
 del ticket.
 
-### U17 · Modo Coraje — **desplegada el 01-oct-2026 (corte 35); color corregido en el corte 36, sin desplegar**
+### U17 · Modo Coraje — **desplegada el 01-oct-2026 (corte 35); renombrada Interno/Externo y sin portal desde U20**
+
+> **13-oct-2026 (U20):** los modos pasan a llamarse **Interno** y **Externo**, y el
+> portal, la consola de accesos y la redirección quedan desconectados. La condición de
+> cierre de abajo, que exige el portal, queda suspendida mientras siga desconectado.
 
 Coraje (el trabajo con clientes) como **modo** de la misma aplicación, al estilo de
 claro/oscuro, no como pestaña ni aplicación aparte, y que en esencia cambie poco para
@@ -500,7 +510,11 @@ redirigir» un ticket radicado en el portal; quien lo recibe lo ve en su «Por a
 de Coraje, y el interruptor de HelpDesk le muestra el número; un enlace al ticket desde
 la campana lo abre en modo Coraje; alguien sin tickets de clientes no ve el interruptor.
 
-### U18 · Dominio de clientes — **código construido el 01-oct-2026 (corte 37), sin desplegar; falta el DNS y Coolify**
+### ~~U18 · Dominio de clientes~~ — **retirada el 13-oct-2026 (U20) sin llegar a tener DNS**
+
+> El usuario retiró `soporte.rbgct.cloud` al desconectar el portal. Su código
+> (`portal-host.ts`, `PORTAL_PUBLIC_ORIGIN`) se sustituyó por la entrada directa de
+> empleados de U20. Texto original, como antecedente:
 
 El portal de clientes sale del origen de Conecta a `soporte.rbgct.cloud` (decisión del
 usuario, «de momento»). Dos razones: un cliente no sabe qué es Conecta, y compartir
@@ -524,6 +538,53 @@ a `soporte.rbgct.cloud`, el contacto entra y radica allí, `/helpdesk/tickets` r
 404 en ese dominio y el portal en Conecta redirige.
 
 ---
+
+### U20 · Interno/Externo, portal desconectado y entrada directa — **construida el 13-oct-2026 (corte 38), sin desplegar**
+
+Decisión del usuario del 13-oct-2026, tras confirmar en el código de PowerApps que no
+tiene portal (`Src/Nuevo_1.pa.yaml`): allí los tickets de cliente los radica un empleado.
+
+- Los modos HelpDesk/Coraje pasan a **Interno/Externo**. Externo conserva los tickets de
+  cliente (`specs/tickets.md` §13.1).
+- El portal (U8), la consola de accesos y la redirección (`REDIRECTOR`) quedan
+  **desconectados, no borrados**: `PORTAL_CLIENTES_CONECTADO=true` los reconecta.
+- `helpdesk.rbgct.cloud` es la **entrada de emergencia** de empleados sin pasar por
+  Conecta (`HELPDESK_DIRECT_ORIGIN`), en lugar de `soporte.rbgct.cloud`.
+
+**Condición de cierre:** desplegado sin las dos variables, `/helpdesk/portal`,
+`/helpdesk/accesos` y `/helpdesk/redirigir/…` responden 404, y el interruptor dice
+Interno/Externo. Con los pasos de `operacion.md`, «Entrada directa (U20)», un empleado
+entra por `helpdesk.rbgct.cloud`, ve la barra propia de HelpDesk, y al cerrar sesión
+vuelve al `/login` de ese dominio.
+
+### U21 · Tickets de cliente radicados por empleados — **decidida en concepto el 13-oct-2026, sin diseñar**
+
+Paridad con PowerApps: para los tipos ASESÓRATE, IMPUESTOS ASESORATE e IMPUESTOS
+CONSULTA, el formulario pide un cliente de `Clientes Contai`, y es obligatorio. Hoy la
+web no puede hacerlo, por dos motivos: `crear_ticket_interno` no recibe cliente, y
+`chk_fact_ticket_origen_exclusivo` no admite que un ticket tenga cliente y solicitante a
+la vez. Por ese segundo motivo, los tickets de cliente migrados de PowerApps perdieron a
+la persona que los radicó: el ítem la guarda en `Title`. Exige decidir el modelo antes de
+construir:
+- relajar el CHECK;
+- marcar los tipos que piden cliente;
+- en la ingesta, decidir si se rellena el solicitante de los tickets legacy con cliente.
+
+**Va después de los adjuntos de U7.**
+
+### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
+
+Que la réplica del shell no se desfase de Conecta sin que nadie lo note
+(`specs/integracion-conecta.md` §6.1). Dos capas que conviven: **primero**, un aviso
+automático (GitHub Action diaria que compara las huellas de los archivos del shell de
+Conecta con las de referencia y abre un issue si cambian); **después**, el menú publicado
+por Conecta como datos, con su diff aprobado y por `lulox`. Empieza poniendo la réplica
+al día con `513316b`. **Va después de los adjuntos de U7.** Necesita un token de solo
+lectura sobre RBGCT-REACT como secreto del repositorio de HelpDesk.
+
+**Condición de cierre (capa 1):** un cambio de prueba en una copia de la referencia hace
+fallar la Action y abre el issue; con la referencia correcta pasa; la réplica muestra
+«Seguimiento Facturación» a quien tiene el permiso.
 
 ## Riesgos y controles
 
@@ -610,3 +671,12 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   adjuntos de U7; U18 antes de invitar a un cliente real.**
 - 01-oct-2026 — U18 construida en código (corte 37): dominio propio del portal,
   activado por variable. **Pendiente: DNS y Coolify (operacion.md).**
+- 06-oct-2026 — adjuntos de U7 diseñados y aprobados (`specs/tickets.md` §14). U19
+  (seguir el paso de Conecta) decidida. **Cabeza de la cola: adjuntos; después U19.**
+  Coraje (U17, U18, cierre de U8) en espera de decidir si sigue.
+- 13-oct-2026 — U20 construida (corte 38): modos Interno/Externo, portal y redirección
+  desconectados, U18 retirada y entrada directa por `helpdesk.rbgct.cloud`. U21 (tickets
+  de cliente radicados por empleados) decidida en concepto. Hallazgo para U7: PowerApps
+  guarda los adjuntos como adjuntos del ítem de HelpDeskBd, no en una biblioteca; el
+  destino de §14 se reabre y espera la decisión del usuario. **Cabeza de la cola:
+  desplegar U20; después, adjuntos.**

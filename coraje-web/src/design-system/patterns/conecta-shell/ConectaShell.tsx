@@ -28,7 +28,7 @@ import {
  *
  * - **Columna replegada** (≥ lg): navy, con el isotipo blanco arriba y los
  *   iconos del menú de Conecta, como en Conecta.
- * - **Topbar**: blanca (navy en modo Coraje, U17) y sin franja, como la de Conecta: hamburguesa,
+ * - **Topbar**: blanca (navy en modo Externo, U17) y sin franja, como la de Conecta: hamburguesa,
  *   antetítulo y título, rol y nombre, y el avatar con su menú. Sin logotipo:
  *   la marca va en el sidebar. Antes del separador, la campana de avisos de
  *   HelpDesk (U15): es de este módulo, no parte de la réplica de Conecta.
@@ -54,11 +54,11 @@ export type ConectaShellProps = {
   signOutAction: () => Promise<void>;
   /** Área de quien entra (U16): redefine el acento de todo el shell. */
   areaTheme: AreaThemeKey;
-  /** Modo (U17): `coraje` pinta en navy la topbar, las pestañas y el contenido. */
+  /** Modo (U17): `externo` pinta en navy la topbar, las pestañas y el contenido. */
   mode: ColorMode;
-  /** Antetítulo de la topbar: el nombre del modo. */
+  /** Antetítulo de la topbar: el nombre del módulo, igual en los dos modos. */
   moduleName: string;
-  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Coraje. */
+  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Externo. */
   modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;

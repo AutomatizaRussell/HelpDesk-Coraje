@@ -30,15 +30,17 @@ const nextConfig: NextConfig = {
   output: "standalone",
   basePath: "/helpdesk",
   /**
-   * La raíz del dominio de clientes (U18, `soporte.rbgct.cloud`) lleva al
-   * portal. Fuera del `basePath` a propósito (`basePath: false`): es la única
-   * ruta sin prefijo que la aplicación atiende. En `conecta.rbgct.cloud` la
-   * raíz nunca llega aquí, porque Traefik solo reenvía `/helpdesk/*`; a este
-   * contenedor la raíz solo le llega por el dominio que es entero suyo. Sin
-   * ese dominio, la regla no se dispara nunca.
+   * La raíz del dominio directo (U20, `helpdesk.rbgct.cloud`) lleva a la raíz
+   * de HelpDesk, que manda al ingreso o a la bandeja. Fuera del `basePath` a
+   * propósito (`basePath: false`): es la única ruta sin prefijo que la
+   * aplicación atiende. En `conecta.rbgct.cloud` la raíz nunca llega aquí,
+   * porque Traefik solo reenvía `/helpdesk/*`; a este contenedor la raíz solo
+   * le llega por el dominio que es entero suyo. Sin ese dominio, la regla no
+   * se dispara nunca. Sustituye a la del dominio de clientes de U18, que
+   * llevaba al portal.
    */
   async redirects() {
-    return [{ source: "/", destination: "/helpdesk/portal", basePath: false, permanent: false }];
+    return [{ source: "/", destination: "/helpdesk", basePath: false, permanent: false }];
   },
 };
 

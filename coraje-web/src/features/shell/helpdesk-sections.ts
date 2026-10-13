@@ -8,11 +8,11 @@ import { inboxPath, type TicketMode } from "@/server/tickets/ticket-mode";
  * Cada sección se añade aquí cuando su vista existe, no antes: una pestaña que
  * lleva a una pantalla vacía le promete a la persona algo que la aplicación no
  * hace. La bandeja cubre también el detalle y la creación (`/tickets/…`) y,
- * en Coraje, la redirección de un ticket del portal (`/redirigir/…`).
+ * en Externo, la redirección de un ticket del portal (`/redirigir/…`).
  *
  * Cada modo muestra lo suyo: la salud de la aplicación es trabajo interno; los
  * accesos de clientes, trabajo con clientes. Los tickets por redirigir no son
- * una sección: son una vista de la bandeja de Coraje.
+ * una sección: son una vista de la bandeja de Externo.
  *
  * Las secciones que dependen de un permiso reciben la decisión ya tomada por
  * el autorizador (`AppFrame` pregunta por la acción), nunca un rol. Ocultar
@@ -27,14 +27,14 @@ export interface SectionGrants {
 }
 
 export function helpdeskSections(mode: TicketMode, grants: SectionGrants): readonly ModuleNavItem[] {
-  if (mode === "coraje") {
+  if (mode === "externo") {
     return [
-      { label: "Tickets", href: inboxPath("coraje"), activePaths: ["/tickets", "/redirigir"] },
+      { label: "Tickets", href: inboxPath("externo"), activePaths: ["/tickets", "/redirigir"] },
       ...(grants.administrarAccesos ? [{ label: "Accesos de clientes", href: "/accesos" }] : []),
     ];
   }
   return [
-    { label: "Tickets", href: inboxPath("helpdesk") },
+    { label: "Tickets", href: inboxPath("interno") },
     ...(grants.consultarSalud ? [{ label: "Salud", href: "/salud" }] : []),
   ];
 }

@@ -27,9 +27,9 @@ export type StandaloneShellProps = {
   signOutAction: () => Promise<void>;
   /** Área de quien entra (U16): redefine el acento de todo el shell. */
   areaTheme: AreaThemeKey;
-  /** Modo (U17): `coraje` pinta todo el shell en navy. */
+  /** Modo (U17): `externo` pinta todo el shell en navy. */
   mode: ColorMode;
-  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Coraje. */
+  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Externo. */
   modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
@@ -52,7 +52,7 @@ export function StandaloneShell({
       <header className="sticky top-0 z-(--hd-layer-topbar)">
         <div className={cn("border-b border-shell-topbar-line bg-shell-topbar-surface", modeTransition)}>
           <div className="flex h-app-bar items-center justify-between gap-4 pr-4 lg:h-app-bar-wide lg:pr-8">
-            <BrandLogo placement={mode === "coraje" ? "appBarInverse" : "appBar"} />
+            <BrandLogo placement={mode === "externo" ? "appBarInverse" : "appBar"} />
             <div className="flex min-w-0 items-center gap-3">
               <p className="hidden max-w-56 truncate text-base font-bold text-shell-topbar-ink sm:block">{displayName}</p>
               {noticeBell}

@@ -47,7 +47,7 @@ export default async function NoticesPage({
   const { modo, seccion, pagina } = await searchParams;
   // Los avisos son los mismos en los dos modos (U17): el modo solo dice cómo
   // se dibuja la página, la que tenía quien pulsó «Ver todos».
-  const mode: TicketMode = parseTicketMode(modo) === "coraje" && (await getModeAccess(employee.idPersonal)).coraje ? "coraje" : "helpdesk";
+  const mode: TicketMode = parseTicketMode(modo) === "externo" && (await getModeAccess(employee.idPersonal)).externo ? "externo" : "interno";
   const section: NoticeSection = isNoticeSection(seccion) ? seccion : "atencion";
   const page = Math.max(1, Number.parseInt(pagina ?? "1", 10) || 1);
 

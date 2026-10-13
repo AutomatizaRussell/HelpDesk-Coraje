@@ -41,7 +41,7 @@ import { helpdeskSections } from "./helpdesk-sections";
  * lista solo se consulta al abrirla.
  *
  * `mode` (U17) lo decide la vista: la bandeja, por la URL; el detalle, por el
- * ticket; los accesos de clientes son siempre Coraje. El interruptor de modo
+ * ticket; los accesos de clientes son siempre Externo. El interruptor de modo
  * aparece solo para quien tiene trabajo con clientes (`getModeAccess`), y
  * lleva el número de lo que espera en el otro modo: un conteo más, sobre lo
  * asignado a la persona.
@@ -49,7 +49,7 @@ import { helpdeskSections } from "./helpdesk-sections";
 export async function AppFrame({
   employee,
   title,
-  mode = "helpdesk",
+  mode = "interno",
   children,
 }: {
   employee: EmployeeSessionContext;
@@ -70,16 +70,16 @@ export async function AppFrame({
   // U15: el número de la campana, dos conteos sobre índices parciales. Va
   // después de los permisos porque sin `aviso.consultar` no hay campana.
   // U17: el número del interruptor es lo que espera en el otro modo; sin
-  // acceso a Coraje no hay interruptor ni conteo.
-  const otherMode: TicketMode = mode === "coraje" ? "helpdesk" : "coraje";
+  // acceso a Externo no hay interruptor ni conteo.
+  const otherMode: TicketMode = mode === "externo" ? "interno" : "externo";
   const [bellCount, otherPending] = await Promise.all([
     grants.has(AVISO_ACTIONS.consultar) ? countBellNotices(employee.idPersonal) : null,
-    modeAccess.coraje ? countModePending(employee.idPersonal, otherMode) : null,
+    modeAccess.externo ? countModePending(employee.idPersonal, otherMode) : null,
   ]);
   // La campana es la misma en los dos modos; «Ver todos» deja en el modo actual.
   const noticeBell = (anchor: "topbar" | "appBar") =>
     bellCount === null ? undefined : (
-      <NoticeBellMenu count={bellCount} anchor={anchor} allHref={mode === "coraje" ? "/avisos?modo=coraje" : "/avisos"} />
+      <NoticeBellMenu count={bellCount} anchor={anchor} allHref={mode === "externo" ? "/avisos?modo=externo" : "/avisos"} />
     );
   const modeSwitch =
     otherPending === null ? undefined : (
@@ -124,7 +124,7 @@ export async function AppFrame({
         moduleNav={sections}
         areaTheme={areaTheme}
         mode={mode}
-        moduleName={TICKET_MODE_LABEL[mode]}
+        moduleName="HelpDesk"
         modeSwitch={modeSwitch}
         noticeBell={noticeBell("topbar")}
         signOutAction={signOutAction}

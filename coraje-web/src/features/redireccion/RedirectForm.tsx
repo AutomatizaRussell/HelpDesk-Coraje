@@ -24,7 +24,7 @@ export function RedirectForm({
 }: {
   idTicket: string;
   catalog: Pick<CreationCatalog, "areas" | "tipos">;
-  /** «Por redirigir» en la bandeja de Coraje. */
+  /** «Por redirigir» en la bandeja de Externo. */
   backHref: string;
 }) {
   const [state, formAction, pending] = useActionState(redirectTicketAction, IDLE_FORM_STATE);

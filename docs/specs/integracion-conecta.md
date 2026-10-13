@@ -85,8 +85,10 @@ HelpDesk se lee; nunca se escribe por iniciativa propia.
 - Un cambio aprobado va **solo** en la rama `lulox` (la del usuario), nunca en `main` ni
   en `stiben`. Coolify despliega Conecta desde `main`, a mano: llevarlo ahí es trabajo del
   equipo de Conecta.
-- `Daniezen` tiene acceso **Read** al repositorio (24-sep-2026). Si un push de esa cuenta
-  llegara a funcionar, el permiso estaría mal configurado: avisar, no aprovecharlo.
+- ~~`Daniezen` tiene acceso **Read** al repositorio (24-sep-2026).~~ **Corregido el
+  06-oct-2026 (`CLAUDE.md`):** `Daniezen` tiene rol **Write** y es la cuenta con la que el
+  usuario trabaja en Conecta, en `lulox` y con PR a `main`. Ninguna rama está protegida:
+  el único control sigue siendo la aprobación de cada diff.
 
 ## 2. Dos modos de entrada
 
@@ -100,6 +102,13 @@ sesión lo olvida.
 | Si Entra rechaza el silencioso | Pantalla de Microsoft con la cuenta sugerida (`hinted`) | — |
 | Shell | Réplica del de Conecta (columna replegada, topbar, sidebar) | Barra propia de HelpDesk con logotipo, sin nada de Conecta |
 | Navegación de HelpDesk | Pestañas bajo la topbar | Las mismas pestañas bajo la barra |
+
+**Dominio directo (13-oct-2026, U20).** `helpdesk.rbgct.cloud` es una entrada de
+emergencia, para cuando Conecta no responde. En ese origen no existe `gct_empleado`, así
+que siempre se entra en modo Directo. Entra vuelve a ese mismo dominio con su propia
+dirección de retorno, y cerrar sesión lleva a su `/login` y no a Conecta
+(`server/security/public-origins.ts`; pasos en `estado/operacion.md`, «Entrada directa
+(U20)»).
 
 **Recorrido sin sesión:**
 
@@ -207,6 +216,40 @@ Mitigación: la disciplina de siempre contra XSS, sin `dangerouslySetInnerHTML` 
 de terceros, y una política de seguridad de contenido cuando HelpDesk renderice
 contenido de clientes.
 
+## 6.1 `DECISIÓN` (06-oct-2026, U19) Seguir el paso del shell de Conecta — sin construir
+
+**El problema, observado.** La réplica del shell (`design-system/patterns/conecta-shell/`)
+copia `cb06681`, y nada avisa cuando Conecta cambia. El 06-oct-2026 Conecta iba por
+`513316b` (30-sep): su menú de empleado ya tenía «Seguimiento Facturación» en «Mis
+clientes» y un permiso nuevo, `acceso_sqf_seguimiento_general`, que HelpDesk no tiene.
+Nadie lo vio hasta compararlo a mano.
+
+**Decisión del usuario: dos capas que conviven, no una que sustituye a la otra.**
+
+1. **Aviso automático (primero).** HelpDesk guarda un archivo de referencia con el commit
+   de Conecta copiado y la huella (sha256) de cada archivo del que depende:
+   `frontend/src/components/layout/{sidebarConfig.js,RoleSidebar.jsx,SidebarShell.jsx,Topbar.jsx}`,
+   `frontend/src/lib/permisos.js` y las reglas `.rb-sidebar-*` de `frontend/src/index.css`.
+   Una GitHub Action de HelpDesk, diaria, lee el `main` de Conecta con un token de solo
+   lectura (secreto del repositorio) y, si una huella cambió, falla y abre un issue con
+   el diff de esos archivos. Corre en GitHub: no pesa en la VPS. Cuando salta, se
+   actualiza la réplica y la referencia **en el mismo commit**. No depende del equipo de
+   Conecta.
+2. **El menú como datos (después).** Conecta publica su menú como datos (JSON con
+   etiquetas, rutas, iconos por nombre y condiciones declarativas en vez de funciones), y
+   HelpDesk lo lee bajo demanda con caché. El menú deja de poder desfasarse. Exige
+   reescribir `sidebarConfig.js` y que su equipo acepte el contrato: el diff se presenta
+   al usuario antes de escribirlo (§1.2) y va por `lulox` con PR.
+
+**Por qué las dos y no solo la segunda:** el menú es una parte de la copia. El aspecto
+—`Topbar.jsx`, `SidebarShell.jsx`, las reglas de CSS— seguirá copiado a mano aunque el
+menú llegue como datos. Con la capa 2 hecha, la capa 1 deja de vigilar `sidebarConfig.js`
+y sigue con lo visual.
+
+**Lo primero al construirlo:** poner la réplica al día con `513316b` («Seguimiento
+Facturación», `acceso_sqf_seguimiento_general` leído de `gct_empleado`) y fijar ese
+commit como referencia inicial.
+
 ## 7. Verificación contra código
 
 | # | Afirmación | Dónde | Estado |
@@ -221,6 +264,8 @@ contenido de clientes.
 | I8 | Cerrar sesión borra el modo de entrada | `sign-out-action.ts`, `logout/route.ts` | Inspección; sin ejercitar |
 | I9 | Cerrar sesión en HelpDesk lleva a Conecta (`/app`) en los dos modos de entrada, sin cerrar la sesión de Conecta (decisión del 25-sep-2026) | `server/auth/conecta-return.ts` | Construido (corte 18); sin ejercitar |
 | I9 | Endpoint de Conecta con los controles de §5.1 | RBGCT-REACT | **Decidido, pendiente de construir** (U5.2) |
+| I10 | Un cambio en el shell de Conecta avisa en HelpDesk (§6.1, capa 1) | GitHub Action + archivo de referencia | **Decidido, sin construir** (U19) |
+| I11 | La réplica coincide con el `main` de Conecta | `conecta-shell/` contra RBGCT-REACT | **No**: copia `cb06681`; `main` va por `513316b` (06-oct-2026) |
 
 **Changelog:**
 - 24-sep-2026 — línea base. Modos de entrada (§2) y dato del navegador con sus reglas
@@ -230,3 +275,6 @@ contenido de clientes.
   construir (U5.2). §5.1 gana cuatro controles que salieron del análisis del backend de
   Conecta: permisos de clave no aplicados, cupo compartido, clase antigua duplicada y
   ruta interna.
+- 06-oct-2026 — §6.1: decisión de seguir el paso del shell de Conecta en dos capas
+  (aviso automático por huellas y menú publicado como datos). §1.2: `Daniezen` pasa a
+  Write. I10 e I11 nuevas; la réplica está desfasada respecto a `513316b`.

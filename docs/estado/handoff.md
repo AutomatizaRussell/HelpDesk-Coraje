@@ -1,6 +1,60 @@
 # Handoff técnico
 
 ```
+CORTE:   13-oct-2026 (corte 38, U20 Interno/Externo, portal desconectado y
+         entrada directa, SIN DESPLEGAR)
+SOBRE:   `5fa000a` (corte 37)
+RAMA:    main
+UNIDAD:  U20. Decisiones del usuario del 13-oct, tras confirmar en el código de
+         PowerApps (`~/Downloads/app_source_powerapps`) que no hay portal: los
+         tickets de cliente los radica un empleado (tipos ASESÓRATE, IMPUESTOS
+         ASESORATE, IMPUESTOS CONSULTA; `Src/Nuevo_1.pa.yaml:1049`).
+         - Modos HelpDesk/Coraje → Interno/Externo en código y en interfaz
+           (`?modo=externo`, `data-mode="externo"`, `--hd-externo-*`,
+           `externo-palette.test.mts`). Antetítulo «HelpDesk» en los dos.
+         - Portal, `/accesos` y `/redirigir` desconectados, no borrados:
+           `portal-connection.ts`, 404 en el perímetro para cualquier método;
+           `canRedirect` y `getModeAccess` dejan de ofrecerlos. Se reconecta
+           con `PORTAL_CLIENTES_CONECTADO=true`.
+         - U18 retirada (`portal-host.ts`, `PORTAL_PUBLIC_ORIGIN`). En su lugar,
+           `public-origins.ts`: `helpdesk.rbgct.cloud` como entrada de
+           emergencia (`HELPDESK_DIRECT_ORIGIN`), con su propia dirección de
+           retorno de Entra, sellada en el estado OIDC, y cierre de sesión a su
+           `/login`. La raíz de ese dominio lleva a `/helpdesk`.
+         Hallazgos que no se construyen aquí: U21 (cliente al radicar en la web;
+         `chk_fact_ticket_origen_exclusivo` lo impide) y el destino de los
+         adjuntos (PowerApps los guarda en el ítem; `tickets.md` §14, ABIERTO).
+         Evidencia: `tsc --noEmit` limpio, `eslint` limpio, `pnpm test` 196/196
+         (nuevas: perímetro con el portal desconectado, `public-origins`,
+         `portal-connection`), `next build` correcto. **Nada desplegado ni
+         ejercitado**: ni el 404, ni el ingreso por el dominio directo, que
+         además exige DNS, la dirección de retorno en Entra y el dominio en
+         Coolify (`operacion.md`, «Entrada directa (U20)»).
+         Publicado también aquí lo que esperaba en local desde el 06-oct (abajo).
+SIGUE:   desplegar U20 y comprobar los 404 y el interruptor Interno/Externo;
+         después, la decisión del usuario sobre el destino de los adjuntos (U7).
+
+--- Pendiente en local desde el 06-oct, publicado en el corte 38:
+SIN PUBLICAR (06-oct-2026, solo documentación: se publica con el próximo commit de
+         código, nunca sola):
+         - `specs/tickets.md` §14 y plan U7: diseño de adjuntos aprobado por el
+           usuario. **Es la prioridad.** Espera la biblioteca de destino y los
+           permisos de Graph de las App Registrations de n8n (§14.6).
+         - F7 (`.env.example`) cerrado: el usuario lo publicó en `b389158` y
+           confirma que está en `coraje-web/`, sin `CORAJE_OUTBOX_KICK_SECRET`.
+         - Coraje en espera: le dijeron al usuario que Coraje quizá ya no tiene
+           propósito. Hasta que se decida, quedan pendientes el cierre de U17,
+           la infraestructura de U18 (DNS, Coolify, `curl`) y el paso 5 del
+           portal (U8). Si se descarta, se decide para todo ese bloque a la vez.
+         - Conecta va por `513316b` (30-sep) y la copia del shell es de
+           `cb06681`: falta «Seguimiento Facturación» en «Mis clientes» y el
+           permiso `acceso_sqf_seguimiento_general`. Decidido por el usuario
+           (U19, `integracion-conecta.md` §6.1): aviso automático por huellas
+           (GitHub Action diaria) y, después, el menú publicado por Conecta como
+           datos; las dos capas conviven. §1.2 corregido: `Daniezen` es Write.
+SIGUE:   adjuntos (U7), en cuanto lleguen los dos datos de §14.6; después U19.
+
+--- Corte 37, para contexto:
 CORTE:   01-oct-2026 (corte 37, U18 dominio de clientes, SIN DESPLEGAR)
 SOBRE:   `88aa77f` (corte 36)
 RAMA:    main

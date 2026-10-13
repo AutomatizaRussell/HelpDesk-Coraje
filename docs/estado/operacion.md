@@ -195,6 +195,8 @@ igual que Impulsa**, solo falta construirlas (U2):
 | `N8N_PORTAL_MAIL_WEBHOOK_URL` | `coraje-web` (Coolify) | U8: URL **HTTPS** del webhook `helpdesk/portal/correo-v1` del workflow `HELPDESK - Portal - Enviar correo V3`. Sin ella, ni invitaciones ni códigos salen: el fallo queda en `app.portal_auditoria` con el nombre de la variable |
 | `N8N_PORTAL_MAIL_SECRET` | `coraje-web` (Coolify) | U8: secreto de ese webhook, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk correo · x-helpdesk-secret» |
 | `HELPDESK_ESCALAR_AVISOS_SECRET` | `coraje-web` (Coolify) | U15: secreto de `/api/interno/avisos/escalar`, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk escalamiento · x-helpdesk-secret». Sin él, la ruta responde 503 y no escala nada |
+| `HELPDESK_DIRECT_ORIGIN` | `coraje-web` (Coolify) | U20: `https://helpdesk.rbgct.cloud`, la entrada directa. Opcional; se crea al final de «Entrada directa (U20)» |
+| `PORTAL_CLIENTES_CONECTADO` | `coraje-web` (Coolify) | U20: solo `true` conecta el portal, los accesos y la redirección. Sin ella están desconectados. Sustituye a `PORTAL_PUBLIC_ORIGIN` (U18), que se borra de Coolify si llegó a crearse |
 
 > **En n8n no hay variables de entorno de HelpDesk** (decisión del usuario del 01-oct-2026,
 > igual que en Impulsa). Cada secreto compartido es una credencial *Header Auth* de n8n:
@@ -310,43 +312,50 @@ FROM helpdesk.sync_divergencia ORDER BY detectado_at DESC LIMIT 20;
 SELECT * FROM helpdesk.v_actividad_powerapps ORDER BY semana DESC LIMIT 12;
 ```
 
-### Dominio del portal de clientes (U18)
+### Entrada directa (U20)
 
-El portal de clientes pasa a `soporte.rbgct.cloud`; los empleados siguen en
-`conecta.rbgct.cloud/helpdesk`. La aplicación lo activa con `PORTAL_PUBLIC_ORIGIN`
-(`portal-host.ts`): sin ella, todo sigue en Conecta. **El orden importa:** la variable
-va al final, cuando el dominio ya responde, porque desde ese momento el portal de Conecta
-redirige allí.
+`helpdesk.rbgct.cloud` es la entrada de emergencia de los empleados: sirve aunque el
+dominio o el enrutamiento de Conecta fallen. El camino de siempre sigue siendo
+`conecta.rbgct.cloud/helpdesk`, y los correos siguen llevando ese origen. La aplicación
+la activa con `HELPDESK_DIRECT_ORIGIN` (`server/security/public-origins.ts`). **El orden
+importa:** la variable va al final, cuando el dominio ya responde y Entra ya acepta su
+dirección de retorno.
 
-1. **DNS** (quien administre `rbgct.cloud`): registro `A` de `soporte` hacia la misma IP
-   que `conecta`. Comprobar: `dig +short soporte.rbgct.cloud` devuelve la misma IP que
-   `dig +short conecta.rbgct.cloud`.
-2. **Coolify**, recurso de HelpDesk, servicio `web`, campo de dominios: añadir
-   `https://soporte.rbgct.cloud` **sin ruta**, junto a `https://conecta.rbgct.cloud/helpdesk`,
+1. **DNS** (quien administre `rbgct.cloud`): registro `A` de `helpdesk` hacia la misma IP
+   que `conecta`. Comprobar que `dig +short helpdesk.rbgct.cloud` devuelve la misma IP
+   que `dig +short conecta.rbgct.cloud`.
+2. **Entra**, App Registration de HelpDesk, *Authentication → Web → Redirect URIs*: añadir
+   `https://helpdesk.rbgct.cloud/helpdesk/api/auth/microsoft/callback`, junto a la de
+   Conecta, que no se toca. Sin ella, el ingreso por ese dominio falla con `AADSTS50011`.
+3. **Coolify**, recurso de HelpDesk, servicio `web`, campo de dominios: añadir
+   `https://helpdesk.rbgct.cloud` **sin ruta**, junto a `https://conecta.rbgct.cloud/helpdesk`,
    que no se toca. Redesplegar; Traefik emite el certificado. Comprobar:
    ```bash
-   curl -sI https://soporte.rbgct.cloud/ | grep -i -E "^HTTP|^location"
-   # HTTP/2 307 · location: /helpdesk/portal
-   curl -sI https://soporte.rbgct.cloud/helpdesk/portal/ingreso | head -1
-   # HTTP/2 200
+   curl -sI https://helpdesk.rbgct.cloud/ | grep -i -E "^HTTP|^location"
+   # HTTP/2 307 · location: /helpdesk
    ```
-   Hasta el paso 3, ese dominio también sirve las rutas de empleados: hacerlo seguido.
-3. **Coolify, variable** `PORTAL_PUBLIC_ORIGIN=https://soporte.rbgct.cloud` (solo el
-   origen, https, sin barra ni ruta; un valor inválido se ignora con
-   `portal.origen_invalido` en el registro). Redesplegar. Comprobar:
-   ```bash
-   curl -sI https://soporte.rbgct.cloud/helpdesk/tickets | head -1
-   # HTTP/2 404
-   curl -sI https://conecta.rbgct.cloud/helpdesk/portal/ingreso | grep -i -E "^HTTP|^location"
-   # HTTP/2 308 · location: https://soporte.rbgct.cloud/helpdesk/portal/ingreso
-   ```
-   Y una invitación nueva llega con el enlace en `soporte.rbgct.cloud`.
+4. **Coolify, variable** `HELPDESK_DIRECT_ORIGIN=https://helpdesk.rbgct.cloud`: solo el
+   origen, https, sin barra final ni ruta. Un valor inválido se ignora y deja
+   `origen.directo_invalido` en el registro. Redesplegar y comprobar en un navegador:
+   - `https://helpdesk.rbgct.cloud` lleva a `/login`;
+   - «Elegir cuenta» abre Microsoft y vuelve a ese mismo dominio;
+   - la barra es la propia de HelpDesk;
+   - cerrar sesión lleva al `/login` de ese dominio.
 
-**Consecuencia:** las cookies son de cada dominio. Un contacto con el navegador
-recordado en Conecta vuelve a entrar por código en `soporte`. Los enlaces de invitación
-enviados antes siguen valiendo: la redirección conserva la ruta.
+**Consecuencia:** las cookies son de cada dominio, así que entrar por aquí es una sesión
+aparte de la de Conecta.
 
-**Para volver atrás:** borrar `PORTAL_PUBLIC_ORIGIN` y redesplegar.
+**Para volver atrás:** borrar `HELPDESK_DIRECT_ORIGIN` y redesplegar. Con eso, el
+dominio sirve HelpDesk, pero Entra devuelve el ingreso a Conecta.
+
+**Portal de clientes desconectado (U20).** Sin `PORTAL_CLIENTES_CONECTADO=true`,
+`/helpdesk/portal`, `/helpdesk/accesos` y `/helpdesk/redirigir/…` responden 404.
+Comprobar después de desplegar:
+```bash
+curl -sI https://conecta.rbgct.cloud/helpdesk/portal/ingreso | head -1   # HTTP/2 404
+```
+Las secciones «Correo del portal de clientes» y «Asignar los roles de U8» solo aplican
+si se reconecta.
 
 ### Correo del portal de clientes (U8)
 

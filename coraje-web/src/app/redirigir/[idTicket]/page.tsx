@@ -18,7 +18,7 @@ import { getCreationCatalog } from "@/server/tickets/ticket-queries";
 /**
  * Redirigir al área un ticket del portal (T3). Si ya se redirigió, no existe
  * o la persona no puede redirigir, responde 404: las tres respuestas son
- * iguales. Siempre en modo Coraje (U17): es trabajo con clientes.
+ * iguales. Siempre en modo Externo (U17): es trabajo con clientes.
  */
 export default async function RedirectTicketPage({ params }: { params: Promise<{ idTicket: string }> }) {
   const { idTicket } = await params;
@@ -32,10 +32,10 @@ export default async function RedirectTicketPage({ params }: { params: Promise<{
   if (!ticket) notFound();
 
   return (
-    <AppFrame employee={employee} title={`Redirigir · ${ticket.cliente}`} mode="coraje">
+    <AppFrame employee={employee} title={`Redirigir · ${ticket.cliente}`} mode="externo">
       <div className="space-y-4">
         <Link
-          href={inboxPath("coraje", "redirigir")}
+          href={inboxPath("externo", "redirigir")}
           className={cn("inline-flex items-center gap-1 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
         >
           <ChevronLeft aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
@@ -50,7 +50,7 @@ export default async function RedirectTicketPage({ params }: { params: Promise<{
             </section>
             <section className={surface()} aria-labelledby="redirigir-titulo">
               <h2 id="redirigir-titulo" className={cn(sectionTitle, "mb-4")}>Área que lo atiende</h2>
-              <RedirectForm idTicket={ticket.idTicket} catalog={catalog} backHref={inboxPath("coraje", "redirigir")} />
+              <RedirectForm idTicket={ticket.idTicket} catalog={catalog} backHref={inboxPath("externo", "redirigir")} />
             </section>
           </div>
 

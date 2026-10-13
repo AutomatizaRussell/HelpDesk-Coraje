@@ -128,38 +128,76 @@ test("una ruta que no existe tampoco se filtra: deniega por defecto", () => {
   // Denegar por defecto significa que una ruta futura está cubierta antes de
   // escribirse, y que una inexistente no revela si existe o no.
   assert.equal(proxy(peticion("/helpdesk/tickets/42")).status, 303);
-  assert.equal(proxy(peticion("/helpdesk/portal")).status, 303);
+  conPortalConectado(() => assert.equal(proxy(peticion("/helpdesk/portal")).status, 303));
 });
 
 // ---------------------------------------------------------------------------
-// Portal de clientes (U8)
+// Portal de clientes (U8), desconectado por defecto desde U20
 // ---------------------------------------------------------------------------
 
+/** Ejecuta una comprobación con el portal conectado y deja la variable como estaba. */
+function conPortalConectado(comprobar: () => void): void {
+  const previo = process.env.PORTAL_CLIENTES_CONECTADO;
+  process.env.PORTAL_CLIENTES_CONECTADO = "true";
+  try {
+    comprobar();
+  } finally {
+    if (previo === undefined) delete process.env.PORTAL_CLIENTES_CONECTADO;
+    else process.env.PORTAL_CLIENTES_CONECTADO = previo;
+  }
+}
+
+test("con el portal desconectado, el portal, los accesos y la redirección no existen", () => {
+  for (const ruta of [
+    "/helpdesk/portal",
+    "/helpdesk/portal/ingreso",
+    "/helpdesk/portal/activar/enlace-cualquiera",
+    "/helpdesk/accesos",
+    "/helpdesk/accesos/6c69866d-91ab-4258-acd7-0766bb62d72f",
+    "/helpdesk/redirigir/6c69866d-91ab-4258-acd7-0766bb62d72f",
+  ]) {
+    assert.equal(proxy(peticion(ruta, { conSesion: true, conPortal: true })).status, 404, ruta);
+    // Tampoco un envío de formulario: las acciones de servidor de esas vistas no son alcanzables.
+    assert.equal(proxy(peticion(ruta, { conSesion: true, metodo: "POST", navegacion: false })).status, 404, ruta);
+  }
+  // Lo que no es del portal sigue igual, aunque se parezca.
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/tickets", { conSesion: true }))));
+  assert.ok(dejaPasar(proxy(peticion("/helpdesk/accesosfalso", { conSesion: true }))));
+});
+
 test("sin navegador recordado, el portal manda a su propio ingreso, no al de empleados", () => {
-  const respuesta = proxy(peticion("/helpdesk/portal/tickets/nuevo"));
-  assert.equal(respuesta.status, 303);
-  const location = ubicacion(respuesta);
-  assert.ok(location.startsWith("/helpdesk/portal/ingreso"), location);
-  assert.ok(!location.includes("://"), `Location absoluto: ${location}`);
+  conPortalConectado(() => {
+    const respuesta = proxy(peticion("/helpdesk/portal/tickets/nuevo"));
+    assert.equal(respuesta.status, 303);
+    const location = ubicacion(respuesta);
+    assert.ok(location.startsWith("/helpdesk/portal/ingreso"), location);
+    assert.ok(!location.includes("://"), `Location absoluto: ${location}`);
+  });
 });
 
 test("con la cookie del portal presente, el portal deja pasar", () => {
-  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal", { conPortal: true }))));
+  conPortalConectado(() => {
+    assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal", { conPortal: true }))));
+  });
 });
 
 test("la entrada del portal es pública", () => {
-  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/ingreso"))));
-  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/ingreso/codigo"))));
-  assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/activar/enlace-cualquiera"))));
+  conPortalConectado(() => {
+    assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/ingreso"))));
+    assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/ingreso/codigo"))));
+    assert.ok(dejaPasar(proxy(peticion("/helpdesk/portal/activar/enlace-cualquiera"))));
+  });
 });
 
 test("una credencial no abre la clase de la otra", () => {
-  // La sesión de un empleado no entra al portal…
-  const empleadoEnPortal = proxy(peticion("/helpdesk/portal", { conSesion: true }));
-  assert.equal(empleadoEnPortal.status, 303);
-  assert.ok(ubicacion(empleadoEnPortal).startsWith("/helpdesk/portal/ingreso"));
-  // …y la cookie de un cliente no entra a la bandeja interna.
-  const clienteEnBandeja = proxy(peticion("/helpdesk/tickets", { conPortal: true }));
-  assert.equal(clienteEnBandeja.status, 303);
-  assert.ok(ubicacion(clienteEnBandeja).startsWith("/helpdesk/ingreso"));
+  conPortalConectado(() => {
+    // La sesión de un empleado no entra al portal…
+    const empleadoEnPortal = proxy(peticion("/helpdesk/portal", { conSesion: true }));
+    assert.equal(empleadoEnPortal.status, 303);
+    assert.ok(ubicacion(empleadoEnPortal).startsWith("/helpdesk/portal/ingreso"));
+    // …y la cookie de un cliente no entra a la bandeja interna.
+    const clienteEnBandeja = proxy(peticion("/helpdesk/tickets", { conPortal: true }));
+    assert.equal(clienteEnBandeja.status, 303);
+    assert.ok(ubicacion(clienteEnBandeja).startsWith("/helpdesk/ingreso"));
+  });
 });

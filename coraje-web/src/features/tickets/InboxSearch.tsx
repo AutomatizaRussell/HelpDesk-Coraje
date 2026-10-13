@@ -40,7 +40,7 @@ export function InboxSearch({
   maxLength,
   clearHref,
 }: {
-  /** `coraje` en la bandeja de clientes (U17); `null` en la de siempre, que no lleva parámetro. */
+  /** `externo` en la bandeja de clientes (U17); `null` en la de siempre, que no lleva parámetro. */
   modo: string | null;
   view: string;
   texto: string | null;

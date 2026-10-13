@@ -55,13 +55,13 @@ export function tint(color: BrandColorName, strength: TintStrength): string {
 
 /**
  * Un color puesto **sobre el navy** a esa opacidad, canal a canal
- * `c · opacidad + navy · (1 − opacidad)`. Es la tinta del modo Coraje (U17):
+ * `c · opacidad + navy · (1 − opacidad)`. Es la tinta del modo Externo (U17):
  * allí el fondo es navy, y una tinta sobre blanco se leería como un parche
  * claro. Igual que `brandTint`, opaca y calculada, nunca un literal a mano.
  *
  * La opacidad no sale del manual, que solo fija tintas sobre blanco: la elige
  * el tema según el papel de cada superficie, y la prueba de contraste
- * (`coraje-palette.test.mts`) es la que dice si alcanza.
+ * (`externo-palette.test.mts`) es la que dice si alcanza.
  */
 export function brandOverNavy(hex: string, opacity: number): string {
   const base = [1, 3, 5].map((offset) => Number.parseInt(brandPrimitives.navy.slice(offset, offset + 2), 16));

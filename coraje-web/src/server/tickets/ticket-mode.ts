@@ -1,10 +1,13 @@
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
- * Los dos modos de la aplicación (U17, decisión del usuario del 01-oct-2026):
- * **HelpDesk**, el trabajo entre empleados, y **Coraje**, el trabajo con
- * clientes. Funcionan como el modo claro y el oscuro: la misma bandeja y el
- * mismo detalle, con otros tickets y otro color.
+ * Los dos modos de la aplicación: **Interno**, el trabajo entre empleados, y
+ * **Externo**, el trabajo con clientes. Funcionan como el modo claro y el
+ * oscuro: la misma bandeja y el mismo detalle, con otros tickets y otro color.
+ * Nacieron en U17 (01-oct-2026) como «HelpDesk» y «Coraje»; el 13-oct-2026 el
+ * usuario los renombró al desconectar el portal de clientes (U20), porque
+ * Externo ya no depende del portal: en PowerApps los tickets de cliente los
+ * radica un empleado.
  *
  * La frontera es una columna, no una regla nueva: un ticket es de cliente si
  * tiene `id_cliente_contai`. `chk_fact_ticket_origen_exclusivo` exige cliente
@@ -15,39 +18,41 @@ import type { Prisma } from "@/generated/prisma/client";
  * Es un filtro más que se combina con AND con el alcance, igual que la vista
  * de la bandeja. Quién ve el interruptor lo decide `mode-access.ts`.
  */
-export const TICKET_MODES = ["helpdesk", "coraje"] as const;
+export const TICKET_MODES = ["interno", "externo"] as const;
 export type TicketMode = (typeof TICKET_MODES)[number];
 
 /** Nombre visible de cada modo. */
 export const TICKET_MODE_LABEL: Record<TicketMode, string> = {
-  helpdesk: "HelpDesk",
-  coraje: "Coraje",
+  interno: "Interno",
+  externo: "Externo",
 };
 
 /**
- * El modo pedido en la URL (`?modo=coraje`). Cualquier otro valor, o ninguno,
- * es HelpDesk: un parámetro fabricado no lleva a ningún sitio raro.
+ * El modo pedido en la URL (`?modo=externo`). Cualquier otro valor, o ninguno,
+ * es Interno: un parámetro fabricado no lleva a ningún sitio raro. Un enlace
+ * viejo con `?modo=coraje` abre Interno; el ticket enlazado se sigue abriendo
+ * en su modo, que sale del ticket y no de la URL.
  */
 export function parseTicketMode(value: string | undefined): TicketMode {
-  return value === "coraje" ? "coraje" : "helpdesk";
+  return value === "externo" ? "externo" : "interno";
 }
 
 /** El modo al que pertenece un ticket: el de cliente si tiene cliente. */
 export function ticketModeOf(idClienteContai: string | null): TicketMode {
-  return idClienteContai === null ? "helpdesk" : "coraje";
+  return idClienteContai === null ? "interno" : "externo";
 }
 
 /** El filtro de la base para los tickets de un modo. */
 export function modeCondition(mode: TicketMode): Prisma.FactTicketWhereInput {
-  return mode === "coraje" ? { idClienteContai: { not: null } } : { idClienteContai: null };
+  return mode === "externo" ? { idClienteContai: { not: null } } : { idClienteContai: null };
 }
 
 /**
- * El parámetro de modo de una URL. HelpDesk no lleva ninguno: es la
+ * El parámetro de modo de una URL. Interno no lleva ninguno: es la
  * aplicación de siempre, y sus enlaces de antes siguen valiendo.
  */
 export function modeQuery(mode: TicketMode): URLSearchParams {
-  return new URLSearchParams(mode === "coraje" ? { modo: "coraje" } : {});
+  return new URLSearchParams(mode === "externo" ? { modo: "externo" } : {});
 }
 
 /** La bandeja de un modo, en una vista si se pide (`redirigir`, `pendientes`…). */

@@ -8,7 +8,8 @@ ESTADO:      modelo de eventos y escritor único desplegados y ejercitados (U6).
              ejercitar (U8, corte 19). Seguimiento —observadores, solicitud de
              validación, comentario del solicitante— desplegado, sin ejercitar (U11,
              corte 22, §11). Avisos desplegados y ejercitados (U15, §12). Modo
-             Coraje construido, sin desplegar (U17, §13). Las
+             Coraje desplegado (U17, §13); renombrado Interno/Externo, con el
+             portal desconectado, sin desplegar (U20, §13.1). Las
              secciones fechadas antes del 24-sep son
              antecedente: §1 describe el estado del 03-sep
 CORTE:       01-oct-2026
@@ -799,6 +800,102 @@ paso de uno a otro se lea como una transición suave. Construido, sin desplegar.
   sobre el alcance; nunca lo amplía.
 - **Sin persistencia:** el modo vive en la URL. Una sesión nueva entra en HelpDesk.
 
+### 13.1 `DECISIÓN` (13-oct-2026, U20) Interno y Externo, sin portal
+
+Construido, sin desplegar. Supera a §13 donde se contradicen.
+
+- **Los modos se llaman Interno y Externo** (`?modo=externo`). El antetítulo de la barra
+  dice «HelpDesk» en los dos. Un enlace viejo con `?modo=coraje` abre Interno.
+- **El portal, la consola de accesos y «Por redirigir» quedan desconectados**
+  (`server/portal/portal-connection.ts`): sus rutas responden 404 y nada los ofrece.
+  Externo sigue mostrando los tickets con cliente; lo ve quien tenga alguno en su
+  alcance.
+- **Corrección de §13:** «un empleado no radica a nombre de un cliente» es falso para
+  PowerApps. En `Src/Nuevo_1.pa.yaml:1049` el cliente es obligatorio para los tipos
+  ASESÓRATE, IMPUESTOS ASESORATE e IMPUESTOS CONSULTA, y lo elige el empleado. La web
+  todavía no puede hacerlo (U21, `estado/plan-ejecucion.md`); hasta entonces, «Nuevo
+  ticket» solo aparece en Interno.
+
+## 14. `DECISIÓN` (06-oct-2026, U7) Adjuntos — diseño aprobado, sin construir
+
+Lo último abierto de U7. Diseño aprobado por el usuario el 06-oct-2026; se construye en
+una sesión aparte, cuando lleguen los dos datos de §14.6.
+
+> **`ABIERTO` (13-oct-2026): el destino se reabre.** El código de PowerApps guarda los
+> adjuntos como **adjuntos del ítem de HelpDeskBd** (`{Attachments}`, hasta 2 por
+> formulario y 5 MB), no en una biblioteca. Con una biblioteca, los adjuntos de la web no
+> se ven en PowerApps y los de los tickets legacy no se ven en la web. La alternativa es
+> escribir y leer los adjuntos del ítem por la API REST de SharePoint, con la credencial
+> que el n8n de HelpDesk ya tiene, sin Graph. Costes: los bytes pasan por n8n, los
+> adjuntos dependen de que el espejo esté encendido, y al retirar PowerApps hay que
+> moverlos. El usuario preguntó por guardar en OneDrive y dejar el enlace en la lista: no
+> se vería en PowerApps sin cambiar la app, ya que haría falta otra columna, que O6
+> descartó, y exige compartir el archivo. **Decisión pendiente del usuario.**
+
+**14.1 Modelo: el de Impulsa, con dos correcciones.** El navegador sube el archivo
+directo a SharePoint, en fragmentos, contra una sesión de carga de Graph
+(`createUploadSession`) que crea n8n. **La aplicación nunca toca los bytes**, así que no
+pesa en la VPS (CLAUDE.md, economía de recursos). PostgreSQL guarda solo metadatos.
+Referencia leída el 06-oct-2026 en `plataforma-impulsa`:
+`src/server/impulsa/sugerencias/sugerencias-carga.service.ts`,
+`src/features/shared/fragmented-upload.ts` y los workflows `Impulsa - Sugerencias -
+Crear sesion de carga V1` y `Confirmar adjunto V1`. Lo que **no** se trae:
+
+- **El enlace para toda la organización.** Impulsa guarda un enlace `createLink` de
+  alcance `organization`, así que cualquiera con el enlace abre el archivo. Aquí la
+  descarga pasa por HelpDesk: una ruta comprueba `ticket.consultar` sobre el ticket del
+  adjunto y redirige a la `@microsoft.graph.downloadUrl` que n8n obtiene en el momento,
+  que es de corta duración. En SharePoint la biblioteca no se comparte con nadie.
+- **El camino base64.** Impulsa conserva una ruta vieja que guarda el archivo en la
+  base. Aquí no existe.
+
+**14.2 Flujo.**
+1. La persona elige los archivos. El servidor valida nombre, tipo y tamaño declarados,
+   y pide a n8n la sesión de carga (webhook con Header Auth, como los demás). La URL de
+   carga va al navegador y **no se guarda**; se guardan un `operationId` y una clave de
+   idempotencia.
+2. El navegador sube los fragmentos a esa URL.
+3. Al terminar, el servidor pide a n8n que confirme el objeto (nombre, tamaño real,
+   carpeta) **antes** de registrar el adjunto: un tamaño real por encima del límite se
+   rechaza y el objeto se retira.
+4. El adjunto queda ligado al ticket y al evento que lo trajo (creación, respuesta o nota
+   interna), con la misma visibilidad que ese evento: el adjunto de una nota interna no
+   lo ve quien solo radicó el ticket.
+
+**14.3 Datos.** Una tabla `helpdesk.ticket_adjunto`: ticket, evento, autor, nombre
+original, nombre guardado (saneado: sin caracteres de control ni `<>:"/\|?*`, máximo 180
+caracteres, sufijo aleatorio), tipo MIME, tamaño, identificador del objeto en
+SharePoint (`driveItemId`), estado de la carga y fechas. Sin URL guardada: la de descarga
+se pide cada vez.
+
+**14.4 Alcance y límites.**
+- Adjuntan **los empleados** al crear, al responder y en la nota interna. Los clientes
+  desde el portal quedan fuera mientras se decide si Coraje sigue.
+- **5 archivos por envío, 25 MB por archivo.** Tipos: PDF, imágenes (PNG, JPEG, WEBP,
+  GIF), documentos de Office (Word, Excel, PowerPoint), CSV y ZIP. Se valida lo declarado
+  por el navegador y, otra vez, lo que reporta SharePoint al confirmar.
+- **Sin antivirus**, riesgo aceptado: tampoco lo tiene Impulsa. Lo acota la lista de
+  tipos, y que el archivo solo se descarga, nunca se muestra dentro de HelpDesk.
+- El correo del ticket sigue llevando un enlace, no los archivos.
+
+**14.5 Convivencia con PowerApps.** Los adjuntos **no** se copian a `HelpDeskBd`: esa
+lista vive en el OneDrive de Edwin, y escribir allí ataría los archivos a una cuenta
+personal. Quien siga en PowerApps no los ve; se acepta mientras dure la convivencia.
+
+**14.6 Lo que falta para construir (lo trae el usuario).**
+1. **El destino:** una biblioteca en un sitio de SharePoint del área, no un OneDrive
+   personal (`IMPULSA_ONEDRIVE_DRIVE_ID` en Impulsa es el OneDrive de una cuenta, y es
+   su riesgo declarado).
+2. **La credencial de Graph en el n8n de HelpDesk**, que hoy no existe para archivos.
+   Mirar en Entra los permisos de API de las App Registrations detrás de «Microsoft
+   SharePoint account» y de «Graph automatizacionmedellin». Si alguna ya tiene
+   `Sites.ReadWrite.All` o `Files.ReadWrite.All` delegados, se crea sin pasar por TI;
+   si no, hace falta el consentimiento de un administrador.
+
+**14.7 Cierre.** Un empleado adjunta al crear, responder y anotar; otro con alcance
+descarga y uno sin alcance recibe 404; un archivo de 26 MB y un `.exe` se rechazan; el
+adjunto de una nota interna no lo ve el solicitante.
+
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
 escritor único (§3); propone el vocabulario mínimo de siete estados contra los tres
@@ -882,3 +979,4 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   estado y, combinadas con el filtro, daban vistas vacías.
 - 01-oct-2026 — U17 (corte 35). §13: modo Coraje. La bandeja filtra por cliente y
   «Clasificación» pasa a ser la vista «Por redirigir» de la bandeja de Coraje.
+- 06-oct-2026 — §14: diseño de adjuntos aprobado por el usuario, sin construir (U7).

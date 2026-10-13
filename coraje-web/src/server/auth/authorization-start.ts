@@ -31,10 +31,13 @@ export function beginAuthorization(options: {
   via: "conecta" | "directo";
   loginHint?: string | null;
   conectaProfile?: ConectaProfile | null;
+  /** Dirección de retorno del dominio directo (U20), o `null` para la de siempre. */
+  redirectUri: string | null;
 }): NextResponse {
   const authorizationRequest = createAuthorizationRequest({
     mode: options.mode,
     loginHint: options.loginHint,
+    redirectUri: options.redirectUri,
   });
 
   const sealedState: SealedOidcState = {
@@ -45,6 +48,7 @@ export function beginAuthorization(options: {
     silent: options.mode === "silent",
     via: options.via,
     conectaProfile: options.conectaProfile ?? null,
+    redirectUri: options.redirectUri,
   };
 
   // 303 y no 307: la puerta de `/ingreso` es un POST, y un 307 le pediría al
