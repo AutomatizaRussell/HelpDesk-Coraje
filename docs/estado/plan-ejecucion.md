@@ -572,6 +572,19 @@ construir:
 
 **Va después de los adjuntos de U7.**
 
+### U22 · Relevos en la lista de personal — **construida el 23-oct-2026 (corte 39), sin desplegar**
+
+La ingesta llevaba parada desde el 13-oct: dos ítems activos de «Personal GCT»
+compartían `mercadeo.mde@rbcol.co` (relevo de Juliana Tangarife a Alizon Chamorro). La
+`03` y la `06` absorben ahora el relevo sin intervención manual (`specs/tickets.md`
+§7.4). Va por delante de U7 porque, sin ingesta, PostgreSQL no recibe los tickets de
+PowerApps.
+
+**Condición de cierre:** importado el workflow, una ejecución completa termina en
+*Success*. La salida de la `03` lista a 311 en `inactivos_por_correo`. En `core`, 405
+está activa y 311 inactiva, y `max(fecha_creacion)` de `helpdesk.fact_ticket` es
+posterior al 13-oct.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

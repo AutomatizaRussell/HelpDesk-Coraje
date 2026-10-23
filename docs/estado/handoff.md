@@ -1,6 +1,31 @@
 # Handoff técnico
 
 ```
+CORTE:   23-oct-2026 (corte 39, U22 relevos en la lista de personal, SIN DESPLEGAR)
+SOBRE:   `2f1eff8` (corte 38)
+RAMA:    main
+UNIDAD:  U22. La ingesta llevaba parada desde el 13-oct en `PG - Transform 03`
+         (`ux_dim_personal_correo_activo`): el ítem 405 (Alizon Chamorro) entró
+         activo con `mercadeo.mde@rbcol.co`, que seguía activo en el 311
+         (Juliana Tangarife). Diagnóstico contra la base real, hecho por el
+         usuario: el último ticket es del 13-oct y no hay otro correo repetido.
+         Decisión del usuario: absorber el relevo sin cambios manuales.
+         - `03`: un ocupante activo por correo, el ítem más reciente. Primero
+           se liberan los correos y después se carga, para que el orden de
+           las filas no pueda romper el índice. Los relevados aparecen en
+           `inactivos_por_correo`.
+         - `06`: cada ticket queda con quien ocupaba el buzón en su fecha, por
+           el `Created` del ítem de la lista. Se retira
+           `$validate_shared_mailboxes$`, que habría abortado incluso
+           retirando a Juliana a mano. El marcador de §7.3 no cambia.
+         Evidencia: 16/16 escenarios contra un PostgreSQL desechable (PGlite),
+         entre ellos la reproducción del error con el SQL anterior; las ocho
+         transformaciones superan el análisis sintáctico de PostgreSQL. Solo
+         cambian dos líneas del JSON (los dos `query`). **Sin importar en n8n
+         ni ejercitar contra la base real.** No toca `coraje-web/`.
+SIGUE:   importar el workflow y ejecutarlo de punta a punta (plan, U22).
+
+--- Corte 38, para contexto:
 CORTE:   13-oct-2026 (corte 38, U20 Interno/Externo, portal desconectado y
          entrada directa, SIN DESPLEGAR)
 SOBRE:   `5fa000a` (corte 37)
@@ -1331,6 +1356,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Riesgo | Impacto | Control inmediato |
 |---|---|---|
+| Relevo de un buzón cuya cuenta de Entra ya está enlazada a quien se fue (U22, `tickets.md` §7.4) | Quien llega no puede entrar: el ingreso encuentra por `entra_object_id` una fila inactiva | Ninguno construido. Hoy no aplica (311 no tiene rol). Mover el enlace es una decisión de identidad, pendiente del primer caso |
 | Construir el ciclo del ticket sin levantar PowerApps | Rechazo de los empleados al migrar | U0, iniciado ya por su latencia |
 | Crear tablas antes de decidir el modelo de esquema | Dos historias de esquema divergentes | U2 bloquea toda unidad que cree tablas |
 | El equipo trabaja en la plataforma y la ingesta le borra el trabajo | Pérdida de trabajo real | U9 antes de que U7 esté en uso |
@@ -1365,6 +1391,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `2f1eff8` | **Corte 38.** U20: modos Interno/Externo, portal desconectado y entrada directa. Sin desplegar al cerrar el corte |
 | `d1d8e86` | **Corte 21.** U10: revisión diaria de salud y registro JSON. Publicado y desplegado el 28-sep-2026 junto con los cortes 19 y 20; sin ejercitar |
 | `3834418` | **Corte 20.** U9: espejo en PowerApps y regla de precedencia. Publicado y desplegado el 28-sep-2026; sin ejercitar |
 | `4455741` | **Corte 19.** U8: acceso de clientes y tickets del portal. Publicado y desplegado el 28-sep-2026; sin ejercitar |
@@ -1482,7 +1509,17 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar el corte 22 y ejercitar U7 a U11
+## Acción inmediata para la siguiente sesión — importar la ingesta de U22
+
+**Antes que todo lo de abajo:** sin ingesta, PostgreSQL no recibe los tickets de
+PowerApps. Importar `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`
+sobre el workflow activo (mismo `id`; los nodos Postgres con «Postgres account
+Daniel»). Después, lanzar *Manual Trigger* y comprobar la condición de cierre de U22
+en `plan-ejecucion.md`. La consulta va en `operacion.md`, «Relevos en la lista de
+personal (U22)». Si la `03` falla, el error trae el nombre del índice o de la columna:
+no tocar datos a mano, traer el error.
+
+## Pendiente anterior — desplegar el corte 22 y ejercitar U7 a U11
 
 **Se desvía de la cola, y el motivo queda escrito:** U7 seguía en la cabeza de
 `plan-ejecucion.md` con sus pruebas pendientes, pero el 28-sep-2026 no había acceso SSH a

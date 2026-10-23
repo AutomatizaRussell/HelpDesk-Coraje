@@ -558,6 +558,41 @@ incluida una incidencia real (se publicó primero la copia del workflow sin el f
 confusión de nombre) y su resolución, en `docs/estado/handoff.md` §4 y Acción
 inmediata.
 
+**7.4 `DECISIÓN` (23-oct-2026) Relevos en «Personal GCT» — construido, sin desplegar
+(U22).** La lista admite dos ítems activos con el mismo correo: pasa en cada relevo de
+un buzón de cargo, cuando se registra a quien llega sin retirar a quien se fue. El
+13-oct-2026 entró Alizon Chamorro (ítem 405) con `mercadeo.mde@rbcol.co`, que seguía
+activo en Juliana Tangarife (ítem 311). La `PG - Transform 03` chocó con
+`ux_dim_personal_correo_activo` y la ingesta quedó parada diez días. Aunque se hubiera
+retirado a Juliana, la `06` también habría abortado, porque su validación solo admitía
+correos repetidos con marcador histórico. PowerApps no lo nota: guarda el correo como
+texto y nunca lo resuelve a una persona.
+
+Decisión del usuario: la ingesta absorbe el relevo sin intervención manual.
+
+- **Un ocupante activo por correo, el ítem más reciente** (mayor `sp_id`). Los demás
+  ítems activos con ese correo entran en `core` inactivos, y la salida de la `03` los
+  lista en `inactivos_por_correo`. Se elige el más reciente y no el que ya estaba
+  porque quien llega es quien usa el buzón. Además, el rol de la aplicación se queda en
+  la fila de quien se fue, así que el relevo nunca hereda permisos: falla cerrado.
+- **Primero se liberan correos y después se carga.** El índice se comprueba fila a fila.
+  Si en un mismo lote A cede el correo y B lo toma, un `INSERT ... ON CONFLICT` único
+  podría procesar B primero y fallar aunque el resultado fuera válido.
+- **Los tickets quedan con quien ocupaba el buzón en su fecha.** Cada persona ocupa el
+  correo desde el `Created` de su ítem hasta el del siguiente, y el primer ocupante
+  cubre también lo anterior. La validación `$validate_shared_mailboxes$` se retira: con
+  intervalos que no se solapan, la resolución ya no puede ser ambigua. Donde hay
+  marcador histórico, §7.3 sigue igual y el marcador lo cubre todo.
+
+**Lo que no resuelve:**
+- La fecha del relevo es la del alta del ítem en la lista, no la fecha real del cambio.
+- Si la cuenta de Entra del buzón ya está enlazada a quien se fue (`entra_object_id`),
+  quien llega no puede entrar. El ingreso busca primero por ese enlace, encuentra una
+  fila inactiva y rechaza, y el enlace nunca se reescribe desde una petición (V4 de
+  `acceso-empleados.md`). Hoy no aplica, porque Juliana no tiene rol. Mover el enlace es
+  una decisión de identidad, no de ingesta.
+- El staging sigue sin registrar los ítems borrados en SharePoint.
+
 ## 8. Criterios de aceptación
 
 - Ningún camino cambia el estado de un ticket sin escribir su evento, y **existe prueba
@@ -632,6 +667,7 @@ inmediata.
 | V18 | Crear, reasignar, responder, rechazar y la nota interna pasan por el escritor único, autorizados dentro de su transacción | `src/server/tickets/ticket-commands.ts` | **Construido, sin ejercitar** |
 | V19 | Solo los tickets creados en HelpDesk se operan desde HelpDesk hasta U9 | `ticket-state.ts`, `isOperableInHelpDesk` | **Construido**: los legacy se consultan, no se operan |
 | V20 | Un único vocabulario de estados en `src/` (§8) | `ticket-lifecycle.contract.test.mts` | **Verificado por prueba**. Encontró una segunda lista real en la nota interna al construir |
+| V23 | Un relevo en «Personal GCT» no detiene la ingesta y cada ticket queda con quien ocupaba el buzón en su fecha (§7.4) | Nodos `PG - Transform 03` y `06` | **Probado contra un PostgreSQL desechable** (PGlite, 23-oct-2026): 16/16 escenarios, entre ellos la reproducción del error de producción con el SQL anterior. **Sin ejercitar contra la base real** |
 
 ## 11. `DECISIÓN` Observadores y solicitud de validación — construidos (U11)
 
@@ -980,3 +1016,6 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
 - 01-oct-2026 — U17 (corte 35). §13: modo Coraje. La bandeja filtra por cliente y
   «Clasificación» pasa a ser la vista «Por redirigir» de la bandeja de Coraje.
 - 06-oct-2026 — §14: diseño de adjuntos aprobado por el usuario, sin construir (U7).
+- 23-oct-2026 — U22 (corte 39). §7.4: relevos en «Personal GCT». La `03` deja un solo
+  ocupante activo por correo, el ítem más reciente. La `06` resuelve cada ticket por la
+  fecha del alta y retira la validación que abortaba ante correos repetidos.

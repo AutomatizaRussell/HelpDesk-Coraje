@@ -262,6 +262,19 @@ igual que Impulsa**, solo falta construirlas (U2):
   «Alertas de errores a Teams» es el `errorWorkflow` de la ingesta, la salida, el correo
   del portal y, desde U10, la salud diaria.
 
+### Relevos en la lista de personal (U22)
+
+`specs/tickets.md` §7.4. Solo cambia el workflow de ingesta: sin migración ni
+despliegue de `web`. Se importa sobre el mismo `id` y se lanza *Manual Trigger*. En la
+salida de `PG - Transform 03 Personal`, `inactivos_por_correo` lista los ítems
+relevados; es información, no un error. Comprobación tras la primera ejecución:
+
+```bash
+docker exec -it coraje_postgres psql -U coraje_etl -d coraje \
+ -c "SELECT sp_personal_id, nombre_completo, estado_activo FROM core.dim_personal WHERE correo_corporativo = 'mercadeo.mde@rbcol.co' ORDER BY sp_personal_id" \
+ -c "SELECT count(*) AS tickets, max(fecha_creacion) AS ultimo_ticket FROM helpdesk.fact_ticket"
+```
+
 ### Espejo en PowerApps y regla de precedencia (U9)
 
 `specs/sincronizacion-sharepoint.md` §4.3. Tres piezas que se despliegan juntas: la
