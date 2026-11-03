@@ -623,6 +623,24 @@ en PowerApps (U24)», confirma que no hay nada que perder. Después, con el orde
 sección, la ingesta termina en *Success* tras la migración, y `/salud` carga sin la
 sección de divergencias.
 
+### U26 · Economía del despliegue — **construida el 03-nov-2026 (corte 44), sin desplegar**
+
+Primera unidad del frente de economía de recursos (`CLAUDE.md`). Cada despliegue
+corre en la misma VPS que las demás aplicaciones; el del 03-nov tardó 5 min 30 s, casi
+todo en reinstalar y copiar `node_modules` y en exportar una imagen de `migrate` con la
+app entera dentro. Imagen de Node exacta, pnpm y su store en caché, `builder` sobre
+`deps` y un paquete `migrator/` aislado (`operacion.md`, «Despliegue»).
+
+**Condición de cierre:** en el log del primer despliegue, ningún paso
+`COPY --from=deps /app/node_modules`, la etapa `migrator` instala unos 95 paquetes y
+no 456, y `migrate` termina bien (`Exited` sin error y `web` arranca). En el
+**segundo** despliegue, `pnpm install` muestra `reused` y no `downloaded`. Si no
+aparece, la limpieza de Coolify está borrando la caché de build.
+
+**Siguen en este frente, en orden:** logotipos servidos sin procesar en el servidor
+(hoy `next/image` redimensiona PNG de 2422 px con `sharp`), y límite de memoria de
+`web` dimensionado con una segunda medición tras un día de uso.
+
 ### U25 · Borrar los tickets de prueba — **construida el 03-nov-2026 (corte 42), sin publicar**
 
 Decisión del usuario del 03-nov-2026: todo ticket creado desde HelpDesk es una prueba.

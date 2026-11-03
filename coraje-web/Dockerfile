@@ -1,43 +1,59 @@
-FROM node:22-alpine AS base
-WORKDIR /app
-RUN corepack enable
+# Etiqueta exacta, no `node:24-alpine`: Coolify construye con `--pull`, y una
+# etiqueta flotante cambia de digest cada vez que Docker reconstruye la imagen,
+# lo que invalida toda la caché de capas y obliga a reinstalar desde cero. La
+# versión coincide con `.node-version`, la que usan las pruebas locales.
+ARG NODE_IMAGE=node:24.22.2-alpine3.24
 
+FROM ${NODE_IMAGE} AS base
+WORKDIR /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# pnpm se descarga una sola vez, aquí, desde el `packageManager` de
+# package.json (con su hash). Antes lo descargaba cada etapa al primer uso.
+COPY package.json ./
+RUN corepack enable && corepack install
+
+# Store de pnpm en una caché de BuildKit, compartida entre etapas y entre
+# despliegues: si el lockfile no cambió, la capa sale de caché; si cambió,
+# solo se descargan los paquetes nuevos. La caché no entra en ninguna imagen.
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=helpdesk-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --store-dir /pnpm/store
 
-# Etapa del servicio migrate: solo lo necesario para `prisma migrate deploy`
-# (CLI + prisma.config.ts + prisma/), sin el código de la app ni el build de
-# Next — no genera el cliente, `migrate deploy` no lo necesita.
+# Imagen del servicio `migrate`: solo el CLI de Prisma, instalado desde su
+# propio lockfile (`migrator/`, ver migrator.contract.test.mts), más
+# prisma.config.ts y prisma/. Copiar el `node_modules` de la app la hacía de
+# ~700 MB para correr un único comando.
 FROM base AS migrator
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
+COPY migrator/package.json migrator/pnpm-lock.yaml migrator/pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=helpdesk-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prod --store-dir /pnpm/store
+COPY prisma.config.ts ./
 COPY prisma ./prisma
-CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
+CMD ["./node_modules/.bin/prisma", "migrate", "deploy"]
 
-FROM base AS builder
-WORKDIR /app
+# Hereda de `deps` en vez de copiar su `node_modules`: la copia de decenas de
+# miles de archivos costaba un minuto en cada despliegue.
+FROM deps AS builder
 
 # DATABASE_URL dummy solo para permitir que Next importe módulos server durante build.
 # No se usa en runtime y no contiene secretos reales.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN pnpm prisma generate
 RUN pnpm build
 
-FROM node:22-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./

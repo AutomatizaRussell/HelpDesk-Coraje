@@ -1,6 +1,31 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 44, U26 despliegue liviano, SIN DESPLEGAR)
+SOBRE:   `5d71fd5` (corte 43)
+RAMA:    main
+UNIDAD:  U26, economía del despliegue (plan-ejecucion.md). El log del despliegue
+         de `5d71fd5` midió 5 min 30 s: 61 s de `pnpm install` sin caché, dos
+         copias de `node_modules` de 62 s cada una y 95 s exportando una imagen
+         de `migrate` con el `node_modules` entero de la app (765 MB en local).
+         - `node:24.22.2-alpine3.24` exacta, alineada con `.node-version`
+           (antes `node:22-alpine` flotante en la VPS y 24.16.0 en local).
+         - pnpm se descarga una vez, en `base`; store en caché de BuildKit;
+           `builder` hereda de `deps` en vez de copiar `node_modules`.
+         - `migrator/`: paquete aislado con su propio lockfile, solo Prisma y
+           dotenv (~160 MB medidos en Windows). `migrator.contract.test.mts`
+           exige las mismas versiones que resolvió la app.
+         Evidencia: el paquete aislado carga prisma.config.ts, valida el esquema
+         y `migrate status` llega a intentar la conexión; `tsc`, `lint`,
+         202/202 pruebas y `build` con Node 24.22.2. **Sin verificar:** no hay
+         Docker local; el Dockerfile solo se comprueba desplegando.
+         Medido en la VPS el 03-nov, sin uso: `web` 63,67 MiB y sin límite de
+         memoria; ninguna conexión de `coraje_runtime` abierta en reposo.
+         Incluye la corrección del usuario en operacion.md: el push no
+         redespliega, el despliegue se lanza a mano en Coolify.
+SIGUE:   desplegar a mano y comprobar el log (cierre de U26 en el plan).
+
+--- Corte 43, para contexto:
 CORTE:   03-nov-2026 (corte 43, U7 adjuntos, SIN DESPLEGAR)
 SOBRE:   `b90cc94` (corte 42)
 RAMA:    main
@@ -1467,6 +1492,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `5d71fd5` | **Corte 43.** U7: adjuntos (con `429593b`). Desplegado el 03-nov-2026; puesta en marcha pendiente |
 | `b90cc94` | **Corte 42.** U25: tickets de prueba borrados. Publicado el 03-nov-2026 junto con el corte 41 |
 | `2514b24` | **Corte 41.** U24: retiro del espejo en PowerApps. Publicado el 03-nov-2026 |
 | `44abf78` | **Corte 40.** U23: responsable que no resuelve y «proyectos y ti» hacia Alex. Publicado el 03-nov-2026; workflow sin importar |
@@ -1589,7 +1615,13 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — poner en marcha los adjuntos
+## Acción inmediata para la siguiente sesión — desplegar U26 y comprobar su log
+
+Se desvía de la cola (U7, adjuntos): el log del despliegue es la única evidencia del
+Dockerfile, y conviene tenerla antes de mezclarla con otro cambio. Condición de cierre
+en `plan-ejecucion.md`, U26. Después se vuelve a los adjuntos.
+
+## Siguiente — poner en marcha los adjuntos
 
 Vuelve a la cabeza de la cola: U7. Seguir `operacion.md`, «Adjuntos (U7)» (carpeta,
 credencial, workflow, dos variables) y ejercitar §14.7 de `specs/tickets.md`.

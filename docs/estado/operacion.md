@@ -63,7 +63,11 @@ versionadas en `coraje-web/prisma/migrations/`. La primera,
 `schema.prisma` no representa: **antes de correr `migrate dev` o `diff`, léela**, o
 esos objetos parecerán sobrantes.
 
-Disparo: commit + push a `main` → Coolify redespliega → el servicio `migrate`, de un
+> **Corregido el 03-nov-2026, por el usuario:** el push a `main` **no** redespliega. El
+> autodespliegue de Coolify no ha funcionado nunca, por una causa sin diagnosticar; cada
+> despliegue se lanza a mano en Coolify. Publicar un commit no es desplegarlo.
+
+Disparo: commit + push a `main`, y *Redeploy* a mano en Coolify → el servicio `migrate`, de un
 solo disparo, corre `prisma migrate deploy` como `coraje_migrator` y **bloquea el
 arranque de `web`** hasta terminar bien. Nadie corre `migrate deploy` a mano. Si una
 migración falla, `web` no arranca: toda migración que haga `CREATE OR REPLACE` o
@@ -129,9 +133,24 @@ docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
 
 ## Despliegue
 
-`coraje-web/docker-compose.yaml` define **un solo servicio**, `web`, construido desde el
-`Dockerfile` local y unido a dos redes externas: `coolify` para la entrada y
-`coraje_net` para alcanzar PostgreSQL.
+`coraje-web/docker-compose.yaml` define dos servicios construidos desde el mismo
+`Dockerfile`: `migrate`, de un disparo (etapa `migrator`), y `web`, unido a dos redes
+externas: `coolify` para la entrada y `coraje_net` para alcanzar PostgreSQL.
+
+**Imágenes (U26, 03-nov-2026).** El build corre en la misma VPS que las demás
+aplicaciones, así que se hace liviano:
+
+- Node con etiqueta exacta (`NODE_IMAGE` en el Dockerfile), la misma que
+  `.node-version`. **Subir Node es cambiar los dos.**
+- El store de pnpm vive en una caché de BuildKit (`helpdesk-pnpm-store`): un despliegue
+  sin cambios de dependencias no descarga paquetes.
+- La imagen de `migrate` lleva solo el CLI de Prisma, desde `coraje-web/migrator/`, con
+  su propio lockfile. **Subir Prisma o dotenv en la app exige subirlos también allí**
+  (`pnpm install` dentro de `migrator/`); `migrator.contract.test.mts` falla si no.
+
+Ajustes de Coolify que el log del 03-nov señaló, sin código: borrar
+`N8N_OUTBOX_KICK_URL` (la cola de salida se retiró en U24) y desmarcar *Available at
+Buildtime* en `NODE_ENV`.
 
 Diferencias con Impulsa que conviene conocer antes de copiar cualquier procedimiento
 suyo. Las dos primeras filas dejaron de ser diferencia de fondo — están **decididas

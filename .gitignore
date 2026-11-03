@@ -15,6 +15,7 @@
 
 # Dependencies
 coraje-web/node_modules/
+coraje-web/migrator/node_modules/
 
 # Yarn / PnP artifacts, por si alguna herramienta los genera accidentalmente
 coraje-web/.pnp

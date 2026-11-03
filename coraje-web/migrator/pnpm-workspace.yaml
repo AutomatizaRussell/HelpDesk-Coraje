@@ -1,0 +1,5 @@
+# Raíz de workspace propia: sin este archivo, pnpm subiría hasta el de
+# coraje-web/ y resolvería este paquete con las dependencias de la app.
+allowBuilds:
+  "@prisma/engines": true
+  prisma: true
