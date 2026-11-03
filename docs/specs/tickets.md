@@ -297,6 +297,11 @@ El evento `MIGRACION_LEGACY` de cada ticket (§3.1) registra el estado según lo
   queda fijado al crear el ticket y esa persona responde o reasigna
   (`legacy/reglas-negocio-powerapps.md` §6). La ingesta actual solo copia `AsignadoA` a
   `id_asignado` y no guarda `Recibe` en ninguna parte.
+  **Corregido el 03-nov-2026 (U23):** `Recibe` solo cubre un `AsignadoA` **vacío**. Si
+  `AsignadoA` trae texto que no resuelve a nadie —un `.`, un correo fuera de la lista—
+  el ticket queda sin responsable y, por tanto, `ABIERTO`. Antes caía en `Recibe` y
+  mostraba como responsable a quien había reasignado el ticket en PowerApps. La salida
+  de la `06` cuenta esos tickets en `asignado_sin_resolver`.
 - **El estado inicial sale de SharePoint (`staging.sp_helpdesk_raw`), no de
   `fact_ticket`.** SharePoint es hoy quien manda sobre los tickets legacy, y
   `fact_ticket` puede ir por detrás de él: del 14 al 24-sep-2026 la ingesta estuvo
@@ -593,6 +598,27 @@ Decisión del usuario: la ingesta absorbe el relevo sin intervención manual.
   una decisión de identidad, no de ingesta.
 - El staging sigue sin registrar los ítems borrados en SharePoint.
 
+**7.5 `DECISIÓN` (03-nov-2026) «Proyectos y TI» entra por Alex — construido, sin
+desplegar (U23).** En PowerApps, todo ticket del tipo «PROYECTOS Y TI» va a un correo
+fijo en la fórmula, sin mirar la categoría (`legacy/reglas-negocio-powerapps.md` §5,
+§13.5). En `helpdesk.routing_rule` la carga inicial lo dejó a medias: «automatizacion»
+iba a `alexbolanos@`, «ti» a `ti.gct@` sin decisión de nadie, y «otros», sin regla, al
+encargado de ADMINISTRACIÓN. Un ticket de «Redes» llegó así directo a quien ocupa
+`ti.gct@`. Decisión del usuario: todo lo de automatización y TI pasa primero por Alex,
+que lo reparte reasignando.
+
+- La migración `20261103100000_enrutar_proyectos_y_ti` deja una regla hacia Alex por
+  cada tipo «proyectos y ti» del catálogo. Es configuración versionada, no un cambio a
+  mano en la base.
+- **La visibilidad por recepción sale de la misma regla** (U13,
+  `src/server/authorization/recepcion.ts`): `ti.gct@` deja de recibir en su bandeja los
+  tickets nuevos de «ti», y Alex los recibe. Los tickets ya creados conservan su
+  responsable.
+- **Lo que no resuelve:** un tipo nuevo de «proyectos y ti» que llegue de `TipoReqHD`
+  nace sin regla y cae en el encargado del área. Ni la ingesta ni otra migración
+  escriben `routing_rule`. Se acepta porque el catálogo pasa a ser de HelpDesk al
+  retirar PowerApps.
+
 ## 8. Criterios de aceptación
 
 - Ningún camino cambia el estado de un ticket sin escribir su evento, y **existe prueba
@@ -668,6 +694,8 @@ Decisión del usuario: la ingesta absorbe el relevo sin intervención manual.
 | V19 | Solo los tickets creados en HelpDesk se operan desde HelpDesk hasta U9 | `ticket-state.ts`, `isOperableInHelpDesk` | **Construido**: los legacy se consultan, no se operan |
 | V20 | Un único vocabulario de estados en `src/` (§8) | `ticket-lifecycle.contract.test.mts` | **Verificado por prueba**. Encontró una segunda lista real en la nota interna al construir |
 | V23 | Un relevo en «Personal GCT» no detiene la ingesta y cada ticket queda con quien ocupaba el buzón en su fecha (§7.4) | Nodos `PG - Transform 03` y `06` | **Probado contra un PostgreSQL desechable** (PGlite, 23-oct-2026): 16/16 escenarios, entre ellos la reproducción del error de producción con el SQL anterior. **Sin ejercitar contra la base real** |
+| V24 | Un `AsignadoA` escrito que no resuelve deja el ticket sin responsable, y uno vacío cae en `Recibe` (§4.2) | Nodo `PG - Transform 06`, expresión de `id_asignado` | **Probado contra un PostgreSQL desechable** (PGlite, 03-nov-2026): 5/5 casos sobre la expresión tal como está en el workflow. Sin ejercitar contra la base real |
+| V25 | Todo tipo «proyectos y ti» tiene regla activa hacia Alex (§7.5) | `prisma/migrations/20261103100000_enrutar_proyectos_y_ti` | **Construido, sin desplegar** |
 
 ## 11. `DECISIÓN` Observadores y solicitud de validación — construidos (U11)
 
@@ -1019,3 +1047,5 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
 - 23-oct-2026 — U22 (corte 39). §7.4: relevos en «Personal GCT». La `03` deja un solo
   ocupante activo por correo, el ítem más reciente. La `06` resuelve cada ticket por la
   fecha del alta y retira la validación que abortaba ante correos repetidos.
+- 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
+  `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.

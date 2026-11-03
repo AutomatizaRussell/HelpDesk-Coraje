@@ -275,6 +275,21 @@ docker exec -it coraje_postgres psql -U coraje_etl -d coraje \
  -c "SELECT count(*) AS tickets, max(fecha_creacion) AS ultimo_ticket FROM helpdesk.fact_ticket"
 ```
 
+### Enrutamiento de proyectos y ti (U23)
+
+`specs/tickets.md` §4.2 y §7.5. La regla de Alex llega con la migración (`migrate`, al
+desplegar `web`). El arreglo del responsable llega con el workflow de ingesta, que se
+importa sobre el mismo `id`. En la salida de `PG - Transform 06 Tickets Legacy`,
+`asignado_sin_resolver` cuenta los tickets de PowerApps cuyo `AsignadoA` no
+corresponde a nadie: quedan sin responsable. Es información, no un error. La segunda
+consulta los lista:
+
+```bash
+docker exec -it coraje_postgres psql -U coraje_etl -d coraje \
+ -c "SELECT t.categoria_1, t.categoria_2, r.encargado_interno, r.activo FROM helpdesk.dim_tipo_requerimiento t LEFT JOIN helpdesk.routing_rule r ON r.id_tipo_req = t.id_tipo_req WHERE LOWER(BTRIM(t.tipo_requerimiento)) = 'proyectos y ti' ORDER BY 1, 2" \
+ -c "SELECT f.codigo_ticket, s.payload->>'AsignadoA' AS asignado_en_powerapps FROM staging.sp_helpdesk_raw s JOIN helpdesk.ticket_legacy_sharepoint_ref r ON r.sp_id = s.sp_id JOIN helpdesk.fact_ticket f ON f.id_ticket = r.id_ticket WHERE f.origen_sistema = 'SHAREPOINT_LEGACY' AND NULLIF(TRIM(s.payload->>'AsignadoA'), '') IS NOT NULL AND f.id_asignado IS NULL"
+```
+
 ### Espejo en PowerApps y regla de precedencia (U9)
 
 `specs/sincronizacion-sharepoint.md` §4.3. Tres piezas que se despliegan juntas: la

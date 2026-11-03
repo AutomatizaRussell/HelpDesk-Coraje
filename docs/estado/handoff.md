@@ -1,6 +1,27 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 40, U23 responsable y enrutamiento, SIN DESPLEGAR)
+SOBRE:   `9b1c542` (corte 39)
+RAMA:    main
+UNIDAD:  U23. Dos defectos que deciden quién figura como responsable.
+         - `06`: un `AsignadoA` escrito que no resuelve (un «.», alguien fuera
+           de la lista) caía en `Recibe` y mostraba como responsable a quien
+           había reasignado en PowerApps. Ahora deja el ticket sin
+           responsable, y la salida lo cuenta en `asignado_sin_resolver`.
+         - Migración `20261103100000_enrutar_proyectos_y_ti`: todo «proyectos
+           y ti» entra por Alex Bolaños. Antes «ti» iba a `ti.gct@` y «otros»
+           al encargado de ADMINISTRACIÓN. Dato del usuario, consulta contra
+           la base real del 03-nov.
+         Evidencia: 5/5 casos de la expresión de `id_asignado` y 16/16 de
+         U22 contra PGlite; análisis sintáctico de las ocho transformaciones;
+         `tsc`, `lint`, `test` y `build` en `coraje-web/`. **Sin desplegar
+         la migración ni importar el workflow.**
+         U22 quedó desplegada el 29-oct (ingesta en *Success*), con el relevo
+         sin ejercitar: el ítem 405 tiene «.» como correo desde el 26-oct.
+SIGUE:   desplegar, importar el workflow y comprobar el cierre de U23 (plan).
+
+--- Corte 39, para contexto:
 CORTE:   23-oct-2026 (corte 39, U22 relevos en la lista de personal, SIN DESPLEGAR)
 SOBRE:   `2f1eff8` (corte 38)
 RAMA:    main
@@ -1391,6 +1412,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `9b1c542` | **Corte 39.** U22: relevos en la lista de personal. Workflow importado el 29-oct-2026; ingesta en *Success*, relevo sin ejercitar |
 | `2f1eff8` | **Corte 38.** U20: modos Interno/Externo, portal desconectado y entrada directa. Sin desplegar al cerrar el corte |
 | `d1d8e86` | **Corte 21.** U10: revisión diaria de salud y registro JSON. Publicado y desplegado el 28-sep-2026 junto con los cortes 19 y 20; sin ejercitar |
 | `3834418` | **Corte 20.** U9: espejo en PowerApps y regla de precedencia. Publicado y desplegado el 28-sep-2026; sin ejercitar |
@@ -1509,7 +1531,16 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — importar la ingesta de U22
+## Acción inmediata para la siguiente sesión — desplegar U23 e importar la ingesta
+
+Se desvía de la cola, porque U7 (adjuntos) sigue a la cabeza: U23 corrige quién figura
+como responsable en tickets que ya existen, y es más pequeña. Desplegar `web`
+(`migrate` aplica `20261103100000_enrutar_proyectos_y_ti`), importar
+`n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` sobre el mismo
+`id`, lanzar *Manual Trigger* y comprobar el cierre de U23 en `plan-ejecucion.md` con
+las consultas de `operacion.md`, «Enrutamiento de proyectos y ti (U23)».
+
+## Anterior — importar la ingesta de U22 (hecho el 29-oct-2026)
 
 **Antes que todo lo de abajo:** sin ingesta, PostgreSQL no recibe los tickets de
 PowerApps. Importar `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json`

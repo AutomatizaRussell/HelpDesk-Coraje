@@ -572,7 +572,12 @@ construir:
 
 **Va después de los adjuntos de U7.**
 
-### U22 · Relevos en la lista de personal — **construida el 23-oct-2026 (corte 39), sin desplegar**
+### U22 · Relevos en la lista de personal — **desplegada el 29-oct-2026 (corte 39); el relevo, sin ejercitar**
+
+> **29-oct-2026:** importado el workflow, la ingesta volvió a terminar en *Success*
+> (3.066 tickets, el último del 29-oct). El relevo no llegó a ejercitarse: el
+> 26-oct alguien cambió en la lista el correo del ítem 405 por «.», así que no hubo dos
+> activos con `mercadeo.mde@rbcol.co`. La condición de cierre sigue abierta.
 
 La ingesta llevaba parada desde el 13-oct: dos ítems activos de «Personal GCT»
 compartían `mercadeo.mde@rbcol.co` (relevo de Juliana Tangarife a Alizon Chamorro). La
@@ -584,6 +589,23 @@ PowerApps.
 *Success*. La salida de la `03` lista a 311 en `inactivos_por_correo`. En `core`, 405
 está activa y 311 inactiva, y `max(fecha_creacion)` de `helpdesk.fact_ticket` es
 posterior al 13-oct.
+
+### U23 · Responsable y enrutamiento — **construida el 03-nov-2026 (corte 40), sin desplegar**
+
+Dos defectos que deciden quién figura como responsable (`specs/tickets.md` §4.2 y
+§7.5):
+
+- Un ticket reasignado en PowerApps a un correo que no resuelve (un «.», alguien fuera
+  de la lista) mostraba como responsable a quien figura en `Recibe`, es decir, a quien
+  lo reasignó. La `06` lo deja ahora sin responsable.
+- Un ticket de «Redes» llegó directo a `ti.gct@`. Todo «proyectos y ti» pasa a entrar
+  por Alex Bolaños, como en PowerApps.
+
+**Condición de cierre:** desplegada la migración, la primera consulta de
+`operacion.md`, «Enrutamiento de proyectos y ti (U23)», devuelve a `alexbolanos@` en
+todas las filas. Importado el workflow, la salida de la `06` trae
+`asignado_sin_resolver`, y un ticket nuevo de «proyectos y ti», de cualquier categoría,
+nace asignado a Alex.
 
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
