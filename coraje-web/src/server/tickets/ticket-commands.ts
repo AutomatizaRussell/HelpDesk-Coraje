@@ -165,7 +165,6 @@ async function writeEvent(
     tipo:
       | "REASIGNACION"
       | "RESPUESTA"
-      | "RECHAZO"
       | "COMENTARIO"
       | "OBSERVADOR_AGREGADO"
       | "OBSERVADOR_RETIRADO"
@@ -665,58 +664,6 @@ export async function respondTicket(params: {
       idAutor: params.idPersonal,
       texto: params.respuesta,
       deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RESPUESTA_OBSERVADOR")],
-    });
-
-    return { idTicket: ticket.idTicket, idEvento, mailIds };
-  });
-}
-
-// ---------------------------------------------------------------------------
-// T8 · Rechazar
-// ---------------------------------------------------------------------------
-
-/**
- * Declara que el ticket no se atiende. El motivo es obligatorio y lo ve el
- * solicitante: rechazar sin decir por qué deja a quien radicó sin saber qué
- * hacer.
- */
-export async function rejectTicket(params: {
-  idPersonal: string;
-  idTicket: string;
-  motivo: string;
-}): Promise<TicketEventResult> {
-  return prisma.$transaction(async (tx) => {
-    const { ticket } = await lockAndAuthorize({
-      tx,
-      idTicket: params.idTicket,
-      idPersonal: params.idPersonal,
-      action: TICKET_ACTIONS.rechazar,
-      allowedStates: ["ABIERTO", "ASIGNADO"],
-      stateMessage: "Este ticket ya terminó y no se puede rechazar.",
-    });
-
-    const now = new Date();
-    await tx.factTicket.update({
-      where: { idTicket: ticket.idTicket },
-      data: { fechaResolucion: now, ultimaActualizacion: now },
-    });
-
-    const idEvento = await writeEvent(tx, {
-      idTicket: ticket.idTicket,
-      tipo: "RECHAZO",
-      idAutor: params.idPersonal,
-      visibilidad: "AMBOS",
-      contenido: params.motivo,
-      estadoNuevo: "RECHAZADO",
-    });
-
-    const delivery = requesterDelivery(ticket, "RECHAZO_SOLICITANTE", "RECHAZO_CLIENTE");
-    const mailIds = await deliverTicketEvent(tx, {
-      idTicket: ticket.idTicket,
-      idEvento,
-      idAutor: params.idPersonal,
-      texto: params.motivo,
-      deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RECHAZO_OBSERVADOR")],
     });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };

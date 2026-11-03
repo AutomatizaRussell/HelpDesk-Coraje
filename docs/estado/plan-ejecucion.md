@@ -680,6 +680,18 @@ su número cambiara, la migración se revierte entera.
 prueba borrados (U25)», devuelve solo `SHAREPOINT_LEGACY`, con el mismo total que
 antes de publicar.
 
+### U29 · Ciclo del ticket, segunda versión — **en construcción desde el 03-nov-2026**
+
+Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por parte:
+1. Retirar «Rechazar» y unificar el cuadro de escritura (corte 47).
+2. Aprobador en lugar de validador: «Aprobar» y «No aprobar», bloquea el cierre.
+3. Correos al observador, al aprobador, al abrir y al cerrar; sin escalamiento diario.
+4. Código `ADM-202610-1`.
+5. Toasts.
+6. Vista previa de adjuntos y carpeta por ticket.
+
+**Condición de cierre:** cada parte ejercitada en el despliegue por el usuario.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

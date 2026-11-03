@@ -20,7 +20,6 @@ export const TICKET_ACTIONS = {
   redirigir: "ticket.redirigir",
   reasignar: "ticket.reasignar",
   responder: "ticket.responder",
-  rechazar: "ticket.rechazar",
   notaInterna: "ticket.nota_interna",
   reenviarNotificacion: "ticket.notificacion.reenviar",
   /**

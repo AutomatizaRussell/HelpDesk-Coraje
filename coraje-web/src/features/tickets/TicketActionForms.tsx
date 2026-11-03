@@ -17,7 +17,6 @@ import {
   addObserversAction,
   commentAsRequesterAction,
   reassignTicketAction,
-  rejectTicketAction,
   removeObserverAction,
   requestValidationAction,
   resendTicketMailAction,
@@ -77,58 +76,105 @@ function TextField({
   );
 }
 
-function Submit({
-  pending,
-  uploading = false,
-  variant,
-  children,
-}: {
-  pending: boolean;
-  /** Hay un adjunto subiendo: enviar ahora lo dejaría fuera. */
-  uploading?: boolean;
-  variant: ButtonVariant;
-  children: ReactNode;
-}) {
+function Submit({ pending, variant, children }: { pending: boolean; variant: ButtonVariant; children: ReactNode }) {
   return (
-    <button type="submit" className={buttonRecipe({ variant })} disabled={pending || uploading}>
-      {pending ? "Guardando…" : uploading ? "Subiendo adjuntos…" : children}
+    <button type="submit" className={buttonRecipe({ variant })} disabled={pending}>
+      {pending ? "Guardando…" : children}
     </button>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-export function RespondForm({ idTicket }: { idTicket: string }) {
-  const { state, formAction, pending, formKey } = useTicketForm(respondTicketAction);
+/**
+ * El cuadro de escritura del ticket: un solo texto y un botón por acción
+ * (decisión del usuario del 03-nov-2026, que retira las pestañas). Cada botón
+ * dice qué pasa al pulsarlo, así que nadie tiene que mirar en qué pestaña está
+ * para saber si el solicitante lo va a leer:
+ * - «Responder y cerrar» envía el texto al solicitante y cierra el ticket;
+ * - «Enviar comentario» lo escribe quien radicó, sin cerrar nada;
+ * - «Guardar nota interna» lo deja solo para el equipo.
+ *
+ * Los adjuntos van con responder y con la nota (tickets.md §14.4), no con el
+ * comentario del solicitante: si solo se puede comentar, no hay selector.
+ *
+ * Cada botón dispara su propia acción de servidor (`formAction`), con su
+ * propio estado; se muestra el del último que se pulsó. Tras un éxito de
+ * cualquiera de los dos, el formulario se monta de nuevo y queda vacío.
+ */
+export function TicketComposer({
+  idTicket,
+  canRespond,
+  canComment,
+  canNote,
+}: {
+  idTicket: string;
+  canRespond: boolean;
+  canComment: boolean;
+  canNote: boolean;
+}) {
+  const [respondState, respondAction, responding] = useActionState(respondTicketAction, IDLE_FORM_STATE);
+  const [commentState, commentAction, commenting] = useActionState(commentAsRequesterAction, IDLE_FORM_STATE);
+  const [noteState, noteAction, noting] = useActionState(addInternalNoteAction, IDLE_FORM_STATE);
+  const [last, setLast] = useState<"responder" | "comentar" | "nota">(canRespond ? "responder" : canComment ? "comentar" : "nota");
   const [uploading, setUploading] = useState(false);
-  return (
-    <form key={formKey} action={formAction} className="space-y-3">
-      <input type="hidden" name="idTicket" value={idTicket} />
-      <FormFeedback state={state} />
-      <TextField
-        name="respuesta"
-        label="Respuesta al solicitante"
-        hint="El solicitante la recibe. Al responder, el ticket queda cerrado."
-        state={state}
-        rows={6}
-      />
-      <AttachmentPicker onBusyChange={setUploading} error={state.status === "error" ? state.fieldErrors.adjuntos : undefined} />
-      <Submit pending={pending} uploading={uploading} variant="primary">Responder y cerrar</Submit>
-    </form>
-  );
-}
+  const state = { responder: respondState, comentar: commentState, nota: noteState }[last];
+  const pending = responding || commenting || noting;
+  const formKey = [respondState, commentState, noteState].map((item) => (item.status === "success" ? item.nonce : "-")).join(":");
+  const attaches = canRespond || canNote;
+  const hint = [
+    canRespond && "«Responder y cerrar» se lo envía al solicitante y cierra el ticket.",
+    canComment && "«Enviar comentario» lo ve el equipo que lo atiende y avisa a la persona responsable; el ticket sigue abierto.",
+    canNote && "«Guardar nota interna» solo lo ve el equipo.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const primary = canRespond ? "responder" : canComment ? "comentar" : "nota";
+  const variant = (action: typeof primary) => (action === primary ? "primary" : "secondary");
 
-export function InternalNoteForm({ idTicket }: { idTicket: string }) {
-  const { state, formAction, pending, formKey } = useTicketForm(addInternalNoteAction);
-  const [uploading, setUploading] = useState(false);
   return (
-    <form key={formKey} action={formAction} className="space-y-3">
+    <form key={formKey} className="space-y-3">
       <input type="hidden" name="idTicket" value={idTicket} />
       <FormFeedback state={state} />
-      <TextField name="nota" label="Nota interna" hint="Solo la ve el equipo. El solicitante no la recibe." state={state} />
-      <AttachmentPicker onBusyChange={setUploading} error={state.status === "error" ? state.fieldErrors.adjuntos : undefined} />
-      {/* Primaria dentro de su pestaña: cada pestaña es su propia tarea. */}
-      <Submit pending={pending} uploading={uploading} variant="primary">Guardar nota</Submit>
+      <TextField name="texto" label="Escribe en el ticket" hint={hint} state={state} rows={6} />
+      {attaches && (
+        <AttachmentPicker onBusyChange={setUploading} error={state.status === "error" ? state.fieldErrors.adjuntos : undefined} />
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {canRespond && (
+          <button
+            type="submit"
+            formAction={respondAction}
+            onClick={() => setLast("responder")}
+            className={buttonRecipe({ variant: variant("responder") })}
+            disabled={pending || uploading}
+          >
+            {responding ? "Guardando…" : uploading ? "Subiendo adjuntos…" : "Responder y cerrar"}
+          </button>
+        )}
+        {canComment && (
+          <button
+            type="submit"
+            formAction={commentAction}
+            onClick={() => setLast("comentar")}
+            className={buttonRecipe({ variant: variant("comentar") })}
+            disabled={pending || uploading}
+          >
+            {commenting ? "Enviando…" : "Enviar comentario"}
+          </button>
+        )}
+        {canNote && (
+          <button
+            type="submit"
+            formAction={noteAction}
+            onClick={() => setLast("nota")}
+            className={buttonRecipe({ variant: variant("nota") })}
+            disabled={pending || uploading}
+          >
+            {noting ? "Guardando…" : "Guardar nota interna"}
+          </button>
+        )}
+      </div>
     </form>
   );
 }
@@ -188,23 +234,6 @@ export function ResendMailForm({ idNotificacion }: { idNotificacion: string }) {
       <button type="submit" className={buttonRecipe({ variant: "secondary", size: "sm" })} disabled={pending}>
         {pending ? "Enviando…" : "Reenviar"}
       </button>
-    </form>
-  );
-}
-
-export function RejectForm({ idTicket }: { idTicket: string }) {
-  const { state, formAction, pending, formKey } = useTicketForm(rejectTicketAction);
-  return (
-    <form key={formKey} action={formAction} className="space-y-3">
-      <input type="hidden" name="idTicket" value={idTicket} />
-      <FormFeedback state={state} />
-      <TextField
-        name="motivo"
-        label="Motivo del rechazo"
-        hint="El solicitante lo recibe. Un ticket rechazado no se puede reabrir."
-        state={state}
-      />
-      <Submit pending={pending} variant="danger">Rechazar ticket</Submit>
     </form>
   );
 }
@@ -288,24 +317,6 @@ export function RequestValidationForm({ idTicket, candidates }: { idTicket: stri
         state={state}
       />
       <Submit pending={pending} variant="primary">Pedir validación</Submit>
-    </form>
-  );
-}
-
-/** Quien radicó escribe en su ticket abierto, sin cerrarlo. */
-export function RequesterCommentForm({ idTicket }: { idTicket: string }) {
-  const { state, formAction, pending, formKey } = useTicketForm(commentAsRequesterAction);
-  return (
-    <form key={formKey} action={formAction} className="space-y-3">
-      <input type="hidden" name="idTicket" value={idTicket} />
-      <FormFeedback state={state} />
-      <TextField
-        name="comentario"
-        label="Escribe en tu ticket"
-        hint="Lo ve el equipo que lo atiende, y la persona responsable recibe un aviso. El ticket sigue abierto."
-        state={state}
-      />
-      <Submit pending={pending} variant="primary">Enviar comentario</Submit>
     </form>
   );
 }

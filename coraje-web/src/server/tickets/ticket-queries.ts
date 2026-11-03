@@ -356,7 +356,6 @@ export interface TicketHistoryEntry {
 export interface TicketCapabilities {
   reasignar: boolean;
   responder: boolean;
-  rechazar: boolean;
   notaInterna: boolean;
   /** U11: añadir y retirar observadores. */
   gestionarObservadores: boolean;
@@ -472,7 +471,6 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
   const grants = await resolveGrants<TicketAction>(params.idPersonal, [
     TICKET_ACTIONS.reasignar,
     TICKET_ACTIONS.responder,
-    TICKET_ACTIONS.rechazar,
     TICKET_ACTIONS.notaInterna,
     TICKET_ACTIONS.gestionarObservadores,
     TICKET_ACTIONS.solicitarValidacion,
@@ -484,7 +482,6 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
   };
   const reasignar = can(TICKET_ACTIONS.reasignar);
   const responder = can(TICKET_ACTIONS.responder);
-  const rechazar = can(TICKET_ACTIONS.rechazar);
   const notaInterna = can(TICKET_ACTIONS.notaInterna);
 
   // La misma condición de estado que aplican los comandos (ticket-commands.ts):
@@ -493,7 +490,6 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
   const capabilities: TicketCapabilities = {
     reasignar: operable && reasignar && estado === "ASIGNADO",
     responder: operable && responder && estado === "ASIGNADO",
-    rechazar: operable && rechazar && (estado === "ABIERTO" || estado === "ASIGNADO"),
     notaInterna: operable && notaInterna,
     gestionarObservadores: operable && open && can(TICKET_ACTIONS.gestionarObservadores),
     solicitarValidacion: operable && open && can(TICKET_ACTIONS.solicitarValidacion),

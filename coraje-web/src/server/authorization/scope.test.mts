@@ -97,8 +97,8 @@ test("pertenecer a un área no da nada: cuenta lo que se recibe (el caso de rece
   assert.equal(within("AREA", TICKET_ACTIONS.consultar, tickets.sinTipoDeMiArea, recepcion), false);
 });
 
-test("quien radicó un ticket no puede responderlo, rechazarlo ni reasignarlo", () => {
-  for (const action of [TICKET_ACTIONS.responder, TICKET_ACTIONS.rechazar, TICKET_ACTIONS.reasignar]) {
+test("quien radicó un ticket no puede responderlo ni reasignarlo", () => {
+  for (const action of [TICKET_ACTIONS.responder, TICKET_ACTIONS.reasignar]) {
     assert.equal(within("PROPIO", action, tickets.loRadiqueYo), false, action);
     assert.equal(within("PROPIO", action, tickets.soyResponsable), true, action);
   }

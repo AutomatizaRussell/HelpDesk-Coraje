@@ -246,7 +246,7 @@ con su alcance (§4 de ese documento). La columna «Plazo» aplica el reloj por 
 | T3 | `ABIERTO` → `ASIGNADO` | Redirigir / clasificar | Empieza el de la firma. En tickets de clientes, **aquí y no antes** | El `/redireccion` actual |
 | T4 | `ASIGNADO` → `ASIGNADO`, otra persona de la misma área | Asignar responsable | **Se conserva** | Legacy §6: el destino se limita al área de quien asigna, y reasignar no reinicia el SLA |
 | T7 | `ASIGNADO` → `CERRADO` | Responder al cliente | Termina | Legacy §7: responder y cerrar son un solo paso |
-| T8 | `ABIERTO` / `ASIGNADO` → `RECHAZADO` | Rechazar, con motivo obligatorio | Termina | Nunca usado en los datos reales (V9), pero está en el catálogo |
+| ~~T8~~ | `ABIERTO` / `ASIGNADO` → `RECHAZADO` | ~~Rechazar~~ | — | **Retirada el 03-nov-2026 (U29)** por decisión del usuario: sin botón, sin comando y sin permiso (`20261103140000_retirar_rechazo`). El estado y el evento se conservan como vocabulario de la historia |
 
 T5 (entrar en `ESPERANDO_SOLICITANTE`) y T6 (salir de él) se retiraron con ese estado
 el 25-sep-2026 (§4). Los demás números se conservan para no romper las referencias.
@@ -1082,6 +1082,10 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U29 (corte 47). T8 (rechazar) retirada. El detalle deja las pestañas:
+  un solo cuadro con «Responder y cerrar», «Enviar comentario» y «Guardar nota
+  interna» según lo que cada persona pueda hacer; pedir validación pasa al panel de
+  datos.
 - 03-nov-2026 — U7 (corte 43). §14: adjuntos construidos (§14.8) en el OneDrive de
   `info.admingct@`. V26.
 - 03-nov-2026 — U25 (corte 42). Se borran todos los tickets creados desde HelpDesk:

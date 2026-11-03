@@ -20,7 +20,6 @@ import {
   commentAsRequester,
   createInternalTicket,
   reassignTicket,
-  rejectTicket,
   removeObserver,
   requestValidation,
   respondTicket,
@@ -240,16 +239,21 @@ export async function reassignTicketAction(_prev: TicketFormState, formData: For
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Responder y la nota interna comparten el cuadro de escritura del detalle
+ * (`TicketComposer`): el mismo campo `texto`, y el botón que se pulsa decide
+ * cuál de las dos acciones corre. Cada una valida lo suyo.
+ */
 const respondSchema = z.object({
   idTicket: idSchema,
-  respuesta: textSchema("La respuesta", 5),
+  texto: textSchema("La respuesta", 5),
 });
 
 export async function respondTicketAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
   const employee = await requireCurrentEmployee();
   const parsed = respondSchema.safeParse({
     idTicket: formData.get("idTicket"),
-    respuesta: formData.get("respuesta"),
+    texto: formData.get("texto"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
   const attachments = await readAttachments(formData);
@@ -257,7 +261,12 @@ export async function respondTicketAction(_prev: TicketFormState, formData: Form
 
   let mailIds: string[];
   try {
-    ({ mailIds } = await respondTicket({ idPersonal: employee.idPersonal, ...parsed.data, adjuntos: attachments.adjuntos }));
+    ({ mailIds } = await respondTicket({
+      idPersonal: employee.idPersonal,
+      idTicket: parsed.data.idTicket,
+      respuesta: parsed.data.texto,
+      adjuntos: attachments.adjuntos,
+    }));
   } catch (error) {
     return failed(error, formData, "responder el ticket");
   }
@@ -269,50 +278,28 @@ export async function respondTicketAction(_prev: TicketFormState, formData: Form
 
 // ---------------------------------------------------------------------------
 
-const rejectSchema = z.object({
-  idTicket: idSchema,
-  motivo: textSchema("El motivo", 10),
-});
-
-export async function rejectTicketAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
-  const employee = await requireCurrentEmployee();
-  const parsed = rejectSchema.safeParse({
-    idTicket: formData.get("idTicket"),
-    motivo: formData.get("motivo"),
-  });
-  if (!parsed.success) return invalid(parsed.error, formData);
-
-  let mailIds: string[];
-  try {
-    ({ mailIds } = await rejectTicket({ idPersonal: employee.idPersonal, ...parsed.data }));
-  } catch (error) {
-    return failed(error, formData, "rechazar el ticket");
-  }
-
-  const result = await succeeded("Ticket rechazado.", mailIds);
-  revalidatePath(`/tickets/${parsed.data.idTicket}`);
-  return result;
-}
-
-// ---------------------------------------------------------------------------
-
 const noteSchema = z.object({
   idTicket: idSchema,
-  nota: textSchema("La nota", 2),
+  texto: textSchema("La nota", 2),
 });
 
 export async function addInternalNoteAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
   const employee = await requireCurrentEmployee();
   const parsed = noteSchema.safeParse({
     idTicket: formData.get("idTicket"),
-    nota: formData.get("nota"),
+    texto: formData.get("texto"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
   const attachments = await readAttachments(formData);
   if (!attachments.ok) return attachments.state;
 
   try {
-    await addInternalNote({ idPersonal: employee.idPersonal, ...parsed.data, adjuntos: attachments.adjuntos });
+    await addInternalNote({
+      idPersonal: employee.idPersonal,
+      idTicket: parsed.data.idTicket,
+      nota: parsed.data.texto,
+      adjuntos: attachments.adjuntos,
+    });
   } catch (error) {
     return failed(error, formData, "registrar la nota");
   }
@@ -419,20 +406,24 @@ export async function requestValidationAction(_prev: TicketFormState, formData: 
 
 const requesterCommentSchema = z.object({
   idTicket: idSchema,
-  comentario: textSchema("El comentario", 2),
+  texto: textSchema("El comentario", 2),
 });
 
 export async function commentAsRequesterAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
   const employee = await requireCurrentEmployee();
   const parsed = requesterCommentSchema.safeParse({
     idTicket: formData.get("idTicket"),
-    comentario: formData.get("comentario"),
+    texto: formData.get("texto"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
 
   let mailIds: string[];
   try {
-    ({ mailIds } = await commentAsRequester({ idPersonal: employee.idPersonal, ...parsed.data }));
+    ({ mailIds } = await commentAsRequester({
+      idPersonal: employee.idPersonal,
+      idTicket: parsed.data.idTicket,
+      comentario: parsed.data.texto,
+    }));
   } catch (error) {
     return failed(error, formData, "comentar el ticket");
   }

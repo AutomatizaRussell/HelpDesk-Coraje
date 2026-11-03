@@ -11,18 +11,15 @@ import { notice, sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate, formatDateTime, formatPriority } from "@/features/tickets/format";
-import { TabbedPanel, type TabbedPanelItem } from "@/design-system/patterns/tabbed-panel/TabbedPanel";
 import {
   AddObserversForm,
-  InternalNoteForm,
   ReassignForm,
   RemoveObserverForm,
   RequestValidationForm,
-  RequesterCommentForm,
   ResendMailForm,
-  RespondForm,
+  TicketComposer,
 } from "@/features/tickets/TicketActionForms";
-import { EditableField, RejectAction } from "@/features/tickets/TicketDetailActions";
+import { EditableField } from "@/features/tickets/TicketDetailActions";
 import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
@@ -112,35 +109,15 @@ export default async function TicketDetailPage({
   const observerCandidates = followCandidates.filter((person) => !yaLoVen.has(person.idPersonal));
   const validationCandidates = followCandidates.filter((person) => person.idPersonal !== employee.idPersonal);
 
-  // Opción B, ajustada el 30-sep-2026: todo lo que se escribe va en un cuadro
-  // debajo de la descripción, sobre la historia (que llega con lo más
-  // reciente primero); cambiar responsable u observadores, junto a esos datos;
-  // rechazar, junto al estado. Solo aparece lo que el estado y el alcance
-  // permiten (`capabilities`), con las mismas reglas del servicio.
-  const composerTabs: TabbedPanelItem[] = [
-    ...(capabilities.responder
-      ? [{ id: "responder", label: "Responder al solicitante", content: <RespondForm idTicket={ticket.idTicket} /> }]
-      : []),
-    // Quien es a la vez responsable y solicitante responde o anota: dos
-    // formas de escribirle al mismo ticket confunden.
-    ...(capabilities.comentarSolicitante && !capabilities.responder
-      ? [{ id: "comentar", label: "Escribir en el ticket", content: <RequesterCommentForm idTicket={ticket.idTicket} /> }]
-      : []),
-    ...(capabilities.notaInterna
-      ? [{ id: "nota", label: "Nota interna", content: <InternalNoteForm idTicket={ticket.idTicket} /> }]
-      : []),
-    // Pedir validación es escribirle algo a una persona concreta: va con lo
-    // que se escribe, no con los datos.
-    ...(capabilities.solicitarValidacion
-      ? [
-          {
-            id: "validacion",
-            label: "Pedir validación",
-            content: <RequestValidationForm idTicket={ticket.idTicket} candidates={validationCandidates} />,
-          },
-        ]
-      : []),
-  ];
+  // Lo que se escribe va en un solo cuadro debajo de la descripción, con un
+  // botón por acción (03-nov-2026, sin pestañas); cambiar responsable,
+  // observadores o pedir validación, en el panel de datos, junto a lo que
+  // cambian. Solo aparece lo que el estado y el alcance permiten
+  // (`capabilities`), con las mismas reglas del servicio.
+  // Quien es a la vez responsable y solicitante responde o anota: comentar su
+  // propio ticket que atiende sería una tercera forma de decir lo mismo.
+  const canComment = capabilities.comentarSolicitante && !capabilities.responder;
+  const hasComposer = capabilities.responder || capabilities.notaInterna || canComment;
 
   return (
     // U17: el ticket abre en su modo, llegue de donde llegue (la campana, un
@@ -171,9 +148,14 @@ export default async function TicketDetailPage({
               <p className="mt-2 whitespace-pre-wrap break-words text-base text-ink">{ticket.descripcion}</p>
             </section>
 
-            {composerTabs.length > 0 && (
+            {hasComposer && (
               <section className={surface()} aria-label="Escribir en el ticket">
-                <TabbedPanel label="Escribir en el ticket" items={composerTabs} />
+                <TicketComposer
+                  idTicket={ticket.idTicket}
+                  canRespond={capabilities.responder}
+                  canComment={canComment}
+                  canNote={capabilities.notaInterna}
+                />
               </section>
             )}
 
@@ -207,13 +189,9 @@ export default async function TicketDetailPage({
           </div>
 
           <aside className={cn(surface(), "h-fit")} aria-label="Datos del ticket">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <TicketStateBadge state={ticket.estado} />
-                {ticket.sla && <SlaBadge status={ticket.sla} />}
-              </div>
-              {/* Junto al estado, que es lo que cambia; lejos de «Responder y cerrar». */}
-              {capabilities.rechazar && <RejectAction idTicket={ticket.idTicket} />}
+            <div className="flex flex-wrap items-center gap-2">
+              <TicketStateBadge state={ticket.estado} />
+              {ticket.sla && <SlaBadge status={ticket.sla} />}
             </div>
             <dl className="mt-3 divide-y divide-line">
               <Field label="Vence">{ticket.fechaLimite ? formatDate(ticket.fechaLimite) : "Sin fecha límite"}</Field>
@@ -253,6 +231,16 @@ export default async function TicketDetailPage({
                 <Field label="Observadores">
                   <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove={false} />
                 </Field>
+              )}
+              {capabilities.solicitarValidacion && (
+                <EditableField
+                  label="Validación"
+                  actionLabel="Pedir validación"
+                  icon="anadir"
+                  form={<RequestValidationForm idTicket={ticket.idTicket} candidates={validationCandidates} />}
+                >
+                  <span className="text-ink-muted">Pide a una persona que confirme algo del ticket.</span>
+                </EditableField>
               )}
               <Field label="Radicado">{formatDateTime(ticket.fechaCreacion)}</Field>
               {ticket.fechaResolucion && <Field label="Terminado">{formatDateTime(ticket.fechaResolucion)}</Field>}

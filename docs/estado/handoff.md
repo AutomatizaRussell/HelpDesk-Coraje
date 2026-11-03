@@ -1,6 +1,23 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 47, U29 parte 1: sin «Rechazar», cuadro único, SIN DESPLEGAR)
+SOBRE:   `e8a8ceb` (corte 46, de otra sesión)
+RAMA:    main
+UNIDAD:  U29, parte 1 de 6 (plan). Sin rechazar: comando, acción, botón,
+         capacidad y permiso (`20261103140000_retirar_rechazo`). El detalle
+         pierde las pestañas: `TicketComposer` con un botón por acción;
+         responder, nota y comentario leen el mismo campo `texto`. Pedir
+         validación pasa al panel de datos. Evidencia: `tsc`, `lint`,
+         205/205 pruebas, `build`.
+         El usuario ejercitó U7 el 03-nov: cinco adjuntos al crear, guardados
+         y descargados; reasignar cambia el responsable. Faltan de §14.7 el
+         `.exe`, los 26 MB y la nota interna.
+         Otra sesión trabaja a la vez en este mismo árbol (cortes 44-46,
+         U26-U28): los números de U29 y del corte 47 se eligieron tras ellos.
+SIGUE:   U29 parte 2, el aprobador.
+
+--- Corte 46, para contexto:
 CORTE:   03-nov-2026 (corte 46, U28 variables de imagen fuera del compose, SIN DESPLEGAR)
 SOBRE:   `1c2e5a6` (corte 45)
 RAMA:    main
@@ -1522,6 +1539,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `e8a8ceb` | **Corte 46.** U28: variables de imagen solo en el Dockerfile (otra sesión). Sin desplegar al cerrar el corte 47 |
 | `1c2e5a6` | **Corte 45.** U27: logotipos sin optimizador. Desplegado el 03-nov-2026; cerró la caché de U26 |
 | `7bc9412` | **Corte 44.** U26: despliegue liviano. Desplegado el 03-nov-2026: 3 min 12 s contra 5 min 30 s |
 | `5d71fd5` | **Corte 43.** U7: adjuntos (con `429593b`). Desplegado el 03-nov-2026; puesta en marcha pendiente |

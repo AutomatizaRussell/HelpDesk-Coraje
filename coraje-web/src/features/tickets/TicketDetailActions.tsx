@@ -4,10 +4,6 @@ import { Pencil, Plus, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { IconButton } from "@/design-system/components/IconButton";
-import { FormDialog } from "@/design-system/patterns/form-dialog/FormDialog";
-import { buttonRecipe } from "@/design-system/recipes/button";
-
-import { RejectForm } from "./TicketActionForms";
 
 /**
  * Acciones del detalle que viven junto a su dato (opción B, 30-sep-2026):
@@ -63,33 +59,5 @@ export function EditableField({
         {open && <div className="mt-2 space-y-3 rounded-control border border-line bg-surface-sunken p-3">{form}</div>}
       </dd>
     </div>
-  );
-}
-
-/**
- * «Rechazar» junto al estado del ticket, que es lo que cambia. Es lo único
- * del detalle que interrumpe: no se deshace, así que se confirma en una
- * ventana que pide el motivo. Lejos de «Responder y cerrar», para que no se
- * confundan.
- */
-export function RejectAction({ idTicket }: { idTicket: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className={buttonRecipe({ variant: "danger", size: "sm" })}>
-        Rechazar
-      </button>
-      <FormDialog
-        open={open}
-        title="Rechazar ticket"
-        onClose={() => setOpen(false)}
-        discardQuestion="¿Descartar el motivo del rechazo?"
-      >
-        <div className="p-5 lg:p-6">
-          <RejectForm idTicket={idTicket} />
-        </div>
-      </FormDialog>
-    </>
   );
 }
