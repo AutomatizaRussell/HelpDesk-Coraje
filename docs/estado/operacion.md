@@ -316,6 +316,16 @@ La señal del corte se sigue mirando así:
 SELECT * FROM helpdesk.v_actividad_powerapps ORDER BY semana DESC LIMIT 12;
 ```
 
+### Tickets de prueba borrados (U25)
+
+La migración `20261103120000_borrar_tickets_de_prueba` borra todo ticket que no venga de
+PowerApps, con sus dependencias, y se revierte entera si el total de PowerApps cambia.
+Antes y después de publicar:
+
+```bash
+docker exec -it coraje_postgres psql -U coraje_etl -d coraje  -c "SELECT origen_sistema, count(*) FROM helpdesk.fact_ticket GROUP BY 1 ORDER BY 1"
+```
+
 ### Entrada directa (U20)
 
 `helpdesk.rbgct.cloud` es la entrada de emergencia de los empleados: sirve aunque el

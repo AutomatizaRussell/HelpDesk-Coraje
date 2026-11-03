@@ -1,6 +1,23 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 42, U25 tickets de prueba borrados, SIN DESPLEGAR)
+SOBRE:   `44abf78` (corte 40; el corte 41 se publica en el mismo push)
+RAMA:    main
+UNIDAD:  U25. Decisión del usuario: todo ticket creado desde HelpDesk es una
+         prueba. Migración `20261103120000_borrar_tickets_de_prueba`: borra
+         los tickets que no son `SHAREPOINT_LEGACY` con sus avisos, correos,
+         validaciones, observadores y eventos; aborta si quedan o si cambia el
+         total de PowerApps. Evidencia: contra PGlite, con un ticket legacy y
+         uno de HelpDesk con cada dependencia, el segundo desaparece entero y
+         el primero queda intacto.
+         Comprobación previa de U24, hecha por el usuario el 03-nov:
+         `activo_desde` nulo, 11 `PENDING CREATE_TICKET` en la cola y ninguna
+         divergencia. El usuario ya importó la ingesta, desactivó la salida y
+         borró su credencial.
+SIGUE:   comprobar la consulta de U25 en operacion.md y el cierre de U23-U25.
+
+--- Corte 41, para contexto:
 CORTE:   03-nov-2026 (corte 41, U24 retiro del espejo en PowerApps, SIN DESPLEGAR)
 SOBRE:   `44abf78` (corte 40)
 RAMA:    main

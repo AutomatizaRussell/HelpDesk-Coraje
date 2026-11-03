@@ -1049,3 +1049,5 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U25 (corte 42). Se borran todos los tickets creados desde HelpDesk:
+  eran pruebas. Los de PowerApps no se tocan.

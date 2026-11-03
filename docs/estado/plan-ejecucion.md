@@ -619,6 +619,17 @@ en PowerApps (U24)», confirma que no hay nada que perder. Después, con el orde
 sección, la ingesta termina en *Success* tras la migración, y `/salud` carga sin la
 sección de divergencias.
 
+### U25 · Borrar los tickets de prueba — **construida el 03-nov-2026 (corte 42), sin publicar**
+
+Decisión del usuario del 03-nov-2026: todo ticket creado desde HelpDesk es una prueba.
+La migración `20261103120000_borrar_tickets_de_prueba` los borra con sus eventos,
+avisos, correos, observadores y validaciones. No toca los tickets de PowerApps, y si
+su número cambiara, la migración se revierte entera.
+
+**Condición de cierre:** tras publicar, la consulta de `operacion.md`, «Tickets de
+prueba borrados (U25)», devuelve solo `SHAREPOINT_LEGACY`, con el mismo total que
+antes de publicar.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note
