@@ -87,6 +87,8 @@ export const helpdeskTheme = {
     fast: "120ms",
     normal: "180ms",
     easing: "cubic-bezier(0.2, 0, 0, 1)",
+    // Recorrido de entrada del toast: lo justo para que se note que llega.
+    toastOffset: "8px",
   },
   size: {
     // Topbar replicada de Conecta (h-16, lg:h-[84px]). No lleva logotipo: la
@@ -131,10 +133,16 @@ export const helpdeskTheme = {
     // con título y una línea de detalle por aviso. En pantallas más estrechas
     // lo limita el propio viewport, con su margen.
     noticePanel: "384px",
+    // Toast (U29): un mensaje de una o dos líneas que aparece en una esquina y
+    // se va solo. En móvil lo limita el viewport, con su margen.
+    toast: "384px",
   },
   layer: {
     rail: "20",
     topbar: "30",
+    // Por encima del shell: el toast confirma algo que acaba de pasar y no
+    // puede quedar detrás de la barra.
+    toast: "40",
   },
 
   /**

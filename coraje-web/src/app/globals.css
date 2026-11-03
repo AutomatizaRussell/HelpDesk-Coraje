@@ -80,6 +80,7 @@
   --hd-motion-fast: 120ms;
   --hd-motion-normal: 180ms;
   --hd-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+  --hd-motion-toast-offset: 8px;
 
   --hd-size-topbar: 64px;
   --hd-size-topbar-wide: 84px;
@@ -104,9 +105,11 @@
   --hd-size-content-max: 1440px;
   --hd-size-form-max: 768px;
   --hd-size-notice-panel: 384px;
+  --hd-size-toast: 384px;
 
   --hd-layer-rail: 20;
   --hd-layer-topbar: 30;
+  --hd-layer-toast: 40;
 
   --hd-shell-surface: #001871;
   --hd-shell-line: #001560;
@@ -399,6 +402,22 @@
   --container-content: var(--hd-size-content-max);
   --container-form: var(--hd-size-form-max);
   --container-notice-panel: var(--hd-size-notice-panel);
+  --container-toast: var(--hd-size-toast);
+
+  /* Entrada del toast: sube y aparece, con la duración y la curva del
+     contrato. Con movimiento reducido, la regla global la deja instantánea. */
+  --animate-toast-in: hd-toast-in var(--hd-motion-normal) var(--hd-motion-easing);
+}
+
+@keyframes hd-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hd-motion-toast-offset));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @layer base {

@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 51, U29 parte 5: toasts, SIN DESPLEGAR)
+SOBRE:   `6b9543f` (corte 50)
+RAMA:    main
+UNIDAD:  U29, parte 5 de 6 (design/sistema-helpdesk.md §5.3). Patrón
+         `toast/Toaster.tsx`: proveedor en `AppFrame`, `FormFeedback` muestra
+         los éxitos como toast (errores y advertencias siguen en línea), y
+         `FlashToast` para «ticket creado» y «redirigido», que limpia el
+         parámetro de la URL. Tokens nuevos en los dos adaptadores: capa,
+         ancho y recorrido de entrada. Evidencia: contrato de diseño, `tsc`,
+         `lint`, 204/204, `build`. Sin verificar en navegador.
+SIGUE:   U29 parte 6, vista previa de adjuntos y carpeta por ticket.
+
+--- Corte 50, para contexto:
 CORTE:   03-nov-2026 (corte 50, U29 parte 4: código por mes, SIN DESPLEGAR)
 SOBRE:   `f5c3baf` (corte 49)
 RAMA:    main
@@ -1584,6 +1597,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `6b9543f` | **Corte 50.** U29 parte 4: código `ADM-202611-1`. Publicado el 03-nov-2026 |
 | `f5c3baf` | **Corte 49.** U29 parte 3: cuatro correos, sin escalamiento. Publicado el 03-nov-2026 |
 | `a02378b` | **Corte 48.** U29 parte 2: aprobación que bloquea el cierre. Publicado el 03-nov-2026 |
 | `b1c9a0e` | **Corte 47.** U29 parte 1: sin «Rechazar», cuadro único. Publicado el 03-nov-2026 |

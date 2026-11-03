@@ -2,23 +2,34 @@
 
 import { useEffect, useRef } from "react";
 
+import { useToast } from "@/design-system/patterns/toast/Toaster";
 import { notice } from "@/design-system/recipes/surface";
 import type { TicketFormState } from "@/features/tickets/action-state";
 
 /**
- * Resultado de una acción de formulario, junto a la acción que lo produjo.
+ * Resultado de una acción de formulario.
  *
- * El mensaje recibe el foco para que un lector de pantalla lo anuncie y la
- * persona no tenga que buscarlo. Un éxito con advertencia (la acción se
- * guardó, pero un correo no salió) muestra las dos cosas: ni oculta la
- * advertencia ni convierte el éxito en error.
+ * - **Éxito:** un toast (U29), que se va solo. Fuera de un `ToastProvider`
+ *   (el portal), en línea, como antes.
+ * - **Error:** en línea, junto a la acción, con el foco: un lector de pantalla
+ *   lo anuncia y la persona no tiene que buscarlo.
+ * - **Advertencia de un éxito** (la acción se guardó, pero un correo no salió):
+ *   en línea también, porque pide hacer algo (reenviarlo) y un toast se iría
+ *   antes.
  */
 export function FormFeedback({ state }: { state: TicketFormState }) {
   const ref = useRef<HTMLParagraphElement>(null);
+  const toast = useToast();
+  const asToast = toast !== null && state.status === "success";
   useEffect(() => {
+    if (state.status === "success" && toast) {
+      toast({ message: state.message, id: state.nonce });
+      return;
+    }
     if (state.status !== "idle") ref.current?.focus();
-  }, [state]);
+  }, [state, toast]);
   if (state.status === "idle") return null;
+  if (asToast) return state.warning ? <p className={notice("warning")}>{state.warning}</p> : null;
   return (
     <div className="space-y-2">
       <p

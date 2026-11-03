@@ -313,6 +313,24 @@ tema): ninguna vista sabe en qué modo está.
 `coraje-palette.test.mts` exige cada clave en el tema base, los tres bloques CSS
 completos y los contrastes (texto ≥ 4,5:1; acentos y foco ≥ 3:1).
 
+### 5.3 `DECISIÓN` (03-nov-2026, U29) Toast para confirmar
+
+Decisión del usuario: el aviso que confirma lo que acaba de pasar («Ticket creado y
+asignado a…») aparece en una esquina un momento y se va solo.
+`design-system/patterns/toast/Toaster.tsx`:
+
+- **Solo confirmaciones.** Un error, o la advertencia de un correo que no salió, se
+  queda junto a la acción: pide hacer algo, y un toast se iría antes.
+- Usa la receta `notice` con `shadow-overlay`; entra con `animate-toast-in`
+  (`--hd-motion-normal`, `--hd-motion-easing`, recorrido `--hd-motion-toast-offset`) y se
+  apila sobre el shell (`--hd-layer-toast`), con el ancho de `--hd-size-toast`. Con
+  movimiento reducido, la entrada es instantánea.
+- Región `status` con `aria-live`: se anuncia sin mover el foco. Cada uno se cierra
+  antes de tiempo con su ×; dura 6 s.
+- `FormFeedback` lo usa para todo éxito de formulario dentro de `AppFrame`; fuera (el
+  portal), el mensaje sigue en línea. Los avisos que llegaban por la URL (ticket creado,
+  ticket redirigido) usan `FlashToast`, que además limpia el parámetro.
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |

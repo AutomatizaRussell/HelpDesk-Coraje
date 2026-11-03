@@ -687,7 +687,7 @@ Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por part
 2. Aprobador en lugar de validador: «Aprobar» y «No aprobar», bloquea el cierre (corte 48).
 3. Correos al observador, al aprobador, al abrir y al cerrar; sin escalamiento diario (corte 49).
 4. Código `ADM-202610-1` (corte 50).
-5. Toasts.
+5. Toasts (corte 51).
 6. Vista previa de adjuntos y carpeta por ticket.
 
 **Condición de cierre:** cada parte ejercitada en el despliegue por el usuario.

@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 
 import { SegmentedLinks } from "@/design-system/components/SegmentedLinks";
 import { AreaName } from "@/design-system/patterns/area/AreaName";
+import { FlashToast } from "@/design-system/patterns/toast/Toaster";
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
 import { buttonRecipe } from "@/design-system/recipes/button";
@@ -14,6 +15,7 @@ import { areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate, formatDateTime } from "@/features/tickets/format";
 import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
+import { APP_BASE_PATH } from "@/server/auth/base-path";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { getModeAccess } from "@/server/tickets/mode-access";
 import { modeQuery, parseTicketMode, type TicketMode } from "@/server/tickets/ticket-mode";
@@ -163,11 +165,11 @@ export default async function TicketsPage({
       ) : (
         <div className="space-y-4">
           {params.redirigido && (
-            <p className={notice("success")} role="status">
-              {TICKET_CODE.test(params.redirigido)
-                ? `Ticket ${params.redirigido} redirigido a su área.`
-                : "Ticket redirigido a su área."}
-            </p>
+            <FlashToast
+              id={`redirigido-${params.redirigido}`}
+              message={TICKET_CODE.test(params.redirigido) ? `Ticket ${params.redirigido} redirigido a su área.` : "Ticket redirigido a su área."}
+              cleanHref={`${APP_BASE_PATH}${inboxHref(mode, view, filters)}`}
+            />
           )}
           {params.correo === "fallido" && (
             <p className={notice("warning")}>Un correo de este cambio no salió. Queda registrado en el ticket para reenviarlo.</p>

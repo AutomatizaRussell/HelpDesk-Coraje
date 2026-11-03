@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { StandaloneShell } from "@/design-system/patterns/app-shell/StandaloneShell";
 import { ConectaShell } from "@/design-system/patterns/conecta-shell/ConectaShell";
 import { ModeSwitch } from "@/design-system/patterns/mode-switch/ModeSwitch";
+import { ToastProvider } from "@/design-system/patterns/toast/Toaster";
 import type { EmployeeSessionContext } from "@/server/auth/employee-session";
 import { readEntryContext } from "@/server/auth/entry-cookie";
 import { signOutAction } from "@/server/auth/sign-out-action";
@@ -102,11 +103,12 @@ export async function AppFrame({
   // SUPLANTACIÓN — bloque temporal para pruebas. Encima del contenido y no
   // dentro de los shells: así ninguno de los dos patrones del sistema de
   // diseño cambia por algo que se retira.
+  // U29: los toasts de toda vista de empleado salen de aquí.
   const content = (
-    <>
+    <ToastProvider>
       {suplantacion && <SuplantacionSelector panel={suplantacion} />}
       {children}
-    </>
+    </ToastProvider>
   );
   // FIN SUPLANTACIÓN
 

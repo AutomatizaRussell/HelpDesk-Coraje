@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { AreaName } from "@/design-system/patterns/area/AreaName";
+import { FlashToast } from "@/design-system/patterns/toast/Toaster";
 import { MailStateBadge, SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
 import { focusRing } from "@/design-system/recipes/interaction";
 import { notice, sectionTitle, surface } from "@/design-system/recipes/surface";
@@ -24,6 +25,7 @@ import {
 import { EditableField } from "@/features/tickets/TicketDetailActions";
 import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
+import { APP_BASE_PATH } from "@/server/auth/base-path";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { markTicketNoticesRead } from "@/server/notifications/ticket-notices";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
@@ -166,9 +168,11 @@ export default async function TicketDetailPage({
         </Link>
 
         {creado === "1" && (
-          <p className={notice("success")} role="status">
-            Ticket creado y asignado a {ticket.responsable ?? "la persona responsable del área"}.
-          </p>
+          <FlashToast
+            id={`creado-${ticket.idTicket}`}
+            message={`${ticket.codigoTicket ? `Ticket ${ticket.codigoTicket}` : "Ticket"} creado y asignado a ${ticket.responsable ?? "la persona responsable del área"}.`}
+            cleanHref={`${APP_BASE_PATH}/tickets/${ticket.idTicket}`}
+          />
         )}
         {!ticket.operable && (
           <p className={notice("info")}>Este ticket viene de PowerApps. Aquí solo se consulta; se sigue gestionando en PowerApps.</p>
