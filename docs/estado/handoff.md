@@ -1,6 +1,22 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 49, U29 parte 3: correos, SIN DESPLEGAR)
+SOBRE:   `a02378b` (corte 48)
+RAMA:    main
+UNIDAD:  U29, parte 3 de 6 (tickets.md §12.1). Cuatro correos a empleados por la
+         cola de U7 (crear → responsable; observador; aprobación; cierre →
+         solicitante y observadores), desde el buzón de quien actúa. Sin
+         escalamiento diario: fuera la ruta, el workflow, el secreto del
+         compose y, en la base, `aviso_escalamiento` y sus dos funciones
+         (`20261103170000_retirar_escalamiento`). **Antes de desplegar:**
+         desactivar y borrar el workflow «HELPDESK - Escalar avisos V2».
+         Evidencia: cadena de migraciones contra PGlite; `tsc`, `lint`, 204/204
+         pruebas (contenido de los cuatro correos y escape de HTML), `build`.
+         Sin verificar: un correo real enviado.
+SIGUE:   U29 parte 4, el código del ticket.
+
+--- Corte 48, para contexto:
 CORTE:   03-nov-2026 (corte 48, U29 parte 2: aprobación, SIN DESPLEGAR)
 SOBRE:   `b1c9a0e` (corte 47)
 RAMA:    main
@@ -1555,6 +1571,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `a02378b` | **Corte 48.** U29 parte 2: aprobación que bloquea el cierre. Publicado el 03-nov-2026 |
 | `b1c9a0e` | **Corte 47.** U29 parte 1: sin «Rechazar», cuadro único. Publicado el 03-nov-2026 |
 | `e8a8ceb` | **Corte 46.** U28: variables de imagen solo en el Dockerfile (otra sesión). Sin desplegar al cerrar el corte 47 |
 | `1c2e5a6` | **Corte 45.** U27: logotipos sin optimizador. Desplegado el 03-nov-2026; cerró la caché de U26 |

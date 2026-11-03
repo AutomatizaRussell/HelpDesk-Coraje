@@ -69,7 +69,7 @@ test("el servicio web recibe cada variable de entorno que lee el servidor", () =
   const read = readVariables();
   const declared = webEnvironment();
   // Si el recorrido dejara de encontrar algo, la prueba pasaría sin comprobar nada.
-  assert.ok(read.has("DATABASE_URL") && read.has("HELPDESK_ESCALAR_AVISOS_SECRET"), "No se encontraron las variables leídas");
+  assert.ok(read.has("DATABASE_URL") && read.has("N8N_PORTAL_MAIL_SECRET"), "No se encontraron las variables leídas");
   assert.ok(declared.has("DATABASE_URL"), "No se pudo leer el environment de web");
   const missing = [...read].filter((name) => !declared.has(name)).sort();
   assert.deepEqual(missing, [], "Variables que el código lee y el compose no entrega a web");

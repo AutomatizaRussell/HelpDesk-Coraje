@@ -1,8 +1,7 @@
-import { escapeHtml } from "./ticket-mail-content";
 import type { TicketNoticeKind } from "./ticket-notice-kinds";
 
 /**
- * Qué dice cada aviso de la campana, y el correo de escalamiento (U15,
+ * Qué dice cada aviso de la campana (U15,
  * specs/tickets.md §12). Puro, sin I/O (`ticket-notice-content.test.mts`).
  *
  * El aviso no guarda su texto: se compone al leer, a partir del tipo, del
@@ -71,48 +70,4 @@ export function describeNotice(kind: TicketNoticeKind, ctx: NoticeContext): Noti
     case "APROBACION_DENEGADA":
       return { titulo: `${ctx.autor} no aprobó lo pedido en ${codigo}`, detalle: texto };
   }
-}
-
-// ---------------------------------------------------------------------------
-// Correo de escalamiento
-// ---------------------------------------------------------------------------
-
-export interface EscalationItem {
-  titulo: string;
-  /** Desde cuándo espera, ya formateado. */
-  desde: string;
-  url: string;
-}
-
-export interface EscalationMailInput {
-  nombre: string;
-  pendientes: readonly EscalationItem[];
-  /** La página «Requiere tu atención». */
-  avisosUrl: string;
-}
-
-/**
- * Un solo correo por persona y día con todos sus pendientes abiertos. Sale
- * del buzón de automatización, no de un compañero: nadie lo escribió.
- */
-export function buildEscalationMail(input: EscalationMailInput): { subject: string; html: string } {
-  const total = input.pendientes.length;
-  return {
-    subject:
-      total === 1
-        ? "Tienes un pendiente sin atender en HelpDesk"
-        : `Tienes ${total} pendientes sin atender en HelpDesk`,
-    html: [
-      `<p>Hola, ${escapeHtml(input.nombre)}:</p>`,
-      `<p>${total === 1 ? "Este pendiente espera" : "Estos pendientes esperan"} tu acción en HelpDesk desde hace más de un día hábil:</p>`,
-      `<ul>${input.pendientes
-        .map(
-          (item) =>
-            `<li><a href="${escapeHtml(item.url)}">${escapeHtml(item.titulo)}</a> · desde el ${escapeHtml(item.desde)}</li>`,
-        )
-        .join("")}</ul>`,
-      `<p><a href="${escapeHtml(input.avisosUrl)}">Ver todo lo que requiere tu atención</a></p>`,
-      `<p>Recibes este correo una vez por día hábil mientras quede algo pendiente. Un pendiente se cierra al responder o rechazar el ticket, al reasignarlo, o cuando el ticket termina.</p>`,
-    ].join(""),
-  };
 }

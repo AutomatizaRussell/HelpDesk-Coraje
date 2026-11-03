@@ -216,7 +216,6 @@ igual que Impulsa**, solo falta construirlas (U2):
 | `DATABASE_URL` | `coraje-web` | Conexión de Prisma |
 | `N8N_PORTAL_MAIL_WEBHOOK_URL` | `coraje-web` (Coolify) | U8: URL **HTTPS** del webhook `helpdesk/portal/correo-v1` del workflow `HELPDESK - Portal - Enviar correo V3`. Sin ella, ni invitaciones ni códigos salen: el fallo queda en `app.portal_auditoria` con el nombre de la variable |
 | `N8N_PORTAL_MAIL_SECRET` | `coraje-web` (Coolify) | U8: secreto de ese webhook, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk correo · x-helpdesk-secret» |
-| `HELPDESK_ESCALAR_AVISOS_SECRET` | `coraje-web` (Coolify) | U15: secreto de `/api/interno/avisos/escalar`, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk escalamiento · x-helpdesk-secret». Sin él, la ruta responde 503 y no escala nada |
 | `HELPDESK_DIRECT_ORIGIN` | `coraje-web` (Coolify) | U20: `https://helpdesk.rbgct.cloud`, la entrada directa. Opcional; se crea al final de «Entrada directa (U20)» |
 | `PORTAL_CLIENTES_CONECTADO` | `coraje-web` (Coolify) | U20: solo `true` conecta el portal, los accesos y la redirección. Sin ella están desconectados. Sustituye a `PORTAL_PUBLIC_ORIGIN` (U18), que se borra de Coolify si llegó a crearse |
 
@@ -231,7 +230,6 @@ igual que Impulsa**, solo falta construirlas (U2):
 > | Credencial (*Header Auth*) | *Name* | *Value* | La usa |
 > |---|---|---|---|
 > | HelpDesk correo · x-helpdesk-secret | `x-helpdesk-secret` | = `N8N_PORTAL_MAIL_SECRET` | Webhook de `HELPDESK - Portal - Enviar correo V3` |
-> | HelpDesk escalamiento · x-helpdesk-secret | `x-helpdesk-secret` | = `HELPDESK_ESCALAR_AVISOS_SECRET` | `HTTP - Escalar avisos` de `HELPDESK - Escalar avisos V2` |
 >
 > Retirar de la instancia `CORAJE_OUTBOX_KICK_SECRET`, `HELPDESK_PORTAL_MAIL_SECRET` y
 > `HELPDESK_ESCALAR_AVISOS_SECRET` **después** de importar la salida nueva: antes, el
@@ -558,38 +556,26 @@ propósito (solo la aplicación inserta y lee); el adjunto se comprueba en el ti
 docker exec -it coraje_postgres psql -U coraje_etl -d coraje -c "d helpdesk.ticket_adjunto"
 ```
 
-### Avisos y escalamiento (U15)
+### Avisos y correos del ticket (U15, U29)
 
 Los avisos a empleados no necesitan nada en n8n: se escriben en la base con cada
-acción. El **escalamiento** diario sí. **Puesta en marcha, una sola vez:**
+acción. Los correos a empleados (crear, observador, aprobación, cierre; `specs/tickets.md`
+§12.1) salen del buzón de quien actúa, como los de U7, y se ven y reenvían desde la
+sección «Correos» del ticket.
 
-1. Generar un secreto (`openssl rand -hex 32`) y ponerlo como
-   `HELPDESK_ESCALAR_AVISOS_SECRET` en Coolify (`coraje-web`). Redesplegar `web`.
-2. En n8n, crear la credencial *Header Auth* «HelpDesk escalamiento ·
-   x-helpdesk-secret»: *Name* `x-helpdesk-secret`, *Value* el mismo secreto.
-3. Importar `n8n/HELPDESK - Portal - Enviar correo V3.json`: elegir
-   `Graph automatizacionmedellin` en `HTTP - Graph sendMail` y «HelpDesk correo ·
-   x-helpdesk-secret» en `Webhook`, activarlo y **desactivar las versiones anteriores**.
-   Mismo webhook (`helpdesk/portal/correo-v1`): no cambia ninguna variable de Coolify.
-   Sin V3, el escalamiento falla con «Tipo de correo no soportado».
-4. Importar `n8n/HELPDESK - Escalar avisos V2.json`, elegir «HelpDesk escalamiento ·
-   x-helpdesk-secret» en `HTTP - Escalar avisos`, comprobar que *Settings → Error
-   workflow* es `Alertas de errores a Teams` y activarlo. Corre de lunes a viernes a las
-   7:00; la base descarta los festivos.
+**El escalamiento diario se retiró en U29.** Antes de desplegar la migración
+`20261103170000_retirar_escalamiento`, desactivar y borrar en n8n el workflow
+«HELPDESK - Escalar avisos V2»: sin la ruta, cada mañana fallaría y avisaría a Teams.
+Después del despliegue, borrar la credencial «HelpDesk escalamiento · x-helpdesk-secret»
+en n8n y la variable `HELPDESK_ESCALAR_AVISOS_SECRET` en Coolify.
 
 **Mirar el estado:**
 
 ```sql
-SELECT fecha, estado, avisos, intentos, ultimo_error, enviado_at
-FROM helpdesk.aviso_escalamiento ORDER BY created_at DESC LIMIT 20;
-
 SELECT clase, COUNT(*) FILTER (WHERE resuelto_at IS NULL AND clase = 'ATENCION') AS abiertos,
        COUNT(*) FILTER (WHERE leido_at IS NULL) AS sin_leer
 FROM helpdesk.ticket_aviso GROUP BY clase;
 ```
-
-Ejecutar el workflow a mano el mismo día **no repite** correos enviados: solo
-reintenta los `FALLIDO`.
 
 ## Cuidados sobre infraestructura compartida
 

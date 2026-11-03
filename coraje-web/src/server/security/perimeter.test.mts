@@ -88,10 +88,6 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
     acceso: "EMPLEADO",
     razon: "Descarga de un adjunto (U7); solo si la persona ve el evento que lo trajo",
   },
-  "/api/interno/avisos/escalar": {
-    acceso: "PUBLICA",
-    razon: "La llama n8n a diario; su credencial es un secreto en cabecera que la ruta comprueba",
-  },
   "/ingreso": {
     acceso: "PUBLICA",
     razon: "Detecta en el navegador si hay sesión de Conecta y elige el modo de entrada",
@@ -367,20 +363,9 @@ test("un prefijo público no abre las rutas que empiezan igual", () => {
   assert.equal(isPublicPath("/api/auth/microsoft-falso"), false);
   assert.equal(isPublicPath("/login"), true);
   assert.equal(isPublicPath("/api/auth/microsoft/start"), true);
-  // La ruta del escalamiento es pública sola: ni su prefijo ni sus vecinas.
-  assert.equal(isPublicPath("/api/interno/avisos/escalar"), true);
-  assert.equal(isPublicPath("/api/interno/avisos"), false);
-  assert.equal(isPublicPath("/api/interno"), false);
+  // El escalamiento diario se retiró en U29: su ruta ya no es pública.
+  assert.equal(isPublicPath("/api/interno/avisos/escalar"), false);
   assert.equal(isPublicPath("/api/avisos"), false);
-});
-
-test("la ruta pública del escalamiento exige su secreto antes de hacer nada", () => {
-  const fuente = readFileSync(path.join(APP_DIR, "api/interno/avisos/escalar/route.ts"), "utf8");
-  const exigeSecreto = fuente.indexOf("secretMatches(");
-  const escala = fuente.indexOf("escalatePendingNotices()");
-  assert.ok(exigeSecreto > 0, "La ruta no compara el secreto de cabecera.");
-  assert.ok(escala > exigeSecreto, "La ruta escala antes de comprobar el secreto.");
-  assert.ok(fuente.includes("HELPDESK_ESCALAR_AVISOS_SECRET"), "La ruta no lee su secreto.");
 });
 
 test("las rutas retiradas en U4 no vuelven por la lista pública", () => {

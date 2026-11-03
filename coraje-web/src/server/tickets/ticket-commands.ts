@@ -4,7 +4,7 @@ import { AuthorizationDeniedError, requireGrant, requireTicketAction } from "@/s
 import { TICKET_ACTIONS, type TicketAction } from "@/server/authorization/catalog";
 import type { ConfirmedAttachment } from "@/server/attachments/attachment-broker";
 import { deliverTicketEvent, type TicketDelivery } from "@/server/notifications/ticket-notices";
-import type { TicketMailKind } from "@/server/notifications/ticket-mail-content";
+import type { ClientMailKind } from "@/server/notifications/ticket-mail-content";
 import type { TicketNoticeKind } from "@/server/notifications/ticket-notice-kinds";
 import { logEvent } from "@/server/observability/log";
 import { recordPortalAudit } from "@/server/portal/portal-audit";
@@ -269,7 +269,7 @@ async function saveAttachments(
 function requesterDelivery(
   ticket: LockedTicket,
   internalKind: TicketNoticeKind,
-  clientKind: TicketMailKind,
+  clientKind: ClientMailKind,
 ): TicketDelivery | null {
   if (ticket.idSolicitante) return { tipo: "EMPLEADO", kind: internalKind, idPersonal: ticket.idSolicitante };
   if (ticket.idContactoPortal) return { tipo: "CONTACTO", kind: clientKind, idContacto: ticket.idContactoPortal };
@@ -337,11 +337,11 @@ async function addObserversInTx(
     idEvento,
     idAutor: params.idAutor,
     texto: null,
-    deliveries: personas.map((persona) => ({
-      tipo: "EMPLEADO" as const,
-      kind: "OBSERVADOR_AGREGADO" as const,
-      idPersonal: persona.idPersonal,
-    })),
+    deliveries: personas.flatMap((persona) => [
+      { tipo: "EMPLEADO" as const, kind: "OBSERVADOR_AGREGADO" as const, idPersonal: persona.idPersonal },
+      // U29: «un correo al observador».
+      { tipo: "CORREO_EMPLEADO" as const, kind: "OBSERVADOR_EMPLEADO" as const, idPersonal: persona.idPersonal },
+    ]),
   });
 
   ticket.idObservadores.push(...personas.map((persona) => persona.idPersonal));
@@ -416,6 +416,8 @@ export async function createInternalTicket(params: {
             texto: null,
             deliveries: [
               { tipo: "EMPLEADO", kind: "CREACION_RESPONSABLE", idPersonal: creado.factTicket.idAsignado },
+              // U29: «un correo al abrir el ticket».
+              { tipo: "CORREO_EMPLEADO", kind: "CREACION_EMPLEADO", idPersonal: creado.factTicket.idAsignado },
             ],
           })
         : [];
@@ -709,7 +711,14 @@ export async function respondTicket(params: {
       idEvento,
       idAutor: params.idPersonal,
       texto: params.respuesta,
-      deliveries: [...(delivery ? [delivery] : []), ...observerDeliveries(ticket, "RESPUESTA_OBSERVADOR")],
+      deliveries: [
+        ...(delivery ? [delivery] : []),
+        ...observerDeliveries(ticket, "RESPUESTA_OBSERVADOR"),
+        // U29: «un correo al cerrarlo», a quien radicó y a quienes lo siguen.
+        ...[ticket.idSolicitante, ...ticket.idObservadores].flatMap((idPersonal) =>
+          idPersonal ? [{ tipo: "CORREO_EMPLEADO" as const, kind: "CIERRE_EMPLEADO" as const, idPersonal }] : [],
+        ),
+      ],
     });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };
@@ -889,7 +898,11 @@ export async function requestApproval(params: {
       idEvento,
       idAutor: params.idPersonal,
       texto: params.comentario,
-      deliveries: [{ tipo: "EMPLEADO", kind: "SOLICITUD_VALIDACION", idPersonal: destinatario.idPersonal }],
+      deliveries: [
+        { tipo: "EMPLEADO", kind: "SOLICITUD_VALIDACION", idPersonal: destinatario.idPersonal },
+        // U29: «un correo al aprobador».
+        { tipo: "CORREO_EMPLEADO", kind: "APROBACION_EMPLEADO", idPersonal: destinatario.idPersonal },
+      ],
     });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };

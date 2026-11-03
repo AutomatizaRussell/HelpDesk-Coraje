@@ -49,11 +49,9 @@ services:
       # Adjuntos (U7): webhooks sesion, confirmar y descarga de HELPDESK - Adjuntos V1.
       N8N_ADJUNTOS_WEBHOOK_URL: ${N8N_ADJUNTOS_WEBHOOK_URL}
       N8N_ADJUNTOS_SECRET: ${N8N_ADJUNTOS_SECRET}
-      # Correo desde el buzón sin dueño: invitaciones, códigos y escalamiento.
+      # Correo desde el buzón sin dueño: invitaciones y códigos del portal.
       N8N_PORTAL_MAIL_WEBHOOK_URL: ${N8N_PORTAL_MAIL_WEBHOOK_URL}
       N8N_PORTAL_MAIL_SECRET: ${N8N_PORTAL_MAIL_SECRET}
-      # Escalamiento diario de avisos (U15): secreto de la ruta que llama n8n.
-      HELPDESK_ESCALAR_AVISOS_SECRET: ${HELPDESK_ESCALAR_AVISOS_SECRET}
       # Entrada directa, sin pasar por Conecta (U20): https://helpdesk.rbgct.cloud.
       # Opcional: sin ella solo se entra por conecta.rbgct.cloud/helpdesk. Va al
       # final, cuando el DNS, el dominio en Coolify y la dirección de retorno

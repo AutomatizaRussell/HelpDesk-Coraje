@@ -48,11 +48,6 @@ export function publicTicketUrl(idTicket: string): string {
   return `${PUBLIC_ORIGIN}${APP_BASE_PATH}/tickets/${encodeURIComponent(idTicket)}`;
 }
 
-/** Enlace absoluto a «Requiere tu atención», para el correo de escalamiento (U15). */
-export function publicNoticesUrl(): string {
-  return `${PUBLIC_ORIGIN}${APP_BASE_PATH}/avisos`;
-}
-
 /**
  * Enlace absoluto a una ruta del portal de clientes (`/portal/...`), para los
  * correos que reciben los contactos. Nunca de una cabecera de la petición: un

@@ -92,8 +92,8 @@ export default async function NoticesPage({
 
         {section === "atencion" && items.length > 0 && (
           <p className="text-sm text-ink-muted">
-            Un pendiente sale de esta lista al responder, rechazar o reasignar el ticket, o cuando el ticket termina. Si
-            lleva más de un día hábil sin atenderse, te llega un correo cada día hábil.
+            Un pendiente sale de esta lista al responder o reasignar el ticket, al responder la aprobación que te pidieron, o
+            cuando el ticket termina.
           </p>
         )}
 

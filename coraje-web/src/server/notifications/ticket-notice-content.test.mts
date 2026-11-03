@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { buildEscalationMail, describeNotice, excerpt, type NoticeContext } from "./ticket-notice-content";
+import { describeNotice, excerpt, type NoticeContext } from "./ticket-notice-content";
 import { NOTICE_CLASS, type TicketNoticeKind } from "./ticket-notice-kinds";
 
 const base: NoticeContext = {
@@ -39,29 +39,4 @@ test("el extracto queda en una línea y se corta por palabra", () => {
   assert.ok(largo.length <= 41, largo);
   assert.ok(largo.endsWith("…"));
   assert.ok(!largo.includes("  "));
-});
-
-test("el correo de escalamiento escapa lo que viene de personas y enlaza cada pendiente", () => {
-  const { subject, html } = buildEscalationMail({
-    nombre: "<b>Ana</b>",
-    avisosUrl: "https://conecta.rbgct.cloud/helpdesk/avisos",
-    pendientes: [
-      { titulo: 'Luis te reasignó <script>x</script>', desde: "29 sept 2026", url: "https://conecta.rbgct.cloud/helpdesk/tickets/a" },
-      { titulo: "Otro", desde: "30 sept 2026", url: "https://conecta.rbgct.cloud/helpdesk/tickets/b" },
-    ],
-  });
-  assert.equal(subject, "Tienes 2 pendientes sin atender en HelpDesk");
-  assert.ok(!html.includes("<script>"));
-  assert.ok(html.includes("&lt;b&gt;Ana&lt;/b&gt;"));
-  assert.ok(html.includes('href="https://conecta.rbgct.cloud/helpdesk/tickets/a"'));
-  assert.ok(html.includes('href="https://conecta.rbgct.cloud/helpdesk/avisos"'));
-});
-
-test("el asunto del escalamiento concuerda en singular", () => {
-  const { subject } = buildEscalationMail({
-    nombre: "Ana",
-    avisosUrl: "https://conecta.rbgct.cloud/helpdesk/avisos",
-    pendientes: [{ titulo: "Uno", desde: "30 sept 2026", url: "https://conecta.rbgct.cloud/helpdesk/tickets/a" }],
-  });
-  assert.equal(subject, "Tienes un pendiente sin atender en HelpDesk");
 });

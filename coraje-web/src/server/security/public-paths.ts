@@ -31,11 +31,7 @@ import { APP_BASE_PATH } from "@/server/auth/base-path";
  *   misma exista o no el correo (acceso-clientes.md §9).
  * - `/portal/activar`: el enlace de invitación. El enlace es la credencial, y
  *   abrirlo no consume nada: activar es una acción explícita.
- *
- * - `/api/interno/avisos/escalar`: la llama n8n una vez al día para escalar
- *   por correo los avisos sin atender (U15). No la llama una persona, así que
- *   no hay sesión que exigir: su credencial es un secreto en cabecera que la
- *   propia ruta comprueba, y sin él responde 401 sin hacer nada.
+
  *
  * Lo que **no** está: el resto del portal. `/portal` y todo lo que cuelga de
  * él es una tercera clase de ruta —ni anónima ni de empleado— que exige la
@@ -48,7 +44,6 @@ export const PUBLIC_PATHS = [
   "/api/auth/microsoft",
   "/portal/ingreso",
   "/portal/activar",
-  "/api/interno/avisos/escalar",
 ] as const;
 
 /** Prefijo del portal de clientes (specs/acceso-clientes.md). */

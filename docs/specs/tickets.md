@@ -868,6 +868,29 @@ hace el trigger, pero **no crea** avisos nuevos: la ingesta no pasa por los coma
 | V21 | Tipos y clases de aviso iguales en código y en la base; el trigger cierra exactamente los de responsable | `ticket-notice-kinds.test.mts` contra la migración | **Verificado por prueba** (corte 28) |
 | V22 | Un aviso se crea en la transacción del evento, se cierra al actuar y se escala una vez por día | Base desplegada | **Sin ejercitar** |
 
+### 12.1 `DECISIÓN` (03-nov-2026, U29) Cuatro correos y sin escalamiento
+
+Supera lo que §12 dice de los correos. Decisión del usuario: «un correo al observador,
+un correo al aprobador, un correo al abrir el ticket y al cerrarlo», y que el correo
+diario de pendientes «ya no ocurra».
+
+| Momento | A quién | Tipo |
+|---|---|---|
+| Crear | La persona responsable | `CREACION_EMPLEADO` |
+| Añadir observadores, al crear o después | Cada observador nuevo | `OBSERVADOR_EMPLEADO` |
+| Pedir aprobación | Quien debe aprobar | `APROBACION_EMPLEADO` |
+| Responder, que cierra | Quien radicó y los observadores | `CIERRE_EMPLEADO` |
+
+- Salen del buzón de quien actúa (D6), por la misma cola de U7: registro en la
+  transacción de la acción, envío tras el commit, reenvío desde «Correos». Nunca a
+  quien hizo la acción, y nunca a un correo sin `@` (la lista de personal admite «.»,
+  U22).
+- La campana sigue igual: el correo no sustituye al aviso.
+- **Sin escalamiento:** se retiran la ruta `/api/interno/avisos/escalar`, el workflow
+  «HELPDESK - Escalar avisos V2», `helpdesk.aviso_escalamiento` y sus dos funciones
+  (`20261103170000_retirar_escalamiento`).
+- El correo de rechazo al cliente (`RECHAZO_CLIENTE`) sale con el rechazo.
+
 ## 13. `DECISIÓN` (01-oct-2026, U17) Modo Coraje
 
 Coraje es el trabajo con clientes, y es un **modo** de la misma aplicación, como el
@@ -1109,6 +1132,8 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U29 (corte 49). §12.1: cuatro correos a empleados; sin escalamiento
+  diario.
 - 03-nov-2026 — U29 (corte 48). §11.2: la validación pasa a ser aprobación, que
   bloquea el cierre; el aprobador ya no se vuelve observador.
 - 03-nov-2026 — U29 (corte 47). T8 (rechazar) retirada. El detalle deja las pestañas:

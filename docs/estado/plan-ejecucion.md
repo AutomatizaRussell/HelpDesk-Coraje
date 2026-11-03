@@ -685,7 +685,7 @@ antes de publicar.
 Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por parte:
 1. Retirar «Rechazar» y unificar el cuadro de escritura (corte 47).
 2. Aprobador en lugar de validador: «Aprobar» y «No aprobar», bloquea el cierre (corte 48).
-3. Correos al observador, al aprobador, al abrir y al cerrar; sin escalamiento diario.
+3. Correos al observador, al aprobador, al abrir y al cerrar; sin escalamiento diario (corte 49).
 4. Código `ADM-202610-1`.
 5. Toasts.
 6. Vista previa de adjuntos y carpeta por ticket.

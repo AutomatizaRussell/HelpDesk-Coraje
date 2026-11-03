@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentEmployee } from "@/server/auth/current-employee";
 // FIN SUPLANTACIÓN
 
-import type { TicketMailKind } from "./ticket-mail-content";
+import type { ClientMailKind, EmployeeMailKind } from "./ticket-mail-content";
 import { describeNotice, type NoticeText } from "./ticket-notice-content";
 import { NOTICE_CLASS, isTicketNoticeKind, type NoticeClass, type TicketNoticeKind } from "./ticket-notice-kinds";
-import { enqueueTicketMail } from "./ticket-notifications";
+import { enqueueTicketMail, type MailDelivery } from "./ticket-notifications";
 
 /**
  * Avisos del ticket (U15, specs/tickets.md §12): lo que la acción de una
@@ -18,6 +18,9 @@ import { enqueueTicketMail } from "./ticket-notifications";
  *   después del commit, así que un aviso no puede fallar a medias.
  * - Al **contacto de un cliente** le llega un correo, como desde U8
  *   (`ticket-notifications.ts`): el cliente no tiene campana.
+ * - Desde U29, un **empleado** recibe además un correo en cuatro momentos:
+ *   cuando le llega un ticket, cuando lo añaden como observador, cuando le
+ *   piden aprobar y cuando se cierra un ticket que radicó o sigue.
  *
  * Los comandos del ticket describen a quién le toca saber (`TicketDelivery`)
  * y este módulo decide por qué canal. Qué cierra un aviso de atención no lo
@@ -33,7 +36,8 @@ type Tx = Prisma.TransactionClient;
 /** A quién le toca saber de una acción, y qué. */
 export type TicketDelivery =
   | { tipo: "EMPLEADO"; kind: TicketNoticeKind; idPersonal: string }
-  | { tipo: "CONTACTO"; kind: TicketMailKind; idContacto: string };
+  | { tipo: "CORREO_EMPLEADO"; kind: EmployeeMailKind; idPersonal: string }
+  | { tipo: "CONTACTO"; kind: ClientMailKind; idContacto: string };
 
 /**
  * Registra, dentro de la transacción de la acción, los avisos de los
@@ -41,7 +45,7 @@ export type TicketDelivery =
  * nadie necesita que le avisen de lo que acaba de hacer (la base lo exige
  * también, `chk_ticket_aviso_no_propio`).
  *
- * @returns los ids de los correos a contactos, para enviarlos tras el commit.
+ * @returns los ids de los correos, para enviarlos tras el commit.
  */
 export async function deliverTicketEvent(
   tx: Tx,
@@ -75,16 +79,22 @@ export async function deliverTicketEvent(
     });
   }
 
-  const contacts = params.deliveries.flatMap((delivery) =>
-    delivery.tipo === "CONTACTO" ? [{ kind: delivery.kind, idContacto: delivery.idContacto }] : [],
-  );
-  if (contacts.length === 0) return [];
+  const mailSeen = new Set<string>();
+  const mails = params.deliveries.flatMap((delivery): MailDelivery[] => {
+    if (delivery.tipo === "CONTACTO") return [{ kind: delivery.kind, idContacto: delivery.idContacto }];
+    if (delivery.tipo !== "CORREO_EMPLEADO" || delivery.idPersonal === params.idAutor) return [];
+    const key = `${delivery.idPersonal}:${delivery.kind}`;
+    if (mailSeen.has(key)) return [];
+    mailSeen.add(key);
+    return [{ kind: delivery.kind, idPersonal: delivery.idPersonal }];
+  });
+  if (mails.length === 0) return [];
   return enqueueTicketMail(tx, {
     idTicket: params.idTicket,
     idEvento: params.idEvento,
     idRemitente: params.idAutor,
     texto: params.texto,
-    deliveries: contacts,
+    deliveries: mails,
   });
 }
 
@@ -291,19 +301,4 @@ export async function markAllNoveltiesRead(idPersonal: string): Promise<number> 
     data: { leidoAt: new Date() },
   });
   return result.count;
-}
-
-// ---------------------------------------------------------------------------
-// Para el escalamiento
-// ---------------------------------------------------------------------------
-
-/** Avisos concretos de una persona, por id, en el orden pedido. */
-export async function loadNoticesByIds(idPersonal: string, ids: readonly string[]): Promise<NoticeItem[]> {
-  if (ids.length === 0) return [];
-  const rows = await prisma.ticketAviso.findMany({
-    where: { id: { in: [...ids] }, idDestinatario: idPersonal },
-    select: NOTICE_SELECT,
-  });
-  const byId = new Map(toItems(rows).map((item) => [item.id, item]));
-  return ids.flatMap((id) => byId.get(id) ?? []);
 }

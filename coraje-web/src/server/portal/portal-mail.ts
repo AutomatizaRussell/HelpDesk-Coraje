@@ -26,14 +26,8 @@ import { z } from "zod";
  * variable que falta falla en la operación que la necesita, con su nombre.
  */
 
-/**
- * `ESCALAMIENTO` (U15) no es del portal: es el correo diario a un empleado
- * con pendientes sin atender (`notice-escalation.ts`). Va por este mismo
- * transporte porque sale del mismo buzón sin dueño, con la misma credencial
- * de n8n: un segundo workflow solo duplicaría la puesta en marcha. No lleva
- * secreto, pero hereda sin coste que n8n no guarde el cuerpo.
- */
-export type PortalMailKind = "INVITACION" | "CODIGO" | "ESCALAMIENTO";
+/** El escalamiento diario de avisos (U15) iba por aquí; se retiró en U29. */
+export type PortalMailKind = "INVITACION" | "CODIGO";
 
 export class PortalMailError extends Error {
   constructor(message: string) {
