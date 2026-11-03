@@ -179,7 +179,7 @@ export default async function TicketDetailPage({
 
             <section className={surface()} aria-labelledby="historia-titulo">
               <h2 id="historia-titulo" className={cn(sectionTitle, "mb-4")}>Historia</h2>
-              <TicketHistory entries={ticket.history} />
+              <TicketHistory idTicket={ticket.idTicket} entries={ticket.history} />
             </section>
 
             {mails.length > 0 && (

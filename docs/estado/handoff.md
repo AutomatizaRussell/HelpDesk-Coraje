@@ -1,6 +1,24 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 43, U7 adjuntos, SIN DESPLEGAR)
+SOBRE:   `b90cc94` (corte 42)
+RAMA:    main
+UNIDAD:  U7, adjuntos (tickets.md §14.8). OneDrive de `info.admingct@`, carpeta
+         `HelpDesk/Adjuntos`; un workflow con tres webhooks
+         (`HELPDESK - Adjuntos V1`); tabla `helpdesk.ticket_adjunto` con el par
+         evento-ticket como clave foránea; selector en crear, responder y nota
+         interna; descarga por `/api/tickets/[id]/adjuntos/[id]` con la misma
+         visibilidad que el evento. Evidencia: reglas 6/6, contrato 6/6, nodos
+         del workflow 12/12 con respuestas de Graph simuladas, tabla contra
+         PGlite; `tsc`, `lint`, 199/199 pruebas, `build`. **Sin ejercitar:**
+         falta la puesta en marcha de operacion.md, «Adjuntos (U7)».
+         Antes de este corte, en la misma sesión: U23 (`44abf78`), U24
+         (`2514b24`) y U25 (`b90cc94`), publicados. El usuario importó la
+         ingesta, desactivó la salida y borró su credencial.
+SIGUE:   puesta en marcha de los adjuntos y cierre de U7 (§14.7).
+
+--- Corte 42, para contexto:
 CORTE:   03-nov-2026 (corte 42, U25 tickets de prueba borrados, SIN DESPLEGAR)
 SOBRE:   `44abf78` (corte 40; el corte 41 se publica en el mismo push)
 RAMA:    main
@@ -1449,6 +1467,8 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `b90cc94` | **Corte 42.** U25: tickets de prueba borrados. Publicado el 03-nov-2026 junto con el corte 41 |
+| `2514b24` | **Corte 41.** U24: retiro del espejo en PowerApps. Publicado el 03-nov-2026 |
 | `44abf78` | **Corte 40.** U23: responsable que no resuelve y «proyectos y ti» hacia Alex. Publicado el 03-nov-2026; workflow sin importar |
 | `9b1c542` | **Corte 39.** U22: relevos en la lista de personal. Workflow importado el 29-oct-2026; ingesta en *Success*, relevo sin ejercitar |
 | `2f1eff8` | **Corte 38.** U20: modos Interno/Externo, portal desconectado y entrada directa. Sin desplegar al cerrar el corte |
@@ -1569,7 +1589,12 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — publicar U24
+## Acción inmediata para la siguiente sesión — poner en marcha los adjuntos
+
+Vuelve a la cabeza de la cola: U7. Seguir `operacion.md`, «Adjuntos (U7)» (carpeta,
+credencial, workflow, dos variables) y ejercitar §14.7 de `specs/tickets.md`.
+
+## Anterior — publicar U24 (hecho el 03-nov-2026)
 
 Se desvía de la cola por la misma razón que U23: U7 (adjuntos) sigue a la cabeza, pero
 U24 cambia el workflow de ingesta que U23 también cambia, y conviene importarlo una

@@ -46,6 +46,9 @@ services:
       # crea: si una no existe en Coolify, aquí llega vacía.
       # env.contract.test.mts exige que cada variable que lee `src/` esté
       # declarada, para que la lista sea completa.
+      # Adjuntos (U7): webhooks sesion, confirmar y descarga de HELPDESK - Adjuntos V1.
+      N8N_ADJUNTOS_WEBHOOK_URL: ${N8N_ADJUNTOS_WEBHOOK_URL}
+      N8N_ADJUNTOS_SECRET: ${N8N_ADJUNTOS_SECRET}
       # Correo desde el buzón sin dueño: invitaciones, códigos y escalamiento.
       N8N_PORTAL_MAIL_WEBHOOK_URL: ${N8N_PORTAL_MAIL_WEBHOOK_URL}
       N8N_PORTAL_MAIL_SECRET: ${N8N_PORTAL_MAIL_SECRET}

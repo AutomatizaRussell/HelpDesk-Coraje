@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationDeniedError, requireGrant, requireTicketAction } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS, type TicketAction } from "@/server/authorization/catalog";
+import type { ConfirmedAttachment } from "@/server/attachments/attachment-broker";
 import { deliverTicketEvent, type TicketDelivery } from "@/server/notifications/ticket-notices";
 import type { TicketMailKind } from "@/server/notifications/ticket-mail-content";
 import type { TicketNoticeKind } from "@/server/notifications/ticket-notice-kinds";
@@ -195,6 +196,35 @@ async function writeEvent(
 }
 
 /**
+ * Guarda los adjuntos de un evento, ya confirmados contra Graph por quien
+ * llama (attachment-broker.ts), en la transacción del evento: si el comando
+ * falla, no queda ningún adjunto sin su evento. La visibilidad es la del
+ * evento (tickets.md §14.2, paso 4): el adjunto de una nota interna no lo ve
+ * quien solo radicó, porque la consulta nunca le entrega ese evento.
+ *
+ * Si el comando falla después de confirmar, los objetos quedan en OneDrive sin
+ * ticket. Se acepta: no dan acceso a nada y no ocupan la VPS.
+ */
+async function saveAttachments(
+  tx: Tx,
+  params: { idTicket: string; idEvento: string; idAutor: string; adjuntos: readonly ConfirmedAttachment[] },
+): Promise<void> {
+  if (params.adjuntos.length === 0) return;
+  await tx.ticketAdjunto.createMany({
+    data: params.adjuntos.map((adjunto) => ({
+      idTicket: params.idTicket,
+      idEvento: params.idEvento,
+      idAutor: params.idAutor,
+      nombreOriginal: adjunto.nombreOriginal,
+      nombreGuardado: adjunto.nombreGuardado,
+      tipoMime: adjunto.tipoMime,
+      tamanoBytes: adjunto.tamanoBytes,
+      driveItemId: adjunto.driveItemId,
+    })),
+  });
+}
+
+/**
  * El aviso a quien radicó, sea un empleado o el contacto de un cliente. Los
  * dos casos no se mezclan: el empleado recibe un aviso en la campana, con el
  * vocabulario interno; el contacto, un correo con el enlace al portal (U15).
@@ -304,6 +334,7 @@ export async function createInternalTicket(params: {
   prioridad: string;
   descripcion: string;
   idObservadores: readonly string[];
+  adjuntos?: readonly ConfirmedAttachment[];
 }): Promise<{ idTicket: string; codigoTicket: string | null; mailIds: string[] }> {
   try {
     await requireGrant(params.idPersonal, TICKET_ACTIONS.crear);
@@ -333,6 +364,12 @@ export async function createInternalTicket(params: {
       const creado = await tx.factTicketEvento.findFirstOrThrow({
         where: { idTicket: row.id_ticket, tipoEvento: "CREACION" },
         select: { idEvento: true, factTicket: { select: { idAsignado: true } } },
+      });
+      await saveAttachments(tx, {
+        idTicket: row.id_ticket,
+        idEvento: creado.idEvento,
+        idAutor: params.idPersonal,
+        adjuntos: params.adjuntos ?? [],
       });
       const mailIds = creado.factTicket.idAsignado
         ? await deliverTicketEvent(tx, {
@@ -593,6 +630,7 @@ export async function respondTicket(params: {
   idPersonal: string;
   idTicket: string;
   respuesta: string;
+  adjuntos?: readonly ConfirmedAttachment[];
 }): Promise<TicketEventResult> {
   return prisma.$transaction(async (tx) => {
     const { ticket } = await lockAndAuthorize({
@@ -618,6 +656,7 @@ export async function respondTicket(params: {
       contenido: params.respuesta,
       estadoNuevo: "CERRADO",
     });
+    await saveAttachments(tx, { idTicket: ticket.idTicket, idEvento, idAutor: params.idPersonal, adjuntos: params.adjuntos ?? [] });
 
     const delivery = requesterDelivery(ticket, "RESPUESTA_SOLICITANTE", "RESPUESTA_CLIENTE");
     const mailIds = await deliverTicketEvent(tx, {
@@ -697,6 +736,7 @@ export async function addInternalNote(params: {
   idPersonal: string;
   idTicket: string;
   nota: string;
+  adjuntos?: readonly ConfirmedAttachment[];
 }): Promise<TicketEventResult> {
   return prisma.$transaction(async (tx) => {
     const { ticket } = await lockAndAuthorize({
@@ -716,6 +756,7 @@ export async function addInternalNote(params: {
       contenido: params.nota,
       estadoNuevo: null,
     });
+    await saveAttachments(tx, { idTicket: ticket.idTicket, idEvento, idAutor: params.idPersonal, adjuntos: params.adjuntos ?? [] });
 
     // Una nota interna no avisa a nadie: es constancia, no conversación.
     return { idTicket: ticket.idTicket, idEvento, mailIds: [] };

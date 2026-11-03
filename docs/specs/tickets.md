@@ -695,7 +695,8 @@ que lo reparte reasignando.
 | V20 | Un único vocabulario de estados en `src/` (§8) | `ticket-lifecycle.contract.test.mts` | **Verificado por prueba**. Encontró una segunda lista real en la nota interna al construir |
 | V23 | Un relevo en «Personal GCT» no detiene la ingesta y cada ticket queda con quien ocupaba el buzón en su fecha (§7.4) | Nodos `PG - Transform 03` y `06` | **Probado contra un PostgreSQL desechable** (PGlite, 23-oct-2026): 16/16 escenarios, entre ellos la reproducción del error de producción con el SQL anterior. **Sin ejercitar contra la base real** |
 | V24 | Un `AsignadoA` escrito que no resuelve deja el ticket sin responsable, y uno vacío cae en `Recibe` (§4.2) | Nodo `PG - Transform 06`, expresión de `id_asignado` | **Probado contra un PostgreSQL desechable** (PGlite, 03-nov-2026): 5/5 casos sobre la expresión tal como está en el workflow. Sin ejercitar contra la base real |
-| V25 | Todo tipo «proyectos y ti» tiene regla activa hacia Alex (§7.5) | `prisma/migrations/20261103100000_enrutar_proyectos_y_ti` | **Construido, sin desplegar** |
+| V25 | Todo tipo «proyectos y ti» tiene regla activa hacia Alex (§7.5) | `prisma/migrations/20261103100000_enrutar_proyectos_y_ti` | **Probado contra PGlite** con datos (03-nov-2026), desplegado con el corte 40; sin consultar en la base real |
+| V26 | Adjuntos: reglas, workflow y tabla (§14.8) | `attachment-rules.test.mts`, `attachments.contract.test.mts`, `n8n/HELPDESK - Adjuntos V1.json` | **Probado sin Graph** (03-nov-2026): reglas 6/6, contrato 6/6, nodos del workflow 12/12 con respuestas simuladas, tabla contra PGlite (par evento-ticket, objeto único, 26 MB). **Sin ejercitar contra OneDrive** |
 
 ## 11. `DECISIÓN` Observadores y solicitud de validación — construidos (U11)
 
@@ -880,10 +881,10 @@ Construido, sin desplegar. Supera a §13 donde se contradicen.
   todavía no puede hacerlo (U21, `estado/plan-ejecucion.md`); hasta entonces, «Nuevo
   ticket» solo aparece en Interno.
 
-## 14. `DECISIÓN` (06-oct-2026, U7) Adjuntos — diseño aprobado, sin construir
+## 14. `DECISIÓN` (06-oct-2026, U7) Adjuntos — construido el 03-nov-2026, sin desplegar
 
-Lo último abierto de U7. Diseño aprobado por el usuario el 06-oct-2026; se construye en
-una sesión aparte, cuando lleguen los dos datos de §14.6.
+Lo último abierto de U7. Diseño aprobado por el usuario el 06-oct-2026; construido el
+03-nov-2026 (corte 43) tal como lo describe §14.8, que supera a §14.6.
 
 > **`ABIERTO` (13-oct-2026): el destino se reabre.** El código de PowerApps guarda los
 > adjuntos como **adjuntos del ítem de HelpDeskBd** (`{Attachments}`, hasta 2 por
@@ -895,6 +896,10 @@ una sesión aparte, cuando lleguen los dos datos de §14.6.
 > moverlos. El usuario preguntó por guardar en OneDrive y dejar el enlace en la lista: no
 > se vería en PowerApps sin cambiar la app, ya que haría falta otra columna, que O6
 > descartó, y exige compartir el archivo. **Decisión pendiente del usuario.**
+>
+> **Cerrado el 30-oct-2026 por el usuario:** OneDrive de la cuenta sin dueño
+> `info.admingct@rbcol.co`. Con el espejo retirado (U24, 03-nov), los adjuntos de la web
+> no se ven en PowerApps, y se acepta.
 
 **14.1 Modelo: el de Impulsa, con dos correcciones.** El navegador sube el archivo
 directo a SharePoint, en fragmentos, contra una sesión de carga de Graph
@@ -959,6 +964,33 @@ personal. Quien siga en PowerApps no los ve; se acepta mientras dure la conviven
 **14.7 Cierre.** Un empleado adjunta al crear, responder y anotar; otro con alcance
 descarga y uno sin alcance recibe 404; un archivo de 26 MB y un `.exe` se rechazan; el
 adjunto de una nota interna no lo ve el solicitante.
+
+**14.8 Cómo quedó construido (03-nov-2026, U7).** Supera a §14.6 y precisa §14.2-§14.3.
+- **Destino:** el OneDrive de `info.admingct@`, carpeta `HelpDesk/Adjuntos`. No es la
+  biblioteca de un sitio que pedía §14.6: la cuenta no es de una persona, pero el
+  OneDrive vive mientras la cuenta exista y tenga licencia. Si TI la borra o le quita la
+  licencia, los archivos se pierden tras la retención. Riesgo aceptado por el usuario.
+- **Graph:** credencial «Graph info.admingct» (`Microsoft OAuth2 API`, delegada,
+  autorizada como esa cuenta). Todo va contra `/me/drive`, así que no hay `driveId` que
+  configurar ni que se pueda desviar.
+- **Un workflow con tres webhooks:** `n8n/HELPDESK - Adjuntos V1.json` (`sesion`,
+  `confirmar`, `descarga`), con la credencial «HelpDesk adjuntos · x-helpdesk-secret». No
+  guarda sus ejecuciones: llevan credenciales temporales.
+- **Confirmación al enviar, no al terminar la subida**, como en Impulsa: el archivo sube
+  en cuanto se elige, y el formulario, al enviarse, confirma cada objeto antes de abrir
+  la transacción del comando. El adjunto se guarda en esa transacción, con su evento.
+- **Sin columna de estado de la carga:** una fila solo nace confirmada. Un archivo
+  subido y nunca enviado, o enviado con un comando que falla, queda en OneDrive sin
+  ticket; no da acceso a nada.
+- **El tipo se decide por la extensión**, no por el MIME del navegador (en Windows un
+  `.csv` llega como `application/vnd.ms-excel`). OneDrive deduce el tipo de la misma
+  extensión, y ese es el que se guarda.
+- **La base exige el par evento-ticket** (clave foránea compuesta): un adjunto no puede
+  colgar del evento de otro ticket. Tope de 25 MB también como `CHECK`, y un objeto de
+  OneDrive se adjunta una sola vez.
+- **Descarga:** `/api/tickets/[idTicket]/adjuntos/[idAdjunto]` reutiliza el detalle del
+  ticket: entrega la URL de Graph solo si el evento del adjunto está en la historia que
+  esa persona ve.
 
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
@@ -1049,5 +1081,7 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U7 (corte 43). §14: adjuntos construidos (§14.8) en el OneDrive de
+  `info.admingct@`. V26.
 - 03-nov-2026 — U25 (corte 42). Se borran todos los tickets creados desde HelpDesk:
   eran pruebas. Los de PowerApps no se tocan.

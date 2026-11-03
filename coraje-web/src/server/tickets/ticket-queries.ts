@@ -348,6 +348,8 @@ export interface TicketHistoryEntry {
   contenido: string;
   fecha: Date;
   estadoNuevo: TicketState | null;
+  /** U7: archivos que trajo este evento. Los ve quien ve el evento, y nadie más. */
+  adjuntos: { id: string; nombre: string; tamanoBytes: number }[];
 }
 
 /** Lo que la vista puede ofrecer, decidido con las mismas reglas que el servicio. */
@@ -460,6 +462,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       dimPersonal: { select: { nombreCompleto: true } },
       contactoAutor: { select: { nombre: true } },
       estadoNuevo: { select: { nombreEstado: true } },
+      adjuntos: { orderBy: { createdAt: "asc" }, select: { id: true, nombreOriginal: true, tamanoBytes: true } },
     },
   });
 
@@ -527,6 +530,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       contenido: evento.contenido,
       fecha: evento.fechaRegistro,
       estadoNuevo: evento.estadoNuevo && isTicketState(evento.estadoNuevo.nombreEstado) ? evento.estadoNuevo.nombreEstado : null,
+      adjuntos: evento.adjuntos.map((adjunto) => ({ id: adjunto.id, nombre: adjunto.nombreOriginal, tamanoBytes: adjunto.tamanoBytes })),
     })),
     capabilities,
     observadores: ticket.observadores.map((observador) => ({
@@ -534,6 +538,30 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       nombre: observador.persona.nombreCompleto,
     })),
   };
+}
+
+/**
+ * Un adjunto que la persona puede descargar, con el id del objeto en OneDrive,
+ * o `null`. Reutiliza `getTicketDetail` en lugar de repetir sus reglas: el
+ * adjunto se entrega solo si su evento está en la historia que esa persona ve,
+ * así que el de una nota interna no llega a quien solo radicó el ticket.
+ * Inexistente y fuera de alcance responden igual, como el detalle.
+ */
+export async function getDownloadableAttachment(params: {
+  idPersonal: string;
+  idTicket: string;
+  idAdjunto: string;
+}): Promise<{ driveItemId: string; nombre: string } | null> {
+  const detail = await getTicketDetail({ idPersonal: params.idPersonal, idTicket: params.idTicket });
+  if (!detail) return null;
+  const visible = detail.history.some((entry) => entry.adjuntos.some((adjunto) => adjunto.id === params.idAdjunto));
+  if (!visible) return null;
+  const adjunto = await prisma.ticketAdjunto.findUnique({
+    where: { id: params.idAdjunto },
+    select: { idTicket: true, driveItemId: true, nombreOriginal: true },
+  });
+  if (!adjunto || adjunto.idTicket !== params.idTicket) return null;
+  return { driveItemId: adjunto.driveItemId, nombre: adjunto.nombreOriginal };
 }
 
 /**

@@ -139,6 +139,7 @@ model DimPersonal {
   portalInvitacionesEmitidas             PortalInvitacion[]
   portalAuditoria                        PortalAuditoria[]
   ticketsObservados                      TicketObservador[]   @relation("ObservadorPersona")
+  adjuntosSubidos                        TicketAdjunto[]
   observadoresAgregados                  TicketObservador[]   @relation("ObservadorAgregadoPor")
   validacionesRecibidas                  TicketValidacion[]
   avisosRecibidos                        TicketAviso[]        @relation("AvisoDestinatario")
@@ -617,6 +618,7 @@ model FactTicket {
   observadores         TicketObservador[]
   validaciones         TicketValidacion[]
   avisos               TicketAviso[]
+  adjuntos             TicketAdjunto[]
 
   // Sin índices sobre las FK (id_cliente_contai, id_solicitante, id_area_destino,
   // id_asignado, id_estado, id_prioridad, id_tipo_req): sql/db/06_helpdesk_facts.sql
@@ -661,7 +663,10 @@ model FactTicketEvento {
   ticketNotificacion TicketNotificacion[]
   ticketValidacion  TicketValidacion?
   avisos            TicketAviso[]
+  adjuntos          TicketAdjunto[]
 
+  // U7: un adjunto apunta al par evento-ticket (migración 20261103130000).
+  @@unique([idEvento, idTicket], map: "ux_fact_ticket_evento_evento_ticket")
   @@index([idTicket, fechaRegistro], map: "ix_fact_ticket_evento_ticket_fecha")
   @@map("fact_ticket_evento")
   @@schema("helpdesk")
@@ -684,6 +689,32 @@ model TicketObservador {
   @@id([idTicket, idPersonal])
   @@index([idPersonal], map: "ix_ticket_observador_persona")
   @@map("ticket_observador")
+  @@schema("helpdesk")
+}
+
+/// Archivo adjunto a un evento del ticket (U7, tickets.md §14). El archivo vive
+/// en el OneDrive de info.admingct@; aquí solo hay metadatos confirmados contra
+/// Graph y el id del objeto. Sin URL: la de descarga se pide cada vez. Solo
+/// crece (SELECT e INSERT para coraje_runtime). CHECK no representable:
+/// chk_ticket_adjunto_tamano (0 < tamano_bytes <= 25 MB).
+model TicketAdjunto {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idTicket       String           @map("id_ticket") @db.Uuid
+  idEvento       String           @map("id_evento") @db.Uuid
+  idAutor        String           @map("id_autor") @db.Uuid
+  nombreOriginal String           @map("nombre_original") @db.VarChar(255)
+  nombreGuardado String           @map("nombre_guardado") @db.VarChar(200)
+  tipoMime       String           @map("tipo_mime") @db.VarChar(150)
+  tamanoBytes    Int              @map("tamano_bytes")
+  driveItemId    String           @unique(map: "uq_ticket_adjunto_drive_item") @map("drive_item_id") @db.VarChar(200)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  factTicket     FactTicket       @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
+  evento         FactTicketEvento @relation(fields: [idEvento, idTicket], references: [idEvento, idTicket], onDelete: Restrict, onUpdate: NoAction, map: "ticket_adjunto_evento_ticket_fkey")
+  autor          DimPersonal      @relation(fields: [idAutor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([idEvento], map: "ix_ticket_adjunto_evento")
+  @@index([idTicket], map: "ix_ticket_adjunto_ticket")
+  @@map("ticket_adjunto")
   @@schema("helpdesk")
 }
 

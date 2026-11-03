@@ -1,0 +1,483 @@
+{
+  "name": "HELPDESK - Adjuntos V1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helpdesk/adjuntos/sesion",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Sesion",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6bae62c9-1ee4-4ffe-9116-9010b336b9a5",
+      "webhookId": "dcec1f00-e33b-44c4-a6de-f45bf5cd079e",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "HelpDesk adjuntos · x-helpdesk-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Contrato helpdesk.adjuntos.sesion v1 (src/server/attachments/attachment-broker.ts).\n *\n * Copia de «Impulsa - Sugerencias - Crear sesion de carga V2», con el destino\n * en /me/drive: la credencial de Graph está autorizada como info.admingct@, y\n * su OneDrive es el único destino. Sin driveId que validar, nadie puede\n * apuntar la carga a otra unidad.\n */\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst required = (value, path) => {\n  if (typeof value !== 'string' || !value.trim()) throw new Error(path + ' debe ser un texto no vacío.');\n  return value.trim();\n};\n// El broker no recibe bytes ni URLs: si llegan, el llamador está mal construido.\nif (body.uploadUrl !== undefined || body.file?.content !== undefined || body.file?.base64 !== undefined) {\n  throw new Error('El broker no acepta binarios, Base64 ni uploadUrl de entrada.');\n}\nif (body.event !== 'helpdesk.adjuntos.sesion' || Number(body.version) !== 1) throw new Error('Contrato helpdesk.adjuntos.sesion v1 inválido.');\nconst operationId = required(body.operation?.id, 'operation.id');\nconst idempotencyKey = required(body.operation?.idempotencyKey, 'operation.idempotencyKey');\nconst folderPath = required(body.target?.folderPath, 'target.folderPath');\nconst storedName = required(body.file?.storedName, 'file.storedName');\nconst sizeBytes = Number(body.file?.sizeBytes);\nif (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) throw new Error('file.sizeBytes debe ser un entero positivo.');\n// Un solo segmento: una barra sacaría el objeto de la carpeta autorizada.\nif (storedName.includes('/') || storedName.includes('\\\\')) throw new Error('file.storedName no puede contener separadores de ruta.');\n// Los segmentos se codifican uno a uno: codificar la ruta entera convertiría\n// los separadores en %2F y apuntaría a una carpeta con barras en el nombre.\nconst encodedFolderPath = folderPath.split('/').map((s) => s.trim()).filter(Boolean).map(encodeURIComponent).join('/');\nif (!encodedFolderPath) throw new Error('target.folderPath no tiene ningún segmento útil.');\n// «fail» y no «rename»: el nombre lleva el id de la carga, así que un choque\n// significa que el mismo archivo se sube dos veces, y renombrar dejaría un\n// objeto que la confirmación no espera.\nreturn [{ json: { operationId, idempotencyKey, encodedFolderPath, storedName, sizeBytes, conflictBehavior: 'fail' } }];"
+      },
+      "name": "Code - Validar sesion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "0258e6b6-9ec1-4e83-8172-b962a472aa1c"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "method": "POST",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/root:/' + $json.encodedFolderPath + '/' + encodeURIComponent($json.storedName) + ':/createUploadSession' }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { item: { '@microsoft.graph.conflictBehavior': $json.conflictBehavior, name: $json.storedName } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Crear sesion de carga",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        440,
+        0
+      ],
+      "id": "d770639d-17cb-4a9e-85b4-8b8fddfba716",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Devuelve la capacidad temporal de carga solo a quien llamó. La URL de\n * carga es una credencial sobre un único objeto: va al navegador, no se\n * guarda, y caduca sola. Por eso el workflow no guarda los datos de sus\n * ejecuciones (settings).\n */\nconst source = $('Code - Validar sesion').first().json;\nconst response = $input.first()?.json ?? {};\nconst statusCode = Number(response.statusCode);\nconst body = response.body ?? {};\nif (![200, 201].includes(statusCode) || !body.uploadUrl || !body.expirationDateTime) {\n  const message = body?.error?.message ?? ('Graph rechazó createUploadSession con HTTP ' + statusCode + '.');\n  return [{ json: { ok: false, operationId: source.operationId, code: statusCode === 429 ? 'THROTTLED' : 'GRAPH_SESSION_FAILED', message: String(message).slice(0, 1000), httpStatus: [400, 401, 403, 404, 409, 429].includes(statusCode) ? statusCode : 502 } }];\n}\nreturn [{ json: { ok: true, operationId: source.operationId, idempotencyKey: source.idempotencyKey, session: { expiresAt: body.expirationDateTime, uploadUrl: body.uploadUrl }, httpStatus: 201 } }];"
+      },
+      "name": "Code - Preparar sesion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "6f67cb21-6e3f-4409-949f-5bef317f9207"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "name": "Respond - Sesion",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        880,
+        0
+      ],
+      "id": "d69a9e6c-c794-47a4-bcca-147e710d30b1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helpdesk/adjuntos/confirmar",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Confirmar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "id": "e14e4f10-6c1e-448b-907a-5d0d233058d7",
+      "webhookId": "6416a132-e132-48d9-b7f5-917b773faa16",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "HelpDesk adjuntos · x-helpdesk-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Contrato helpdesk.adjuntos.confirmar v1. El navegador terminó la carga, así\n * que es el único que conoce el id del objeto, y también quien menos autoridad\n * tiene para describirlo: aquí solo se comprueba que la petición está bien\n * formada; quien describe el objeto es Graph.\n */\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst required = (value, path) => {\n  if (typeof value !== 'string' || !value.trim()) throw new Error(path + ' debe ser un texto no vacío.');\n  return value.trim();\n};\n// El broker no recibe bytes ni URLs: si llegan, el llamador está mal construido.\nif (body.uploadUrl !== undefined || body.file?.content !== undefined || body.file?.base64 !== undefined) {\n  throw new Error('El broker no acepta binarios, Base64 ni uploadUrl de entrada.');\n}\nif (body.event !== 'helpdesk.adjuntos.confirmar' || Number(body.version) !== 1) throw new Error('Contrato helpdesk.adjuntos.confirmar v1 inválido.');\nconst operationId = required(body.operation?.id, 'operation.id');\nconst idempotencyKey = required(body.operation?.idempotencyKey, 'operation.idempotencyKey');\nconst folderPath = required(body.target?.folderPath, 'target.folderPath');\nconst objectId = required(body.object?.id, 'object.id');\nconst expectedName = required(body.expected?.storedName, 'expected.storedName');\nconst expectedSizeBytes = Number(body.expected?.sizeBytes);\nif (!Number.isSafeInteger(expectedSizeBytes) || expectedSizeBytes <= 0) throw new Error('expected.sizeBytes debe ser un entero positivo.');\nreturn [{ json: { operationId, idempotencyKey, folderPath, objectId, expectedName, expectedSizeBytes } }];"
+      },
+      "name": "Code - Validar confirmacion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "id": "ce961bd1-c961-4490-ae56-a68110e0f0ad"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent($json.objectId) + '?$select=id,name,size,parentReference,file,deleted' }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Consultar objeto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        440,
+        300
+      ],
+      "id": "6bd0b19d-8313-4313-a9cf-1c4019620c86",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Confirma identidad, carpeta, nombre y tamaño con Graph como autoridad.\n *\n * La carpeta se compara por ruta, porque la sesión se creó contra una ruta.\n * Graph informa el padre como /drive/root:/A/B, codificado y con la caja que\n * guarde la unidad: se quita el prefijo, se decodifica cada segmento y se\n * pasa a minúsculas, como trata OneDrive las rutas. Un objeto que viva en\n * otra carpeta se rechaza aunque exista: lo único que la aplicación autoriza\n * es una carga a la carpeta de adjuntos.\n *\n * El nombre se compara exacto: la sesión se creó con conflictBehavior fail,\n * y el nombre lleva el id de la carga, que es lo que impide confirmar el\n * objeto de otra persona.\n */\nconst source = $('Code - Validar confirmacion').first().json;\nconst response = $input.first()?.json ?? {};\nconst statusCode = Number(response.statusCode);\nconst body = response.body ?? {};\nconst fail = (code, message, httpStatus) => [{ json: { ok: false, operationId: source.operationId, code, message, httpStatus } }];\nif (statusCode !== 200 || !body.id) {\n  const message = body?.error?.message ?? ('Graph rechazó la consulta con HTTP ' + statusCode + '.');\n  return fail(statusCode === 429 ? 'THROTTLED' : 'GRAPH_CONFIRM_FAILED', String(message).slice(0, 1000), statusCode === 429 ? 429 : (statusCode === 404 ? 404 : 502));\n}\nif (body.deleted) return fail('OBJECT_DELETED', 'El objeto fue eliminado.', 409);\nif (!body.file) return fail('OBJECT_NOT_FILE', 'El objeto no es un archivo.', 409);\nconst normalizePath = (value) => String(value ?? '')\n  .replace(/^\\/drives\\/[^/]+\\/root:?/i, '')\n  .replace(/^\\/drive\\/root:?/i, '')\n  .split('/')\n  .map((segment) => { try { return decodeURIComponent(segment); } catch { return segment; } })\n  .map((segment) => segment.trim())\n  .filter(Boolean)\n  .join('/')\n  .toLowerCase();\nif (normalizePath(body.parentReference?.path) !== normalizePath(source.folderPath)) {\n  return fail('OBJECT_DESTINATION_MISMATCH', 'El objeto no está en la carpeta de adjuntos.', 409);\n}\nif (String(body.name ?? '') !== source.expectedName) return fail('OBJECT_NAME_MISMATCH', 'El nombre guardado no coincide con el autorizado.', 409);\nif (!Number.isSafeInteger(Number(body.size)) || Number(body.size) !== source.expectedSizeBytes) {\n  return fail('OBJECT_SIZE_MISMATCH', 'El tamaño guardado no coincide con el anunciado.', 409);\n}\nreturn [{ json: { ok: true, operationId: source.operationId, idempotencyKey: source.idempotencyKey, object: { id: String(body.id), name: String(body.name), sizeBytes: Number(body.size), mimeType: String(body.file?.mimeType ?? '') }, httpStatus: 200 } }];"
+      },
+      "name": "Code - Verificar objeto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "id": "c891258a-0d24-4242-ad81-f7a8812737fe"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "name": "Respond - Confirmacion",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        880,
+        300
+      ],
+      "id": "5775fa5b-5e3f-4eea-b3a3-72cf06d3529f"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helpdesk/adjuntos/descarga",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Descarga",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        600
+      ],
+      "id": "de51b71a-825a-4cd3-8d36-367a13975ce1",
+      "webhookId": "63113cbd-490a-4c84-9455-70374e36e4b7",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "HelpDesk adjuntos · x-helpdesk-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Contrato helpdesk.adjuntos.descarga v1. El id del objeto lo lee HelpDesk de\n * PostgreSQL, nunca del navegador, después de comprobar que la persona puede\n * ver el adjunto (src/app/api/tickets/[idTicket]/adjuntos/[idAdjunto]/route.ts).\n */\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst required = (value, path) => {\n  if (typeof value !== 'string' || !value.trim()) throw new Error(path + ' debe ser un texto no vacío.');\n  return value.trim();\n};\n// El broker no recibe bytes ni URLs: si llegan, el llamador está mal construido.\nif (body.uploadUrl !== undefined || body.file?.content !== undefined || body.file?.base64 !== undefined) {\n  throw new Error('El broker no acepta binarios, Base64 ni uploadUrl de entrada.');\n}\nif (body.event !== 'helpdesk.adjuntos.descarga' || Number(body.version) !== 1) throw new Error('Contrato helpdesk.adjuntos.descarga v1 inválido.');\nconst operationId = required(body.operation?.id, 'operation.id');\nconst idempotencyKey = required(body.operation?.idempotencyKey, 'operation.idempotencyKey');\nconst objectId = required(body.object?.id, 'object.id');\nreturn [{ json: { operationId, idempotencyKey, objectId } }];"
+      },
+      "name": "Code - Validar descarga",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        600
+      ],
+      "id": "af8da396-42e6-4dbf-8b97-67e6d0717070"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent($json.objectId) }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Consultar descarga",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        440,
+        600
+      ],
+      "id": "70c904ee-21a9-45b9-b66d-77c5827acada",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Devuelve @microsoft.graph.downloadUrl: un enlace directo de corta duración,\n * sin cabecera de autorización, así que quien llama nunca recibe una\n * credencial de Graph. HelpDesk lo usa para una redirección y no lo guarda.\n *\n * Sin $select en la consulta, a propósito: Impulsa comprobó (22-sep-2026) que\n * con $select Graph omite la anotación, porque no es una propiedad del\n * driveItem.\n */\nconst source = $('Code - Validar descarga').first().json;\nconst response = $input.first()?.json ?? {};\nconst statusCode = Number(response.statusCode);\nconst body = response.body ?? {};\nconst fail = (code, message, httpStatus) => [{ json: { ok: false, operationId: source.operationId, code, message, httpStatus } }];\nif (statusCode !== 200 || !body.id) {\n  const message = body?.error?.message ?? ('Graph rechazó la consulta con HTTP ' + statusCode + '.');\n  return fail(statusCode === 429 ? 'THROTTLED' : 'GRAPH_DOWNLOAD_URL_FAILED', String(message).slice(0, 1000), statusCode === 429 ? 429 : (statusCode === 404 ? 404 : 502));\n}\nif (body.deleted) return fail('OBJECT_DELETED', 'El objeto fue eliminado.', 409);\nif (!body.file) return fail('OBJECT_NOT_FILE', 'El objeto no es un archivo.', 409);\nconst downloadUrl = body['@microsoft.graph.downloadUrl'];\nif (typeof downloadUrl !== 'string' || !downloadUrl) return fail('DOWNLOAD_URL_UNAVAILABLE', 'Graph no expuso una URL de descarga.', 502);\nreturn [{ json: { ok: true, operationId: source.operationId, idempotencyKey: source.idempotencyKey, object: { id: String(body.id), downloadUrl }, httpStatus: 200 } }];"
+      },
+      "name": "Code - Preparar descarga",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        600
+      ],
+      "id": "b8a0a085-5028-4ade-bde7-7f4bef95bd11"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "name": "Respond - Descarga",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        880,
+        600
+      ],
+      "id": "b644af85-f1ea-48c1-8059-c13609cba1c5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Sesion": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar sesion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar sesion": {
+      "main": [
+        [
+          {
+            "node": "Graph - Crear sesion de carga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Crear sesion de carga": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar sesion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Preparar sesion": {
+      "main": [
+        [
+          {
+            "node": "Respond - Sesion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Confirmar": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar confirmacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar confirmacion": {
+      "main": [
+        [
+          {
+            "node": "Graph - Consultar objeto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Consultar objeto": {
+      "main": [
+        [
+          {
+            "node": "Code - Verificar objeto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Verificar objeto": {
+      "main": [
+        [
+          {
+            "node": "Respond - Confirmacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Descarga": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar descarga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar descarga": {
+      "main": [
+        [
+          {
+            "node": "Graph - Consultar descarga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Consultar descarga": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar descarga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Preparar descarga": {
+      "main": [
+        [
+          {
+            "node": "Respond - Descarga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "executionTimeout": 60,
+    "errorWorkflow": "A10yl90Zh5otaSlJ",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "instanceId": "7a9983923c0801c9a0aa203f0ee2e71bbbcc4fe5845ab1356f5be3272a8f9f6e"
+  },
+  "tags": []
+}

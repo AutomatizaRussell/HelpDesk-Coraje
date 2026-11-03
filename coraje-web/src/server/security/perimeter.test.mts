@@ -84,6 +84,10 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
     acceso: "EMPLEADO",
     razon: "Lo que muestra la campana al abrirse; solo avisos de quien la pide",
   },
+  "/api/tickets/[idTicket]/adjuntos/[idAdjunto]": {
+    acceso: "EMPLEADO",
+    razon: "Descarga de un adjunto (U7); solo si la persona ve el evento que lo trajo",
+  },
   "/api/interno/avisos/escalar": {
     acceso: "PUBLICA",
     razon: "La llama n8n a diario; su credencial es un secreto en cabecera que la ruta comprueba",

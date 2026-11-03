@@ -509,6 +509,29 @@ FROM helpdesk.revision_salud ORDER BY ejecutada_at DESC LIMIT 5;
 **Registros del servidor:** una línea JSON por evento en `docker logs` del contenedor
 `web`. Para seguir un ticket: `docker logs <web> 2>&1 | grep '"idTicket":"<uuid>"'`.
 
+### Adjuntos (U7)
+
+`specs/tickets.md` §14.8. Lo que hace falta, una vez:
+1. En el OneDrive de `info.admingct@`, crear la carpeta `HelpDesk/Adjuntos`. Graph
+   probablemente la crea en la primera subida, pero no está verificado.
+2. En n8n, crear la credencial *Header Auth* «HelpDesk adjuntos · x-helpdesk-secret»,
+   cabecera `x-helpdesk-secret`, con un valor nuevo y largo.
+3. Importar `n8n/HELPDESK - Adjuntos V1.json`, asignar esa credencial a los tres
+   webhooks y «Graph info.admingct» a los tres nodos de Graph, y activarlo.
+4. En Coolify, `N8N_ADJUNTOS_WEBHOOK_URL` = `https://<n8n>/webhook/helpdesk/adjuntos` (la
+   base: la aplicación añade `/sesion`, `/confirmar` y `/descarga`) y
+   `N8N_ADJUNTOS_SECRET` = el mismo valor del paso 2. Redesplegar.
+
+Sin las dos variables, el selector aparece y cada archivo falla con «Los adjuntos no
+están disponibles en este momento», y el registro dice `adjuntos.sin_configurar`.
+
+Comprobación tras desplegar: la tabla existe. `coraje_etl` no puede leer sus filas, a
+propósito (solo la aplicación inserta y lee); el adjunto se comprueba en el ticket.
+
+```bash
+docker exec -it coraje_postgres psql -U coraje_etl -d coraje -c "d helpdesk.ticket_adjunto"
+```
+
 ### Avisos y escalamiento (U15)
 
 Los avisos a empleados no necesitan nada en n8n: se escriben en la base con cada

@@ -6,6 +6,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import {
+  confirmAttachments,
+  isAttachmentError,
+  uploadedAttachmentSchema,
+  type ConfirmedAttachment,
+} from "@/server/attachments/attachment-broker";
+import { MAX_ATTACHMENTS_PER_SUBMIT } from "@/server/attachments/attachment-rules";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import {
   addInternalNote,
@@ -106,6 +113,46 @@ async function succeeded(message: string, mailIds: readonly string[] = []): Prom
 }
 
 // ---------------------------------------------------------------------------
+// Adjuntos (U7, tickets.md §14)
+// ---------------------------------------------------------------------------
+
+const attachmentsSchema = z
+  .array(uploadedAttachmentSchema)
+  .max(MAX_ATTACHMENTS_PER_SUBMIT, { error: `Puedes adjuntar hasta ${MAX_ATTACHMENTS_PER_SUBMIT} archivos por envío.` });
+
+/**
+ * Lee el campo `adjuntos` (lo escribe `AttachmentPicker`) y confirma cada
+ * archivo contra Graph **antes** de abrir la transacción del comando: una
+ * llamada de red no debe tener bloqueada la fila del ticket. Si un archivo no
+ * se confirma, no se guarda nada y el formulario vuelve con el motivo.
+ */
+async function readAttachments(
+  formData: FormData,
+): Promise<{ ok: true; adjuntos: ConfirmedAttachment[] } | { ok: false; state: TicketFormState }> {
+  const raw = formData.get("adjuntos");
+  const fail = (message: string) => ({
+    ok: false as const,
+    state: { status: "error" as const, message, fieldErrors: { adjuntos: message }, values: formValues(formData) },
+  });
+  if (raw === null || raw === "" || raw === "[]") return { ok: true, adjuntos: [] };
+  let json: unknown;
+  try {
+    json = JSON.parse(String(raw));
+  } catch {
+    return fail("La lista de adjuntos no es válida. Vuelve a elegir los archivos.");
+  }
+  const parsed = attachmentsSchema.safeParse(json);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "La lista de adjuntos no es válida.");
+  try {
+    return { ok: true, adjuntos: await confirmAttachments(parsed.data) };
+  } catch (error) {
+    if (isAttachmentError(error)) return fail(error.message);
+    logEvent("error", "adjuntos.confirmacion_fallida", {}, error);
+    return fail("No fue posible verificar los adjuntos. Intenta de nuevo en unos minutos.");
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 /**
  * Personas elegidas en un selector múltiple. Llegan como varios valores del
@@ -134,11 +181,17 @@ export async function createTicketAction(_prev: TicketFormState, formData: FormD
     idObservadores: formData.getAll("idObservadores"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
+  const attachments = await readAttachments(formData);
+  if (!attachments.ok) return attachments.state;
 
   let idTicket: string;
   let mailIds: string[];
   try {
-    ({ idTicket, mailIds } = await createInternalTicket({ idPersonal: employee.idPersonal, ...parsed.data }));
+    ({ idTicket, mailIds } = await createInternalTicket({
+      idPersonal: employee.idPersonal,
+      ...parsed.data,
+      adjuntos: attachments.adjuntos,
+    }));
   } catch (error) {
     return failed(error, formData, "crear el ticket");
   }
@@ -199,10 +252,12 @@ export async function respondTicketAction(_prev: TicketFormState, formData: Form
     respuesta: formData.get("respuesta"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
+  const attachments = await readAttachments(formData);
+  if (!attachments.ok) return attachments.state;
 
   let mailIds: string[];
   try {
-    ({ mailIds } = await respondTicket({ idPersonal: employee.idPersonal, ...parsed.data }));
+    ({ mailIds } = await respondTicket({ idPersonal: employee.idPersonal, ...parsed.data, adjuntos: attachments.adjuntos }));
   } catch (error) {
     return failed(error, formData, "responder el ticket");
   }
@@ -253,9 +308,11 @@ export async function addInternalNoteAction(_prev: TicketFormState, formData: Fo
     nota: formData.get("nota"),
   });
   if (!parsed.success) return invalid(parsed.error, formData);
+  const attachments = await readAttachments(formData);
+  if (!attachments.ok) return attachments.state;
 
   try {
-    await addInternalNote({ idPersonal: employee.idPersonal, ...parsed.data });
+    await addInternalNote({ idPersonal: employee.idPersonal, ...parsed.data, adjuntos: attachments.adjuntos });
   } catch (error) {
     return failed(error, formData, "registrar la nota");
   }

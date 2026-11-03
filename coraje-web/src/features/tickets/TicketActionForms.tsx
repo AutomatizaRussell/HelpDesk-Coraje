@@ -1,11 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 
 import { IconButton } from "@/design-system/components/IconButton";
 import { buttonRecipe, type ButtonVariant } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
+import { AttachmentPicker } from "@/features/attachments/AttachmentPicker";
 import { FormFeedback } from "@/features/forms/FormFeedback";
 
 import type { FollowCandidate } from "@/server/tickets/ticket-queries";
@@ -76,10 +77,21 @@ function TextField({
   );
 }
 
-function Submit({ pending, variant, children }: { pending: boolean; variant: ButtonVariant; children: ReactNode }) {
+function Submit({
+  pending,
+  uploading = false,
+  variant,
+  children,
+}: {
+  pending: boolean;
+  /** Hay un adjunto subiendo: enviar ahora lo dejaría fuera. */
+  uploading?: boolean;
+  variant: ButtonVariant;
+  children: ReactNode;
+}) {
   return (
-    <button type="submit" className={buttonRecipe({ variant })} disabled={pending}>
-      {pending ? "Guardando…" : children}
+    <button type="submit" className={buttonRecipe({ variant })} disabled={pending || uploading}>
+      {pending ? "Guardando…" : uploading ? "Subiendo adjuntos…" : children}
     </button>
   );
 }
@@ -88,6 +100,7 @@ function Submit({ pending, variant, children }: { pending: boolean; variant: But
 
 export function RespondForm({ idTicket }: { idTicket: string }) {
   const { state, formAction, pending, formKey } = useTicketForm(respondTicketAction);
+  const [uploading, setUploading] = useState(false);
   return (
     <form key={formKey} action={formAction} className="space-y-3">
       <input type="hidden" name="idTicket" value={idTicket} />
@@ -99,20 +112,23 @@ export function RespondForm({ idTicket }: { idTicket: string }) {
         state={state}
         rows={6}
       />
-      <Submit pending={pending} variant="primary">Responder y cerrar</Submit>
+      <AttachmentPicker onBusyChange={setUploading} error={state.status === "error" ? state.fieldErrors.adjuntos : undefined} />
+      <Submit pending={pending} uploading={uploading} variant="primary">Responder y cerrar</Submit>
     </form>
   );
 }
 
 export function InternalNoteForm({ idTicket }: { idTicket: string }) {
   const { state, formAction, pending, formKey } = useTicketForm(addInternalNoteAction);
+  const [uploading, setUploading] = useState(false);
   return (
     <form key={formKey} action={formAction} className="space-y-3">
       <input type="hidden" name="idTicket" value={idTicket} />
       <FormFeedback state={state} />
       <TextField name="nota" label="Nota interna" hint="Solo la ve el equipo. El solicitante no la recibe." state={state} />
+      <AttachmentPicker onBusyChange={setUploading} error={state.status === "error" ? state.fieldErrors.adjuntos : undefined} />
       {/* Primaria dentro de su pestaña: cada pestaña es su propia tarea. */}
-      <Submit pending={pending} variant="primary">Guardar nota</Submit>
+      <Submit pending={pending} uploading={uploading} variant="primary">Guardar nota</Submit>
     </form>
   );
 }

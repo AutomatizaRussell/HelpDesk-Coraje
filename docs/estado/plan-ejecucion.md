@@ -246,7 +246,11 @@ negativa · reprocesar la ingesta legacy no duplica eventos.
 
 **Depende de:** U0, U2.
 
-### U7 · Ciclo interno del ticket — **ejercitada y aprobada, salvo adjuntos**
+### U7 · Ciclo interno del ticket — **ejercitada y aprobada, salvo adjuntos (construidos el 03-nov-2026, corte 43, sin ejercitar)**
+
+> **03-nov-2026:** adjuntos construidos en el OneDrive de `info.admingct@`
+> (`specs/tickets.md` §14.8). La puesta en marcha (carpeta, credencial, workflow y dos
+> variables) está en `estado/operacion.md`, «Adjuntos (U7)». El cierre de U7 es §14.7.
 
 > **30-sep-2026, aprobación del usuario:** las pruebas B (ciclo con correos, negativa
 > del `INSERT`, calendario de 2026) quedan aprobadas. Evidencia en `estado/handoff.md`

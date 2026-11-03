@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { useFormDialogClose } from "@/design-system/patterns/form-dialog/FormDialog";
 import { buttonRecipe } from "@/design-system/recipes/button";
@@ -9,6 +9,7 @@ import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system
 import { notice, surface } from "@/design-system/recipes/surface";
 import { focusRing } from "@/design-system/recipes/interaction";
 import { cn } from "@/design-system/utilities/cn";
+import { AttachmentPicker } from "@/features/attachments/AttachmentPicker";
 import type { CreationCatalog, FollowCandidate } from "@/server/tickets/ticket-queries";
 
 import { IDLE_FORM_STATE } from "./action-state";
@@ -42,6 +43,7 @@ export function CreateTicketForm({
   maxObservers: number;
 }) {
   const [state, formAction, pending] = useActionState(createTicketAction, IDLE_FORM_STATE);
+  const [uploading, setUploading] = useState(false);
   const failed = state.status === "error" ? state : null;
   // Dentro de la ventana emergente, «Cancelar» la cierra y el diálogo ya es la
   // superficie; en la página completa, «Cancelar» vuelve a la bandeja.
@@ -100,6 +102,8 @@ export function CreateTicketForm({
           )}
         </div>
 
+        <AttachmentPicker onBusyChange={setUploading} error={failed?.fieldErrors.adjuntos} />
+
         <details
           className="rounded-control border border-line px-4 py-3"
           open={Boolean(failed?.values.idObservadores || failed?.fieldErrors.idObservadores)}
@@ -122,8 +126,8 @@ export function CreateTicketForm({
         </details>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
-          <button type="submit" className={buttonRecipe({ variant: "primary" })} disabled={pending}>
-            {pending ? "Creando…" : "Crear ticket"}
+          <button type="submit" className={buttonRecipe({ variant: "primary" })} disabled={pending || uploading}>
+            {pending ? "Creando…" : uploading ? "Subiendo adjuntos…" : "Crear ticket"}
           </button>
           {closeDialog ? (
             <button type="button" onClick={closeDialog} className={buttonRecipe({ variant: "secondary" })}>Cancelar</button>
