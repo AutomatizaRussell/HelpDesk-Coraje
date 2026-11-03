@@ -49,8 +49,13 @@ RUN pnpm build
 FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 
+# Única fuente de estas cuatro: el compose ya no las repite (ver su comentario).
+# HOSTNAME: Docker lo define con el id del contenedor, y server.js escucha en
+# la dirección de ese nombre, la de una sola de sus dos redes. 0.0.0.0 lo abre
+# en todas (mismo patrón que el ejemplo `with-docker` de Next).
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs

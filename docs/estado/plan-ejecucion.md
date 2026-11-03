@@ -623,7 +623,16 @@ en PowerApps (U24)», confirma que no hay nada que perder. Después, con el orde
 sección, la ingesta termina en *Success* tras la migración, y `/salud` carga sin la
 sección de divergencias.
 
-### U27 · Logotipos sin optimizador — **construida el 03-nov-2026 (corte 45), sin desplegar**
+### U28 · Variables de imagen fuera del compose — **construida el 03-nov-2026 (corte 46), sin desplegar**
+
+`NODE_ENV`, `PORT`, `HOSTNAME` y `NEXT_TELEMETRY_DISABLED` salen del `environment`
+de `web` y quedan solo en la etapa `runner` (`operacion.md`, «Despliegue»).
+
+**Condición de cierre:** el log ya no muestra el aviso de `NODE_ENV` ni
+`--build-arg NODE_ENV`, y `web` responde. En el despliegue siguiente, `deps` sale
+`CACHED` (este cambia los `ARG` y la invalida una vez).
+
+### U27 · Logotipos sin optimizador — **desplegada el 03-nov-2026 (corte 45), falta la revisión en pantalla**
 
 `next/image` redimensionaba en el servidor, con `sharp`, PNG de 2422 px para
 mostrarlos a 36-200 px, y lo repetía tras cada despliegue. Ahora `public/` lleva
@@ -636,12 +645,14 @@ se ve desplegando, y se descartó.
 sidebar desplegado y la columna replegada, y su URL sale de `/_next/static/media/`, no
 de `/_next/image`.
 
-### U26 · Economía del despliegue — **desplegada el 03-nov-2026 (corte 44); falta la caché entre despliegues**
+### U26 · Economía del despliegue — **cerrada el 03-nov-2026 (corte 44)**
 
 Primer despliegue (`7bc9412`): 3 min 12 s contra 5 min 30 s, sin `COPY node_modules`,
 `migrator` con 95 paquetes y su imagen exportada en 38 s, `migrate` terminó y `web`
-arrancó. El segundo despliegue del mismo commit no construyó: Coolify reutiliza las
-imágenes del mismo SHA. Queda abierta la segunda condición, con el próximo commit.
+arrancó. Despliegue de `1c2e5a6`: `reused 456, downloaded 0` en la app y
+`reused 95, downloaded 0` en `migrator`. La capa `deps` no salió de caché porque el
+usuario había borrado `N8N_OUTBOX_KICK_URL` y cambiaron los `ARG` (U28). Repetir el
+despliegue de un mismo commit no construye: Coolify reutiliza las imágenes del SHA.
 
 Primera unidad del frente de economía de recursos (`CLAUDE.md`). Cada despliegue
 corre en la misma VPS que las demás aplicaciones; el del 03-nov tardó 5 min 30 s, casi

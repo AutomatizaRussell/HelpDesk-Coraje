@@ -1,6 +1,20 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 46, U28 variables de imagen fuera del compose, SIN DESPLEGAR)
+SOBRE:   `1c2e5a6` (corte 45)
+RAMA:    main
+UNIDAD:  U28 (plan-ejecucion.md). `NODE_ENV`, `PORT`, `HOSTNAME` y
+         `NEXT_TELEMETRY_DISABLED` solo en la etapa `runner`: en el compose,
+         Coolify las pasaba como argumentos de build y avisaba por `NODE_ENV`.
+         Evidencia: ninguna se lee en `src/` fuera de pruebas; 205/205 pruebas
+         (`env.contract.test.mts` incluida). **Sin verificar:** que `web`
+         arranque escuchando en 0.0.0.0, se ve desplegando.
+         U26 cerrada con el despliegue de `1c2e5a6` (0 paquetes descargados).
+         U27 desplegada; falta mirar los logotipos en pantalla.
+SIGUE:   desplegar y comprobar U28, y revisar en pantalla los logotipos de U27.
+
+--- Corte 45, para contexto:
 CORTE:   03-nov-2026 (corte 45, U27 logotipos sin optimizador, SIN DESPLEGAR)
 SOBRE:   `7bc9412` (corte 44)
 RAMA:    main
@@ -1508,6 +1522,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `1c2e5a6` | **Corte 45.** U27: logotipos sin optimizador. Desplegado el 03-nov-2026; cerró la caché de U26 |
 | `7bc9412` | **Corte 44.** U26: despliegue liviano. Desplegado el 03-nov-2026: 3 min 12 s contra 5 min 30 s |
 | `5d71fd5` | **Corte 43.** U7: adjuntos (con `429593b`). Desplegado el 03-nov-2026; puesta en marcha pendiente |
 | `b90cc94` | **Corte 42.** U25: tickets de prueba borrados. Publicado el 03-nov-2026 junto con el corte 41 |
@@ -1632,7 +1647,7 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar U27 y comprobar U26 y U27
+## Acción inmediata para la siguiente sesión — desplegar U28 y revisar los logotipos de U27
 
 Se desvía de la cola (U7, adjuntos) por el frente de economía de recursos que pidió el
 usuario el 03-nov. Condiciones en `plan-ejecucion.md`, U26 y U27. Después se vuelve a

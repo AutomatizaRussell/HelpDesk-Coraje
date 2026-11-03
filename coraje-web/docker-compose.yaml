@@ -27,12 +27,12 @@ services:
       migrate:
         condition: service_completed_successfully
 
+    # NODE_ENV, PORT, HOSTNAME y NEXT_TELEMETRY_DISABLED los fija la etapa
+    # `runner` del Dockerfile, no este bloque (U28): Coolify convierte cada
+    # clave literal de aquí en argumento de build, y con NODE_ENV avisaba en
+    # cada despliegue de que se saltarían las devDependencies.
     environment:
-      NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
-      NEXT_TELEMETRY_DISABLED: "1"
-      PORT: "3000"
-      HOSTNAME: "0.0.0.0"
       # Identidad de empleados (specs/acceso-empleados.md, U3) — variables
       # nuevas en Coolify antes de este deploy, nunca al revés.
       ENTRA_TENANT_ID: ${ENTRA_TENANT_ID}

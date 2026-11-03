@@ -148,9 +148,14 @@ aplicaciones, así que se hace liviano:
   su propio lockfile. **Subir Prisma o dotenv en la app exige subirlos también allí**
   (`pnpm install` dentro de `migrator/`); `migrator.contract.test.mts` falla si no.
 
-Ajustes de Coolify que el log del 03-nov señaló, sin código: borrar
-`N8N_OUTBOX_KICK_URL` (la cola de salida se retiró en U24) y desmarcar *Available at
-Buildtime* en `NODE_ENV`.
+- **Coolify convierte en argumento de build** cada variable de Coolify marcada para
+  build y cada clave literal del `environment` del compose, y declara un `ARG` por cada
+  una en todas las etapas. Cambiar ese conjunto (crear o borrar una variable así)
+  invalida la caché de capas en el despliegue siguiente, una vez. Por eso `NODE_ENV`,
+  `PORT`, `HOSTNAME` y `NEXT_TELEMETRY_DISABLED` viven solo en el Dockerfile (U28): en
+  el compose, `NODE_ENV` aparecía en Coolify como «Defined in Compose», no se podía
+  editar y avisaba en cada build de que se saltarían las devDependencies.
+  `N8N_OUTBOX_KICK_URL`, sobrante de U24, la borró el usuario el 03-nov.
 
 Diferencias con Impulsa que conviene conocer antes de copiar cualquier procedimiento
 suyo. Las dos primeras filas dejaron de ser diferencia de fondo — están **decididas
