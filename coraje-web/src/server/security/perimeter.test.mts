@@ -88,6 +88,10 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
     acceso: "EMPLEADO",
     razon: "Descarga de un adjunto (U7); solo si la persona ve el evento que lo trajo",
   },
+  "/api/tickets/[idTicket]/adjuntos/[idAdjunto]/vista": {
+    acceso: "EMPLEADO",
+    razon: "Vista previa de un adjunto (U29); las mismas reglas que la descarga",
+  },
   "/ingreso": {
     acceso: "PUBLICA",
     razon: "Detecta en el navegador si hay sesión de Conecta y elige el modo de entrada",

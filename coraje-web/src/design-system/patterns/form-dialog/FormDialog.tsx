@@ -27,6 +27,8 @@ export type FormDialogProps = {
   onClose: () => void;
   /** Pregunta antes de descartar lo escrito. */
   discardQuestion?: string;
+  /** `wide`: el ancho del contenido, para mostrar un archivo (U29). Por omisión, el de un formulario. */
+  size?: "form" | "wide";
   children: ReactNode;
 };
 
@@ -40,7 +42,7 @@ export function useFormDialogClose(): (() => void) | null {
   return useContext(FormDialogCloseContext);
 }
 
-export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DISCARD_QUESTION, children }: FormDialogProps) {
+export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DISCARD_QUESTION, size = "form", children }: FormDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const dirty = useRef(false);
   const titleId = useId();
@@ -80,7 +82,10 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
       onInput={() => {
         dirty.current = true;
       }}
-      className="m-auto w-full max-w-form overflow-y-auto rounded-surface border border-line bg-surface shadow-overlay backdrop:bg-shell-scrim"
+      className={cn(
+        "m-auto w-full overflow-y-auto rounded-surface border border-line bg-surface shadow-overlay backdrop:bg-shell-scrim",
+        size === "wide" ? "max-w-content" : "max-w-form",
+      )}
     >
       {open && (
         <>

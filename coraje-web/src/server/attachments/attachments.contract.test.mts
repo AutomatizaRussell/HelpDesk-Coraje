@@ -25,29 +25,40 @@ const WORKFLOW = JSON.parse(readFileSync(path.join(REPO_DIR, "n8n/HELPDESK - Adj
 const MIGRATION = readFileSync(path.join(WEB_DIR, "prisma/migrations/20261103130000_adjuntos_ticket/migration.sql"), "utf8");
 const BROKER = readFileSync(path.join(THIS_DIR, "attachment-broker.ts"), "utf8");
 
-test("tres webhooks, los que llama attachment-broker.ts, con su credencial Header Auth", () => {
+test("cinco webhooks, los que llama attachment-broker.ts, con su credencial Header Auth", () => {
   const webhooks = WORKFLOW.nodes.filter((node) => node.type === "n8n-nodes-base.webhook");
-  assert.deepEqual(
-    webhooks.map((node) => node.parameters.path).sort(),
-    ["helpdesk/adjuntos/confirmar", "helpdesk/adjuntos/descarga", "helpdesk/adjuntos/sesion"],
-  );
+  assert.deepEqual(webhooks.map((node) => node.parameters.path).sort(), [
+    "helpdesk/adjuntos/confirmar",
+    "helpdesk/adjuntos/descarga",
+    "helpdesk/adjuntos/organizar",
+    "helpdesk/adjuntos/sesion",
+    "helpdesk/adjuntos/vista",
+  ]);
   for (const node of webhooks) {
     assert.equal(node.credentials?.httpHeaderAuth?.name, "HelpDesk adjuntos · x-helpdesk-secret");
   }
-  for (const operation of ["sesion", "confirmar", "descarga"]) {
+  for (const operation of ["sesion", "confirmar", "descarga", "vista", "organizar"]) {
     assert.match(BROKER, new RegExp(`"${operation}"`), `el broker no llama a ${operation}`);
   }
 });
 
 test("Graph solo en el OneDrive de la credencial, y sin enlaces compartidos (§14.1)", () => {
   const graph = WORKFLOW.nodes.filter((node) => node.type === "n8n-nodes-base.httpRequest");
-  assert.equal(graph.length, 3);
+  // sesión, confirmar, descarga, vista, y crear, leer y mover en la carpeta del ticket.
+  assert.equal(graph.length, 7);
   for (const node of graph) {
     assert.match(String(node.parameters.url), /graph\.microsoft\.com\/v1\.0\/me\/drive\//, `${node.name} sale de /me/drive`);
     assert.equal(node.credentials?.microsoftOAuth2Api?.name, "Graph info.admingct");
   }
   // Impulsa publica un enlace para toda la organización; aquí la descarga la decide HelpDesk.
   assert.doesNotMatch(JSON.stringify(WORKFLOW), /createLink/);
+});
+
+test("la carpeta del ticket se crea sin reemplazar la que ya existe (U29)", () => {
+  const create = WORKFLOW.nodes.find((node) => node.name === "Graph - Crear carpeta del ticket");
+  assert.match(String(create?.parameters.jsonBody), /conflictBehavior': 'fail'/);
+  // «replace» borraría los adjuntos de un envío anterior del mismo ticket.
+  assert.doesNotMatch(JSON.stringify(WORKFLOW), /conflictBehavior': 'replace'/);
 });
 
 test("la descarga pide el objeto sin $select, para que Graph incluya la URL", () => {

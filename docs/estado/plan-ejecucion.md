@@ -680,7 +680,7 @@ su número cambiara, la migración se revierte entera.
 prueba borrados (U25)», devuelve solo `SHAREPOINT_LEGACY`, con el mismo total que
 antes de publicar.
 
-### U29 · Ciclo del ticket, segunda versión — **en construcción desde el 03-nov-2026**
+### U29 · Ciclo del ticket, segunda versión — **construida el 03-nov-2026 (cortes 47-52), sin ejercitar**
 
 Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por parte:
 1. Retirar «Rechazar» y unificar el cuadro de escritura (corte 47).
@@ -688,7 +688,7 @@ Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por part
 3. Correos al observador, al aprobador, al abrir y al cerrar; sin escalamiento diario (corte 49).
 4. Código `ADM-202610-1` (corte 50).
 5. Toasts (corte 51).
-6. Vista previa de adjuntos y carpeta por ticket.
+6. Vista previa de adjuntos y carpeta por ticket (corte 52).
 
 **Condición de cierre:** cada parte ejercitada en el despliegue por el usuario.
 

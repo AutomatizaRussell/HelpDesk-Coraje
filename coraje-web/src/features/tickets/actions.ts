@@ -12,6 +12,7 @@ import {
   uploadedAttachmentSchema,
   type ConfirmedAttachment,
 } from "@/server/attachments/attachment-broker";
+import { organizeAfterResponse } from "@/server/attachments/attachment-organize";
 import { MAX_ATTACHMENTS_PER_SUBMIT } from "@/server/attachments/attachment-rules";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import {
@@ -200,6 +201,7 @@ export async function createTicketAction(_prev: TicketFormState, formData: FormD
   // El aviso a quien recibe el ticket sale antes de navegar. Si falla, el
   // detalle lo muestra en «Correos», con la opción de reenviarlo.
   await dispatchTicketMail(mailIds);
+  organizeAfterResponse(idTicket, attachments.adjuntos);
   revalidatePath("/tickets");
   // Fuera del try: redirect() funciona lanzando, y un catch lo tragaría.
   redirect(`/tickets/${idTicket}?creado=1`);
@@ -274,6 +276,7 @@ export async function respondTicketAction(_prev: TicketFormState, formData: Form
   }
 
   const result = await succeeded("Respuesta guardada. El ticket quedó cerrado.", mailIds);
+  organizeAfterResponse(parsed.data.idTicket, attachments.adjuntos);
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return result;
 }
@@ -306,6 +309,7 @@ export async function addInternalNoteAction(_prev: TicketFormState, formData: Fo
     return failed(error, formData, "registrar la nota");
   }
 
+  organizeAfterResponse(parsed.data.idTicket, attachments.adjuntos);
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return succeeded("Nota registrada.");
 }

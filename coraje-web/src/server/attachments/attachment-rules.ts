@@ -33,6 +33,17 @@ export const ALLOWED_EXTENSIONS = {
   zip: "application/zip",
 } as const satisfies Record<string, string>;
 
+/**
+ * Lo que el visor de OneDrive muestra dentro de HelpDesk (U29): PDF, imágenes
+ * y Office. CSV y ZIP no tienen vista previa útil y se descargan.
+ */
+const PREVIEWABLE = new Set(["pdf", "png", "jpg", "jpeg", "webp", "gif", "doc", "docx", "xls", "xlsx", "ppt", "pptx"]);
+
+export function isPreviewable(name: string): boolean {
+  const extension = extensionOf(name);
+  return extension !== null && PREVIEWABLE.has(extension);
+}
+
 /** Para el atributo `accept` del selector de archivos. */
 export const ACCEPT_ATTRIBUTE = Object.keys(ALLOWED_EXTENSIONS)
   .map((extension) => `.${extension}`)

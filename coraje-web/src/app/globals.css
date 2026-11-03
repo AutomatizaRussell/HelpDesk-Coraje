@@ -106,6 +106,7 @@
   --hd-size-form-max: 768px;
   --hd-size-notice-panel: 384px;
   --hd-size-toast: 384px;
+  --hd-size-preview: 75vh;
 
   --hd-layer-rail: 20;
   --hd-layer-topbar: 30;
@@ -398,6 +399,7 @@
   --spacing-sidebar-md: var(--hd-size-sidebar-md);
   --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
   --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
+  --spacing-preview: var(--hd-size-preview);
   --container-access-panel: var(--hd-size-access-panel);
   --container-content: var(--hd-size-content-max);
   --container-form: var(--hd-size-form-max);

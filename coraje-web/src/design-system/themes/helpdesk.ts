@@ -136,6 +136,9 @@ export const helpdeskTheme = {
     // Toast (U29): un mensaje de una o dos líneas que aparece en una esquina y
     // se va solo. En móvil lo limita el viewport, con su margen.
     toast: "384px",
+    // Alto del visor de adjuntos (U29): casi toda la ventana, con margen para
+    // el título de la ventana y el botón de descargar.
+    preview: "75vh",
   },
   layer: {
     rail: "20",

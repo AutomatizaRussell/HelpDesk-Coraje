@@ -1,6 +1,21 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 52, U29 parte 6: vista previa y carpeta por ticket, SIN DESPLEGAR)
+SOBRE:   `9b18790` (corte 51)
+RAMA:    main
+UNIDAD:  U29, parte 6 de 6 (tickets.md §14.9). Los adjuntos que se pueden abrir
+         (PDF, imágenes, Office) se abren en una ventana de HelpDesk con el
+         visor de OneDrive (`…/adjuntos/[id]/vista`); CSV y ZIP se descargan.
+         Tras guardar, los adjuntos se mueven a `…/Adjuntos/<código>`
+         (`organizeAfterResponse`, sin poder fallar la acción). El workflow
+         gana `vista` y `organizar` con los ids de los nodos previos intactos.
+         Evidencia: 18/18 de la lógica del workflow con respuestas simuladas;
+         `tsc`, `lint`, 205/205, `build`. **U29 queda construida entera**,
+         sin ejercitar.
+SIGUE:   desplegar, reimportar el workflow de adjuntos y ejercitar U29 entera.
+
+--- Corte 51, para contexto:
 CORTE:   03-nov-2026 (corte 51, U29 parte 5: toasts, SIN DESPLEGAR)
 SOBRE:   `6b9543f` (corte 50)
 RAMA:    main
@@ -1597,6 +1612,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `9b18790` | **Corte 51.** U29 parte 5: toasts. Publicado el 03-nov-2026 |
 | `6b9543f` | **Corte 50.** U29 parte 4: código `ADM-202611-1`. Publicado el 03-nov-2026 |
 | `f5c3baf` | **Corte 49.** U29 parte 3: cuatro correos, sin escalamiento. Publicado el 03-nov-2026 |
 | `a02378b` | **Corte 48.** U29 parte 2: aprobación que bloquea el cierre. Publicado el 03-nov-2026 |

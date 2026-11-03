@@ -549,6 +549,11 @@ FROM helpdesk.revision_salud ORDER BY ejecutada_at DESC LIMIT 5;
 Sin las dos variables, el selector aparece y cada archivo falla con «Los adjuntos no
 están disponibles en este momento», y el registro dice `adjuntos.sin_configurar`.
 
+**U29 añade dos webhooks** al mismo workflow (`vista` y `organizar`). Reimportar
+`n8n/HELPDESK - Adjuntos V1.json` sobre el mismo workflow, asignar las credenciales a
+los nodos nuevos (los existentes conservan sus ids) y publicar. No cambia ninguna
+variable: la aplicación añade la ruta a la misma base.
+
 Comprobación tras desplegar: la tabla existe. `coraje_etl` no puede leer sus filas, a
 propósito (solo la aplicación inserta y lee); el adjunto se comprueba en el ticket.
 

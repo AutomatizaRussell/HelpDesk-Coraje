@@ -326,6 +326,333 @@
         600
       ],
       "id": "b644af85-f1ea-48c1-8059-c13609cba1c5"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helpdesk/adjuntos/vista",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Vista",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        900
+      ],
+      "id": "776dc24e-6ef6-4684-a00e-b0ddbcaa5831",
+      "webhookId": "0b8b7c91-1c54-44c9-89a6-8efc7253ede7",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "HelpDesk adjuntos · x-helpdesk-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Contrato helpdesk.adjuntos.vista v1 (U29). Como la descarga: el id del objeto\n * lo lee HelpDesk de PostgreSQL después de comprobar que la persona puede ver\n * el adjunto.\n */\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst required = (value, path) => {\n  if (typeof value !== 'string' || !value.trim()) throw new Error(path + ' debe ser un texto no vacío.');\n  return value.trim();\n};\n// El broker no recibe bytes ni URLs: si llegan, el llamador está mal construido.\nif (body.uploadUrl !== undefined || body.file?.content !== undefined || body.file?.base64 !== undefined) {\n  throw new Error('El broker no acepta binarios, Base64 ni uploadUrl de entrada.');\n}\nif (body.event !== 'helpdesk.adjuntos.vista' || Number(body.version) !== 1) throw new Error('Contrato helpdesk.adjuntos.vista v1 inválido.');\nconst operationId = required(body.operation?.id, 'operation.id');\nconst idempotencyKey = required(body.operation?.idempotencyKey, 'operation.idempotencyKey');\nconst objectId = required(body.object?.id, 'object.id');\nreturn [{ json: { operationId, idempotencyKey, objectId } }];"
+      },
+      "name": "Code - Validar vista",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        900
+      ],
+      "id": "6f7fe581-f540-458e-a06d-cf09bed3f3db"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "method": "POST",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent($json.objectId) + '/preview' }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {} }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Vista previa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        440,
+        900
+      ],
+      "id": "62503c03-aee8-4261-94a9-7151721c2e5a",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Devuelve la URL de vista previa de OneDrive (POST /preview → getUrl): el\n * visor de Microsoft muestra PDF, imágenes y Office dentro de un iframe de\n * HelpDesk, renderizados en sus servidores. Es temporal y no se guarda.\n */\nconst source = $('Code - Validar vista').first().json;\nconst response = $input.first()?.json ?? {};\nconst statusCode = Number(response.statusCode);\nconst body = response.body ?? {};\nif (statusCode !== 200 || typeof body.getUrl !== 'string' || !body.getUrl) {\n  const message = body?.error?.message ?? ('Graph no dio vista previa (HTTP ' + statusCode + ').');\n  return [{ json: { ok: false, operationId: source.operationId, code: 'GRAPH_PREVIEW_FAILED', message: String(message).slice(0, 1000), httpStatus: statusCode === 404 ? 404 : 502 } }];\n}\nreturn [{ json: { ok: true, operationId: source.operationId, idempotencyKey: source.idempotencyKey, object: { previewUrl: body.getUrl }, httpStatus: 200 } }];"
+      },
+      "name": "Code - Preparar vista",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        900
+      ],
+      "id": "55a5c477-475e-4db8-88cd-c4ffad2a4fd7"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "name": "Respond - Vista",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        880,
+        900
+      ],
+      "id": "091117c8-665a-4021-8a28-10149f4e4f3f"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helpdesk/adjuntos/organizar",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Organizar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1200
+      ],
+      "id": "8991903d-7851-4fcb-ab69-016f29a44a88",
+      "webhookId": "bc016205-2a7a-410a-9af2-e44b4f407e21",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "HelpDesk adjuntos · x-helpdesk-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Contrato helpdesk.adjuntos.organizar v1 (U29). Mueve los adjuntos de un\n * ticket a una carpeta con su código, dentro de la carpeta de adjuntos. Los\n * ids de OneDrive no cambian al mover: la descarga y la vista previa siguen\n * funcionando. Lo llama HelpDesk después de guardar el ticket, y si falla los\n * archivos se quedan en la carpeta general.\n */\nconst input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst required = (value, path) => {\n  if (typeof value !== 'string' || !value.trim()) throw new Error(path + ' debe ser un texto no vacío.');\n  return value.trim();\n};\n// El broker no recibe bytes ni URLs: si llegan, el llamador está mal construido.\nif (body.uploadUrl !== undefined || body.file?.content !== undefined || body.file?.base64 !== undefined) {\n  throw new Error('El broker no acepta binarios, Base64 ni uploadUrl de entrada.');\n}\nif (body.event !== 'helpdesk.adjuntos.organizar' || Number(body.version) !== 1) throw new Error('Contrato helpdesk.adjuntos.organizar v1 inválido.');\nconst operationId = required(body.operation?.id, 'operation.id');\nconst idempotencyKey = required(body.operation?.idempotencyKey, 'operation.idempotencyKey');\nconst folderPath = required(body.target?.folderPath, 'target.folderPath');\nconst folderName = required(body.target?.folderName, 'target.folderName');\nif (!/^[A-Za-z0-9-]{1,40}$/.test(folderName)) throw new Error('target.folderName debe ser un código de ticket.');\nconst objects = Array.isArray(body.objects) ? body.objects.map((id) => required(id, 'objects[]')) : [];\nif (objects.length === 0 || objects.length > 5) throw new Error('objects debe tener entre 1 y 5 ids.');\n// Los segmentos se codifican uno a uno: codificar la ruta entera convertiría\n// los separadores en %2F y apuntaría a una carpeta con barras en el nombre.\nconst encodedFolderPath = folderPath.split('/').map((s) => s.trim()).filter(Boolean).map(encodeURIComponent).join('/');\nif (!encodedFolderPath) throw new Error('target.folderPath no tiene ningún segmento útil.');\nreturn [{ json: { operationId, idempotencyKey, encodedFolderPath, folderName, objects } }];"
+      },
+      "name": "Code - Validar organizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        1200
+      ],
+      "id": "67f24c1b-1624-4f30-9ea8-9ec0c3945f1d"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "method": "POST",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/root:/' + $json.encodedFolderPath + ':/children' }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { name: $json.folderName, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Crear carpeta del ticket",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        440,
+        1200
+      ],
+      "id": "5c15ad7c-aa6c-4fde-95fe-3952f43d55e9",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/root:/' + $('Code - Validar organizar').first().json.encodedFolderPath + '/' + encodeURIComponent($('Code - Validar organizar').first().json.folderName) + '?$select=id' }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Leer carpeta del ticket",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        660,
+        1200
+      ],
+      "id": "0b701381-d2ce-48f0-bc85-b45251d15aaa",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * La carpeta ya existe (recién creada o de un envío anterior: la creación con\n * «fail» responde 409 y se ignora). Un ítem por objeto que mover.\n */\nconst source = $('Code - Validar organizar').first().json;\nconst folder = $input.first()?.json ?? {};\nconst folderId = folder.body?.id;\nif (Number(folder.statusCode) !== 200 || !folderId) {\n  return [{ json: { failed: true, objectId: null, message: 'No se encontró la carpeta del ticket.' } }];\n}\nreturn source.objects.map((objectId) => ({ json: { objectId, folderId } }));"
+      },
+      "name": "Code - Uno por objeto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        1200
+      ],
+      "id": "754f9f53-20e6-4061-a278-734955e9d71c"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendHeaders": true,
+        "method": "PATCH",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent($json.objectId) }}",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { parentReference: { id: $json.folderId } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Graph - Mover a la carpeta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1100,
+        1200
+      ],
+      "id": "029ba8ed-e1bf-45ef-aa7c-06fbd7db03d6",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "REEMPLAZAR_AL_IMPORTAR",
+          "name": "Graph info.admingct"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/** Cuántos se movieron. Un fallo parcial no es un error: el archivo sigue accesible. */\nconst source = $('Code - Validar organizar').first().json;\nconst results = $input.all().map((item) => Number(item.json.statusCode));\nconst moved = results.filter((code) => code === 200).length;\nreturn [{ json: { ok: true, operationId: source.operationId, moved, total: source.objects.length, httpStatus: 200 } }];"
+      },
+      "name": "Code - Preparar organizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        1200
+      ],
+      "id": "35971c57-f2d4-45d8-9cdd-05c3c993ca49"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "name": "Respond - Organizar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1540,
+        1200
+      ],
+      "id": "308ecca0-df3d-4338-acb7-9a0c831db9e5"
     }
   ],
   "pinData": {},
@@ -456,6 +783,127 @@
         [
           {
             "node": "Respond - Descarga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Vista": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar vista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar vista": {
+      "main": [
+        [
+          {
+            "node": "Graph - Vista previa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Vista previa": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar vista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Preparar vista": {
+      "main": [
+        [
+          {
+            "node": "Respond - Vista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Organizar": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar organizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar organizar": {
+      "main": [
+        [
+          {
+            "node": "Graph - Crear carpeta del ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Crear carpeta del ticket": {
+      "main": [
+        [
+          {
+            "node": "Graph - Leer carpeta del ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Leer carpeta del ticket": {
+      "main": [
+        [
+          {
+            "node": "Code - Uno por objeto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Uno por objeto": {
+      "main": [
+        [
+          {
+            "node": "Graph - Mover a la carpeta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph - Mover a la carpeta": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar organizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Preparar organizar": {
+      "main": [
+        [
+          {
+            "node": "Respond - Organizar",
             "type": "main",
             "index": 0
           }

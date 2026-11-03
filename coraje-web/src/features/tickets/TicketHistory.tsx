@@ -1,11 +1,9 @@
-import { Eye, Lock, Paperclip } from "lucide-react";
+import { Eye, Lock } from "lucide-react";
 
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
-import { focusRing } from "@/design-system/recipes/interaction";
 import { cn } from "@/design-system/utilities/cn";
-import { formatBytes } from "@/server/attachments/attachment-rules";
-import { APP_BASE_PATH } from "@/server/auth/base-path";
+import { AttachmentLink } from "@/features/attachments/AttachmentLink";
 import type { TicketHistoryEntry } from "@/server/tickets/ticket-queries";
 
 import { formatDateTime } from "./format";
@@ -26,9 +24,8 @@ import { formatDateTime } from "./format";
  *
  * La lista ya llega filtrada por visibilidad desde la consulta: quien solo
  * radicó el ticket no recibe las notas internas, ni siquiera ocultas. Los
- * adjuntos (U7) van con su evento y heredan su visibilidad. Cada uno es un
- * `<a>` y no un `<Link>`: apunta a una ruta de API que redirige a OneDrive, y
- * Link intentaría precargarla como página; por eso el basePath va a mano.
+ * adjuntos (U7) van con su evento y heredan su visibilidad; los que tienen
+ * vista previa se abren dentro de HelpDesk (`AttachmentLink`, U29).
  */
 const EVENT_TITLE: Record<string, string> = {
   CREACION: "Ticket radicado",
@@ -85,14 +82,7 @@ export function TicketHistory({ idTicket, entries }: { idTicket: string; entries
               <ul className="mt-2 space-y-1" aria-label="Adjuntos">
                 {entry.adjuntos.map((adjunto) => (
                   <li key={adjunto.id}>
-                    <a
-                      href={`${APP_BASE_PATH}/api/tickets/${idTicket}/adjuntos/${adjunto.id}`}
-                      className={cn("inline-flex items-center gap-1.5 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
-                    >
-                      <Paperclip aria-hidden className="size-3.5" strokeWidth={iconStroke.regular} />
-                      {adjunto.nombre}
-                      <span className="font-normal text-ink-muted">· {formatBytes(adjunto.tamanoBytes)}</span>
-                    </a>
+                    <AttachmentLink idTicket={idTicket} id={adjunto.id} nombre={adjunto.nombre} tamanoBytes={adjunto.tamanoBytes} />
                   </li>
                 ))}
               </ul>

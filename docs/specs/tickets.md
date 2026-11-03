@@ -1053,6 +1053,24 @@ adjunto de una nota interna no lo ve el solicitante.
   ticket: entrega la URL de Graph solo si el evento del adjunto está en la historia que
   esa persona ve.
 
+**14.9 `DECISIÓN` (03-nov-2026, U29) Vista previa y carpeta por ticket.** Supera la frase
+de §14.4 «el archivo solo se descarga, nunca se muestra dentro de HelpDesk». Decisión
+del usuario: todo lo que se pueda abrir, se abre dentro de la app.
+- **Vista previa:** PDF, imágenes y Office se abren en una ventana de HelpDesk con el
+  visor de OneDrive en un iframe. La ruta `…/adjuntos/[id]/vista` aplica las mismas
+  reglas que la descarga y redirige a la URL temporal de `POST /preview` de Graph. El
+  archivo se renderiza en los servidores de Microsoft: no se ejecuta en el equipo de
+  quien lo abre ni pasa por la VPS, que es la protección que buscaba §14.4 sin
+  antivirus. CSV y ZIP siguen descargándose. **Sin verificar:** si el visor de un
+  OneDrive de empresa abre sin pedir inicio de sesión a quien no tiene acceso a la
+  carpeta.
+- **Carpeta por ticket:** después del commit, `organizeAfterResponse` pide a n8n mover
+  los adjuntos del envío a `…/Adjuntos/<código del ticket>`. La carpeta se crea con
+  `conflictBehavior: fail` (nunca `replace`, que borraría lo de un envío anterior). Si
+  falla, los archivos se quedan en la carpeta general: el id de OneDrive no cambia al
+  mover, así que la descarga y la vista previa siguen igual. La confirmación sigue
+  comparando la carpeta general, porque se hace antes de mover.
+
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
 escritor único (§3); propone el vocabulario mínimo de siete estados contra los tres
@@ -1142,6 +1160,8 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U29 (corte 52). §14.9: vista previa dentro de HelpDesk y carpeta por
+  ticket en OneDrive.
 - 03-nov-2026 — U29 (corte 50). §7.6: código `ADM-202611-1`.
 - 03-nov-2026 — U29 (corte 49). §12.1: cuatro correos a empleados; sin escalamiento
   diario.

@@ -19,8 +19,8 @@ import { ATTACHMENTS_FOLDER, MAX_ATTACHMENT_BYTES, attachmentProblem, storedName
  * que n8n leyó de Graph. La VPS no carga con 25 MB por archivo (CLAUDE.md,
  * economía de recursos).
  *
- * Un solo workflow con tres webhooks (`n8n/HELPDESK - Adjuntos V1.json`):
- * `sesion`, `confirmar` y `descarga`, bajo la URL base de
+ * Un solo workflow con cinco webhooks (`n8n/HELPDESK - Adjuntos V1.json`):
+ * `sesion`, `confirmar`, `descarga`, `vista` y `organizar`, bajo la URL base de
  * `N8N_ADJUNTOS_WEBHOOK_URL`, con la cabecera `x-helpdesk-secret` que valida la
  * credencial «HelpDesk adjuntos · x-helpdesk-secret».
  */
@@ -40,7 +40,7 @@ export function isAttachmentError(error: unknown): error is AttachmentError {
 const BROKER_TIMEOUT_MS = 30_000;
 const UNAVAILABLE = "Los adjuntos no están disponibles en este momento. Intenta de nuevo en unos minutos.";
 
-type BrokerOperation = "sesion" | "confirmar" | "descarga";
+type BrokerOperation = "sesion" | "confirmar" | "descarga" | "vista" | "organizar";
 
 function brokerConfig(): { base: string; secret: string } {
   const base = process.env.N8N_ADJUNTOS_WEBHOOK_URL?.trim().replace(/\/+$/, "");
@@ -260,4 +260,60 @@ export async function getDownloadUrl(driveItemId: string): Promise<string> {
     throw new AttachmentError("No fue posible descargar el archivo. Intenta de nuevo en unos minutos.");
   }
   return parsed.data.object.downloadUrl;
+}
+
+// ---------------------------------------------------------------------------
+// 4 · Vista previa (U29)
+// ---------------------------------------------------------------------------
+
+const previewResponse = z.object({
+  ok: z.literal(true),
+  operationId: z.string(),
+  object: z.object({ previewUrl: z.url({ protocol: /^https$/ }) }),
+});
+
+/**
+ * URL del visor de OneDrive para mostrar el archivo dentro de HelpDesk (PDF,
+ * imágenes y Office, renderizados por Microsoft). Temporal, como la de
+ * descarga, y con la misma regla: solo después de comprobar que la persona ve
+ * el adjunto.
+ */
+export async function getPreviewUrl(driveItemId: string): Promise<string> {
+  const operation = operationPair(`${driveItemId}:vista:${randomUUID()}`);
+  const result = await callBroker("vista", { operation, object: { id: driveItemId } });
+  if (!result) throw new AttachmentError(UNAVAILABLE);
+  const parsed = previewResponse.safeParse(result.payload);
+  if (!parsed.success || parsed.data.operationId !== operation.id) {
+    logRejection("vista", result.status, result.payload);
+    throw new AttachmentError("No fue posible mostrar el archivo. Puedes descargarlo.");
+  }
+  return parsed.data.object.previewUrl;
+}
+
+// ---------------------------------------------------------------------------
+// 5 · Carpeta por ticket (U29)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mueve los adjuntos recién guardados a la carpeta del ticket
+ * (`…/Adjuntos/ADM-202611-1`), a pedido del usuario del 03-nov-2026.
+ * Se llama después del commit y **no puede fallar la acción**: si n8n no
+ * responde, los archivos se quedan en la carpeta general, y como el id de
+ * OneDrive no cambia al mover, la descarga y la vista previa siguen igual.
+ */
+export async function organizeAttachments(params: { codigoTicket: string; driveItemIds: readonly string[] }): Promise<void> {
+  if (params.driveItemIds.length === 0) return;
+  try {
+    const operation = operationPair(`${params.codigoTicket}:${params.driveItemIds.join(",")}`);
+    const result = await callBroker("organizar", {
+      operation,
+      target: { folderPath: ATTACHMENTS_FOLDER, folderName: params.codigoTicket },
+      objects: params.driveItemIds,
+    });
+    if (!result || result.status >= 400) {
+      logEvent("warn", "adjuntos.organizar_fallido", { codigo: params.codigoTicket, estadoHttp: result?.status });
+    }
+  } catch (error) {
+    logEvent("warn", "adjuntos.organizar_fallido", { codigo: params.codigoTicket }, error);
+  }
 }
