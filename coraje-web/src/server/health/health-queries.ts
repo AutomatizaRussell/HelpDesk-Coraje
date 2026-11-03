@@ -13,9 +13,7 @@ import { DAILY_ONLY_CHECKS, compareFindings, isHealthSeverity, type HealthSeveri
  *
  * La vista no tiene consultas propias sobre las tablas vigiladas: lee la
  * misma función que la revisión diaria (`helpdesk.salud_hallazgos`), así que
- * lo que ve una persona y lo que avisa Teams no pueden divergir. Solo la
- * lista de divergencias pendientes se lee aparte, porque la vista necesita
- * cada fila para poder marcarla.
+ * lo que ve una persona y lo que avisa Teams no pueden divergir.
  */
 
 export interface HealthFinding {
@@ -40,35 +38,10 @@ export interface DailyReview {
   criticosAvisados: number;
 }
 
-export interface PendingDivergence {
-  id: string;
-  idTicket: string;
-  codigoTicket: string | null;
-  campo: string;
-  valorHelpdesk: string | null;
-  valorSharepoint: string | null;
-  motivo: string | null;
-  detectadoAt: Date;
-}
-
-export interface ReviewedDivergence extends PendingDivergence {
-  revisadaAt: Date;
-  revisor: string;
-  motivoRevision: string;
-}
-
 export interface HealthOverview {
   hallazgos: HealthFinding[];
   ultimaRevision: DailyReview | null;
-  espejoActivo: boolean;
-  divergenciasPendientes: PendingDivergence[];
-  divergenciasRevisadas: ReviewedDivergence[];
-  /** `salud.divergencia.revisar`: la vista ofrece el formulario solo con él. */
-  puedeRevisar: boolean;
 }
-
-const PENDING_LIMIT = 50;
-const REVIEWED_LIMIT = 10;
 
 /** Forma de cada fila de `revision_salud.hallazgos`: la escribe la base, pero se valida al leer. */
 const storedFindingSchema = z.object({
@@ -97,39 +70,15 @@ function toFinding(
   };
 }
 
-const divergenceSelect = {
-  id: true,
-  idTicket: true,
-  campo: true,
-  valorHelpdesk: true,
-  valorSharepoint: true,
-  motivo: true,
-  detectadoAt: true,
-  factTicket: { select: { codigoTicket: true } },
-} as const;
-
 export async function getHealthOverview(idPersonal: string): Promise<HealthOverview | null> {
-  const grants = await resolveGrants(idPersonal, [SALUD_ACTIONS.consultar, SALUD_ACTIONS.revisarDivergencia]);
+  const grants = await resolveGrants(idPersonal, [SALUD_ACTIONS.consultar]);
   if (!grants.has(SALUD_ACTIONS.consultar)) return null;
 
-  const [vivos, revision, espejo, pendientes, revisadas] = await Promise.all([
+  const [vivos, revision] = await Promise.all([
     prisma.$queryRaw<{ senal: string; chequeo: string; severidad: string; cantidad: number; detalle: string; ejemplo: string | null }[]>`
       SELECT senal, chequeo, severidad, cantidad, detalle, ejemplo FROM helpdesk.salud_hallazgos()
     `,
     prisma.revisionSalud.findFirst({ orderBy: { ejecutadaAt: "desc" } }),
-    prisma.espejoSharepoint.findUnique({ where: { id: true }, select: { activoDesde: true } }),
-    prisma.syncDivergencia.findMany({
-      where: { resultado: "RECHAZADO", revisadaAt: null },
-      orderBy: { detectadoAt: "asc" },
-      take: PENDING_LIMIT,
-      select: divergenceSelect,
-    }),
-    prisma.syncDivergencia.findMany({
-      where: { revisadaAt: { not: null } },
-      orderBy: { revisadaAt: "desc" },
-      take: REVIEWED_LIMIT,
-      select: { ...divergenceSelect, revisadaAt: true, motivoRevision: true, revisor: { select: { nombreCompleto: true } } },
-    }),
   ]);
 
   // De la revisión diaria solo se toma lo que la vista no puede calcular.
@@ -158,16 +107,5 @@ export async function getHealthOverview(idPersonal: string): Promise<HealthOverv
           criticosAvisados: criticos.success ? criticos.data.length : 0,
         }
       : null,
-    espejoActivo: espejo?.activoDesde != null,
-    divergenciasPendientes: pendientes.map(({ factTicket, ...row }) => ({ ...row, codigoTicket: factTicket.codigoTicket })),
-    divergenciasRevisadas: revisadas.map(({ factTicket, revisor, revisadaAt, motivoRevision, ...row }) => ({
-      ...row,
-      codigoTicket: factTicket.codigoTicket,
-      // chk_sync_divergencia_revision: las tres columnas van juntas.
-      revisadaAt: revisadaAt ?? row.detectadoAt,
-      revisor: revisor?.nombreCompleto ?? "Persona desconocida",
-      motivoRevision: motivoRevision ?? "",
-    })),
-    puedeRevisar: grants.has(SALUD_ACTIONS.revisarDivergencia),
   };
 }

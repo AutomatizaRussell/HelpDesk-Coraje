@@ -50,13 +50,11 @@ export const PORTAL_ACTIONS = {
 /**
  * Salud de la aplicación (U10, migración `20260928130000_observabilidad`).
  * Tampoco se evalúan sobre un ticket: su alcance `TOTAL` significa «toda la
- * aplicación». Son dos porque mirar no es lo mismo que dar algo por atendido.
+ * aplicación».
  */
 export const SALUD_ACTIONS = {
   /** Ver la vista `/salud`: la revisión viva y la última diaria. */
   consultar: "salud.consultar",
-  /** Marcar revisada, con motivo, una divergencia rechazada con PowerApps (S4). */
-  revisarDivergencia: "salud.divergencia.revisar",
 } as const;
 
 /**

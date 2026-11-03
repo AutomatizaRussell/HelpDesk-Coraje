@@ -141,16 +141,12 @@ Construido en `20260928130000_observabilidad`, sin desplegar.
 | Acción | `AGENTE` | `CLASIFICADOR` | `ADMIN` |
 |---|---|---|---|
 | `salud.consultar` | — | — | `TOTAL` |
-| `salud.divergencia.revisar` | — | — | `TOTAL` |
+| ~~`salud.divergencia.revisar`~~ | — | — | retirada en U24 |
 
-- **Dos acciones y no una:** mirar la salud no es lo mismo que dar por atendida una
-  divergencia con PowerApps. Hoy las tiene el mismo rol; separarlas después no exige
-  cambiar código, solo reglas.
+- **Una sola acción desde U24** (03-nov-2026): `salud.divergencia.revisar` se retiró con
+  el espejo en PowerApps (`specs/sincronizacion-sharepoint.md` §9), y `/salud` solo lee.
 - **No se evalúan sobre un ticket** (`SALUD_ACTIONS` en `catalog.ts`): `TOTAL`
   significa «toda la aplicación».
-- Marcar revisada entra solo por `helpdesk.marcar_divergencia_revisada`:
-  `coraje_runtime` no tiene `UPDATE` sobre `sync_divergencia` (`specs/observabilidad.md`
-  §4).
 
 ### 4.4 `DECISIÓN` (28-sep-2026, U11) Seguimiento del ticket
 

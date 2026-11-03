@@ -1,6 +1,26 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 41, U24 retiro del espejo en PowerApps, SIN DESPLEGAR)
+SOBRE:   `44abf78` (corte 40)
+RAMA:    main
+UNIDAD:  U24. Decisión del usuario: HelpDesk no escribe en SharePoint
+         (sincronizacion-sharepoint.md §9). Migración
+         `20261103110000_retirar_espejo_sharepoint`: trigger, funciones, cola,
+         interruptor, divergencias, columnas `espejo_conciliado*`, señales
+         S1-S4 de `salud_hallazgos` y permiso `salud.divergencia.revisar`.
+         n8n: sin `CORAJE - SALIDA`; la ingesta pierde la `08`, su aviso y la
+         sección 0b de la `06`. App: sin aviso a n8n tras cada acción, sin
+         panel «PowerApps» en el ticket y sin divergencias en `/salud`.
+         Evidencia: las 20 migraciones aplicadas en orden contra PGlite (las
+         dos nuevas incluidas; regla de Alex con datos, dos veces); la
+         infraestructura de staging y las transformaciones 01-07 corren sobre
+         ese esquema; 16/16 de U22 y 5/5 de U23; `tsc`, `lint`, 187/187
+         pruebas, `build`. **Sin publicar:** espera la comprobación de datos y
+         los dos pasos de n8n previos (operacion.md, «Retiro del espejo»).
+SIGUE:   comprobación previa, pasos 1-2 de n8n, publicar, paso 4.
+
+--- Corte 40, para contexto:
 CORTE:   03-nov-2026 (corte 40, U23 responsable y enrutamiento, SIN DESPLEGAR)
 SOBRE:   `9b1c542` (corte 39)
 RAMA:    main
@@ -1412,6 +1432,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `44abf78` | **Corte 40.** U23: responsable que no resuelve y «proyectos y ti» hacia Alex. Publicado el 03-nov-2026; workflow sin importar |
 | `9b1c542` | **Corte 39.** U22: relevos en la lista de personal. Workflow importado el 29-oct-2026; ingesta en *Success*, relevo sin ejercitar |
 | `2f1eff8` | **Corte 38.** U20: modos Interno/Externo, portal desconectado y entrada directa. Sin desplegar al cerrar el corte |
 | `d1d8e86` | **Corte 21.** U10: revisión diaria de salud y registro JSON. Publicado y desplegado el 28-sep-2026 junto con los cortes 19 y 20; sin ejercitar |
@@ -1531,7 +1552,15 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar U23 e importar la ingesta
+## Acción inmediata para la siguiente sesión — publicar U24
+
+Se desvía de la cola por la misma razón que U23: U7 (adjuntos) sigue a la cabeza, pero
+U24 cambia el workflow de ingesta que U23 también cambia, y conviene importarlo una
+sola vez. Seguir `operacion.md`, «Retiro del espejo en PowerApps (U24)»: comprobación
+de datos, borrar la salida, importar la ingesta (lleva U23 y U24), publicar, borrar la
+credencial y las variables. Después, el cierre de U23 y de U24 en `plan-ejecucion.md`.
+
+## Anterior — desplegar U23 e importar la ingesta (incluida en la de U24)
 
 Se desvía de la cola, porque U7 (adjuntos) sigue a la cabeza: U23 corrige quién figura
 como responsable en tickets que ya existen, y es más pequeña. Desplegar `web`

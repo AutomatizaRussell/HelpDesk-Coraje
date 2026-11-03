@@ -9,7 +9,6 @@ import type { TicketFormState } from "@/features/tickets/action-state";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { dispatchTicketMail } from "@/server/notifications/ticket-notifications";
 import { redirectTicket } from "@/server/tickets/ticket-commands";
-import { kickSharePointMirror } from "@/server/sync/sharepoint-mirror";
 import { isTicketDomainError } from "@/server/tickets/ticket-errors";
 import { modeQuery } from "@/server/tickets/ticket-mode";
 
@@ -44,9 +43,6 @@ export async function redirectTicketAction(_prev: TicketFormState, formData: For
   // hoy `mailIds` llega vacío. Se despacha igual, para que un correo que el
   // comando llegue a encolar no se quede sin salir.
   const failures = (await dispatchTicketMail(result.mailIds)).filter((mail) => !mail.ok);
-  // Redirigir le da área al ticket del portal: es cuando el trigger encola
-  // su creación en HelpDeskBd.
-  kickSharePointMirror();
   revalidatePath("/tickets");
   // De vuelta a «Por redirigir», no al detalle: el ticket quedó en el área
   // que le corresponde, que puede no ser la de quien lo redirigió, y su

@@ -11,34 +11,47 @@ import { HEALTH_CHECKS } from "./health-checks";
  * ver antes de desplegar: el inventario del plan, la migración y la copia
  * versionada del workflow.
  *
- * Límite honesto, el mismo de sharepoint-mirror.contract.test.mts: `n8n/`
- * es la copia exportada, no la instancia viva, y que los chequeos encuentren
- * lo que deben solo se sabe contra la base desplegada (guion de cierre).
+ * Límite honesto: `n8n/` es la copia exportada, no la instancia viva, y que
+ * los chequeos encuentren lo que deben solo se sabe contra la base
+ * desplegada (guion de cierre).
+ *
+ * `salud_hallazgos` se lee de la última migración que la define: U24
+ * (`20261103110000_retirar_espejo_sharepoint`) la reescribió sin S1-S4.
  */
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = path.resolve(THIS_DIR, "../../..");
 const REPO_DIR = path.resolve(WEB_DIR, "..");
 const MIGRATION = readFileSync(path.join(WEB_DIR, "prisma/migrations/20260928130000_observabilidad/migration.sql"), "utf8");
+const RETIRO_ESPEJO = readFileSync(
+  path.join(WEB_DIR, "prisma/migrations/20261103110000_retirar_espejo_sharepoint/migration.sql"),
+  "utf8",
+);
 const PLAN = readFileSync(path.join(REPO_DIR, "docs/estado/plan-ejecucion.md"), "utf8");
 
 type N8nNode = { name: string; type: string; parameters?: Record<string, unknown> };
 type Workflow = { nodes: N8nNode[]; connections: Record<string, { main: { node: string }[][] }>; settings: Record<string, unknown> };
 const SALUD = JSON.parse(readFileSync(path.join(REPO_DIR, "n8n/HELPDESK - Salud diaria V1.json"), "utf8")) as Workflow;
 
-/** Señales fuera de U10 por decisión (O5: los plazos vencidos son producto). */
-const OUT_OF_SCOPE = new Set(["S10"]);
+/**
+ * Señales sin chequeo por decisión. S10: los plazos vencidos son producto
+ * (O5). S1-S4: vigilaban el espejo en PowerApps, retirado en U24.
+ */
+const OUT_OF_SCOPE = new Set(["S1", "S2", "S3", "S4", "S10"]);
 
+/** Definición vigente: la de la migración más reciente que la (re)crea. */
 function fn(name: string): string {
-  const match = MIGRATION.match(new RegExp(`CREATE FUNCTION "helpdesk"\\."${name}"[\\s\\S]*?\\$function\\$;`));
-  assert.ok(match, `falta la función ${name}`);
-  return match[0];
+  for (const sql of [RETIRO_ESPEJO, MIGRATION]) {
+    const match = sql.match(new RegExp(`CREATE (?:OR REPLACE )?FUNCTION "helpdesk"\\."${name}"[\\s\\S]*?\\$function\\$;`));
+    if (match) return match[0];
+  }
+  assert.fail(`falta la función ${name}`);
 }
 
 /** Chequeos que la migración declara, con su señal y su severidad. */
 function declaredChecks(): Map<string, { senal: string; severidad: string }> {
   const out = new Map<string, { senal: string; severidad: string }>();
-  // En salud_hallazgos: SELECT 'S1', 'espejo_detenido', 'CRITICO', …
+  // En salud_hallazgos: SELECT 'S5', 'correo_fallido', 'ATENCION', …
   for (const m of fn("salud_hallazgos").matchAll(/SELECT '([A-Z0-9]+)', '([a-z_]+)', '(CRITICO|ATENCION|AVISO)'/g)) {
     out.set(m[2], { senal: m[1], severidad: m[3] });
   }
@@ -74,16 +87,15 @@ test("la reconciliación tolera lo que la ingesta aún no pudo traer", () => {
   assert.match(fn("registrar_revision_salud"), /c\.sync_key = 'helpdesk_bd'/);
 });
 
-test("el espejo solo se vigila encendido y con lo encolado desde entonces", () => {
-  const salud = fn("salud_hallazgos");
-  assert.match(salud, /WHERE activo_desde IS NOT NULL/);
-  assert.match(salud, /o\.created_at >= espejo\.activo_desde/);
+test("la salud ya no lee nada del espejo retirado (U24)", () => {
+  assert.doesNotMatch(fn("salud_hallazgos"), /espejo_sharepoint|ticket_sync_outbox|sync_divergencia/);
 });
 
-test("permisos: la vista lee, la revisión escribe, y la divergencia no se edita por fuera", () => {
+test("permisos: la vista lee y la revisión escribe", () => {
   assert.match(MIGRATION, /GRANT EXECUTE ON FUNCTION "helpdesk"\."salud_hallazgos"\(\) TO "coraje_runtime", "coraje_etl";/);
   assert.match(MIGRATION, /REVOKE ALL ON FUNCTION "helpdesk"\."registrar_revision_salud"\(JSONB, TEXT\) FROM PUBLIC, "coraje_runtime";/);
-  assert.match(MIGRATION, /REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON "helpdesk"\."sync_divergencia" FROM "coraje_runtime";/);
+  // CREATE OR REPLACE conserva los permisos: U24 no los suelta ni los amplía.
+  assert.doesNotMatch(RETIRO_ESPEJO, /^\s*(GRANT|REVOKE)[^;]*"salud_hallazgos"/m);
   assert.match(fn("salud_hallazgos"), /SECURITY DEFINER\s+SET search_path = pg_catalog, pg_temp/);
   // Invoker: toca staging, que solo coraje_etl ve.
   assert.doesNotMatch(fn("registrar_revision_salud"), /SECURITY DEFINER/);
@@ -93,7 +105,7 @@ test("el workflow corre a las 7:00 de Bogotá, llama a la base y solo se detiene
   const schedule = SALUD.nodes.find((n) => n.type === "n8n-nodes-base.scheduleTrigger");
   assert.match(JSON.stringify(schedule?.parameters), /"expression":"0 7 \* \* \*"/);
   assert.equal(SALUD.settings.timezone, "America/Bogota");
-  // El aviso reutiliza el workflow de error, igual que la transformación 08.
+  // El aviso reutiliza el workflow de error de la ingesta.
   assert.equal(SALUD.settings.errorWorkflow, "A10yl90Zh5otaSlJ");
 
   const pg = SALUD.nodes.find((n) => n.name === "PG - Registrar Revision");

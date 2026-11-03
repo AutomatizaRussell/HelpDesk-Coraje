@@ -190,8 +190,6 @@ igual que Impulsa**, solo falta construirlas (U2):
 |---|---|---|
 | `POSTGRES_*` | Raíz | Contenedor de PostgreSQL local |
 | `DATABASE_URL` | `coraje-web` | Conexión de Prisma |
-| `N8N_OUTBOX_KICK_URL` | `coraje-web` | Webhook que despierta el consumo del outbox |
-| `N8N_OUTBOX_KICK_SECRET` | `coraje-web` | Secreto de ese webhook, cabecera `x-coraje-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk salida · x-coraje-secret» |
 | `N8N_PORTAL_MAIL_WEBHOOK_URL` | `coraje-web` (Coolify) | U8: URL **HTTPS** del webhook `helpdesk/portal/correo-v1` del workflow `HELPDESK - Portal - Enviar correo V3`. Sin ella, ni invitaciones ni códigos salen: el fallo queda en `app.portal_auditoria` con el nombre de la variable |
 | `N8N_PORTAL_MAIL_SECRET` | `coraje-web` (Coolify) | U8: secreto de ese webhook, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk correo · x-helpdesk-secret» |
 | `HELPDESK_ESCALAR_AVISOS_SECRET` | `coraje-web` (Coolify) | U15: secreto de `/api/interno/avisos/escalar`, cabecera `x-helpdesk-secret`. **El mismo valor** va en la credencial de n8n «HelpDesk escalamiento · x-helpdesk-secret». Sin él, la ruta responde 503 y no escala nada |
@@ -208,7 +206,6 @@ igual que Impulsa**, solo falta construirlas (U2):
 >
 > | Credencial (*Header Auth*) | *Name* | *Value* | La usa |
 > |---|---|---|---|
-> | HelpDesk salida · x-coraje-secret | `x-coraje-secret` | = `N8N_OUTBOX_KICK_SECRET` | Webhook de `CORAJE - SALIDA` |
 > | HelpDesk correo · x-helpdesk-secret | `x-helpdesk-secret` | = `N8N_PORTAL_MAIL_SECRET` | Webhook de `HELPDESK - Portal - Enviar correo V3` |
 > | HelpDesk escalamiento · x-helpdesk-secret | `x-helpdesk-secret` | = `HELPDESK_ESCALAR_AVISOS_SECRET` | `HTTP - Escalar avisos` de `HELPDESK - Escalar avisos V2` |
 >
@@ -290,53 +287,32 @@ docker exec -it coraje_postgres psql -U coraje_etl -d coraje \
  -c "SELECT f.codigo_ticket, s.payload->>'AsignadoA' AS asignado_en_powerapps FROM staging.sp_helpdesk_raw s JOIN helpdesk.ticket_legacy_sharepoint_ref r ON r.sp_id = s.sp_id JOIN helpdesk.fact_ticket f ON f.id_ticket = r.id_ticket WHERE f.origen_sistema = 'SHAREPOINT_LEGACY' AND NULLIF(TRIM(s.payload->>'AsignadoA'), '') IS NOT NULL AND f.id_asignado IS NULL"
 ```
 
-### Espejo en PowerApps y regla de precedencia (U9)
+### Retiro del espejo en PowerApps (U24)
 
-`specs/sincronizacion-sharepoint.md` §4.3. Tres piezas que se despliegan juntas: la
-migración `20260928120000_espejo_sharepoint` y las versiones U9 de
-`CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` y
-`CORAJE - SALIDA - PostgreSQL to SharePoint.json`.
-
-**Orden obligatorio.** La salida que hoy está activa en n8n es la versión anterior. Solo
-crea ítems, lleva el marcador «PRUEBA CORAJE - BORRAR» y no consulta el interruptor.
-Desde la migración, el trigger empieza a encolar, así que con esa versión activa los
-tickets del portal clasificados irían a HelpDeskBd.
-1. **Desactivar** en n8n el workflow `CORAJE - SALIDA - PostgreSQL to SharePoint`.
-2. Publicar: `migrate` aplica la migración.
-3. **Importar las dos versiones U9** sobre los mismos workflows (mismo `id`). Comprobar
-   que los nodos Postgres usan «Postgres account Daniel» y los HTTP «Microsoft SharePoint
-   account».
-4. Activar la salida. Con el espejo apagado no envía nada: solo mantiene la cola.
-
-Mientras la ingesta vieja corra entre los pasos 2 y 3, no daña nada: ningún ticket de
-HelpDesk está todavía en SharePoint.
-
-**Encender y apagar el espejo** (decisión del usuario, no del despliegue):
+`specs/sincronizacion-sharepoint.md` §9. HelpDesk deja de escribir en SharePoint. La
+migración `20261103110000_retirar_espejo_sharepoint` borra la cola, el interruptor y las
+divergencias. El espejo de U9 nunca se encendió, así que deberían contener solo
+metadatos de tickets de prueba. **Antes de publicar**, comprobarlo:
 
 ```bash
-docker exec -it coraje_postgres psql -U "coraje_app" -d "coraje" -c "
-UPDATE helpdesk.espejo_sharepoint
-SET activo_desde = NOW(), motivo = 'Encendido para <motivo>', updated_at = NOW()
-RETURNING activo_desde;
-"
+docker exec -it coraje_postgres psql -U coraje_etl -d coraje  -c "SELECT activo_desde FROM helpdesk.espejo_sharepoint"  -c "SELECT status, operation, count(*) FROM helpdesk.ticket_sync_outbox GROUP BY 1, 2"  -c "SELECT resultado, count(*) FROM helpdesk.sync_divergencia GROUP BY 1"
 ```
 
-Apagar es `SET activo_desde = NULL`. Solo se refleja lo encolado desde `activo_desde`.
+Si `activo_desde` no es nulo o hay divergencias, no publicar: alguien encendió el espejo
+y hay que mirarlo antes.
 
-**Despertar la salida en cada cambio:** la aplicación llama al webhook
-`coraje/outbox/kick` con `N8N_OUTBOX_KICK_URL` y `N8N_OUTBOX_KICK_SECRET` (Coolify; el
-secreto coincide con la credencial «HelpDesk salida · x-coraje-secret» del webhook en n8n). Sin ellas, lo encolado sale en
-la pasada programada, cada 12 horas.
+**Orden obligatorio.** La ingesta y la salida vigentes leen lo que la migración borra:
+con la migración aplicada, fallarían en cada pasada.
+1. **Desactivar y borrar** en n8n el workflow `CORAJE - SALIDA - PostgreSQL to SharePoint`.
+2. **Importar** `n8n/CORAJE - INCREMENTAL COMPLETO - SharePoint to PostgreSQL.json` sobre
+   el mismo `id`. La versión nueva funciona con el esquema de antes y con el de después.
+3. Publicar: `migrate` aplica la migración.
+4. Borrar en n8n la credencial «HelpDesk salida · x-coraje-secret», y en Coolify,
+   `N8N_OUTBOX_KICK_URL` y `N8N_OUTBOX_KICK_SECRET`.
 
-**Mirar el estado:**
+La señal del corte se sigue mirando así:
 
 ```sql
-SELECT operation, status, attempts, last_error, updated_at
-FROM helpdesk.ticket_sync_outbox ORDER BY updated_at DESC LIMIT 20;
-
-SELECT campo, valor_sharepoint, resultado, motivo, detectado_at
-FROM helpdesk.sync_divergencia ORDER BY detectado_at DESC LIMIT 20;
-
 SELECT * FROM helpdesk.v_actividad_powerapps ORDER BY semana DESC LIMIT 12;
 ```
 

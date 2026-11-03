@@ -41,14 +41,11 @@ services:
       ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI}
       HELPDESK_TOKEN_ENCRYPTION_KEY: ${HELPDESK_TOKEN_ENCRYPTION_KEY}
       # Lista explícita de lo que web necesita. Coolify inyecta además las
-      # variables que tiene definidas (comprobado el 01-oct-2026: las de
-      # N8N_OUTBOX_KICK_* llegaban sin estar aquí), así que esta lista no las
+      # variables que tiene definidas (comprobado el 01-oct-2026 con variables
+      # que llegaban sin estar aquí), así que esta lista no las
       # crea: si una no existe en Coolify, aquí llega vacía.
       # env.contract.test.mts exige que cada variable que lee `src/` esté
       # declarada, para que la lista sea completa.
-      # Espejo en PowerApps (U9): despierta la salida de n8n en cada cambio.
-      N8N_OUTBOX_KICK_URL: ${N8N_OUTBOX_KICK_URL}
-      N8N_OUTBOX_KICK_SECRET: ${N8N_OUTBOX_KICK_SECRET}
       # Correo desde el buzón sin dueño: invitaciones, códigos y escalamiento.
       N8N_PORTAL_MAIL_WEBHOOK_URL: ${N8N_PORTAL_MAIL_WEBHOOK_URL}
       N8N_PORTAL_MAIL_SECRET: ${N8N_PORTAL_MAIL_SECRET}

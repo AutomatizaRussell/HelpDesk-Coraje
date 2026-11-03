@@ -19,8 +19,8 @@ function parse(line: string): Record<string, unknown> {
 }
 
 test("una línea JSON con evento, nivel y correlación", () => {
-  const line = parse(buildLogLine("warn", "espejo.kick_fallido", { idTicket: "t-1", estadoHttp: 502 }, undefined, NOW));
-  assert.deepEqual(line, { ts: "2026-09-28T12:00:00.000Z", nivel: "warn", evento: "espejo.kick_fallido", idTicket: "t-1", estadoHttp: 502 });
+  const line = parse(buildLogLine("warn", "correo.envio_fallido", { idTicket: "t-1", estadoHttp: 502 }, undefined, NOW));
+  assert.deepEqual(line, { ts: "2026-09-28T12:00:00.000Z", nivel: "warn", evento: "correo.envio_fallido", idTicket: "t-1", estadoHttp: 502 });
 });
 
 test("los campos con nombre de secreto se omiten, sea cual sea su valor", () => {

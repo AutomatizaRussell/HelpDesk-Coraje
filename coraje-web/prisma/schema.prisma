@@ -138,7 +138,6 @@ model DimPersonal {
   portalAccesosRevocados                 PortalAutorizacion[] @relation("PortalAutorizacionRevocadaPor")
   portalInvitacionesEmitidas             PortalInvitacion[]
   portalAuditoria                        PortalAuditoria[]
-  divergenciasRevisadas                  SyncDivergencia[]
   ticketsObservados                      TicketObservador[]   @relation("ObservadorPersona")
   observadoresAgregados                  TicketObservador[]   @relation("ObservadorAgregadoPor")
   validacionesRecibidas                  TicketValidacion[]
@@ -614,9 +613,7 @@ model FactTicket {
   dimTipoRequerimientoArea DimTipoRequerimiento? @relation("FactTicketTipoReqArea", fields: [idTipoReq, idAreaDestino], references: [idTipoReq, idArea], onDelete: NoAction, onUpdate: NoAction, map: "fk_fact_ticket_tipo_req_area")
   factTicketEvento     FactTicketEvento[]
   ticketLegacySharepointRef TicketLegacySharepointRef?
-  ticketSyncOutbox     TicketSyncOutbox[]
   ticketNotificacion   TicketNotificacion[]
-  syncDivergencia      SyncDivergencia[]
   observadores         TicketObservador[]
   validaciones         TicketValidacion[]
   avisos               TicketAviso[]
@@ -808,11 +805,6 @@ model TicketLegacySharepointRef {
   legacyCreatedAt  DateTime?   @map("legacy_created_at") @db.Timestamptz(6)
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
-  // U9: el ítem de SharePoint tal como se vio tras la última escritura de
-  // HelpDesk o la última conciliación. Distingue el eco de un cambio hecho en
-  // PowerApps (migración 20260928120000_espejo_sharepoint).
-  espejoConciliado   Json?     @map("espejo_conciliado")
-  espejoConciliadoAt DateTime? @map("espejo_conciliado_at") @db.Timestamptz(6)
   factTicket       FactTicket  @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticket_legacy_sharepoint_ref_ticket")
 
   // ix_ticket_legacy_sharepoint_ref_legacy_id_req / _legacy_created_at: declarados
@@ -854,78 +846,6 @@ model TicketNotificacion {
   // U10: lo que busca la revisión de salud (S5). Casi vacío en una base sana.
   @@index([updatedAt], map: "ix_ticket_notificacion_no_enviada", where: raw("((estado)::text <> 'ENVIADO'::text)"))
   @@map("ticket_notificacion")
-  @@schema("helpdesk")
-}
-
-/// CHECK no representables (chk_ticket_sync_outbox_target/_operation/_status/
-/// _attempts) preservados a mano en la migración baseline. Patrón bueno, no se
-/// rediseña (docs/estado/handoff.md, gotchas): fuente de verdad en PostgreSQL,
-/// ON CONFLICT DO NOTHING sobre índice parcial único para idempotencia.
-model TicketSyncOutbox {
-  idSync        String      @id @default(dbgenerated("gen_random_uuid()")) @map("id_sync") @db.Uuid
-  idTicket      String      @map("id_ticket") @db.Uuid
-  targetSystem  String      @default("SHAREPOINT") @map("target_system")
-  operation     String
-  status        String      @default("PENDING")
-  payload       Json        @default("{}")
-  attempts      Int         @default(0)
-  lastError     String?     @map("last_error")
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
-  processedAt   DateTime?   @map("processed_at") @db.Timestamptz(6)
-  factTicket    FactTicket  @relation(fields: [idTicket], references: [idTicket], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([idTicket, operation], map: "uq_ticket_sync_outbox_pending_operation", where: raw("(status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text]))"))
-  @@index([status, createdAt], map: "ix_ticket_sync_outbox_status_created")
-  @@index([idTicket], map: "ix_ticket_sync_outbox_ticket")
-  @@map("ticket_sync_outbox")
-  @@schema("helpdesk")
-}
-
-// ---------------------------------------------------------------------
-// U9 · Espejo en SharePoint de los tickets de HelpDesk
-// (migración 20260928120000_espejo_sharepoint,
-// docs/specs/sincronizacion-sharepoint.md §4.3)
-// ---------------------------------------------------------------------
-
-/// Interruptor del espejo: una sola fila (chk_espejo_sharepoint_unica). Con
-/// activoDesde vacío, la salida de n8n no envía nada a SharePoint.
-model EspejoSharepoint {
-  id          Boolean   @id @default(true)
-  activoDesde DateTime? @map("activo_desde") @db.Timestamptz(6)
-  motivo      String?
-  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  @@map("espejo_sharepoint")
-  @@schema("helpdesk")
-}
-
-/// Cambio hecho en PowerApps sobre un ticket de HelpDesk, aplicado o
-/// rechazado (chk_sync_divergencia_resultado). Lo escribe solo la ingesta
-/// (INSERT); coraje_runtime solo lee. La revisión (U10) la escribe solo
-/// helpdesk.marcar_divergencia_revisada: chk_sync_divergencia_revision exige
-/// las tres columnas juntas o ninguna.
-model SyncDivergencia {
-  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  idTicket                 String       @map("id_ticket") @db.Uuid
-  spId                     Int          @map("sp_id")
-  campo                    String       @db.VarChar(60)
-  valorHelpdesk            String?      @map("valor_helpdesk")
-  valorSharepoint          String?      @map("valor_sharepoint")
-  resultado                String       @db.VarChar(20)
-  motivo                   String?      @db.VarChar(1000)
-  modificadoEnSharepointAt DateTime?    @map("modificado_en_sharepoint_at") @db.Timestamptz(6)
-  detectadoAt              DateTime     @default(now()) @map("detectado_at") @db.Timestamptz(6)
-  revisadaAt               DateTime?    @map("revisada_at") @db.Timestamptz(6)
-  revisadaPor              String?      @map("revisada_por") @db.Uuid
-  motivoRevision           String?      @map("motivo_revision") @db.VarChar(500)
-  factTicket               FactTicket   @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
-  revisor                  DimPersonal? @relation(fields: [revisadaPor], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([idTicket, detectadoAt], map: "ix_sync_divergencia_ticket")
-  @@index([detectadoAt], map: "ix_sync_divergencia_detectado")
-  @@index([detectadoAt], map: "ix_sync_divergencia_sin_revisar", where: raw("(((resultado)::text = 'RECHAZADO'::text) AND (revisada_at IS NULL))"))
-  @@map("sync_divergencia")
   @@schema("helpdesk")
 }
 

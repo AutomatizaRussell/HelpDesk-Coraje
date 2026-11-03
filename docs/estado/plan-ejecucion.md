@@ -308,7 +308,7 @@ y U3.
 > **No abrir el portal a clientes reales** antes de desplegar U9 **y** de decidir si se
 > enciende el espejo: sin espejo, lo que radiquen los clientes solo se ve en HelpDesk.
 
-### U9 · Regla de precedencia con SharePoint — **desplegada el 28-sep-2026 (corte 20), sin ejercitar**
+### U9 · Regla de precedencia con SharePoint — **desplegada el 28-sep-2026 (corte 20), nunca encendida; el espejo se retira en U24**
 
 > **Decidida y construida el 28-sep-2026** (corte 20). Un dueño por ticket: lo que nace
 > en PowerApps es de SharePoint y se consulta en HelpDesk hasta el corte; lo que nace en
@@ -356,10 +356,10 @@ puede construir antes, pero ejercitarla exige el despliegue.
 
 | # | Señal | Dónde está | Desde | Por qué importa |
 |---|---|---|---|---|
-| S1 | Filas del outbox `PENDING` envejecidas, o `FAILED` con 5 intentos | `helpdesk.ticket_sync_outbox` | U9 | El espejo se detuvo: PowerApps deja de ver lo que pasa en HelpDesk |
-| S2 | `CONFLICTO_POWERAPPS` sin conciliar tras más de una ingesta | Ídem, `last_error` | U9 | Un ticket quedó desincronizado y esperando |
-| S3 | Tickets de HelpDesk clasificados, con el espejo encendido y sin ítem (sin fila en `ticket_legacy_sharepoint_ref`) pasado un plazo | `fact_ticket` + ref | U9 | La creación en SharePoint nunca ocurrió |
-| S4 | Divergencias `RECHAZADO` sin revisar | `helpdesk.sync_divergencia` | U9 | Hoy la tabla no tiene cómo marcar «revisado»: el aviso de Teams sale una vez y se pierde |
+| S1 | ~~retirada en U24~~ · Filas del outbox `PENDING` envejecidas, o `FAILED` con 5 intentos | `helpdesk.ticket_sync_outbox` | U9 | El espejo se detuvo: PowerApps deja de ver lo que pasa en HelpDesk |
+| S2 | ~~retirada en U24~~ · `CONFLICTO_POWERAPPS` sin conciliar tras más de una ingesta | Ídem, `last_error` | U9 | Un ticket quedó desincronizado y esperando |
+| S3 | ~~retirada en U24~~ · Tickets de HelpDesk clasificados, con el espejo encendido y sin ítem (sin fila en `ticket_legacy_sharepoint_ref`) pasado un plazo | `fact_ticket` + ref | U9 | La creación en SharePoint nunca ocurrió |
+| S4 | ~~retirada en U24~~ · Divergencias `RECHAZADO` sin revisar | `helpdesk.sync_divergencia` | U9 | Hoy la tabla no tiene cómo marcar «revisado»: el aviso de Teams sale una vez y se pierde |
 | S5 | Correos del ticket `FALLIDO` o atascados en `PENDIENTE`/`ENVIANDO` | `helpdesk.ticket_notificacion` | U7 | Solo se ven en el detalle del ticket, y solo los reenvía quien los envió |
 | S6 | Agentes activos con la autorización de correo revocada | `app.employee_graph_grant.revoked_at` | U7 | Todos sus correos fallan hasta que vuelvan a entrar (F14) |
 | S7 | Envíos de invitación o de código fallidos | `app.portal_auditoria` (`INVITACION_ENVIADA` / `CODIGO_ENVIADO` con `FALLO`) | U8 | Ningún cliente nuevo entra: la credencial del buzón pudo caducar |
@@ -606,6 +606,18 @@ Dos defectos que deciden quién figura como responsable (`specs/tickets.md` §4.
 todas las filas. Importado el workflow, la salida de la `06` trae
 `asignado_sin_resolver`, y un ticket nuevo de «proyectos y ti», de cualquier categoría,
 nace asignado a Alex.
+
+### U24 · Retiro del espejo en PowerApps — **construida el 03-nov-2026 (corte 41), sin publicar**
+
+Decisión del usuario del 03-nov-2026: PowerApps se desconecta en cuanto HelpDesk quede
+listo y HelpDesk no escribe en SharePoint (`specs/sincronizacion-sharepoint.md` §9).
+Se retiran el espejo de U9, que nunca se encendió, su cola, sus divergencias, las
+señales S1-S4 y el permiso de revisarlas.
+
+**Condición de cierre:** la comprobación previa de `operacion.md`, «Retiro del espejo
+en PowerApps (U24)», confirma que no hay nada que perder. Después, con el orden de esa
+sección, la ingesta termina en *Success* tras la migración, y `/salud` carga sin la
+sección de divergencias.
 
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 

@@ -312,10 +312,13 @@ una copia vieja: la primera réplica salió de un `main` reescrito después con 
   `logEvent()` de `src/server/observability/log.ts`, una línea JSON con `idTicket` como
   correlación y sin secretos. `log.test.mts` falla si alguien vuelve a usar la consola.
   Qué vigila la revisión diaria y qué llega a Teams: `docs/specs/observabilidad.md`.
-- **`helpdesk.ticket_sync_outbox` es el patrón bueno y se conserva.** Fuente de verdad
-  en PostgreSQL, `ON CONFLICT DO NOTHING` sobre un índice parcial único para
-  idempotencia, webhook a n8n fuera de la transacción y sin capacidad de romperla. No lo
-  rediseñes por gusto arquitectónico.
+- **HelpDesk no escribe en SharePoint** (U24, 03-nov-2026). El espejo hacia HelpDeskBd
+  y su cola, `helpdesk.ticket_sync_outbox`, se retiraron sin haberse encendido nunca:
+  PowerApps se desconecta en cuanto HelpDesk quede listo. Solo queda la ingesta de
+  entrada. El patrón de la cola sigue siendo el bueno para un efecto externo:
+  intención escrita en PostgreSQL dentro de la transacción, `ON CONFLICT DO NOTHING`
+  sobre un índice parcial único, y webhook a n8n fuera de la transacción, sin capacidad
+  de romperla.
 - **Las credenciales de PostgreSQL están separadas desde el 11-sep-2026** (U2):
   `coraje_migrator` migra, `coraje_runtime` sirve la aplicación y `coraje_etl` corre la
   ingesta de n8n. `coraje_app` —que era superusuario y el único rol del clúster— quedó
@@ -325,8 +328,8 @@ una copia vieja: la primera réplica salió de un `main` reescrito después con 
   eventos cargados y conciliados. Cualquier operación destructiva sobre `core` o
   `helpdesk` los alcanza. La autorización destructiva de este documento **no los
   incluye**.
-- **Las listas de SharePoint las consume PowerApps en producción, hoy.** Un cambio en el
-  outbox o en los workflows de n8n puede afectar a personas que están trabajando.
+- **Las listas de SharePoint las consume PowerApps en producción, hoy.** Un cambio en
+  los workflows de n8n puede afectar a personas que están trabajando.
 - El pipeline incremental de ingesta vive en `n8n/CORAJE - INCREMENTAL COMPLETO -
   SharePoint to PostgreSQL.json`. **No se parchea**: se versiona por bloques.
 

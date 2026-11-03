@@ -420,10 +420,6 @@ export async function createPortalTicket(params: { access: PortalAccess; descrip
  * Autoriza `ticket.redirigir` contra la fila bloqueada. Un ticket sin
  * clasificar no tiene responsable ni área, así que solo el alcance `TOTAL`
  * lo cubre (scope.ts); en la v1 lo tiene `REDIRECTOR`.
- *
- * No encola nada hacia SharePoint por su cuenta: al fijar el área, el
- * trigger `trg_encolar_espejo_sharepoint` encola la creación del ítem en
- * HelpDeskBd (U9, migración 20260928120000), y la acción despierta la salida.
  */
 export async function redirectTicket(params: {
   idPersonal: string;

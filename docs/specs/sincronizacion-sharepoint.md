@@ -1,11 +1,14 @@
 # Sincronización con SharePoint y convivencia con PowerApps
 
 ```
-ESTADO:      regla de precedencia DECIDIDA, CONSTRUIDA y DESPLEGADA el 28-sep, SIN EJERCITAR (U9, corte 20,
-             §4.3). La ingesta está ejercitada con datos reales; la salida nueva
-             (crear y actualizar el espejo) nunca se ha ejecutado
-CORTE:       01-oct-2026 (las secciones 1-4.2 describen el estado del 03-sep; §4.3
-             las supera)
+ESTADO:      SALIDA RETIRADA el 03-nov-2026 (U24, §9), sin desplegar: HelpDesk no
+             escribe en SharePoint. Solo queda la entrada (§2.1), ejercitada con
+             datos reales. La regla de un dueño por ticket (§4.3) sigue en lo que
+             toca a la ingesta: un ticket de HelpDesk no se reescribe desde
+             SharePoint. Lo que §2.2, §3, §4.2 y el resto de §4.3 dicen del
+             espejo, la conciliación y las divergencias es antecedente
+CORTE:       03-nov-2026 (las secciones 1-4.2 describen el estado del 03-sep; §4.3
+             las supera, y §9 supera a §4.3)
 EVIDENCIA:   lectura directa de `sql/elt/06_transform_ticket.sql`,
              `sql/db/06_helpdesk_facts.sql`, `src/app/redireccion/[id]/actions.ts` y
              del contenido de `n8n/` en este corte. Los conteos de la carga vienen de
@@ -293,6 +296,36 @@ silencio **hoy**:
 > versiones bajo un nombre que no dice lo que hace. La incertidumbre ya no es "¿existe y
 > funciona el consumidor?" — es "¿alguien lo va a perder antes de usarlo?".
 
+## 9. `DECISIÓN` (03-nov-2026, U24) HelpDesk no escribe en SharePoint
+
+Decisión del usuario: PowerApps se desconecta en cuanto HelpDesk quede listo, de forma
+más agresiva que la convivencia que preveía §4.3, y el camino HelpDesk → PostgreSQL →
+HelpDeskBd no se va a encender. El espejo llevaba apagado desde que se desplegó, el
+28-sep, así que ningún ticket de HelpDesk llegó a tener ítem en SharePoint.
+
+**Qué se retira** (migración `20261103110000_retirar_espejo_sharepoint`):
+- el trigger `trg_encolar_espejo_sharepoint` y las funciones que armaban y comparaban
+  el ítem, y la cola `helpdesk.ticket_sync_outbox`;
+- el interruptor `helpdesk.espejo_sharepoint`, el registro `helpdesk.sync_divergencia`
+  con su revisión en `/salud`, y el permiso `salud.divergencia.revisar`;
+- las columnas `espejo_conciliado*` de la referencia legacy;
+- en n8n, el workflow `CORAJE - SALIDA - PostgreSQL to SharePoint` y, en la ingesta, la
+  `PG - Transform 08` con su aviso y la sección 0b de la `06` (ecos sin referencia);
+- en la aplicación, el aviso a n8n tras cada acción y el panel «PowerApps» del ticket.
+
+**Qué se conserva:**
+- la entrada (§2.1), hasta apagar PowerApps;
+- que la ingesta no reescriba un ticket de HelpDesk (guarda de la `06` por
+  `origen_sistema`). Si un ítem de HelpDeskBd trajera un `Id_Req` igual al código de un
+  ticket de HelpDesk, entra como ticket legacy aparte;
+- `helpdesk.v_actividad_powerapps`, la señal del corte, sin la columna de cambios sobre
+  tickets de HelpDesk, que sin espejo no pueden ocurrir.
+
+**Consecuencia aceptada:** quien siga en PowerApps no ve los tickets creados en
+HelpDesk. Es la condición que el usuario puso al decidir el corte.
+
+---
+
 **Changelog:** 03-sep-2026 — línea base. Separa los dos caminos y su madurez asimétrica
 (§2); registra que el workflow de salida no está versionado (§2.2); documenta la
 precedencia incondicional de SharePoint sobre todos los campos y la pérdida de
@@ -311,3 +344,5 @@ procedencia (§4.1) y el riesgo de duplicado por eco (§4.2).
   marcador de prueba.
 - 01-oct-2026 — ESTADO conciliado: U9 está desplegada desde el 28-sep, sin ejercitar;
   la cabecera seguía diciendo «sin desplegar».
+- 03-nov-2026 — U24, corte 41. §9: se retira la salida completa. HelpDesk no escribe
+  en SharePoint; la ingesta sigue hasta apagar PowerApps.

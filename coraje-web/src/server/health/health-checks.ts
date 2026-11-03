@@ -6,8 +6,9 @@
  * migración `20260928130000_observabilidad`). Aquí se nombra cada chequeo,
  * de qué señal del inventario sale y de dónde se lee, para que la vista los
  * presente y para que una prueba (`health-checks.contract.test.mts`) exija
- * que cada señal S1-S9 tenga chequeo en la base y que la base no tenga
- * chequeos que la aplicación no conoce.
+ * que cada señal vigente del inventario tenga chequeo en la base y que la
+ * base no tenga chequeos que la aplicación no conoce. Las señales S1-S4
+ * vigilaban el espejo en PowerApps y se retiraron con él (U24).
  */
 
 /**
@@ -46,10 +47,6 @@ export interface HealthCheckDefinition {
 }
 
 export const HEALTH_CHECKS = {
-  espejo_detenido: { senal: "S1", severidad: "CRITICO", origen: "VIVO", titulo: "Envíos a PowerApps detenidos" },
-  conflicto_sin_resolver: { senal: "S2", severidad: "ATENCION", origen: "VIVO", titulo: "Conflictos con PowerApps sin resolver" },
-  creacion_perdida: { senal: "S3", severidad: "CRITICO", origen: "VIVO", titulo: "Tickets sin ítem en PowerApps" },
-  divergencia_sin_revisar: { senal: "S4", severidad: "ATENCION", origen: "VIVO", titulo: "Cambios de PowerApps rechazados sin revisar" },
   correo_fallido: { senal: "S5", severidad: "ATENCION", origen: "VIVO", titulo: "Correos del ticket fallidos" },
   correo_atascado: { senal: "S5", severidad: "ATENCION", origen: "VIVO", titulo: "Correos del ticket a medio enviar" },
   autorizacion_revocada: { senal: "S6", severidad: "ATENCION", origen: "VIVO", titulo: "Autorización de correo revocada" },

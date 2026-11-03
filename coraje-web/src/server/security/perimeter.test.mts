@@ -74,7 +74,7 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
   },
   "/salud": {
     acceso: "EMPLEADO",
-    razon: "Revisión de salud y divergencias con PowerApps (U10); exige salud.consultar",
+    razon: "Revisión de salud (U10); exige salud.consultar",
   },
   "/avisos": {
     acceso: "EMPLEADO",

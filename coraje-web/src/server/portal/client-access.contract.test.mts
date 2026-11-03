@@ -64,11 +64,6 @@ test("las funciones nuevas corren como su dueño, con search_path fijado, y no q
   }
 });
 
-test("redirigir no escribe el outbox por su cuenta: el espejo lo encola un solo trigger (U9)", () => {
-  const body = stripSqlComments(functionBody("redirigir_ticket"));
-  assert.doesNotMatch(body, /ticket_sync_outbox/);
-});
-
 test("el cliente solo radica: el escritor rechaza cualquier otro evento de CLIENTE", () => {
   const body = functionBody("registrar_evento_ticket");
   assert.match(body, /p_tipo_actor = 'CLIENTE' AND p_tipo_evento <> 'CREACION'/);

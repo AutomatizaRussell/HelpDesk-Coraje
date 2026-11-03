@@ -55,12 +55,17 @@ Los umbrales viven **solo** en la función. Esta tabla es su explicación, y
 `health-checks.contract.test.mts` exige que la base y `src/server/health/health-checks.ts`
 declaren los mismos chequeos, con la misma señal y la misma severidad.
 
+> **03-nov-2026 (U24):** S1-S4 vigilaban el espejo en PowerApps y se retiraron con él
+> (`specs/sincronizacion-sharepoint.md` §9). `salud_hallazgos` los dejó de calcular, la
+> vista `/salud` ya no lista divergencias y el permiso `salud.divergencia.revisar` se
+> retiró. Sus filas se conservan como antecedente.
+
 | Señal | Chequeo | Severidad | Umbral y por qué |
 |---|---|---|---|
-| S1 | `espejo_detenido` | **CRITICO** | Envío `PENDING` o `FAILED` (no por conflicto) de más de **2 h**, o `PROCESSING` de más de **1 h**. Solo lo encolado con el espejo encendido; un envío sustituido por otro posterior ya hecho no cuenta. Lo normal son segundos |
-| S2 | `conflicto_sin_resolver` | ATENCION | `CONFLICTO_POWERAPPS` de más de **24 h**: la siguiente ingesta (≤ 12 h) lo resuelve sola, así que dos ingestas sin resolverlo significan que está atascado |
-| S3 | `creacion_perdida` | **CRITICO** | Ticket de HelpDesk con envíos desde que se encendió el espejo, más de **2 h**, sin ítem y sin nada en la cola que lo explique (lo pendiente ya lo cuenta S1) |
-| S4 | `divergencia_sin_revisar` | ATENCION | Cualquier `RECHAZADO` sin revisar. Sin umbral: deja de contar cuando alguien lo marca revisado en `/salud` |
+| ~~S1~~ | `espejo_detenido` | **CRITICO** | Envío `PENDING` o `FAILED` (no por conflicto) de más de **2 h**, o `PROCESSING` de más de **1 h**. Solo lo encolado con el espejo encendido; un envío sustituido por otro posterior ya hecho no cuenta. Lo normal son segundos |
+| ~~S2~~ | `conflicto_sin_resolver` | ATENCION | `CONFLICTO_POWERAPPS` de más de **24 h**: la siguiente ingesta (≤ 12 h) lo resuelve sola, así que dos ingestas sin resolverlo significan que está atascado |
+| ~~S3~~ | `creacion_perdida` | **CRITICO** | Ticket de HelpDesk con envíos desde que se encendió el espejo, más de **2 h**, sin ítem y sin nada en la cola que lo explique (lo pendiente ya lo cuenta S1) |
+| ~~S4~~ | `divergencia_sin_revisar` | ATENCION | Cualquier `RECHAZADO` sin revisar. Sin umbral: deja de contar cuando alguien lo marca revisado en `/salud` |
 | S5 | `correo_fallido` | ATENCION | `FALLIDO` de más de **12 h**: quien lo envió tuvo media jornada para reenviarlo |
 | S5 | `correo_atascado` | ATENCION | `PENDIENTE`/`ENVIANDO` de más de **1 h**: el envío corre justo después de guardar |
 | S6 | `autorizacion_revocada` | ATENCION | Persona activa con rol cuya autorización de correo revocó Microsoft (F14) |
@@ -81,9 +86,9 @@ declaren los mismos chequeos, con la misma señal y la misma severidad.
 Condición del usuario al aprobar: **el canal solo recibe lo más grave, inmediato y
 urgente.** Por eso:
 
-1. **Solo `CRITICO`.** Son cuatro chequeos: el espejo detenido (S1, S3), el portal sin
-   poder enviar (S7) y la ingesta que pierde ítems (S9). En los cuatro, algo dejó de
-   funcionar para personas que están trabajando y no se arregla solo.
+1. **Solo `CRITICO`.** Son dos chequeos desde U24: el portal sin poder enviar (S7) y la
+   ingesta que pierde ítems (S9); hasta entonces también el espejo detenido (S1, S3). En todos, algo dejó de funcionar
+   para personas que están trabajando y no se arregla solo.
 2. **Solo cuando aparece o empeora.** Un crítico se avisa si su cantidad supera la de la
    revisión anterior. Si sigue igual, no se repite cada día; se sigue viendo en `/salud`.
 3. **Un solo mensaje por revisión**, con todos los críticos abiertos y los nuevos
@@ -177,3 +182,4 @@ legacy tiene fechas desordenadas, se corrige o se reclasifica antes de confiar e
   propuesta aprobados por el usuario (S1 solo con espejo encendido y sin sustituidos;
   S5 a 12 h y atascados a 1 h; S6 separado en revocada y sin autorización; S9 por lista
   de ids; registro de cada revisión); Teams reducido a lo crítico nuevo o peor.
+- 03-nov-2026 — U24 (corte 41). S1-S4 retirados con el espejo; `/salud` solo lee.

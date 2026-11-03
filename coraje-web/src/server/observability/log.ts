@@ -8,9 +8,8 @@
  * Por qué una línea JSON y no `console.error("[correo] …", error)`:
  * - se filtra por campo (`evento`, `idTicket`) en vez de por texto libre;
  * - el identificador de correlación va siempre con el mismo nombre. Un
- *   `idTicket` en esta línea es el mismo `id_ticket` de la cola, de la
- *   referencia y de las divergencias, y su código es el `Id_Req` del ítem de
- *   HelpDeskBd: con eso se sigue un ticket de punta a punta sin inventar un
+ *   `idTicket` en esta línea es el mismo `id_ticket` de la base y de la
+ *   referencia legacy, y su código es el `Id_Req` del ítem de HelpDeskBd: con eso se sigue un ticket de punta a punta sin inventar un
  *   identificador nuevo (decisión O6);
  * - lo que no debe salir, no sale: los campos con nombre de secreto se
  *   omiten, y los tokens reconocibles se borran también del texto de los
@@ -102,7 +101,7 @@ export function buildLogLine(level: LogLevel, evento: string, fields: LogFields 
  * Registra un evento del servidor.
  *
  * `evento` es un nombre estable `dominio.que_paso` (`correo.graph_rechazo`,
- * `espejo.kick_fallido`): es por lo que se filtra, así que no lleva datos.
+ * `correo.envio_fallido`): es por lo que se filtra, así que no lleva datos.
  * Los datos van en `fields`; el error, aparte, para que su traza no se
  * mezcle con los campos.
  */
