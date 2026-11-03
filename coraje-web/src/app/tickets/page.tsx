@@ -75,12 +75,13 @@ function emptyMessage(view: InboxView, mode: TicketMode): string {
 }
 
 /**
- * Forma de `codigo_ticket` («{codigo_area}-{año}-{consecutivo}»,
- * helpdesk.next_codigo_ticket). El aviso de «redirigido» solo repite el
- * parámetro si tiene esa forma: un enlace fabricado no puede poner texto
- * propio en esta pantalla, igual que en `/login`.
+ * Forma de `codigo_ticket` (helpdesk.next_codigo_ticket): «{área}-{AAAAMM}-{n}»
+ * desde U29 (03-nov-2026) y «{área}-{año}-{consecutivo}» antes; las dos
+ * existen. El aviso de «redirigido» solo repite el parámetro si tiene una de
+ * esas formas: un enlace fabricado no puede poner texto propio en esta
+ * pantalla, igual que en `/login`.
  */
-const TICKET_CODE = /^[A-Z0-9]{1,10}-\d{4}-\d{4,6}$/;
+const TICKET_CODE = /^[A-Z0-9]{1,10}-(?:\d{6}-\d{1,6}|\d{4}-\d{4,6})$/;
 
 function inboxHref(mode: TicketMode, view: InboxView, filters: InboxFilters, page = 1): string {
   const query = modeQuery(mode);

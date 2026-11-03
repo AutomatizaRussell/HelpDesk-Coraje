@@ -70,6 +70,7 @@ model DimArea {
   dimTipoRequerimiento DimTipoRequerimiento[]
   factTicket          FactTicket[]
   ticketCodigoCounter TicketCodigoCounter[]
+  ticketCodigoMes     TicketCodigoMes[]
 
   @@map("dim_area")
   @@schema("core")
@@ -814,6 +815,24 @@ model TicketCodigoCounter {
 
   @@id([idArea, anio])
   @@map("ticket_codigo_counter")
+  @@schema("helpdesk")
+}
+
+/// Consecutivo del código del ticket por área y mes de Bogotá (U29, migración
+/// 20261103180000_codigo_ticket_mensual): «ADM-202611-1». Lo escribe solo
+/// helpdesk.next_codigo_ticket (SECURITY DEFINER); ningún rol de servicio la
+/// toca. Sustituye a TicketCodigoCounter, que se conserva. CHECK no
+/// representable: chk_ticket_codigo_mes_periodo (AAAAMM).
+model TicketCodigoMes {
+  idArea     String   @map("id_area") @db.Uuid
+  periodo    Int
+  lastNumber Int      @default(0) @map("last_number")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  dimArea    DimArea  @relation(fields: [idArea], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([idArea, periodo])
+  @@map("ticket_codigo_mes")
   @@schema("helpdesk")
 }
 

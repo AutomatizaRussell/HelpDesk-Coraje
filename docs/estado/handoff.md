@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 50, U29 parte 4: código por mes, SIN DESPLEGAR)
+SOBRE:   `f5c3baf` (corte 49)
+RAMA:    main
+UNIDAD:  U29, parte 4 de 6 (tickets.md §7.6). `ADM-202611-1`: área, AAAAMM de
+         Bogotá y consecutivo por área y mes sin ceros. Migración
+         `20261103180000_codigo_ticket_mensual` (`ticket_codigo_mes`,
+         `next_codigo_ticket` con la misma firma y SECURITY DEFINER). La bandeja
+         acepta las dos formas del código en su aviso. Evidencia: seis casos
+         contra PGlite (consecutivo, otra área, borde de medianoche de Bogotá,
+         reinicio de mes, dos cifras); `tsc`, `lint`, 204/204, `build`.
+SIGUE:   U29 parte 5, los toasts.
+
+--- Corte 49, para contexto:
 CORTE:   03-nov-2026 (corte 49, U29 parte 3: correos, SIN DESPLEGAR)
 SOBRE:   `a02378b` (corte 48)
 RAMA:    main
@@ -1571,6 +1584,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `f5c3baf` | **Corte 49.** U29 parte 3: cuatro correos, sin escalamiento. Publicado el 03-nov-2026 |
 | `a02378b` | **Corte 48.** U29 parte 2: aprobación que bloquea el cierre. Publicado el 03-nov-2026 |
 | `b1c9a0e` | **Corte 47.** U29 parte 1: sin «Rechazar», cuadro único. Publicado el 03-nov-2026 |
 | `e8a8ceb` | **Corte 46.** U28: variables de imagen solo en el Dockerfile (otra sesión). Sin desplegar al cerrar el corte 47 |
