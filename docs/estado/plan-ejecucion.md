@@ -623,7 +623,25 @@ en PowerApps (U24)», confirma que no hay nada que perder. Después, con el orde
 sección, la ingesta termina en *Success* tras la migración, y `/salud` carga sin la
 sección de divergencias.
 
-### U26 · Economía del despliegue — **construida el 03-nov-2026 (corte 44), sin desplegar**
+### U27 · Logotipos sin optimizador — **construida el 03-nov-2026 (corte 45), sin desplegar**
+
+`next/image` redimensionaba en el servidor, con `sharp`, PNG de 2422 px para
+mostrarlos a 36-200 px, y lo repetía tras cada despliegue. Ahora `public/` lleva
+derivados al doble del mayor ancho (12, 11 y 6 KB) y `images.unoptimized`
+(`design/sistema-helpdesk.md` §2). `sharp` sigue en la imagen, sin cargarse: excluirla
+del trazado ahorraría unos 15 MB de disco a cambio de un riesgo de arranque que solo
+se ve desplegando, y se descartó.
+
+**Condición de cierre:** tras desplegar, los logotipos se ven nítidos en el acceso, el
+sidebar desplegado y la columna replegada, y su URL sale de `/_next/static/media/`, no
+de `/_next/image`.
+
+### U26 · Economía del despliegue — **desplegada el 03-nov-2026 (corte 44); falta la caché entre despliegues**
+
+Primer despliegue (`7bc9412`): 3 min 12 s contra 5 min 30 s, sin `COPY node_modules`,
+`migrator` con 95 paquetes y su imagen exportada en 38 s, `migrate` terminó y `web`
+arrancó. El segundo despliegue del mismo commit no construyó: Coolify reutiliza las
+imágenes del mismo SHA. Queda abierta la segunda condición, con el próximo commit.
 
 Primera unidad del frente de economía de recursos (`CLAUDE.md`). Cada despliegue
 corre en la misma VPS que las demás aplicaciones; el del 03-nov tardó 5 min 30 s, casi
@@ -637,9 +655,8 @@ no 456, y `migrate` termina bien (`Exited` sin error y `web` arranca). En el
 **segundo** despliegue, `pnpm install` muestra `reused` y no `downloaded`. Si no
 aparece, la limpieza de Coolify está borrando la caché de build.
 
-**Siguen en este frente, en orden:** logotipos servidos sin procesar en el servidor
-(hoy `next/image` redimensiona PNG de 2422 px con `sharp`), y límite de memoria de
-`web` dimensionado con una segunda medición tras un día de uso.
+**Sigue en este frente:** después de U27, el límite de memoria de `web`, dimensionado
+con una segunda medición tras un día de uso.
 
 ### U25 · Borrar los tickets de prueba — **construida el 03-nov-2026 (corte 42), sin publicar**
 

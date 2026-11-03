@@ -30,6 +30,16 @@ const nextConfig: NextConfig = {
   output: "standalone",
   basePath: "/helpdesk",
   /**
+   * Sin optimizador de imágenes (U27). Las únicas imágenes son los tres
+   * logotipos de `public/`, ya generados al doble de su mayor ancho en
+   * pantalla (`design/sistema-helpdesk.md` §2). Con el optimizador, el
+   * servidor cargaba `sharp` y libvips para redimensionarlos en la primera
+   * petición de cada tamaño, y repetía el trabajo tras cada despliegue porque
+   * su caché vive dentro del contenedor. Servidos tal cual salen de
+   * `/_next/static` con caché inmutable.
+   */
+  images: { unoptimized: true },
+  /**
    * La raíz del dominio directo (U20, `helpdesk.rbgct.cloud`) lleva a la raíz
    * de HelpDesk, que manda al ingreso o a la bandeja. Fuera del `basePath` a
    * propósito (`basePath: false`): es la única ruta sin prefijo que la

@@ -1,6 +1,22 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 45, U27 logotipos sin optimizador, SIN DESPLEGAR)
+SOBRE:   `7bc9412` (corte 44)
+RAMA:    main
+UNIDAD:  U27 (plan-ejecucion.md). Originales de 2422 px a `docs/design/marca/`;
+         en `public/`, derivados de 400 px (logotipos) y 108 px (isotipo), PNG de
+         256 colores; `images.unoptimized` en next.config.ts. El servidor ya no
+         carga `sharp`; sigue en la imagen, sin excluirla (riesgo de arranque no
+         verificable sin desplegar).
+         Evidencia: derivados revisados a ojo; `brand-assets.test.mts` fija
+         anchos entre 2x y 3x del token; `tsc`, `lint`, 205/205 pruebas, `build`.
+         **Sin verificar:** nitidez en pantalla y URL `/_next/static/media/`.
+         U26 desplegada (corte 44): 3 min 12 s contra 5 min 30 s; la caché
+         entre despliegues se comprueba con este commit.
+SIGUE:   desplegar y comprobar los cierres de U27 y de la caché de U26.
+
+--- Corte 44, para contexto:
 CORTE:   03-nov-2026 (corte 44, U26 despliegue liviano, SIN DESPLEGAR)
 SOBRE:   `5d71fd5` (corte 43)
 RAMA:    main
@@ -1492,6 +1508,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `7bc9412` | **Corte 44.** U26: despliegue liviano. Desplegado el 03-nov-2026: 3 min 12 s contra 5 min 30 s |
 | `5d71fd5` | **Corte 43.** U7: adjuntos (con `429593b`). Desplegado el 03-nov-2026; puesta en marcha pendiente |
 | `b90cc94` | **Corte 42.** U25: tickets de prueba borrados. Publicado el 03-nov-2026 junto con el corte 41 |
 | `2514b24` | **Corte 41.** U24: retiro del espejo en PowerApps. Publicado el 03-nov-2026 |
@@ -1615,11 +1632,11 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar U26 y comprobar su log
+## Acción inmediata para la siguiente sesión — desplegar U27 y comprobar U26 y U27
 
-Se desvía de la cola (U7, adjuntos): el log del despliegue es la única evidencia del
-Dockerfile, y conviene tenerla antes de mezclarla con otro cambio. Condición de cierre
-en `plan-ejecucion.md`, U26. Después se vuelve a los adjuntos.
+Se desvía de la cola (U7, adjuntos) por el frente de economía de recursos que pidió el
+usuario el 03-nov. Condiciones en `plan-ejecucion.md`, U26 y U27. Después se vuelve a
+los adjuntos.
 
 ## Siguiente — poner en marcha los adjuntos
 

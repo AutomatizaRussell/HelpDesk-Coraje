@@ -55,9 +55,10 @@ export type BrandLogoPlacement = keyof typeof placements;
 
 export function BrandLogo({ placement }: { placement: BrandLogoPlacement }) {
   const { source, frame, image, width } = placements[placement];
-  // El ancho intrínseco sale del token (el mayor de la ubicación) para que el
-  // optimizador genere variantes 1x/2x de ese tamaño y no del original de
-  // 2422 px. El alto se deriva de la proporción real del archivo.
+  // El ancho intrínseco sale del token (el mayor de la ubicación) y el alto de
+  // la proporción real del archivo: reservan el espacio antes de que la imagen
+  // cargue. El archivo ya viene al doble de ese ancho (brand-assets.test.mts):
+  // no hay optimizador que lo redimensione (next.config.ts).
   const intrinsicWidth = Number.parseFloat(width);
   const intrinsicHeight = Math.round((intrinsicWidth * source.height) / source.width);
 

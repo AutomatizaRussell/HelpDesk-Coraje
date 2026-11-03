@@ -114,10 +114,16 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 Russell Bedford (inspeccionado el 23-sep-2026). Lo que obliga a este contrato:
 
 - **Logotipo e isotipo oficiales** del paquete de marca, recortados solo del margen
-  transparente:
-  - `public/rb-logo.png`: imagotipo azul, para la barra propia y el acceso;
-  - `public/rb-logo-white.png`: imagotipo blanco, para el sidebar navy;
-  - `public/rb-isotype-white.png`: isotipo blanco, para la columna replegada.
+  transparente. Los originales (2422 px) viven en `docs/design/marca/`; en
+  `coraje-web/public/` hay derivados al doble del mayor ancho en pantalla, en PNG de
+  256 colores (U27), porque la app los sirve sin optimizador:
+  - `public/rb-logo.png` (400 px): imagotipo azul, para la barra propia y el acceso;
+  - `public/rb-logo-white.png` (400 px): imagotipo blanco, para el sidebar navy;
+  - `public/rb-isotype-white.png` (108 px, el triple): isotipo blanco, para la columna
+    replegada.
+
+  Un token de ancho que crezca por encima de la mitad del archivo exige regenerar el
+  derivado desde el original; `brand-assets.test.mts` falla si no.
 
   El archivo anterior era una versión no oficial de navy apagado, y el manual prohíbe
   versiones anteriores o alternativas.
@@ -356,7 +362,7 @@ Estado al 23-sep-2026 (U5, cambios locales sin publicar). «Verificado» signifi
 | # | Afirmación a verificar | Dónde comprobarlo | Estado |
 |---|---|---|---|
 | V1 | Lato carga 400/700/900, y ninguna clase pide un peso sin corte (`font-medium`, `font-semibold`, `font-extrabold`, `font-thin`, `font-light`) | `layout.tsx` + `contract.test.mts` | **Verificado:** prueba del literal de `layout.tsx` contra `LATO_WEIGHTS`; el CSS compilado solo trae `@font-face` de 400/700/900 y ninguna regla `.font-semibold`. La itálica se difiere hasta que una vista la use |
-| V1b | `public/rb-logo.png` es el imagotipo oficial azul oscuro, recortado solo del margen transparente (2422×526, opaco en `#001871`) | Dimensiones y color dominante del archivo | **Verificado** al recortarlo (System.Drawing: límites alfa y color opaco dominante) |
+| V1b | `docs/design/marca/rb-logo.png` es el imagotipo oficial azul oscuro, recortado solo del margen transparente (2422×526, opaco en `#001871`); `public/rb-logo.png` es su derivado de 400 px | Dimensiones y color dominante del archivo | **Verificado** al recortarlo (System.Drawing: límites alfa y color opaco dominante). Derivados de U27, 03-nov-2026: Lanczos con `sharp`, revisados a ojo; anchos fijados por `brand-assets.test.mts` |
 | V2 | Existe contrato ejecutable con capas separadas | `coraje-web/src/design-system/` | **Verificado:** `foundations/`, `themes/`, `recipes/`, `components/`, `patterns/`, `utilities/` |
 | V3 | No hay valores quemados en vistas | Barrido de `contract.test.mts` sobre todo `src/` | **Verificado:** 10 detectores (hex, funciones de color, px, clases arbitrarias, z/duración numéricos, paleta por defecto, pesos, `font: inherit`, tamaño de icono, `style` en línea), cada uno con su prueba positiva y negativa; comprobado además forzando una violación en `page.tsx` |
 | V4 | Los dos adaptadores del tema no divergen | `contract.test.mts` | **Verificado:** igualdad de claves y de valores; falla al forzar un valor distinto y una variable solo en CSS. Además, toda `var(--hd-…)` del código debe existir |
