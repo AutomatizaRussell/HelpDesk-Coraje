@@ -514,6 +514,10 @@ enum TipoEventoTicket {
   OBSERVADOR_RETIRADO
   SOLICITUD_VALIDACION
   COMENTARIO_SOLICITANTE
+  // U29 (tickets.md §11.2): la respuesta a una solicitud de aprobación.
+  APROBACION_OTORGADA
+  APROBACION_DENEGADA
+  APROBACION_RETIRADA
 
   @@map("tipo_evento_ticket")
   @@schema("helpdesk")
@@ -661,7 +665,8 @@ model FactTicketEvento {
   estadoAnterior    DimEstado?        @relation("EventoEstadoAnterior", fields: [idEstadoAnterior], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   estadoNuevo       DimEstado?        @relation("EventoEstadoNuevo", fields: [idEstadoNuevo], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)
   ticketNotificacion TicketNotificacion[]
-  ticketValidacion  TicketValidacion?
+  ticketValidacion  TicketValidacion? @relation("ValidacionSolicitud")
+  respuestaValidacion TicketValidacion? @relation("ValidacionRespuesta")
   avisos            TicketAviso[]
   adjuntos          TicketAdjunto[]
 
@@ -725,7 +730,15 @@ model TicketValidacion {
   idTicket       String           @map("id_ticket") @db.Uuid
   idDestinatario String           @map("id_destinatario") @db.Uuid
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  evento         FactTicketEvento @relation(fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
+  // U29: pendiente mientras resultado es NULL. Las tres van juntas
+  // (chk_ticket_validacion_respuesta); resultado: APROBADA, NO_APROBADA o
+  // RETIRADA (chk_ticket_validacion_resultado). Una sola pendiente por ticket
+  // (ux_ticket_validacion_pendiente, índice parcial no representable).
+  resultado         String?           @db.VarChar(20)
+  idEventoRespuesta String?           @unique(map: "uq_ticket_validacion_evento_respuesta") @map("id_evento_respuesta") @db.Uuid
+  respondidaAt      DateTime?         @map("respondida_at") @db.Timestamptz(6)
+  evento         FactTicketEvento @relation("ValidacionSolicitud", fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
+  eventoRespuesta FactTicketEvento? @relation("ValidacionRespuesta", fields: [idEventoRespuesta], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
   factTicket     FactTicket       @relation(fields: [idTicket], references: [idTicket], onDelete: Restrict, onUpdate: NoAction)
   destinatario   DimPersonal      @relation(fields: [idDestinatario], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
 

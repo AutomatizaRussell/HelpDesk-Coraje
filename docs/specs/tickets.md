@@ -792,6 +792,33 @@ tiene su propia frontera de clientes, más amplia), y "solicitar validación" no
 mismo que "Autorización excepcional" (§5). Se añaden al catálogo, no se disuelven en
 uno existente.
 
+### 11.2 `DECISIÓN` (03-nov-2026, U29) La validación pasa a ser aprobación
+
+Supera lo que §11 y §11.1 dicen de la solicitud de validación. Decisión del usuario:
+quien «validaba» es un **aprobador**, y el ticket no avanza hasta que responda.
+
+- **Bloquea el cierre.** Con una aprobación pendiente, «Responder y cerrar» queda
+  desactivado con el motivo escrito, y el escritor único rechaza `RESPUESTA`
+  (`HD_APROBACION_PENDIENTE`). Reasignar y anotar siguen permitidos.
+- **«Aprobar» y «No aprobar».** El motivo es obligatorio para no aprobar. Si no
+  aprueba, el ticket sigue abierto con el mismo responsable, que decide qué responder;
+  la negativa queda en la historia (`APROBACION_DENEGADA`) y avisa a quien pidió la
+  aprobación y al responsable.
+- **Una sola pendiente por ticket** (`ux_ticket_validacion_pendiente`). Quien la pidió o
+  el responsable la retiran (`APROBACION_RETIRADA`): pedírsela a la persona equivocada
+  no puede dejar el ticket bloqueado.
+- **El aprobador ya no se vuelve observador.** Ve el ticket por ser aprobador
+  (`idAprobadores` en `scope.ts`), con la vista del equipo, y su única acción nueva es
+  responder (`ticket.aprobacion.responder`, `PROPIO`). La aprobación pendiente aparece
+  en su vista «Por atender».
+- **Su aviso se cierra al responder** (`trg_resolver_aviso_aprobacion`), como cierra la
+  base los demás avisos de atención.
+- Los nombres de la base no cambian: `ticket_validacion` es la tabla de solicitudes y
+  `SOLICITUD_VALIDACION` el evento que las pide.
+
+Migraciones: `20261103150000_valores_aprobacion` (solo `ADD VALUE`) y
+`20261103160000_aprobacion_ticket`.
+
 ## 12. `DECISIÓN` (30-sep-2026, U15) Avisos: centro de notificaciones y escalamiento
 
 ```
@@ -1082,6 +1109,8 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U29 (corte 48). §11.2: la validación pasa a ser aprobación, que
+  bloquea el cierre; el aprobador ya no se vuelve observador.
 - 03-nov-2026 — U29 (corte 47). T8 (rechazar) retirada. El detalle deja las pestañas:
   un solo cuadro con «Responder y cerrar», «Enviar comentario» y «Guardar nota
   interna» según lo que cada persona pueda hacer; pedir validación pasa al panel de

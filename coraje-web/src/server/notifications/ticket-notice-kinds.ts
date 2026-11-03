@@ -9,7 +9,7 @@
  * - `NOVEDAD`: solo informa. Se marca leída al abrirla.
  *
  * Esta tabla es la misma que los CHECK `chk_ticket_aviso_tipo` y
- * `chk_ticket_aviso_clase` de la migración `20260930120000_avisos_ticket`.
+ * `chk_ticket_aviso_clase`, en su última versión (`20261103160000_aprobacion_ticket`).
  * `ticket-notice-kinds.test.mts` lee la migración y falla si divergen.
  */
 export const NOTICE_CLASS = {
@@ -19,17 +19,18 @@ export const NOTICE_CLASS = {
   REASIGNACION_RESPONSABLE: "ATENCION",
   /** Te llega un ticket del portal que alguien clasificó. */
   REDIRECCION_RESPONSABLE: "ATENCION",
-  /** Te piden validar algo. En la v1 no hay respuesta del validador: se cierra al terminar el ticket. */
+  /** Te piden aprobar algo (U29). Se cierra cuando respondes, si la retiran o al terminar el ticket. */
   SOLICITUD_VALIDACION: "ATENCION",
   /** Tu ticket cambió de responsable. */
   REASIGNACION_SOLICITANTE: "NOVEDAD",
   RESPUESTA_SOLICITANTE: "NOVEDAD",
-  RECHAZO_SOLICITANTE: "NOVEDAD",
   OBSERVADOR_AGREGADO: "NOVEDAD",
   RESPUESTA_OBSERVADOR: "NOVEDAD",
-  RECHAZO_OBSERVADOR: "NOVEDAD",
   /** Quien radicó escribió en el ticket que atiendes. No te pide una acción nueva: el ticket ya lo era. */
   COMENTARIO_SOLICITANTE_RESPONSABLE: "NOVEDAD",
+  /** U29: respondieron la aprobación que pediste, o la del ticket que atiendes. */
+  APROBACION_OTORGADA: "NOVEDAD",
+  APROBACION_DENEGADA: "NOVEDAD",
 } as const satisfies Record<string, NoticeClass>;
 
 export type NoticeClass = "ATENCION" | "NOVEDAD";

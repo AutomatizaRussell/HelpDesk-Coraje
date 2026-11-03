@@ -41,7 +41,10 @@ const EVENT_TITLE: Record<string, string> = {
   SINCRONIZACION_LEGACY: "Cambio registrado en PowerApps",
   OBSERVADOR_AGREGADO: "Observadores añadidos",
   OBSERVADOR_RETIRADO: "Observador retirado",
-  SOLICITUD_VALIDACION: "Validación solicitada",
+  SOLICITUD_VALIDACION: "Aprobación solicitada",
+  APROBACION_OTORGADA: "Aprobado",
+  APROBACION_DENEGADA: "No aprobado",
+  APROBACION_RETIRADA: "Aprobación retirada",
   COMENTARIO_SOLICITANTE: "Comentario del solicitante",
 };
 

@@ -18,9 +18,11 @@ import {
   commentAsRequesterAction,
   reassignTicketAction,
   removeObserverAction,
-  requestValidationAction,
+  requestApprovalAction,
   resendTicketMailAction,
+  respondApprovalAction,
   respondTicketAction,
+  withdrawApprovalAction,
 } from "./actions";
 import { NoCandidatesNotice, PeoplePicker } from "./PeoplePicker";
 
@@ -107,11 +109,14 @@ export function TicketComposer({
   canRespond,
   canComment,
   canNote,
+  waitingApprovalFrom = null,
 }: {
   idTicket: string;
   canRespond: boolean;
   canComment: boolean;
   canNote: boolean;
+  /** U29: con una aprobación pendiente, el ticket no se cierra. Nombra a quien falta. */
+  waitingApprovalFrom?: string | null;
 }) {
   const [respondState, respondAction, responding] = useActionState(respondTicketAction, IDLE_FORM_STATE);
   const [commentState, commentAction, commenting] = useActionState(commentAsRequesterAction, IDLE_FORM_STATE);
@@ -147,7 +152,8 @@ export function TicketComposer({
             formAction={respondAction}
             onClick={() => setLast("responder")}
             className={buttonRecipe({ variant: variant("responder") })}
-            disabled={pending || uploading}
+            disabled={pending || uploading || waitingApprovalFrom !== null}
+            aria-describedby={waitingApprovalFrom ? "cierre-bloqueado" : undefined}
           >
             {responding ? "Guardando…" : uploading ? "Subiendo adjuntos…" : "Responder y cerrar"}
           </button>
@@ -175,6 +181,11 @@ export function TicketComposer({
           </button>
         )}
       </div>
+      {canRespond && waitingApprovalFrom && (
+        <p id="cierre-bloqueado" className={fieldHint}>
+          Se puede responder y cerrar cuando {waitingApprovalFrom} responda la aprobación, o si se retira la solicitud.
+        </p>
+      )}
     </form>
   );
 }
@@ -293,8 +304,9 @@ export function RemoveObserverForm({ idTicket, idObservador, nombre }: { idTicke
   );
 }
 
-export function RequestValidationForm({ idTicket, candidates }: { idTicket: string; candidates: readonly FollowCandidate[] }) {
-  const { state, formAction, pending, formKey } = useTicketForm(requestValidationAction);
+/** Pedir a una persona que apruebe algo (U29). Bloquea el cierre hasta que responda. */
+export function RequestApprovalForm({ idTicket, candidates }: { idTicket: string; candidates: readonly FollowCandidate[] }) {
+  const { state, formAction, pending, formKey } = useTicketForm(requestApprovalAction);
   // Sin nadie a quien elegir, enviar solo podría fallar: ni formulario ni botón.
   if (candidates.length === 0) return <NoCandidatesNotice />;
   return (
@@ -303,8 +315,8 @@ export function RequestValidationForm({ idTicket, candidates }: { idTicket: stri
       <FormFeedback state={state} />
       <PeoplePicker
         name="idDestinatario"
-        label="A quién le pides que valide"
-        hint="Le llega un aviso y podrá abrir el ticket."
+        label="Quién debe aprobar"
+        hint="Le llega un aviso y podrá abrir el ticket. No pasa a ser observador."
         candidates={candidates}
         mode="single"
         initialSelected={previousSelection(state, "idDestinatario")}
@@ -312,11 +324,55 @@ export function RequestValidationForm({ idTicket, candidates }: { idTicket: stri
       />
       <TextField
         name="comentario"
-        label="Qué necesitas que confirme"
-        hint="Solo lo ve el equipo. El ticket sigue su curso mientras tanto."
+        label="Qué debe aprobar"
+        hint="Solo lo ve el equipo. Hasta que responda, el ticket no se puede cerrar."
         state={state}
       />
-      <Submit pending={pending} variant="primary">Pedir validación</Submit>
+      <Submit pending={pending} variant="primary">Pedir aprobación</Submit>
+    </form>
+  );
+}
+
+/**
+ * La respuesta de quien aprueba (U29). Dos botones en el mismo formulario,
+ * cada uno con su `decision`. «No aprobar» exige el motivo; la acción lo
+ * valida y el formulario vuelve con lo escrito si falta.
+ */
+export function ApprovalResponseForm({ idTicket }: { idTicket: string }) {
+  const { state, formAction, pending, formKey } = useTicketForm(respondApprovalAction);
+  return (
+    <form key={formKey} action={formAction} className="space-y-3">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      <FormFeedback state={state} />
+      <TextField
+        name="comentario"
+        label="Comentario"
+        hint="Obligatorio si no apruebas: el responsable lo necesita para responder. Solo lo ve el equipo."
+        state={state}
+        rows={3}
+      />
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" name="decision" value="APROBADA" className={buttonRecipe({ variant: "primary", size: "sm" })} disabled={pending}>
+          Aprobar
+        </button>
+        <button type="submit" name="decision" value="NO_APROBADA" className={buttonRecipe({ variant: "secondary", size: "sm" })} disabled={pending}>
+          No aprobar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Retirar la aprobación pendiente: quien la pidió o el responsable. */
+export function WithdrawApprovalForm({ idTicket }: { idTicket: string }) {
+  const [state, formAction, pending] = useActionState(withdrawApprovalAction, IDLE_FORM_STATE);
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      {state.status === "error" && <FormFeedback state={state} />}
+      <button type="submit" className={buttonRecipe({ variant: "secondary", size: "sm" })} disabled={pending}>
+        {pending ? "Retirando…" : "Retirar solicitud"}
+      </button>
     </form>
   );
 }

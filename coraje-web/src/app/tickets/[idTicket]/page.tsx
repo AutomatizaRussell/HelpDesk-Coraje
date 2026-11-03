@@ -13,11 +13,13 @@ import { areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate, formatDateTime, formatPriority } from "@/features/tickets/format";
 import {
   AddObserversForm,
+  ApprovalResponseForm,
   ReassignForm,
   RemoveObserverForm,
-  RequestValidationForm,
+  RequestApprovalForm,
   ResendMailForm,
   TicketComposer,
+  WithdrawApprovalForm,
 } from "@/features/tickets/TicketActionForms";
 import { EditableField } from "@/features/tickets/TicketDetailActions";
 import { TicketHistory } from "@/features/tickets/TicketHistory";
@@ -27,7 +29,7 @@ import { markTicketNoticesRead } from "@/server/notifications/ticket-notices";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
 import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
 import { inboxPath } from "@/server/tickets/ticket-mode";
-import { getTicketDetail, listFollowCandidates, listReassignCandidates } from "@/server/tickets/ticket-queries";
+import { getTicketDetail, listFollowCandidates, listReassignCandidates, type TicketDetail } from "@/server/tickets/ticket-queries";
 
 /**
  * Detalle de un ticket: descripción, cuadro para escribir e historia a la
@@ -45,6 +47,37 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+
+const APPROVAL_RESULT: Record<"APROBADA" | "NO_APROBADA" | "RETIRADA", string> = {
+  APROBADA: "aprobó",
+  NO_APROBADA: "no aprobó",
+  RETIRADA: "solicitud retirada",
+};
+
+/**
+ * La aprobación del ticket (U29): quién debe aprobar mientras está
+ * pendiente, y lo que ya se resolvió. La pendiente es lo primero porque es lo
+ * que bloquea el cierre.
+ */
+function ApprovalSummary({ aprobacion }: { aprobacion: TicketDetail["aprobacion"] }) {
+  if (!aprobacion.pendiente && aprobacion.resueltas.length === 0) return <span className="text-ink-muted">Nadie la ha pedido</span>;
+  return (
+    <ul className="space-y-1">
+      {aprobacion.pendiente && (
+        <li>
+          <span className="font-bold text-heading">Pendiente de {aprobacion.pendiente.aprobador}</span>
+          <span className="block text-sm text-ink-muted">Desde {formatDateTime(aprobacion.pendiente.desde)}. El ticket no se cierra hasta que responda.</span>
+        </li>
+      )}
+      {aprobacion.resueltas.map((item) => (
+        <li key={`${item.aprobador}-${item.fecha.toISOString()}`} className="text-sm text-ink-muted">
+          {item.resultado === "RETIRADA" ? `${item.aprobador}: solicitud retirada` : `${item.aprobador} ${APPROVAL_RESULT[item.resultado]}`} ·{" "}
+          {formatDateTime(item.fecha)}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** Quienes siguen el ticket, con la × para retirarlos si se puede. */
 function ObserverList({
@@ -111,7 +144,7 @@ export default async function TicketDetailPage({
 
   // Lo que se escribe va en un solo cuadro debajo de la descripción, con un
   // botón por acción (03-nov-2026, sin pestañas); cambiar responsable,
-  // observadores o pedir validación, en el panel de datos, junto a lo que
+  // observadores o pedir aprobación, en el panel de datos, junto a lo que
   // cambian. Solo aparece lo que el estado y el alcance permiten
   // (`capabilities`), con las mismas reglas del servicio.
   // Quien es a la vez responsable y solicitante responde o anota: comentar su
@@ -155,6 +188,7 @@ export default async function TicketDetailPage({
                   canRespond={capabilities.responder}
                   canComment={canComment}
                   canNote={capabilities.notaInterna}
+                  waitingApprovalFrom={ticket.aprobacion.pendiente?.aprobador ?? null}
                 />
               </section>
             )}
@@ -232,15 +266,31 @@ export default async function TicketDetailPage({
                   <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove={false} />
                 </Field>
               )}
-              {capabilities.solicitarValidacion && (
+              {capabilities.solicitarValidacion ? (
                 <EditableField
-                  label="Validación"
-                  actionLabel="Pedir validación"
+                  label="Aprobación"
+                  actionLabel="Pedir aprobación"
                   icon="anadir"
-                  form={<RequestValidationForm idTicket={ticket.idTicket} candidates={validationCandidates} />}
+                  form={<RequestApprovalForm idTicket={ticket.idTicket} candidates={validationCandidates} />}
                 >
-                  <span className="text-ink-muted">Pide a una persona que confirme algo del ticket.</span>
+                  <ApprovalSummary aprobacion={ticket.aprobacion} />
                 </EditableField>
+              ) : (
+                (ticket.aprobacion.pendiente || ticket.aprobacion.resueltas.length > 0) && (
+                  <Field label="Aprobación">
+                    <ApprovalSummary aprobacion={ticket.aprobacion} />
+                    {capabilities.responderAprobacion && (
+                      <div className="mt-2 rounded-control border border-line bg-surface-sunken p-3">
+                        <ApprovalResponseForm idTicket={ticket.idTicket} />
+                      </div>
+                    )}
+                    {capabilities.retirarAprobacion && (
+                      <div className="mt-2">
+                        <WithdrawApprovalForm idTicket={ticket.idTicket} />
+                      </div>
+                    )}
+                  </Field>
+                )
               )}
               <Field label="Radicado">{formatDateTime(ticket.fechaCreacion)}</Field>
               {ticket.fechaResolucion && <Field label="Terminado">{formatDateTime(ticket.fechaResolucion)}</Field>}

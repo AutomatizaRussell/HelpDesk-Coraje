@@ -60,6 +60,13 @@ export interface ScopeTicket {
    * lo note.
    */
   idObservadores: readonly string[];
+  /**
+   * A quiénes se les pidió aprobar algo del ticket (U29, tickets.md §11.2),
+   * pendiente o ya respondido. Obligatorio por la misma razón que
+   * `idObservadores`. Ser aprobador da consultar y responder la aprobación;
+   * ya no convierte en observador.
+   */
+  idAprobadores: readonly string[];
 }
 
 /**
@@ -69,6 +76,8 @@ export interface ScopeTicket {
  *   poder seguir su propio ticket.
  * - Consultar, además: seguirlo como observador (U11). Es lo único que da
  *   ser observador: ninguna otra acción lo mira (tickets.md §11).
+ * - Consultar, además: ser su aprobador (U29), y responder la aprobación es
+ *   lo único que eso permite hacer.
  * - Comentar como solicitante (U11): haberlo radicado, y nada más. Es la
  *   única acción cuyo «propio» no es ser el responsable, porque es la voz de
  *   quien pidió, no de quien atiende.
@@ -89,7 +98,15 @@ export interface ScopeTicket {
 function isOwnTicket(action: TicketAction, actor: ScopeActor, ticket: ScopeTicket): boolean {
   const isResponsable = ticket.idAsignado === actor.idPersonal;
   if (action === TICKET_ACTIONS.consultar) {
-    return isResponsable || ticket.idSolicitante === actor.idPersonal || ticket.idObservadores.includes(actor.idPersonal);
+    return (
+      isResponsable ||
+      ticket.idSolicitante === actor.idPersonal ||
+      ticket.idObservadores.includes(actor.idPersonal) ||
+      ticket.idAprobadores.includes(actor.idPersonal)
+    );
+  }
+  if (action === TICKET_ACTIONS.responderAprobacion) {
+    return ticket.idAprobadores.includes(actor.idPersonal);
   }
   if (action === TICKET_ACTIONS.comentarSolicitante) {
     return ticket.idSolicitante === actor.idPersonal;
@@ -140,6 +157,7 @@ export type ConsultScopeCondition =
   | { idSolicitante: string }
   | { idAsignado: string }
   | { observadores: { some: { idPersonal: string } } }
+  | { validaciones: { some: { idDestinatario: string } } }
   | { idTipoReq: { in: string[] } }
   | { idTipoReq: null; idAreaDestino: { in: string[] } };
 
@@ -149,6 +167,7 @@ export function consultScopeConditions(alcance: Alcance, actor: ScopeActor): Con
     { idSolicitante: actor.idPersonal },
     { idAsignado: actor.idPersonal },
     { observadores: { some: { idPersonal: actor.idPersonal } } },
+    { validaciones: { some: { idDestinatario: actor.idPersonal } } },
   ];
   if (alcance === "AREA") {
     // Una lista vacía no se envía: `IN ()` no ampliaría nada, y así quien no
@@ -187,6 +206,9 @@ export function historyProjection(params: {
   if (alcance === "TOTAL") return "EQUIPO";
   if (ticket.idAsignado === actor.idPersonal) return "EQUIPO";
   if (ticket.idObservadores.includes(actor.idPersonal)) return "EQUIPO";
+  // El aprobador necesita el contexto del equipo: lo que se le pide aprobar
+  // es una nota interna.
+  if (ticket.idAprobadores.includes(actor.idPersonal)) return "EQUIPO";
   if (alcance === "AREA" && isReceivedTicket(actor, ticket)) return "EQUIPO";
   return "SOLICITANTE";
 }

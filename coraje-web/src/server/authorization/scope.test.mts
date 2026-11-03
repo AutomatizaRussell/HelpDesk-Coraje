@@ -40,6 +40,7 @@ const ticket = (fields: Partial<ScopeTicket>): ScopeTicket => ({
   idAreaDestino: OTRA_AREA,
   idTipoReq: null,
   idObservadores: [],
+  idAprobadores: [],
   ...fields,
 });
 
@@ -173,4 +174,16 @@ test("comentar como solicitante: solo quien radicó, no el responsable", () => {
   assert.equal(within("PROPIO", TICKET_ACTIONS.comentarSolicitante, tickets.loRadiqueYo), true);
   assert.equal(within("PROPIO", TICKET_ACTIONS.comentarSolicitante, tickets.soyResponsable), false);
   assert.equal(within("PROPIO", TICKET_ACTIONS.comentarSolicitante, tickets.loSigo), false);
+});
+
+test("quien debe aprobar ve el ticket como equipo y solo responde la aprobación (U29)", () => {
+  const meTocaAprobar = ticket({ idAprobadores: [YO] });
+  assert.equal(within("PROPIO", TICKET_ACTIONS.consultar, meTocaAprobar), true);
+  assert.equal(within("PROPIO", TICKET_ACTIONS.responderAprobacion, meTocaAprobar), true);
+  for (const action of [TICKET_ACTIONS.responder, TICKET_ACTIONS.reasignar, TICKET_ACTIONS.notaInterna]) {
+    assert.equal(within("PROPIO", action, meTocaAprobar), false, action);
+  }
+  assert.equal(historyProjection({ alcance: "PROPIO", actor: encargado, ticket: meTocaAprobar }), "EQUIPO");
+  // Responder una aprobación no es de quien atiende: es de a quien se la pidieron.
+  assert.equal(within("PROPIO", TICKET_ACTIONS.responderAprobacion, tickets.soyResponsable), false);
 });

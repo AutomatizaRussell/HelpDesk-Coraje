@@ -25,7 +25,7 @@ import { PORTAL_ORIGIN } from "./ticket-state";
  * filtro va en la consulta SQL.
  */
 
-const UNREDIRECTED_SHAPE = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idTipoReq: null, idObservadores: [] } as const;
+const UNREDIRECTED_SHAPE = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idTipoReq: null, idObservadores: [], idAprobadores: [] } as const;
 
 /** Los tickets del portal que esperan área. */
 export const UNREDIRECTED_WHERE = {

@@ -14,18 +14,20 @@ import { NOTICE_CLASS, RESPONSIBLE_NOTICE_KINDS } from "./ticket-notice-kinds";
  */
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
-const MIGRATION = path.resolve(THIS_DIR, "../../../prisma/migrations/20260930120000_avisos_ticket/migration.sql");
-const sql = readFileSync(MIGRATION, "utf8");
+const MIGRATIONS = path.resolve(THIS_DIR, "../../../prisma/migrations");
+const sql = readFileSync(path.join(MIGRATIONS, "20260930120000_avisos_ticket/migration.sql"), "utf8");
+/** U29 reescribió los CHECK de tipo y de clase: manda su versión. */
+const checksSql = readFileSync(path.join(MIGRATIONS, "20261103160000_aprobacion_ticket/migration.sql"), "utf8");
 
 /** Los literales entre comillas simples de un fragmento de SQL. */
 function literals(fragment: string): string[] {
   return [...fragment.matchAll(/'([A-Z_]+)'/g)].map((match) => match[1]);
 }
 
-function between(start: RegExp, end: RegExp): string {
-  const from = sql.search(start);
+function between(start: RegExp, end: RegExp, source: string = sql): string {
+  const from = source.search(start);
   assert.ok(from >= 0, `No se encontró ${start} en la migración`);
-  const rest = sql.slice(from);
+  const rest = source.slice(from);
   const to = rest.search(end);
   assert.ok(to >= 0, `No se encontró el final de ${start}`);
   return rest.slice(0, to);
@@ -38,12 +40,12 @@ const attentionKinds = Object.entries(NOTICE_CLASS)
   .sort();
 
 test("el CHECK de tipo admite exactamente los tipos de la tabla", () => {
-  const check = between(/CONSTRAINT "chk_ticket_aviso_tipo"/, /\)\),/);
+  const check = between(/ADD CONSTRAINT "chk_ticket_aviso_tipo"/, /\)\),/, checksSql);
   assert.deepEqual(literals(check).sort(), allKinds);
 });
 
 test("el CHECK de clase marca como ATENCION exactamente los mismos tipos", () => {
-  const check = between(/CONSTRAINT "chk_ticket_aviso_clase"/, /THEN 'ATENCION'/);
+  const check = between(/ADD CONSTRAINT "chk_ticket_aviso_clase"/, /THEN 'ATENCION'/, checksSql);
   assert.deepEqual(literals(check).sort(), attentionKinds);
 });
 

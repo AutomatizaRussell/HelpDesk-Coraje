@@ -58,6 +58,10 @@ interface LockedTicket {
   estado: TicketState;
   /** Quienes siguen el ticket (U11). Entra en el alcance de consulta. */
   idObservadores: string[];
+  /** A quiénes se les pidió aprobar algo (U29). Entra en el alcance de consulta. */
+  idAprobadores: string[];
+  /** La aprobación pendiente, si hay una (U29): bloquea el cierre. */
+  aprobacionPendiente: { idEvento: string; idDestinatario: string; destinatario: string; idSolicitada: string | null } | null;
 }
 
 const DENIED_MESSAGE = "No tienes permiso para hacer esto en este ticket.";
@@ -74,6 +78,11 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
       origen_sistema: string;
       nombre_estado: string;
       id_observadores: string[];
+      id_aprobadores: string[];
+      pendiente_evento: string | null;
+      pendiente_destinatario: string | null;
+      pendiente_nombre: string | null;
+      pendiente_solicitada: string | null;
     }[]
   >`
     SELECT ticket.id_ticket::text,
@@ -88,10 +97,26 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
                SELECT observador.id_personal::text
                FROM helpdesk.ticket_observador AS observador
                WHERE observador.id_ticket = ticket.id_ticket
-           ) AS id_observadores
+           ) AS id_observadores,
+           ARRAY(
+               SELECT DISTINCT aprobacion.id_destinatario::text
+               FROM helpdesk.ticket_validacion AS aprobacion
+               WHERE aprobacion.id_ticket = ticket.id_ticket
+           ) AS id_aprobadores,
+           pendiente.id_evento::text AS pendiente_evento,
+           pendiente.id_destinatario::text AS pendiente_destinatario,
+           persona.nombre_completo AS pendiente_nombre,
+           solicitud.id_autor::text AS pendiente_solicitada
     FROM helpdesk.fact_ticket AS ticket
     JOIN helpdesk.dim_estado AS estado
         ON estado.id_estado = ticket.id_estado
+    -- A lo sumo una (ux_ticket_validacion_pendiente).
+    LEFT JOIN helpdesk.ticket_validacion AS pendiente
+        ON pendiente.id_ticket = ticket.id_ticket AND pendiente.resultado IS NULL
+    LEFT JOIN core.dim_personal AS persona
+        ON persona.id_personal = pendiente.id_destinatario
+    LEFT JOIN helpdesk.fact_ticket_evento AS solicitud
+        ON solicitud.id_evento = pendiente.id_evento
     WHERE ticket.id_ticket = ${idTicket}::uuid
     FOR UPDATE OF ticket
   `;
@@ -112,6 +137,16 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
     origenSistema: row.origen_sistema,
     estado: row.nombre_estado,
     idObservadores: row.id_observadores,
+    idAprobadores: row.id_aprobadores,
+    aprobacionPendiente:
+      row.pendiente_evento && row.pendiente_destinatario
+        ? {
+            idEvento: row.pendiente_evento,
+            idDestinatario: row.pendiente_destinatario,
+            destinatario: row.pendiente_nombre ?? "la persona aprobadora",
+            idSolicitada: row.pendiente_solicitada,
+          }
+        : null,
   };
 }
 
@@ -169,6 +204,9 @@ async function writeEvent(
       | "OBSERVADOR_AGREGADO"
       | "OBSERVADOR_RETIRADO"
       | "SOLICITUD_VALIDACION"
+      | "APROBACION_OTORGADA"
+      | "APROBACION_DENEGADA"
+      | "APROBACION_RETIRADA"
       | "COMENTARIO_SOLICITANTE";
     idAutor: string;
     visibilidad: "INTERNO" | "AMBOS";
@@ -640,6 +678,14 @@ export async function respondTicket(params: {
       allowedStates: ["ASIGNADO"],
       stateMessage: "Este ticket ya no admite respuesta.",
     });
+    // U29: la base también lo impide (HD_APROBACION_PENDIENTE); aquí con un
+    // mensaje que nombra a quien falta.
+    if (ticket.aprobacionPendiente) {
+      throw new TicketDomainError(
+        "ESTADO_NO_PERMITE",
+        `Este ticket espera la aprobación de ${ticket.aprobacionPendiente.destinatario}. Se puede cerrar cuando responda o si se retira la solicitud.`,
+      );
+    }
 
     const now = new Date();
     await tx.factTicket.update({
@@ -785,17 +831,16 @@ export async function removeObserver(params: {
 }
 
 /**
- * Pide a una persona concreta que confirme algo del ticket. **No bloquea**:
- * el ticket sigue su curso, y la solicitud queda en la historia y en la
- * bandeja de quien la recibe (decisión del 24-sep-2026). No es la
- * autorización excepcional de permisos.md §5: no exige justificación ni se
- * audita como excepción.
+ * Pide a una persona que apruebe algo del ticket (U29, tickets.md §11.2).
+ * **Bloquea el cierre** hasta que responda o se retire la solicitud: es lo
+ * que la distingue de un comentario. Una sola pendiente por ticket
+ * (ux_ticket_validacion_pendiente); la base guarda el tipo de evento
+ * SOLICITUD_VALIDACION, que conserva su nombre.
  *
- * Quien la recibe pasa a seguir el ticket si no lo veía ya: sin eso, el
- * aviso le llevaría a un ticket que no puede abrir. Esa incorporación no
- * escribe un evento propio; el de la solicitud ya dice por qué está ahí.
+ * Quien aprueba no pasa a seguir el ticket (decisión del 03-nov-2026: «no
+ * debe aparecer en los observadores»): lo ve por ser aprobador (scope.ts).
  */
-export async function requestValidation(params: {
+export async function requestApproval(params: {
   idPersonal: string;
   idTicket: string;
   idDestinatario: string;
@@ -808,18 +853,23 @@ export async function requestValidation(params: {
       idPersonal: params.idPersonal,
       action: TICKET_ACTIONS.solicitarValidacion,
       allowedStates: OPEN_STATES,
-      stateMessage: "Solo se pide validación en un ticket abierto.",
+      stateMessage: "Solo se pide aprobación en un ticket abierto.",
     });
-
+    if (ticket.aprobacionPendiente) {
+      throw new TicketDomainError(
+        "ESTADO_NO_PERMITE",
+        `Ya hay una aprobación pendiente de ${ticket.aprobacionPendiente.destinatario}. Retírala antes de pedir otra.`,
+      );
+    }
     if (params.idDestinatario === params.idPersonal) {
-      throw new TicketDomainError("DESTINO_INVALIDO", "No puedes pedirte la validación a ti.");
+      throw new TicketDomainError("DESTINO_INVALIDO", "No puedes pedirte la aprobación a ti.");
     }
     const destinatario = await tx.dimPersonal.findFirst({
       where: { idPersonal: params.idDestinatario, ...FOLLOWER_WHERE },
       select: { idPersonal: true, nombreCompleto: true },
     });
     if (!destinatario) {
-      throw new TicketDomainError("DESTINO_INVALIDO", "Solo puedes pedir validación a una persona activa con acceso a HelpDesk.");
+      throw new TicketDomainError("DESTINO_INVALIDO", "Solo puedes pedir aprobación a una persona activa con acceso a HelpDesk.");
     }
 
     const idEvento = await writeEvent(tx, {
@@ -827,19 +877,12 @@ export async function requestValidation(params: {
       tipo: "SOLICITUD_VALIDACION",
       idAutor: params.idPersonal,
       visibilidad: "INTERNO",
-      contenido: `Validación solicitada a ${destinatario.nombreCompleto}.\n\n${params.comentario}`,
+      contenido: `Aprobación pedida a ${destinatario.nombreCompleto}.\n\n${params.comentario}`,
       estadoNuevo: null,
     });
     await tx.ticketValidacion.create({
       data: { idEvento, idTicket: ticket.idTicket, idDestinatario: destinatario.idPersonal },
     });
-
-    const yaLoVe = [ticket.idSolicitante, ticket.idAsignado, ...ticket.idObservadores].includes(destinatario.idPersonal);
-    if (!yaLoVe) {
-      await tx.ticketObservador.create({
-        data: { idTicket: ticket.idTicket, idPersonal: destinatario.idPersonal, agregadoPor: params.idPersonal },
-      });
-    }
 
     const mailIds = await deliverTicketEvent(tx, {
       idTicket: ticket.idTicket,
@@ -850,6 +893,105 @@ export async function requestValidation(params: {
     });
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };
+  });
+}
+
+/**
+ * La persona a quien se pidió aprueba o no aprueba (U29). Si no aprueba, el
+ * ticket sigue abierto con el mismo responsable, que decide qué responder;
+ * el motivo es obligatorio porque es lo que el responsable necesita para
+ * hacerlo (decisión del 03-nov-2026). Avisa a quien pidió la aprobación y al
+ * responsable. El aviso pendiente del aprobador lo cierra la base
+ * (trg_resolver_aviso_aprobacion).
+ */
+export async function respondApproval(params: {
+  idPersonal: string;
+  idTicket: string;
+  decision: "APROBADA" | "NO_APROBADA";
+  comentario: string | null;
+}): Promise<TicketEventResult> {
+  return prisma.$transaction(async (tx) => {
+    const { ticket } = await lockAndAuthorize({
+      tx,
+      idTicket: params.idTicket,
+      idPersonal: params.idPersonal,
+      action: TICKET_ACTIONS.responderAprobacion,
+      allowedStates: OPEN_STATES,
+      stateMessage: "Este ticket ya terminó.",
+    });
+    const pendiente = ticket.aprobacionPendiente;
+    if (!pendiente || pendiente.idDestinatario !== params.idPersonal) {
+      throw new TicketDomainError("ESTADO_NO_PERMITE", "No tienes una aprobación pendiente en este ticket.");
+    }
+    if (params.decision === "NO_APROBADA" && !params.comentario) {
+      throw new TicketDomainError("DESTINO_INVALIDO", "Escribe por qué no lo apruebas.");
+    }
+
+    const aprobada = params.decision === "APROBADA";
+    const idEvento = await writeEvent(tx, {
+      idTicket: ticket.idTicket,
+      tipo: aprobada ? "APROBACION_OTORGADA" : "APROBACION_DENEGADA",
+      idAutor: params.idPersonal,
+      visibilidad: "INTERNO",
+      contenido: [aprobada ? "Aprobado." : "No aprobado.", params.comentario].filter(Boolean).join("\n\n"),
+      estadoNuevo: null,
+    });
+    await tx.ticketValidacion.update({
+      where: { idEvento: pendiente.idEvento },
+      data: { resultado: params.decision, idEventoRespuesta: idEvento, respondidaAt: new Date() },
+    });
+
+    const kind = aprobada ? "APROBACION_OTORGADA" : "APROBACION_DENEGADA";
+    const destinatarios = [...new Set([pendiente.idSolicitada, ticket.idAsignado])].filter(
+      (id): id is string => id !== null && id !== params.idPersonal,
+    );
+    const mailIds = await deliverTicketEvent(tx, {
+      idTicket: ticket.idTicket,
+      idEvento,
+      idAutor: params.idPersonal,
+      texto: params.comentario,
+      deliveries: destinatarios.map((idPersonal) => ({ tipo: "EMPLEADO" as const, kind, idPersonal })),
+    });
+
+    return { idTicket: ticket.idTicket, idEvento, mailIds };
+  });
+}
+
+/**
+ * Retira una aprobación pendiente (U29): pedírsela a la persona equivocada no
+ * puede dejar el ticket sin poder cerrarse. La retira quien la pidió o el
+ * responsable; la base exige lo mismo (rama APROBACION_RETIRADA). No avisa a
+ * nadie: el aviso del aprobador se cierra solo.
+ */
+export async function withdrawApproval(params: { idPersonal: string; idTicket: string }): Promise<TicketEventResult> {
+  return prisma.$transaction(async (tx) => {
+    const { ticket } = await lockAndAuthorize({
+      tx,
+      idTicket: params.idTicket,
+      idPersonal: params.idPersonal,
+      action: TICKET_ACTIONS.solicitarValidacion,
+      allowedStates: OPEN_STATES,
+      stateMessage: "Este ticket ya terminó.",
+    });
+    const pendiente = ticket.aprobacionPendiente;
+    if (!pendiente) throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket no tiene una aprobación pendiente.");
+    if (pendiente.idSolicitada !== params.idPersonal && ticket.idAsignado !== params.idPersonal) {
+      throw new TicketDomainError("NO_AUTORIZADO", "Solo quien pidió la aprobación o el responsable pueden retirarla.");
+    }
+
+    const idEvento = await writeEvent(tx, {
+      idTicket: ticket.idTicket,
+      tipo: "APROBACION_RETIRADA",
+      idAutor: params.idPersonal,
+      visibilidad: "INTERNO",
+      contenido: `Se retiró la aprobación pedida a ${pendiente.destinatario}.`,
+      estadoNuevo: null,
+    });
+    await tx.ticketValidacion.update({
+      where: { idEvento: pendiente.idEvento },
+      data: { resultado: "RETIRADA", idEventoRespuesta: idEvento, respondidaAt: new Date() },
+    });
+    return { idTicket: ticket.idTicket, idEvento, mailIds: [] };
   });
 }
 

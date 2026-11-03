@@ -132,7 +132,8 @@ function viewCondition(view: Exclude<InboxView, "redirigir">, idPersonal: string
   const open = { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } };
   switch (view) {
     case "pendientes":
-      return { idAsignado: idPersonal, ...open };
+      // U29: aprobar lo que te pidieron también es atender.
+      return { OR: [{ idAsignado: idPersonal }, { validaciones: { some: { idDestinatario: idPersonal, resultado: null } } }], ...open };
     case "radicados":
       return { idSolicitante: idPersonal };
     case "alcance":
@@ -241,7 +242,7 @@ export async function listInbox(params: {
         dimTipoRequerimiento: { select: { tipoRequerimiento: true } },
         ...REQUESTER_SELECT,
         dimPersonalAsignado: { select: { nombreCompleto: true } },
-        validaciones: { where: { idDestinatario: params.idPersonal }, select: { idEvento: true }, take: 1 },
+        validaciones: { where: { idDestinatario: params.idPersonal, resultado: null }, select: { idEvento: true }, take: 1 },
       },
     }),
   ]);
@@ -359,8 +360,12 @@ export interface TicketCapabilities {
   notaInterna: boolean;
   /** U11: añadir y retirar observadores. */
   gestionarObservadores: boolean;
-  /** U11: pedir validación a una persona. */
+  /** U29: pedir aprobación a una persona. Solo si no hay una pendiente. */
   solicitarValidacion: boolean;
+  /** U29: aprobar o no aprobar; solo la persona a quien se pidió. */
+  responderAprobacion: boolean;
+  /** U29: retirar la aprobación pendiente; quien la pidió o el responsable. */
+  retirarAprobacion: boolean;
   /** U11: quien radicó escribe en su ticket abierto sin cerrarlo. */
   comentarSolicitante: boolean;
 }
@@ -392,6 +397,11 @@ export interface TicketDetail {
   modo: TicketMode;
   /** Quienes siguen el ticket (U11). Los ve cualquiera que pueda consultarlo. */
   observadores: { idPersonal: string; nombre: string }[];
+  /** U29: la aprobación pendiente, que bloquea el cierre, y las ya resueltas. */
+  aprobacion: {
+    pendiente: { aprobador: string; desde: Date } | null;
+    resueltas: { aprobador: string; resultado: "APROBADA" | "NO_APROBADA" | "RETIRADA"; fecha: Date }[];
+  };
 }
 
 /**
@@ -428,6 +438,17 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
         orderBy: { persona: { nombreCompleto: "asc" } },
         select: { idPersonal: true, persona: { select: { nombreCompleto: true } } },
       },
+      validaciones: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          idDestinatario: true,
+          resultado: true,
+          createdAt: true,
+          respondidaAt: true,
+          destinatario: { select: { nombreCompleto: true } },
+          evento: { select: { idAutor: true } },
+        },
+      },
     },
   });
   if (!ticket) return null;
@@ -438,6 +459,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     idAreaDestino: ticket.idAreaDestino,
     idTipoReq: ticket.idTipoReq,
     idObservadores: ticket.observadores.map((observador) => observador.idPersonal),
+    idAprobadores: [...new Set(ticket.validaciones.map((aprobacion) => aprobacion.idDestinatario))],
   };
   if (!isTicketWithinScope({ alcance: grant.alcance, action: TICKET_ACTIONS.consultar, actor: grant.actor, ticket: scopeTicket })) {
     return null;
@@ -474,6 +496,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     TICKET_ACTIONS.notaInterna,
     TICKET_ACTIONS.gestionarObservadores,
     TICKET_ACTIONS.solicitarValidacion,
+    TICKET_ACTIONS.responderAprobacion,
     TICKET_ACTIONS.comentarSolicitante,
   ]);
   const can = (action: TicketAction) => {
@@ -487,12 +510,23 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
   // La misma condición de estado que aplican los comandos (ticket-commands.ts):
   // la vista no ofrece lo que el servicio va a rechazar.
   const open = isOpenState(estado);
+  // A lo sumo una pendiente (ux_ticket_validacion_pendiente).
+  const pendiente = ticket.validaciones.find((aprobacion) => aprobacion.resultado === null) ?? null;
   const capabilities: TicketCapabilities = {
     reasignar: operable && reasignar && estado === "ASIGNADO",
     responder: operable && responder && estado === "ASIGNADO",
     notaInterna: operable && notaInterna,
     gestionarObservadores: operable && open && can(TICKET_ACTIONS.gestionarObservadores),
-    solicitarValidacion: operable && open && can(TICKET_ACTIONS.solicitarValidacion),
+    solicitarValidacion: operable && open && pendiente === null && can(TICKET_ACTIONS.solicitarValidacion),
+    responderAprobacion:
+      operable && open && pendiente?.idDestinatario === params.idPersonal && can(TICKET_ACTIONS.responderAprobacion),
+    // La misma regla que la rama APROBACION_RETIRADA del escritor único.
+    retirarAprobacion:
+      operable &&
+      open &&
+      pendiente !== null &&
+      (pendiente.evento.idAutor === params.idPersonal || ticket.idAsignado === params.idPersonal) &&
+      can(TICKET_ACTIONS.solicitarValidacion),
     comentarSolicitante: operable && open && can(TICKET_ACTIONS.comentarSolicitante),
   };
 
@@ -533,6 +567,14 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       idPersonal: observador.idPersonal,
       nombre: observador.persona.nombreCompleto,
     })),
+    aprobacion: {
+      pendiente: pendiente ? { aprobador: pendiente.destinatario.nombreCompleto, desde: pendiente.createdAt } : null,
+      resueltas: ticket.validaciones.flatMap((aprobacion) =>
+        aprobacion.resultado === "APROBADA" || aprobacion.resultado === "NO_APROBADA" || aprobacion.resultado === "RETIRADA"
+          ? [{ aprobador: aprobacion.destinatario.nombreCompleto, resultado: aprobacion.resultado, fecha: aprobacion.respondidaAt ?? aprobacion.createdAt }]
+          : [],
+      ),
+    },
   };
 }
 

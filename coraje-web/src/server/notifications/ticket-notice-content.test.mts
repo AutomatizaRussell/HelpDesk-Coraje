@@ -29,7 +29,7 @@ test("el comentario interno de una reasignación nunca llega a quien radicó", (
 test("la respuesta, el motivo y la solicitud de validación van en el detalle", () => {
   const ctx = { ...base, textoEvento: "Listo,\nreinicia el equipo" };
   assert.equal(describeNotice("RESPUESTA_SOLICITANTE", ctx).detalle, "Listo, reinicia el equipo");
-  assert.equal(describeNotice("RECHAZO_OBSERVADOR", ctx).detalle, "Listo, reinicia el equipo");
+  assert.equal(describeNotice("APROBACION_DENEGADA", ctx).detalle, "Listo, reinicia el equipo");
   assert.equal(describeNotice("SOLICITUD_VALIDACION", ctx).detalle, "Listo, reinicia el equipo");
 });
 

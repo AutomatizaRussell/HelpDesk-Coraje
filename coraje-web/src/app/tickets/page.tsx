@@ -68,7 +68,7 @@ function emptyMessage(view: InboxView, mode: TicketMode): string {
     case "radicados":
       return "No has radicado tickets.";
     case "siguiendo":
-      return `No tienes ${tickets} en seguimiento. Aparecen aquí cuando te añaden como observador o te piden una validación.`;
+      return `No tienes ${tickets} en seguimiento. Aparecen aquí cuando te añaden como observador.`;
     case "alcance":
       return `No hay ${tickets} a tu alcance.`;
   }
@@ -238,7 +238,7 @@ export default async function TicketsPage({
                           </Link>
                           <p className="mt-0.5 truncate text-sm text-ink-muted">{row.descripcion}</p>
                           {!row.operable && <p className="mt-0.5 text-xs text-ink-muted">De PowerApps · solo consulta</p>}
-                          {row.validacionParaMi && <p className="mt-1"><span className={badge("info")}>Te pidieron validar</span></p>}
+                          {row.validacionParaMi && <p className="mt-1"><span className={badge("info")}>Te piden aprobar</span></p>}
                         </td>
                         <td className="px-4 py-3">
                           <TicketStateBadge state={row.estado} />

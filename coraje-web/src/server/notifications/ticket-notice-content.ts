@@ -54,22 +54,22 @@ export function describeNotice(kind: TicketNoticeKind, ctx: NoticeContext): Noti
     case "REDIRECCION_RESPONSABLE":
       return { titulo: `${ctx.autor} te asignó ${codigo}, del portal de clientes`, detalle: descripcion };
     case "SOLICITUD_VALIDACION":
-      return { titulo: `${ctx.autor} te pide validar ${codigo}`, detalle: texto };
+      return { titulo: `${ctx.autor} te pide aprobar algo de ${codigo}`, detalle: texto };
     case "REASIGNACION_SOLICITANTE":
       // El comentario de la reasignación es INTERNO: no entra aquí.
       return { titulo: `Tu ticket ${codigo} tiene nueva persona responsable`, detalle: descripcion };
     case "RESPUESTA_SOLICITANTE":
       return { titulo: `${ctx.autor} respondió tu ticket ${codigo}`, detalle: texto };
-    case "RECHAZO_SOLICITANTE":
-      return { titulo: `${ctx.autor} rechazó tu ticket ${codigo}`, detalle: texto };
     case "OBSERVADOR_AGREGADO":
       return { titulo: `${ctx.autor} te añadió como observador de ${codigo}`, detalle: descripcion };
     case "RESPUESTA_OBSERVADOR":
       return { titulo: `${ctx.autor} respondió ${codigo}, que sigues`, detalle: texto };
-    case "RECHAZO_OBSERVADOR":
-      return { titulo: `${ctx.autor} rechazó ${codigo}, que sigues`, detalle: texto };
     case "COMENTARIO_SOLICITANTE_RESPONSABLE":
       return { titulo: `${ctx.autor} escribió en ${codigo}`, detalle: texto };
+    case "APROBACION_OTORGADA":
+      return { titulo: `${ctx.autor} aprobó lo pedido en ${codigo}`, detalle: texto };
+    case "APROBACION_DENEGADA":
+      return { titulo: `${ctx.autor} no aprobó lo pedido en ${codigo}`, detalle: texto };
   }
 }
 

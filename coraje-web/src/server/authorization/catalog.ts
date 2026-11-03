@@ -29,6 +29,8 @@ export const TICKET_ACTIONS = {
   gestionarObservadores: "ticket.observador.gestionar",
   /** U11: pedir a una persona que confirme algo. No bloquea el ticket. */
   solicitarValidacion: "ticket.validacion.solicitar",
+  /** U29 (tickets.md §11.2): aprobar o no aprobar lo que se le pidió a esta persona. */
+  responderAprobacion: "ticket.aprobacion.responder",
   /**
    * U11: escribir en un ticket propio abierto sin cerrarlo. Para esta acción,
    * «propio» es haberlo radicado, no ser su responsable (scope.ts).

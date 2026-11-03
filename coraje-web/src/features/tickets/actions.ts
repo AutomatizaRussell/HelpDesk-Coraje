@@ -21,8 +21,10 @@ import {
   createInternalTicket,
   reassignTicket,
   removeObserver,
-  requestValidation,
+  requestApproval,
+  respondApproval,
   respondTicket,
+  withdrawApproval,
 } from "@/server/tickets/ticket-commands";
 import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
 import { dispatchTicketMail, resendTicketMail } from "@/server/notifications/ticket-notifications";
@@ -377,15 +379,19 @@ export async function removeObserverAction(_prev: TicketFormState, formData: For
   return succeeded("Ya no sigue el ticket.");
 }
 
-const validationSchema = z.object({
+// ---------------------------------------------------------------------------
+// Aprobación (U29, tickets.md §11.2)
+// ---------------------------------------------------------------------------
+
+const approvalRequestSchema = z.object({
   idTicket: idSchema,
-  idDestinatario: z.uuid({ error: "Elige a la persona que debe validar." }),
-  comentario: textSchema("El comentario", 5),
+  idDestinatario: z.uuid({ error: "Elige a la persona que debe aprobar." }),
+  comentario: textSchema("Lo que debe aprobar", 5),
 });
 
-export async function requestValidationAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+export async function requestApprovalAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
   const employee = await requireCurrentEmployee();
-  const parsed = validationSchema.safeParse({
+  const parsed = approvalRequestSchema.safeParse({
     idTicket: formData.get("idTicket"),
     idDestinatario: formData.get("idDestinatario"),
     comentario: formData.get("comentario"),
@@ -394,14 +400,73 @@ export async function requestValidationAction(_prev: TicketFormState, formData: 
 
   let mailIds: string[];
   try {
-    ({ mailIds } = await requestValidation({ idPersonal: employee.idPersonal, ...parsed.data }));
+    ({ mailIds } = await requestApproval({ idPersonal: employee.idPersonal, ...parsed.data }));
   } catch (error) {
-    return failed(error, formData, "solicitar la validación");
+    return failed(error, formData, "pedir la aprobación");
   }
 
-  const result = await succeeded("Validación solicitada. El ticket sigue su curso.", mailIds);
+  const result = await succeeded("Aprobación pedida. El ticket no se puede cerrar hasta que responda.", mailIds);
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return result;
+}
+
+/**
+ * Aprobar o no aprobar. Un solo formulario con dos botones: cada uno envía su
+ * `decision`. El motivo solo es obligatorio para «No aprobar»: es lo que el
+ * responsable necesita para responder.
+ */
+const approvalResponseSchema = z
+  .object({
+    idTicket: idSchema,
+    decision: z.enum(["APROBADA", "NO_APROBADA"], { error: "Elige aprobar o no aprobar." }),
+    comentario: z.string().trim().max(MAX_TEXT).optional(),
+  })
+  .refine((data) => data.decision === "APROBADA" || (data.comentario ?? "").length >= 5, {
+    error: "Escribe por qué no lo apruebas (al menos 5 caracteres).",
+    path: ["comentario"],
+  });
+
+export async function respondApprovalAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = approvalResponseSchema.safeParse({
+    idTicket: formData.get("idTicket"),
+    decision: formData.get("decision"),
+    comentario: formData.get("comentario") ?? undefined,
+  });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  let mailIds: string[];
+  try {
+    ({ mailIds } = await respondApproval({
+      idPersonal: employee.idPersonal,
+      idTicket: parsed.data.idTicket,
+      decision: parsed.data.decision,
+      comentario: parsed.data.comentario || null,
+    }));
+  } catch (error) {
+    return failed(error, formData, "responder la aprobación");
+  }
+
+  const result = await succeeded(parsed.data.decision === "APROBADA" ? "Aprobado." : "No aprobado. El responsable recibió tu motivo.", mailIds);
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return result;
+}
+
+const withdrawApprovalSchema = z.object({ idTicket: idSchema });
+
+export async function withdrawApprovalAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = withdrawApprovalSchema.safeParse({ idTicket: formData.get("idTicket") });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  try {
+    await withdrawApproval({ idPersonal: employee.idPersonal, idTicket: parsed.data.idTicket });
+  } catch (error) {
+    return failed(error, formData, "retirar la aprobación");
+  }
+
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return succeeded("Solicitud de aprobación retirada.");
 }
 
 const requesterCommentSchema = z.object({

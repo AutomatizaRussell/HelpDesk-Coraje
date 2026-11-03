@@ -83,7 +83,7 @@ test("la auditoría del portal solo crece", () => {
 test("un ticket sin clasificar solo lo cubre el alcance TOTAL de ticket.redirigir", () => {
   // Aunque reciba un área y un tipo: un ticket sin clasificar no tiene ninguno.
   const actor = { idPersonal: "p", idArea: "a", recepcion: { idTiposReq: ["t"], idAreas: ["a"] } };
-  const ticket = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idTipoReq: null, idObservadores: [] };
+  const ticket = { idSolicitante: null, idAsignado: null, idAreaDestino: null, idTipoReq: null, idObservadores: [], idAprobadores: [] };
   const action = TICKET_ACTIONS.redirigir;
   assert.equal(isTicketWithinScope({ alcance: "PROPIO", action, actor, ticket }), false);
   assert.equal(isTicketWithinScope({ alcance: "AREA", action, actor, ticket }), false);

@@ -1,6 +1,22 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 48, U29 parte 2: aprobación, SIN DESPLEGAR)
+SOBRE:   `b1c9a0e` (corte 47)
+RAMA:    main
+UNIDAD:  U29, parte 2 de 6 (tickets.md §11.2). La solicitud de validación es
+         una aprobación que bloquea el cierre: «Aprobar» / «No aprobar» (motivo
+         obligatorio), una pendiente por ticket, retirable por quien la pidió o
+         por el responsable. El aprobador ve el ticket sin ser observador.
+         Migraciones `20261103150000_valores_aprobacion` y
+         `20261103160000_aprobacion_ticket` (escritor único con tres ramas, bloqueo
+         de `RESPUESTA`, trigger que cierra el aviso, CHECK de avisos sin
+         rechazo, permiso `ticket.aprobacion.responder`). Evidencia: cadena de
+         migraciones y ocho reglas contra PGlite pasando por el escritor real;
+         `tsc`, `lint`, 206/206 pruebas, `build`. Sin verificar en navegador.
+SIGUE:   U29 parte 3, los correos.
+
+--- Corte 47, para contexto:
 CORTE:   03-nov-2026 (corte 47, U29 parte 1: sin «Rechazar», cuadro único, SIN DESPLEGAR)
 SOBRE:   `e8a8ceb` (corte 46, de otra sesión)
 RAMA:    main
@@ -1539,6 +1555,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `b1c9a0e` | **Corte 47.** U29 parte 1: sin «Rechazar», cuadro único. Publicado el 03-nov-2026 |
 | `e8a8ceb` | **Corte 46.** U28: variables de imagen solo en el Dockerfile (otra sesión). Sin desplegar al cerrar el corte 47 |
 | `1c2e5a6` | **Corte 45.** U27: logotipos sin optimizador. Desplegado el 03-nov-2026; cerró la caché de U26 |
 | `7bc9412` | **Corte 44.** U26: despliegue liviano. Desplegado el 03-nov-2026: 3 min 12 s contra 5 min 30 s |
