@@ -602,10 +602,12 @@ Decisión del usuario: la ingesta absorbe el relevo sin intervención manual.
 código del área, el año y el mes de creación en hora de Bogotá (`AAAAMM`) y un
 consecutivo por área y mes que empieza en 1 y crece sin ceros a la izquierda. Lo
 genera `helpdesk.next_codigo_ticket` sobre `helpdesk.ticket_codigo_mes`
-(`20261103180000_codigo_ticket_mensual`), para todo ticket que nazca desde el
-despliegue, también los que lleguen de PowerApps. Los códigos ya emitidos
-(`ADM-2026-0123`) no cambian y no pueden chocar con los nuevos: el grupo central tiene
-seis cifras. La función pasa a `SECURITY DEFINER` porque la tabla nueva no la toca
+(`20261103180000_codigo_ticket_mensual`), también para los que lleguen de PowerApps.
+**Corregido el mismo día, por el usuario:** el formato vale para todos los tickets, no
+solo los nuevos. `20261103190000_recodificar_tickets` renumera todos los que tienen
+área, por orden de creación dentro de cada área y mes, y deja los contadores en el
+último número asignado. El código anterior (`ADM-2026-0123`) deja de existir; el
+`Id_Req` de PowerApps no cambia. La función pasa a `SECURITY DEFINER` porque la tabla nueva no la toca
 ningún rol de servicio.
 
 **7.5 `DECISIÓN` (03-nov-2026) «Proyectos y TI» entra por Alex — construido, sin
@@ -1160,6 +1162,8 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   fecha del alta y retira la validación que abortaba ante correos repetidos.
 - 03-nov-2026 — U23 (corte 40). §4.2: un `AsignadoA` que no resuelve ya no cae en
   `Recibe`. §7.5: todo «proyectos y ti» entra por Alex. V24 y V25.
+- 03-nov-2026 — U29 (corte 53). §7.6: todos los tickets existentes pasan al código por
+  mes.
 - 03-nov-2026 — U29 (corte 52). §14.9: vista previa dentro de HelpDesk y carpeta por
   ticket en OneDrive.
 - 03-nov-2026 — U29 (corte 50). §7.6: código `ADM-202611-1`.

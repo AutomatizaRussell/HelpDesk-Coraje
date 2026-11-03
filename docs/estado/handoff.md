@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   03-nov-2026 (corte 53, U29: recodificar los tickets existentes, SIN DESPLEGAR)
+SOBRE:   `1145044` (corte 52)
+RAMA:    main
+UNIDAD:  U29, corrección del usuario a la parte 4: el código por mes vale para
+         todos los tickets. `20261103190000_recodificar_tickets` renumera los
+         3.065+ con área por orden de creación dentro de cada área y mes (Bogotá)
+         y fija los contadores de `ticket_codigo_mes`. Bloquea `fact_ticket`
+         mientras corre. Evidencia: contra PGlite, tickets con código viejo y
+         nuevo, dos áreas y el borde de mes de Bogotá; el siguiente ticket
+         continúa la serie.
+SIGUE:   desplegar y ejercitar U29 entera (orden en la acción inmediata).
+
+--- Corte 52, para contexto:
 CORTE:   03-nov-2026 (corte 52, U29 parte 6: vista previa y carpeta por ticket, SIN DESPLEGAR)
 SOBRE:   `9b18790` (corte 51)
 RAMA:    main
@@ -1612,6 +1625,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `1145044` | **Corte 52.** U29 parte 6: vista previa y carpeta por ticket. Publicado el 03-nov-2026 |
 | `9b18790` | **Corte 51.** U29 parte 5: toasts. Publicado el 03-nov-2026 |
 | `6b9543f` | **Corte 50.** U29 parte 4: código `ADM-202611-1`. Publicado el 03-nov-2026 |
 | `f5c3baf` | **Corte 49.** U29 parte 3: cuatro correos, sin escalamiento. Publicado el 03-nov-2026 |
