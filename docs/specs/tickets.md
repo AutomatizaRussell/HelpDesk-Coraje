@@ -966,7 +966,8 @@ descarga y uno sin alcance recibe 404; un archivo de 26 MB y un `.exe` se rechaz
 adjunto de una nota interna no lo ve el solicitante.
 
 **14.8 Cómo quedó construido (03-nov-2026, U7).** Supera a §14.6 y precisa §14.2-§14.3.
-- **Destino:** el OneDrive de `info.admingct@`, carpeta `HelpDesk/Adjuntos`. No es la
+- **Destino:** el OneDrive de `info.admingct@`, carpeta `Documentación Nube/HelpDesk/Adjuntos`
+  (el comentario de la migración dice `HelpDesk/Adjuntos`, la ruta de antes del 03-nov). No es la
   biblioteca de un sitio que pedía §14.6: la cuenta no es de una persona, pero el
   OneDrive vive mientras la cuenta exista y tenga licencia. Si TI la borra o le quita la
   licencia, los archivos se pierden tras la retención. Riesgo aceptado por el usuario.

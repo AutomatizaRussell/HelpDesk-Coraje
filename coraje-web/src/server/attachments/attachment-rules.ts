@@ -38,8 +38,13 @@ export const ACCEPT_ATTRIBUTE = Object.keys(ALLOWED_EXTENSIONS)
   .map((extension) => `.${extension}`)
   .join(",");
 
-/** Carpeta del OneDrive de `info.admingct@` donde viven todos los adjuntos. */
-export const ATTACHMENTS_FOLDER = "HelpDesk/Adjuntos";
+/**
+ * Carpeta del OneDrive de `info.admingct@` donde viven todos los adjuntos,
+ * relativa a su raíz («Mis archivos»). La eligió el usuario el 03-nov-2026.
+ * El workflow codifica cada segmento (la tilde incluida) y compara la ruta sin
+ * distinguir mayúsculas.
+ */
+export const ATTACHMENTS_FOLDER = "Documentación Nube/HelpDesk/Adjuntos";
 
 /** Tope del nombre guardado (§14.3), con margen para el sufijo. */
 const MAX_STORED_NAME = 180;

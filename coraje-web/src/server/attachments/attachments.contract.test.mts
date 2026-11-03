@@ -61,7 +61,7 @@ test("las ejecuciones no se guardan: llevan credenciales temporales", () => {
 });
 
 test("la carpeta autorizada es la misma en la aplicación y en la comparación del workflow", () => {
-  assert.equal(ATTACHMENTS_FOLDER, "HelpDesk/Adjuntos");
+  assert.equal(ATTACHMENTS_FOLDER, "Documentación Nube/HelpDesk/Adjuntos");
   assert.match(BROKER, /folderPath: ATTACHMENTS_FOLDER/);
 });
 

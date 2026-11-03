@@ -5,7 +5,7 @@ CORTE:   03-nov-2026 (corte 43, U7 adjuntos, SIN DESPLEGAR)
 SOBRE:   `b90cc94` (corte 42)
 RAMA:    main
 UNIDAD:  U7, adjuntos (tickets.md §14.8). OneDrive de `info.admingct@`, carpeta
-         `HelpDesk/Adjuntos`; un workflow con tres webhooks
+         `Documentación Nube/HelpDesk/Adjuntos`; un workflow con tres webhooks
          (`HELPDESK - Adjuntos V1`); tabla `helpdesk.ticket_adjunto` con el par
          evento-ticket como clave foránea; selector en crear, responder y nota
          interna; descarga por `/api/tickets/[id]/adjuntos/[id]` con la misma

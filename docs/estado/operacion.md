@@ -512,8 +512,10 @@ FROM helpdesk.revision_salud ORDER BY ejecutada_at DESC LIMIT 5;
 ### Adjuntos (U7)
 
 `specs/tickets.md` §14.8. Lo que hace falta, una vez:
-1. En el OneDrive de `info.admingct@`, crear la carpeta `HelpDesk/Adjuntos`. Graph
-   probablemente la crea en la primera subida, pero no está verificado.
+1. En el OneDrive de `info.admingct@`, la carpeta `Documentación Nube/HelpDesk/Adjuntos`
+   (creada por el usuario el 03-nov-2026). La ruta vive en `ATTACHMENTS_FOLDER`
+   (`attachment-rules.ts`). **No debe compartirse con nadie:** quien tenga acceso a la
+   carpeta ve todos los adjuntos, también los de notas internas, sin pasar por HelpDesk.
 2. En n8n, crear la credencial *Header Auth* «HelpDesk adjuntos · x-helpdesk-secret»,
    cabecera `x-helpdesk-secret`, con un valor nuevo y largo.
 3. Importar `n8n/HELPDESK - Adjuntos V1.json`, asignar esa credencial a los tres
