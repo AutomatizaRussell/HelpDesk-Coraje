@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 56, U30: trama que sigue al puntero y sorpresa del globo, SIN DESPLEGAR)
+SOBRE:   `1399881` (corte 55)
+RAMA:    main
+UNIDAD:  U30, animación propia de la cabecera elegida por el usuario
+         (design/sistema-helpdesk.md §5.4): retícula de puntos del color del
+         área alrededor del puntero (`HeroPointerGrid`) y, con cinco clics en el
+         globo, dos saltos y doce chispas de colores de marca (`HeroGlobe`). La
+         forma del área pasa a pintarse después del texto para recibir el clic.
+         Evidencia: `tsc`, `lint`, 213/213, `next build`.
+SIGUE:   desplegar y revisar la bandeja en las cinco áreas; probar la trama con
+         ratón y la sorpresa con cinco clics.
+
+--- Corte 55, para contexto:
 CORTE:   04-nov-2026 (corte 55, U30: forma del área y cabecera más corta, SIN DESPLEGAR)
 SOBRE:   `5c04fe4` (corte 54)
 RAMA:    main
@@ -1664,6 +1677,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `1399881` | **Corte 55.** U30: forma del área hasta la esquina, cabecera más corta. Publicado el 04-nov-2026 |
 | `5c04fe4` | **Corte 54.** U30: cabecera del área en la bandeja. Desplegado el 04-nov-2026; el usuario pidió ajustes al verla |
 | `76b23ca` | **Corte 53.** U29: tickets existentes recodificados por mes. Publicado el 03-nov-2026 |
 | `1145044` | **Corte 52.** U29 parte 6: vista previa y carpeta por ticket. Publicado el 03-nov-2026 |

@@ -1,12 +1,11 @@
-import Image from "next/image";
 import type { ReactNode } from "react";
 
-import heroGlobe from "../../../../public/rb-isotype-white-hero.png";
 import type { BadgeTone } from "../../recipes/badge";
 import { modeTransition } from "../../recipes/interaction";
-import { helpdeskTheme } from "../../themes/helpdesk";
 import { cn } from "../../utilities/cn";
 import { CountUp } from "./CountUp";
+import { HeroGlobe } from "./HeroGlobe";
+import { HeroPointerGrid } from "./HeroPointerGrid";
 
 /**
  * Cabecera del área (U30, design/sistema-helpdesk.md §5.4): la franja de
@@ -54,16 +53,15 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
  * el globo en la parte visible y no en la forma entera.
  */
 function HeroMark() {
-  const size = Number.parseFloat(helpdeskTheme.size.heroGlobe);
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none absolute -top-hero-mark-lift right-0 bottom-0 hidden w-hero-mark animate-hero-mark place-items-center rounded-tl-hero-mark rounded-bl-hero-mark-foot bg-accent pt-hero-mark-lift lg:grid"
     >
-      {/* Quieto a propósito: el flotado es del estado vacío, y repetirlo aquí
-          hacía que las dos piezas se leyeran como la misma. La cabecera
-          tendrá su propia animación (abierta, U30). */}
-      <Image src={heroGlobe} alt="" width={size} height={size} priority className="size-hero-globe" />
+      {/* El globo no flota: el flotado es del estado vacío, y repetirlo aquí
+          hacía que las dos piezas se leyeran como la misma. Su animación es
+          la sorpresa de los cinco clics (`HeroGlobe`). */}
+      <HeroGlobe />
     </div>
   );
 }
@@ -87,7 +85,8 @@ export function AreaHero({
   return (
     <section aria-label="Resumen" className={cn("relative overflow-hidden bg-accent-surface", modeTransition)}>
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
-      <HeroMark />
+      {/* Antes que la forma y el texto: la trama queda por debajo de los dos. */}
+      <HeroPointerGrid />
       <div className="relative mx-auto max-w-content px-6 pt-9 pb-14 lg:px-10">
         <div className="max-w-4xl lg:mr-110">
           <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
@@ -117,6 +116,10 @@ export function AreaHero({
           </dl>
         </div>
       </div>
+      {/* Después del texto a propósito: el bloque del texto ocupa todo el
+          ancho y, pintado encima, se quedaría con los clics del globo. La
+          forma no tapa nada: el texto le deja libre su espacio (`lg:mr-110`). */}
+      <HeroMark />
     </section>
   );
 }

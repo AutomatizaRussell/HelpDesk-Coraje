@@ -94,6 +94,8 @@
   --hd-motion-count: 1100ms;
   --hd-motion-stagger: 40ms;
   --hd-motion-rise-offset: 8px;
+  --hd-motion-celebrate: 1100ms;
+  --hd-motion-hop-height: 34px;
 
   --hd-size-topbar: 64px;
   --hd-size-topbar-wide: 84px;
@@ -124,6 +126,11 @@
   --hd-size-hero-mark-lift: 88px;
   --hd-size-hero-globe: 256px;
   --hd-size-hero-stripe: 6px;
+  --hd-size-pointer-grid-dot: 1.8px;
+  --hd-size-pointer-grid-gap: 20px;
+  --hd-size-pointer-grid-reach: 150px;
+  --hd-size-spark: 10px;
+  --hd-size-spark-reach: 160px;
   --hd-size-empty-mark: 88px;
   --hd-size-empty-mark-inner: 56px;
   --hd-size-empty-isotype: 32px;
@@ -462,6 +469,7 @@
   --animate-hero-mark: hd-hero-mark-in var(--hd-motion-hero-enter) var(--hd-motion-easing) both;
   --animate-float: hd-float var(--hd-motion-float) ease-in-out infinite;
   --animate-rise: hd-rise var(--hd-motion-enter) var(--hd-motion-easing) both;
+  --animate-hop: hd-hop var(--hd-motion-celebrate) var(--hd-motion-easing);
 }
 
 @keyframes hd-toast-in {
@@ -510,6 +518,78 @@
     transform: none;
   }
 }
+
+/* Trama que sigue al puntero (U30, `patterns/area-hero/HeroPointerGrid`).
+   Una retícula de puntos del color del área cubre la cabecera, pero la
+   máscara solo la deja ver en un círculo alrededor del puntero. El componente
+   mueve el círculo escribiendo `--pointer-x` y `--pointer-y` en el elemento
+   (sin volver a renderizar) y lo enciende con `data-active`. Sin prefijo
+   `--hd-`: no son tokens del contrato sino coordenadas en vivo. */
+.hd-pointer-grid {
+  background-image: radial-gradient(var(--hd-color-accent) var(--hd-size-pointer-grid-dot), transparent var(--hd-size-pointer-grid-dot));
+  background-size: var(--hd-size-pointer-grid-gap) var(--hd-size-pointer-grid-gap);
+  -webkit-mask-image: radial-gradient(circle var(--hd-size-pointer-grid-reach) at var(--pointer-x, 0) var(--pointer-y, 0), black, transparent);
+  mask-image: radial-gradient(circle var(--hd-size-pointer-grid-reach) at var(--pointer-x, 0) var(--pointer-y, 0), black, transparent);
+  opacity: 0;
+  transition: opacity var(--hd-motion-normal) var(--hd-motion-easing);
+}
+.hd-pointer-grid[data-active] {
+  opacity: 1;
+}
+
+/* Sorpresa del globo (U30, `patterns/area-hero/HeroGlobe`): el globo salta dos
+   veces —en vertical: el manual de marca prohíbe girarlo o deformarlo (§4.1)—
+   y doce chispas salen en círculo, una cada 30°, hasta `--hd-size-spark-reach`. */
+@keyframes hd-hop {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(calc(-1 * var(--hd-motion-hop-height)));
+  }
+  72% {
+    transform: translateY(calc(-0.35 * var(--hd-motion-hop-height)));
+  }
+}
+
+@keyframes hd-spark {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: translate(
+        calc(-50% + cos(var(--spark-angle)) * var(--hd-size-spark-reach)),
+        calc(-50% + sin(var(--spark-angle)) * var(--hd-size-spark-reach))
+      )
+      scale(1);
+  }
+}
+
+.hd-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--hd-size-spark);
+  height: var(--hd-size-spark);
+  border-radius: var(--hd-radius-pill);
+  animation: hd-spark var(--hd-motion-celebrate) var(--hd-motion-easing) both;
+}
+.hd-spark:nth-child(1) { --spark-angle: 0deg; }
+.hd-spark:nth-child(2) { --spark-angle: 30deg; }
+.hd-spark:nth-child(3) { --spark-angle: 60deg; }
+.hd-spark:nth-child(4) { --spark-angle: 90deg; }
+.hd-spark:nth-child(5) { --spark-angle: 120deg; }
+.hd-spark:nth-child(6) { --spark-angle: 150deg; }
+.hd-spark:nth-child(7) { --spark-angle: 180deg; }
+.hd-spark:nth-child(8) { --spark-angle: 210deg; }
+.hd-spark:nth-child(9) { --spark-angle: 240deg; }
+.hd-spark:nth-child(10) { --spark-angle: 270deg; }
+.hd-spark:nth-child(11) { --spark-angle: 300deg; }
+.hd-spark:nth-child(12) { --spark-angle: 330deg; }
 
 /* Entrada escalonada (U30): los hijos de un contenedor `data-stagger` (las
    filas de la bandeja) esperan un paso más cada uno. Se corta en el décimo:

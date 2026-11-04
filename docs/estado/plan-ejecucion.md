@@ -707,9 +707,9 @@ valor y la bandeja montada sobre el borde de la cabecera
 - Corte 55, tras verla desplegada: forma que cierra la cabecera hasta la esquina
   inferior en lugar del disco suelto, entrada más lenta, globo quieto, cabecera que
   termina tras las cifras.
-- **Abierto, decide el usuario:** la animación propia de la cabecera (respuesta sobria
-  al puntero y sorpresa al hacer clic varias veces en el globo; candidatas en la
-  maqueta) y si se pregunta a mercadeo por la forma (§5.4).
+- Corte 56: animación propia de la cabecera, elegida por el usuario: trama de puntos
+  que sigue al puntero y sorpresa de cinco clics en el globo.
+- **Abierto, decide el usuario:** si se pregunta a mercadeo por la forma (§5.4).
 - Fuera de esta unidad: la lista con lectura al lado (dirección E de la maqueta), que
   cambia la navegación y va en una unidad propia.
 

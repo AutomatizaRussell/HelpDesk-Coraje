@@ -376,9 +376,17 @@ recortadas en círculo y sobre fondos sólidos, **no sobre un disco de color**: 
 una extrapolación. `ABIERTO`: confirmarlo con el área de mercadeo; si lo objeta, se
 cambia `HeroGlobe` y nada más.
 
-`ABIERTO`: la animación propia de la cabecera. Dirección del usuario (04-nov-2026):
-una respuesta sobria al puntero sobre la cabecera y una sorpresa al hacer clic varias
-veces en el globo; las candidatas están en la maqueta.
+`DECISIÓN` (04-nov-2026, usuario) **Animación propia de la cabecera**, elegida entre
+las variantes de la maqueta:
+
+- **Trama que sigue al puntero** (`HeroPointerGrid`): una retícula de puntos del color
+  del área aparece solo alrededor del puntero y se apaga al salir. Es sobria a
+  propósito, porque la cabecera se cruza a menudo para llegar a las pestañas. Solo con
+  ratón o trackpad; con movimiento reducido, nada.
+- **Sorpresa del globo** (`HeroGlobe`): cinco clics seguidos (sin más de 1,5 s entre
+  ellos) y el globo salta dos veces y suelta doce chispas de los colores de la marca.
+  Salta en vertical, sin girar ni deformarse. Decorativa: fuera del orden de
+  tabulación y del lector de pantalla.
 
 ## 6. Vistas que el contrato tiene que sostener
 

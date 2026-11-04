@@ -122,6 +122,11 @@ export const helpdeskTheme = {
     count: "1100ms",
     stagger: "40ms",
     riseOffset: "8px",
+    // La sorpresa del globo de la cabecera (U30): tras cinco clics seguidos,
+    // salta dos veces —`hopHeight` el primer salto— y suelta chispas de los
+    // colores de la marca durante `celebrate`.
+    celebrate: "1100ms",
+    hopHeight: "34px",
   },
   size: {
     // Topbar replicada de Conecta (h-16, lg:h-[84px]). No lleva logotipo: la
@@ -183,6 +188,15 @@ export const helpdeskTheme = {
     heroMarkLift: "88px",
     heroGlobe: "256px",
     heroStripe: "6px",
+    // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
+    // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un
+    // círculo de `pointerGridReach` alrededor del puntero.
+    pointerGridDot: "1.8px",
+    pointerGridGap: "20px",
+    pointerGridReach: "150px",
+    // Chispas de la sorpresa del globo: su tamaño y hasta dónde llegan.
+    spark: "10px",
+    sparkReach: "160px",
     // Estado vacío (U30): el mismo motivo a escala de tarjeta. Disco exterior
     // en la tinta del área, disco interior en el color pleno, globo blanco.
     emptyMark: "88px",
