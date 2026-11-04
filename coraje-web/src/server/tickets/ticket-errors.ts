@@ -32,6 +32,36 @@ export function isTicketDomainError(error: unknown): error is TicketDomainError 
 }
 
 /**
+ * Traduce los fallos con nombre de `helpdesk.calificar_ticket` y de la rama
+ * `CALIFICACION` del escritor único (U34). El comando ya comprueba casi todo
+ * antes con mensaje propio; esto cubre lo que solo la base ve, como dos
+ * calificaciones simultáneas del mismo ticket.
+ */
+export function translateRatingFailure(error: unknown): TicketDomainError | null {
+  const message = error instanceof Error ? error.message : String(error);
+  // El índice parcial salta con su nombre, sin prefijo HD_.
+  if (message.includes("HD_YA_CALIFICADO") || message.includes("ux_fact_ticket_evento_calificacion")) {
+    return new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya tiene calificación.");
+  }
+  if (message.includes("HD_CALIFICACION_SIN_COMENTARIO")) {
+    return new TicketDomainError("DESTINO_INVALIDO", "Con 1 o 2 estrellas, escribe qué faltó.");
+  }
+  if (message.includes("HD_CALIFICACION_FUERA_DE_RANGO")) {
+    return new TicketDomainError("DESTINO_INVALIDO", "Elige de 1 a 5 estrellas.");
+  }
+  if (message.includes("HD_CALIFICACION_NO_SOLICITANTE")) {
+    return new TicketDomainError("NO_AUTORIZADO", "Solo quien radicó el ticket puede calificarlo.");
+  }
+  if (message.includes("HD_CALIFICACION_NO_CERRADO")) {
+    return new TicketDomainError("ESTADO_NO_PERMITE", "Solo se califica un ticket cerrado.");
+  }
+  if (message.includes("HD_CALIFICACION_LEGACY")) {
+    return new TicketDomainError("TICKET_LEGACY", "Este ticket viene de PowerApps y se califica allí.");
+  }
+  return null;
+}
+
+/**
  * Traduce los errores con nombre de `helpdesk.resolver_responsable_tipo`, que
  * comparten la creación interna (T2) y la redirección de un ticket del
  * portal (T3).

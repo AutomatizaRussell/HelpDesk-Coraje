@@ -9,7 +9,7 @@
  * - `NOVEDAD`: solo informa. Se marca leída al abrirla.
  *
  * Esta tabla es la misma que los CHECK `chk_ticket_aviso_tipo` y
- * `chk_ticket_aviso_clase`, en su última versión (`20261103160000_aprobacion_ticket`).
+ * `chk_ticket_aviso_clase`, en su última versión (`20261104110000_calificacion_ticket`).
  * `ticket-notice-kinds.test.mts` lee la migración y falla si divergen.
  */
 export const NOTICE_CLASS = {
@@ -31,6 +31,8 @@ export const NOTICE_CLASS = {
   /** U29: respondieron la aprobación que pediste, o la del ticket que atiendes. */
   APROBACION_OTORGADA: "NOVEDAD",
   APROBACION_DENEGADA: "NOVEDAD",
+  /** U34: quien radicó calificó el ticket que atendiste. El ticket ya terminó: no hay nada que hacer. */
+  CALIFICACION_RESPONSABLE: "NOVEDAD",
 } as const satisfies Record<string, NoticeClass>;
 
 export type NoticeClass = "ATENCION" | "NOVEDAD";

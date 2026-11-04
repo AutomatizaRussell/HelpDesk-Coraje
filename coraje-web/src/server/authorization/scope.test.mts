@@ -176,6 +176,12 @@ test("comentar como solicitante: solo quien radicó, no el responsable", () => {
   assert.equal(within("PROPIO", TICKET_ACTIONS.comentarSolicitante, tickets.loSigo), false);
 });
 
+test("calificar (U34): solo quien radicó, no el responsable ni quien lo sigue", () => {
+  assert.equal(within("PROPIO", TICKET_ACTIONS.calificar, tickets.loRadiqueYo), true);
+  assert.equal(within("PROPIO", TICKET_ACTIONS.calificar, tickets.soyResponsable), false);
+  assert.equal(within("PROPIO", TICKET_ACTIONS.calificar, tickets.loSigo), false);
+});
+
 test("quien debe aprobar ve el ticket como equipo y solo responde la aprobación (U29)", () => {
   const meTocaAprobar = ticket({ idAprobadores: [YO] });
   assert.equal(within("PROPIO", TICKET_ACTIONS.consultar, meTocaAprobar), true);

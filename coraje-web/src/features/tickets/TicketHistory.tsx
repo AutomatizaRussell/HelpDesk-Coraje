@@ -8,6 +8,7 @@ import {
   Lock,
   Plus,
   ShieldCheck,
+  Star,
   UserCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -57,6 +58,7 @@ const EVENT_TITLE: Record<string, string> = {
   APROBACION_DENEGADA: "No aprobado",
   APROBACION_RETIRADA: "Aprobación retirada",
   COMENTARIO_SOLICITANTE: "Comentario del solicitante",
+  CALIFICACION: "Calificación",
 };
 
 /** Los tipos que son conversación: lo demás es un evento de una línea. */
@@ -72,6 +74,7 @@ const EVENT_ICON: Record<string, LucideIcon> = {
   APROBACION_OTORGADA: CircleCheck,
   APROBACION_DENEGADA: CircleX,
   APROBACION_RETIRADA: CircleX,
+  CALIFICACION: Star,
   MIGRACION_LEGACY: History,
   SINCRONIZACION_LEGACY: History,
 };

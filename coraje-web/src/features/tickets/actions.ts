@@ -19,6 +19,7 @@ import {
   addObservers,
   commentAsRequester,
   createInternalTicket,
+  rateTicket,
   reassignTicket,
   removeObserver,
   requestApproval,
@@ -31,6 +32,7 @@ import { dispatchTicketMail, resendTicketMail } from "@/server/notifications/tic
 import { logEvent } from "@/server/observability/log";
 import { isTicketDomainError } from "@/server/tickets/ticket-errors";
 import { getCreatedTicketSummary } from "@/server/tickets/ticket-queries";
+import { RATING_MAX, RATING_MIN, ratingRequiresComment } from "@/server/tickets/rating-rules";
 
 import type { TicketFormState } from "./action-state";
 
@@ -506,6 +508,55 @@ export async function commentAsRequesterAction(_prev: TicketFormState, formData:
   }
 
   const result = await succeeded("Comentario enviado. La persona responsable recibió un aviso.", mailIds);
+  revalidatePath(`/tickets/${parsed.data.idTicket}`);
+  return result;
+}
+
+/**
+ * U34 (tickets.md §15): calificar de 1 a 5 un ticket cerrado. Con 1 o 2
+ * estrellas el comentario es obligatorio; la base exige lo mismo
+ * (`helpdesk.calificar_ticket`), esto da el mensaje junto al campo.
+ */
+const RATING_RANGE_ERROR = { error: `Elige de ${RATING_MIN} a ${RATING_MAX} estrellas.` };
+
+const ratingSchema = z
+  .object({
+    idTicket: idSchema,
+    calificacion: z.coerce
+      .number(RATING_RANGE_ERROR)
+      .int(RATING_RANGE_ERROR)
+      .min(RATING_MIN, RATING_RANGE_ERROR)
+      .max(RATING_MAX, RATING_RANGE_ERROR),
+    comentario: z.string().trim().max(MAX_TEXT).optional(),
+  })
+  .refine((data) => !ratingRequiresComment(data.calificacion) || (data.comentario ?? "").length >= 5, {
+    error: "Con 1 o 2 estrellas, escribe qué faltó (al menos 5 caracteres).",
+    path: ["comentario"],
+  });
+
+export async function rateTicketAction(_prev: TicketFormState, formData: FormData): Promise<TicketFormState> {
+  const employee = await requireCurrentEmployee();
+  const parsed = ratingSchema.safeParse({
+    idTicket: formData.get("idTicket"),
+    // Sin estrella elegida no llega el campo: «» no se convierte en 0.
+    calificacion: formData.get("calificacion") ?? undefined,
+    comentario: formData.get("comentario") ?? undefined,
+  });
+  if (!parsed.success) return invalid(parsed.error, formData);
+
+  let mailIds: string[];
+  try {
+    ({ mailIds } = await rateTicket({
+      idPersonal: employee.idPersonal,
+      idTicket: parsed.data.idTicket,
+      calificacion: parsed.data.calificacion,
+      comentario: parsed.data.comentario || null,
+    }));
+  } catch (error) {
+    return failed(error, formData, "calificar el ticket");
+  }
+
+  const result = await succeeded("Calificación guardada.", mailIds);
   revalidatePath(`/tickets/${parsed.data.idTicket}`);
   return result;
 }

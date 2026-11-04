@@ -69,5 +69,8 @@ export function describeNotice(kind: TicketNoticeKind, ctx: NoticeContext): Noti
       return { titulo: `${ctx.autor} aprobó lo pedido en ${codigo}`, detalle: texto };
     case "APROBACION_DENEGADA":
       return { titulo: `${ctx.autor} no aprobó lo pedido en ${codigo}`, detalle: texto };
+    case "CALIFICACION_RESPONSABLE":
+      // El evento es AMBOS y dice el número: «Calificó la atención con 4 de 5.»
+      return { titulo: `${ctx.autor} calificó la atención de ${codigo}`, detalle: texto };
   }
 }

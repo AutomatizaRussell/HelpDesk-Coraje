@@ -1,6 +1,22 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 70, U34: calificación del ticket, SIN DESPLEGAR)
+SOBRE:   `19674b3` (corte 69)
+RAMA:    main
+UNIDAD:  U34 (specs/tickets.md §15): quien radicó califica de 1 a 5 su ticket
+         cerrado, una vez, con comentario obligatorio con 1 o 2 estrellas; aviso de
+         campana al responsable; solo tickets nacidos en HelpDesk. Evento
+         CALIFICACION por el escritor único vía `helpdesk.calificar_ticket`, acción
+         `ticket.calificar`, y `coraje_runtime` pierde el UPDATE de la columna.
+         Dos migraciones nuevas: 20261104100000 y 20261104110000.
+         Evidencia: `tsc`, `lint`, 220/220 pruebas, `next build` (DATABASE_URL de
+         relleno). Migraciones sin correr contra ninguna base; sin ver en navegador.
+SIGUE:   desplegar (migrate aplica las dos) y calificar un ticket cerrado propio con
+         2 estrellas sin comentario (debe pedirlo) y con comentario; ver el aviso en
+         la campana del responsable.
+
+--- Corte 69, para contexto:
 CORTE:   04-nov-2026 (corte 69, U33: crear ticket compacto, SIN DESPLEGAR)
 SOBRE:   `253362c` (corte 68)
 RAMA:    main

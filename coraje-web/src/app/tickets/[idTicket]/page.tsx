@@ -11,6 +11,7 @@ import { formatCatalogLabel, formatDate, formatDateTime, formatPriority, personI
 import {
   AddObserversForm,
   ApprovalResponseForm,
+  RatingForm,
   ReassignForm,
   RemoveObserverForm,
   RequestApprovalForm,
@@ -161,6 +162,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       value: formatDateTime(ticket.fechaCreacion),
       detail: ticket.fechaResolucion ? `Terminado ${formatDateTime(ticket.fechaResolucion)}` : null,
     },
+    // U34: la calificación es un dato del ticket, visible para quien lo consulta.
+    ...(ticket.calificacion !== null ? [{ label: "Calificación", value: `${ticket.calificacion} de 5` }] : []),
   ];
   const card = cn(surface(), "shadow-raised");
 
@@ -212,6 +215,13 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   waitingApprovalFrom={ticket.aprobacion.pendiente?.aprobador ?? null}
                   solicitante={ticket.solicitante}
                 />
+              </section>
+            )}
+
+            {/* U34: solo quien radicó, con el ticket cerrado y sin calificar. */}
+            {capabilities.calificar && (
+              <section className={card} aria-label="Calificar la atención">
+                <RatingForm idTicket={ticket.idTicket} />
               </section>
             )}
 

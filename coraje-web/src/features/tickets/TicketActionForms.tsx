@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Lock, MessageSquare, X } from "lucide-react";
+import { Check, Lock, MessageSquare, Star, X } from "lucide-react";
 import { useActionState, useState, type ReactNode } from "react";
 
 import { IconButton } from "@/design-system/components/IconButton";
@@ -12,12 +12,14 @@ import { AttachmentPicker } from "@/features/attachments/AttachmentPicker";
 import { FormFeedback } from "@/features/forms/FormFeedback";
 
 import type { FollowCandidate } from "@/server/tickets/ticket-queries";
+import { RATING_MAX, RATING_MIN, ratingRequiresComment } from "@/server/tickets/rating-rules";
 
 import { IDLE_FORM_STATE, type TicketFormState } from "./action-state";
 import {
   addInternalNoteAction,
   addObserversAction,
   commentAsRequesterAction,
+  rateTicketAction,
   reassignTicketAction,
   removeObserverAction,
   requestApprovalAction,
@@ -420,6 +422,80 @@ export function WithdrawApprovalForm({ idTicket }: { idTicket: string }) {
       <button type="submit" className={buttonRecipe({ variant: "secondary", size: "sm" })} disabled={pending}>
         {pending ? "Retirando…" : "Retirar solicitud"}
       </button>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+const RATING_VALUES = Array.from({ length: RATING_MAX - RATING_MIN + 1 }, (_, index) => RATING_MIN + index);
+
+/**
+ * Calificar un ticket cerrado (U34): cinco estrellas y un comentario. Solo lo
+ * ve quien radicó el ticket, y solo mientras nadie lo ha calificado.
+ *
+ * Las estrellas son radios de verdad, ocultos tras el icono: el teclado se
+ * mueve entre ellas con las flechas y el lector de pantalla dice «3 de 5».
+ * Se pintan llenas hasta la elegida, en navy: el ámbar y el rojo son de los
+ * plazos (design/sistema-helpdesk.md). Elegir 1 o 2 cambia la indicación
+ * del comentario a obligatorio; la acción de servidor y la base lo exigen
+ * de todos modos.
+ */
+export function RatingForm({ idTicket }: { idTicket: string }) {
+  const { state, formAction, pending, formKey } = useTicketForm(rateTicketAction);
+  const previous = state.status === "error" ? Number(state.values.calificacion) || 0 : 0;
+  const [value, setValue] = useState(previous);
+  const error = state.status === "error" ? state.fieldErrors.calificacion : undefined;
+
+  return (
+    <form key={formKey} action={formAction} className="space-y-4">
+      <input type="hidden" name="idTicket" value={idTicket} />
+      <FormFeedback state={state} />
+      <fieldset aria-describedby={error ? "calificacion-error" : undefined}>
+        <legend className={fieldLabel}>¿Cómo fue la atención?</legend>
+        <div className="mt-2 flex items-center gap-1">
+          {RATING_VALUES.map((n) => (
+            <label
+              key={n}
+              className={cn(
+                "cursor-pointer rounded-control p-1",
+                "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-solid has-focus-visible:outline-focus",
+              )}
+            >
+              <input
+                type="radio"
+                name="calificacion"
+                value={n}
+                checked={value === n}
+                onChange={() => setValue(n)}
+                className="sr-only"
+              />
+              <Star
+                aria-hidden
+                className={cn("size-7", n <= value ? "fill-current text-heading" : "text-line-strong")}
+                strokeWidth={iconStroke.regular}
+              />
+              <span className="sr-only">{n} de 5</span>
+            </label>
+          ))}
+          <span className="ml-2 text-sm text-ink-muted tabular-nums">{value > 0 ? `${value} de 5` : "Sin elegir"}</span>
+        </div>
+        {error && <p id="calificacion-error" className={fieldError}>{error}</p>}
+      </fieldset>
+      <TextField
+        name="comentario"
+        label={ratingRequiresComment(value) ? "Comentario (obligatorio)" : "Comentario (opcional)"}
+        hint={
+          ratingRequiresComment(value)
+            ? "Escribe qué faltó. Queda en la historia del ticket."
+            : "Queda en la historia del ticket."
+        }
+        state={state}
+        rows={3}
+      />
+      <Submit pending={pending} variant="primary">
+        Enviar calificación
+      </Submit>
     </form>
   );
 }

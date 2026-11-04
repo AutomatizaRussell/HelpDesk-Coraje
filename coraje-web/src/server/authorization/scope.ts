@@ -78,9 +78,9 @@ export interface ScopeTicket {
  *   ser observador: ninguna otra acción lo mira (tickets.md §11).
  * - Consultar, además: ser su aprobador (U29), y responder la aprobación es
  *   lo único que eso permite hacer.
- * - Comentar como solicitante (U11): haberlo radicado, y nada más. Es la
- *   única acción cuyo «propio» no es ser el responsable, porque es la voz de
- *   quien pidió, no de quien atiende.
+ * - Comentar como solicitante (U11) y calificar (U34): haberlo radicado, y
+ *   nada más. Son las acciones cuyo «propio» no es ser el responsable,
+ *   porque son la voz de quien pidió, no de quien atiende.
  * - Todo lo demás: ser su responsable. Es la regla del legacy
  *   (reglas-negocio-powerapps.md §6): quien recibe el ticket es quien actúa
  *   sobre él. Radicarlo no da derecho a responderlo ni a rechazarlo.
@@ -108,7 +108,7 @@ function isOwnTicket(action: TicketAction, actor: ScopeActor, ticket: ScopeTicke
   if (action === TICKET_ACTIONS.responderAprobacion) {
     return ticket.idAprobadores.includes(actor.idPersonal);
   }
-  if (action === TICKET_ACTIONS.comentarSolicitante) {
+  if (action === TICKET_ACTIONS.comentarSolicitante || action === TICKET_ACTIONS.calificar) {
     return ticket.idSolicitante === actor.idPersonal;
   }
   return isResponsable;

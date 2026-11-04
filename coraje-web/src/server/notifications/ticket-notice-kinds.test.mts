@@ -16,8 +16,8 @@ import { NOTICE_CLASS, RESPONSIBLE_NOTICE_KINDS } from "./ticket-notice-kinds";
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS = path.resolve(THIS_DIR, "../../../prisma/migrations");
 const sql = readFileSync(path.join(MIGRATIONS, "20260930120000_avisos_ticket/migration.sql"), "utf8");
-/** U29 reescribió los CHECK de tipo y de clase: manda su versión. */
-const checksSql = readFileSync(path.join(MIGRATIONS, "20261103160000_aprobacion_ticket/migration.sql"), "utf8");
+/** U34 reescribió por última vez los CHECK de tipo y de clase: manda su versión. */
+const checksSql = readFileSync(path.join(MIGRATIONS, "20261104110000_calificacion_ticket/migration.sql"), "utf8");
 
 /** Los literales entre comillas simples de un fragmento de SQL. */
 function literals(fragment: string): string[] {

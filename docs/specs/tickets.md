@@ -280,7 +280,9 @@ permite. Si hace falta, se añade como transición nueva.
 
 Ninguna transición de la v1 la ejecuta el solicitante ni un cliente: todas las autoriza
 una acción del catálogo que tiene un empleado. Por eso el catálogo de `permisos.md` §3
-no necesita acciones nuevas para la v1.
+no necesita acciones nuevas para la v1. **Precisado el 04-nov-2026 (U34):** calificar
+no es una transición, pero sí es una acción del solicitante con permiso propio,
+`ticket.calificar` (§15).
 
 ### 4.2 `DECISIÓN` (24-sep-2026) Traducción de los estados legacy
 
@@ -1073,6 +1075,47 @@ del usuario: todo lo que se pueda abrir, se abre dentro de la app.
   mover, así que la descarga y la vista previa siguen igual. La confirmación sigue
   comparando la carpeta general, porque se hace antes de mover.
 
+## 15. `DECISIÓN` (04-nov-2026, U34) Calificación
+
+```
+ESTADO:  construido, sin desplegar. Migraciones 20261104100000_valor_calificacion
+         y 20261104110000_calificacion_ticket
+```
+
+Decisiones del usuario del 04-nov-2026, sobre el legacy (`legacy/reglas-negocio-powerapps.md`
+§8) y las del 03-sep-2026 (§13 de ese documento: rango validado en servidor, calificar
+es opcional).
+
+- **Quién:** solo quien radicó el ticket, como en PowerApps. Ni observadores ni
+  responsable. Acción `ticket.calificar`, `PROPIO` = haberlo radicado
+  (`permisos.md` §4.8).
+- **Cuándo:** el ticket está `CERRADO`, sin plazo. Calificar no cambia el estado.
+- **Cuántas veces:** una. No se puede cambiar.
+- **Comentario:** opcional con 3 a 5 estrellas y obligatorio con 1 o 2
+  (`rating-rules.ts`).
+- **Aviso:** una novedad en la campana de la persona responsable
+  (`CALIFICACION_RESPONSABLE`). Sin correo: siguen siendo los cuatro de §12.1.
+- **Solo tickets nacidos en HelpDesk.** Los de PowerApps se califican allí hasta el
+  corte, y la ingesta copia su calificación (`sincronizacion-sharepoint.md` §4.3).
+- **Dónde se ve:** quien radicó, en el detalle de su ticket cerrado. No hay vista ni
+  aviso de «por calificar». Una vez calificado, la cabecera muestra «N de 5» y la
+  historia el evento, con el comentario, para todo el que consulta el ticket.
+
+**Cómo está construido.** `helpdesk.calificar_ticket` valida el rango y el
+comentario, escribe el evento `CALIFICACION` (visibilidad `AMBOS`) por el escritor
+único y proyecta `fact_ticket.calificacion` en la misma llamada. La rama del escritor
+exige al solicitante, el estado `CERRADO`, un origen de HelpDesk y que no haya otra
+calificación. El índice parcial `ux_fact_ticket_evento_calificacion` lo garantiza
+también ante dos envíos simultáneos. `coraje_runtime` pierde el `UPDATE` de la columna:
+una calificación sin su evento ya no se puede escribir. `coraje_etl` lo conserva para
+la ingesta.
+
+| # | Afirmación | Dónde | Veredicto |
+|---|---|---|---|
+| V27 | Rango y umbral del comentario iguales en la aplicación y en la base | `rating-rules.test.mts` contra la migración | **Verificado por prueba** |
+| V28 | `calificacion` fuera de la concesión de `UPDATE` de `coraje_runtime` | `event-model.contract.test.mts` | **Verificado por prueba** |
+| V29 | Califica solo quien radicó, una vez, con el ticket cerrado, y el responsable recibe el aviso | Base desplegada | **Sin ejercitar** |
+
 **Changelog:** 03-sep-2026 — línea base. Declara el bloqueo por ausencia de
 levantamiento de PowerApps (§2); adopta el modelo de estado derivado de eventos con
 escritor único (§3); propone el vocabulario mínimo de siete estados contra los tres
@@ -1179,3 +1222,6 @@ evento (§6) y las dos restricciones de esquema a revisar (§7).
   `info.admingct@`. V26.
 - 03-nov-2026 — U25 (corte 42). Se borran todos los tickets creados desde HelpDesk:
   eran pruebas. Los de PowerApps no se tocan.
+- 04-nov-2026 — U34. §15: calificación. Solo quien radicó, una vez, con el ticket
+  cerrado y comentario obligatorio con 1 o 2 estrellas. §4.1: calificar necesita una
+  acción nueva del catálogo, `ticket.calificar`.

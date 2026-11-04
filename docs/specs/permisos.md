@@ -226,6 +226,14 @@ Construido en `20261001100000_rol_redirector`, sin desplegar. Decisión del usua
 > (`canRedirect`, `getModeAccess`). Siguen en el catálogo, en las reglas y en el rol
 > `REDIRECTOR`: reconectar el portal no exige migración (`specs/tickets.md` §13.1).
 
+### 4.8 `DECISIÓN` (04-nov-2026, U34) Calificar
+
+Construido en `20261104110000_calificacion_ticket`, sin desplegar.
+`ticket.calificar` con alcance `PROPIO` para todo rol que tiene `ticket.consultar`.
+Como en `ticket.solicitante.comentar`, «propio» es **haberlo radicado** (`scope.ts`).
+Ningún rol la tiene con otro alcance, y la rama `CALIFICACION` del escritor exige
+igualmente que el autor sea el solicitante (`specs/tickets.md` §15).
+
 ## 5. Autorización excepcional
 
 Una acción fuera del alcance ordinario —intervención administrativa, acceso

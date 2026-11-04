@@ -11,7 +11,7 @@ import { recordPortalAudit } from "@/server/portal/portal-audit";
 import type { PortalAccess } from "@/server/portal/portal-access";
 
 import { FOLLOWER_WHERE, MAX_OBSERVERS_PER_ACTION } from "./follow-rules";
-import { TicketDomainError, translateCreationFailure } from "./ticket-errors";
+import { TicketDomainError, translateCreationFailure, translateRatingFailure } from "./ticket-errors";
 import { OPEN_STATES, TICKET_STATES, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
 
 /**
@@ -56,6 +56,8 @@ interface LockedTicket {
   idTipoReq: string | null;
   origenSistema: string;
   estado: TicketState;
+  /** U34: 1 a 5, o `null` si nadie lo ha calificado. */
+  calificacion: number | null;
   /** Quienes siguen el ticket (U11). Entra en el alcance de consulta. */
   idObservadores: string[];
   /** A quiénes se les pidió aprobar algo (U29). Entra en el alcance de consulta. */
@@ -77,6 +79,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
       id_tipo_req: string | null;
       origen_sistema: string;
       nombre_estado: string;
+      calificacion: number | null;
       id_observadores: string[];
       id_aprobadores: string[];
       pendiente_evento: string | null;
@@ -93,6 +96,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
            ticket.id_tipo_req::text,
            ticket.origen_sistema,
            estado.nombre_estado,
+           ticket.calificacion,
            ARRAY(
                SELECT observador.id_personal::text
                FROM helpdesk.ticket_observador AS observador
@@ -136,6 +140,7 @@ async function lockTicket(tx: Tx, idTicket: string): Promise<LockedTicket> {
     idTipoReq: row.id_tipo_req,
     origenSistema: row.origen_sistema,
     estado: row.nombre_estado,
+    calificacion: row.calificacion,
     idObservadores: row.id_observadores,
     idAprobadores: row.id_aprobadores,
     aprobacionPendiente:
@@ -1055,4 +1060,74 @@ export async function commentAsRequester(params: {
 
     return { idTicket: ticket.idTicket, idEvento, mailIds };
   });
+}
+
+// ---------------------------------------------------------------------------
+// U34 · Calificar
+// ---------------------------------------------------------------------------
+
+/**
+ * Quien radicó el ticket califica de 1 a 5 la atención, una vez y con el
+ * ticket ya cerrado (tickets.md §15). No cambia el estado ni es requisito de
+ * nada (decisión del 03-sep-2026). Con 1 o 2 estrellas el comentario es
+ * obligatorio.
+ *
+ * `helpdesk.calificar_ticket` valida el número y el comentario, escribe el
+ * evento por el escritor único y proyecta `fact_ticket.calificacion`; la
+ * aplicación ya no puede escribir esa columna por su cuenta. Las
+ * comprobaciones de aquí son las mismas, antes, para dar un mensaje claro.
+ *
+ * Avisa a la persona responsable en la campana, sin correo: los correos son
+ * los cuatro de U29 (tickets.md §12.1).
+ */
+export async function rateTicket(params: {
+  idPersonal: string;
+  idTicket: string;
+  calificacion: number;
+  comentario: string | null;
+}): Promise<TicketEventResult> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { ticket } = await lockAndAuthorize({
+        tx,
+        idTicket: params.idTicket,
+        idPersonal: params.idPersonal,
+        action: TICKET_ACTIONS.calificar,
+        allowedStates: ["CERRADO"],
+        stateMessage: "Solo se califica un ticket cerrado.",
+      });
+      if (ticket.calificacion !== null) {
+        throw new TicketDomainError("ESTADO_NO_PERMITE", "Este ticket ya tiene calificación.");
+      }
+
+      const rows = await tx.$queryRaw<{ id_evento: string | null }[]>`
+        SELECT helpdesk.calificar_ticket(
+            ${ticket.idTicket}::uuid,
+            ${params.idPersonal}::uuid,
+            ${params.calificacion}::integer,
+            ${params.comentario}::text
+        )::text AS id_evento
+      `;
+      const idEvento = rows[0]?.id_evento;
+      if (!idEvento) throw new Error(`calificar_ticket no devolvió evento para ${ticket.idTicket}`);
+
+      // deliverTicketEvent omite al autor: quien atendió su propio ticket no
+      // se avisa a sí mismo.
+      const mailIds = ticket.idAsignado
+          ? await deliverTicketEvent(tx, {
+              idTicket: ticket.idTicket,
+              idEvento,
+              idAutor: params.idPersonal,
+              texto: params.comentario,
+              deliveries: [{ tipo: "EMPLEADO", kind: "CALIFICACION_RESPONSABLE", idPersonal: ticket.idAsignado }],
+            })
+          : [];
+
+      return { idTicket: ticket.idTicket, idEvento, mailIds };
+    });
+  } catch (error) {
+    const translated = translateRatingFailure(error);
+    if (translated) throw translated;
+    throw error;
+  }
 }

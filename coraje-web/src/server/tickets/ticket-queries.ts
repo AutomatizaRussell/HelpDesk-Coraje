@@ -377,6 +377,8 @@ export interface TicketCapabilities {
   retirarAprobacion: boolean;
   /** U11: quien radicó escribe en su ticket abierto sin cerrarlo. */
   comentarSolicitante: boolean;
+  /** U34: quien radicó califica su ticket cerrado, si nadie lo ha calificado. */
+  calificar: boolean;
 }
 
 export interface TicketDetail {
@@ -398,6 +400,8 @@ export interface TicketDetail {
   fechaLimite: Date | null;
   fechaResolucion: Date | null;
   sla: SlaStatus | null;
+  /** U34: 1 a 5. En los tickets de PowerApps, la que trae la ingesta. */
+  calificacion: number | null;
   operable: boolean;
   projection: HistoryProjection;
   history: TicketHistoryEntry[];
@@ -435,6 +439,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       fechaCreacion: true,
       fechaLimite: true,
       fechaResolucion: true,
+      calificacion: true,
       idClienteContai: true,
       origenSistema: true,
       dimEstado: { select: { nombreEstado: true } },
@@ -507,6 +512,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     TICKET_ACTIONS.solicitarValidacion,
     TICKET_ACTIONS.responderAprobacion,
     TICKET_ACTIONS.comentarSolicitante,
+    TICKET_ACTIONS.calificar,
   ]);
   const can = (action: TicketAction) => {
     const granted = grants.get(action);
@@ -537,6 +543,8 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
       (pendiente.evento.idAutor === params.idPersonal || ticket.idAsignado === params.idPersonal) &&
       can(TICKET_ACTIONS.solicitarValidacion),
     comentarSolicitante: operable && open && can(TICKET_ACTIONS.comentarSolicitante),
+    // Las mismas condiciones que rateTicket y la rama CALIFICACION del escritor.
+    calificar: operable && estado === "CERRADO" && ticket.calificacion === null && can(TICKET_ACTIONS.calificar),
   };
 
   return {
@@ -557,6 +565,7 @@ export async function getTicketDetail(params: { idPersonal: string; idTicket: st
     fechaLimite: ticket.fechaLimite,
     fechaResolucion: ticket.fechaResolucion,
     sla: slaStatus({ state: estado, fechaLimite: ticket.fechaLimite, now: new Date() }),
+    calificacion: ticket.calificacion,
     modo: ticketModeOf(ticket.idClienteContai),
     operable,
     projection,

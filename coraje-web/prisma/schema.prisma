@@ -518,6 +518,8 @@ enum TipoEventoTicket {
   APROBACION_OTORGADA
   APROBACION_DENEGADA
   APROBACION_RETIRADA
+  // U34 (tickets.md §15): quien radicó califica el ticket cerrado, una vez.
+  CALIFICACION
 
   @@map("tipo_evento_ticket")
   @@schema("helpdesk")
@@ -598,6 +600,9 @@ model FactTicket {
   fechaLimite          DateTime?               @map("fecha_limite") @db.Timestamptz(6)
   fechaResolucion      DateTime?               @map("fecha_resolucion") @db.Timestamptz(6)
   respuestaFinal       String?                 @map("respuesta_final")
+  // U34: solo la escribe helpdesk.calificar_ticket junto con su evento;
+  // coraje_runtime no tiene UPDATE sobre ella. La ingesta (coraje_etl) copia
+  // la de los tickets de PowerApps.
   calificacion         Int?
   origenSistema        String                  @map("origen_sistema")
   ultimaActualizacion  DateTime                @default(now()) @map("ultima_actualizacion") @db.Timestamptz(6)
@@ -670,6 +675,8 @@ model FactTicketEvento {
   avisos            TicketAviso[]
   adjuntos          TicketAdjunto[]
 
+  // U34: una sola CALIFICACION por ticket (ux_fact_ticket_evento_calificacion,
+  // índice parcial no representable).
   // U7: un adjunto apunta al par evento-ticket (migración 20261103130000).
   @@unique([idEvento, idTicket], map: "ux_fact_ticket_evento_evento_ticket")
   @@index([idTicket, fechaRegistro], map: "ix_fact_ticket_evento_ticket_fecha")

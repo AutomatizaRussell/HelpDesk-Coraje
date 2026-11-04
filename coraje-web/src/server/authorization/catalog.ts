@@ -3,7 +3,8 @@
  * sembrados en `app.permiso_accion` por las migraciones
  * `20260926100000_permisos_y_creacion_ticket`,
  * `20260928110000_acceso_clientes`, `20260928130000_observabilidad`,
- * `20260928150000_seguimiento_ticket` y `20260930120000_avisos_ticket`.
+ * `20260928150000_seguimiento_ticket`, `20260930120000_avisos_ticket`,
+ * `20261103160000_aprobacion_ticket` y `20261104110000_calificacion_ticket`.
  *
  * Este archivo **no** decide quién puede qué: eso vive en `app.permiso_regla`,
  * que es la única fuente operativa (permisos.md §1). Aquí solo se nombran los
@@ -36,6 +37,11 @@ export const TICKET_ACTIONS = {
    * «propio» es haberlo radicado, no ser su responsable (scope.ts).
    */
   comentarSolicitante: "ticket.solicitante.comentar",
+  /**
+   * U34 (tickets.md §15): calificar de 1 a 5 un ticket cerrado. Como comentar,
+   * «propio» es haberlo radicado (scope.ts); ningún rol la tiene con otro alcance.
+   */
+  calificar: "ticket.calificar",
 } as const;
 
 /**

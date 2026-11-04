@@ -754,6 +754,16 @@ comportamiento de servidor no cambia.
 **Condición de cierre:** el usuario crea un ticket con adjuntos y observadores en
 escritorio y en móvil, y lo aprueba o pide ajustes.
 
+### U34 · Calificación del ticket — **construida el 04-nov-2026 (corte 70)**
+
+Pedida por el usuario: «traer el asunto de la calificación» de PowerApps. Califica
+solo quien radicó, una vez, con el ticket cerrado y sin plazo. Con 1 o 2 estrellas el
+comentario es obligatorio. El responsable recibe un aviso en la campana, sin correo, y
+solo se califican los tickets nacidos en HelpDesk (`specs/tickets.md` §15).
+
+**Condición de cierre:** desplegado, una persona califica un ticket cerrado propio y el
+responsable ve el aviso; un segundo intento y uno de otra persona se rechazan.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note
