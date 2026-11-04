@@ -1,6 +1,16 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 69, U32: etiqueta de PowerApps en la cabecera del detalle, SIN DESPLEGAR)
+SOBRE:   `3eab809` (calificación, de otra sesión)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): el aviso informativo de los tickets
+         traídos de PowerApps pasa a etiqueta junto al estado. Pendiente con el
+         usuario: un tratamiento propio del semicírculo y el globo del detalle.
+         Evidencia: `tsc`, `lint`, pruebas. Sin ver en navegador.
+SIGUE:   decidir el diseño de la forma del detalle.
+
+--- Corte 68, para contexto:
 CORTE:   04-nov-2026 (corte 70, U34: calificación del ticket, SIN DESPLEGAR)
 SOBRE:   `19674b3` (corte 69)
 RAMA:    main

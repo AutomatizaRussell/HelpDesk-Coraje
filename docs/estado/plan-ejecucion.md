@@ -732,7 +732,7 @@ maqueta y aprobado por el usuario «tal cual» el 04-nov-2026 (tableros T y U).
 **Condición de cierre:** el usuario crea un ticket y lo atiende en el despliegue con
 las dos partes, y las aprueba o pide ajustes.
 
-### U32 · Barra superior mínima y escala contenida — **construida el 04-nov-2026 (cortes 65 a 68)**
+### U32 · Barra superior mínima y escala contenida — **construida el 04-nov-2026 (cortes 65 a 69)**
 
 Pedida por el usuario tras ver U30 y U31 desplegadas: al 100 % todo se veía como al
 125 %, y barra y fila de secciones empujaban el contenido hacia abajo. Las secciones

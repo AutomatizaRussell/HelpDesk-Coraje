@@ -1,10 +1,13 @@
+import { History } from "lucide-react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { PersonChip } from "@/design-system/components/PersonChip";
 import { TicketHero, type TicketHeroFact } from "@/design-system/patterns/area-hero/TicketHero";
 import { MailStateBadge, SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
-import { notice, sectionTitle, surface } from "@/design-system/recipes/surface";
+import { iconStroke } from "@/design-system/foundations/iconography";
+import { badge } from "@/design-system/recipes/badge";
+import { sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaDisplayName, areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate, formatDateTime, formatPriority, personInitials } from "@/features/tickets/format";
@@ -188,6 +191,15 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               )}
               <TicketStateBadge state={ticket.estado} />
               {ticket.sla && ticket.sla !== "EN_PLAZO" && <SlaBadge status={ticket.sla} />}
+              {/* Corte 69: antes, un aviso a todo lo ancho sobre el contenido.
+                  La etiqueta dice lo mismo —de dónde viene y que aquí no se
+                  gestiona— junto al estado, que es donde se mira. */}
+              {!ticket.operable && (
+                <span className={badge("neutral")}>
+                  <History aria-hidden className="size-3" strokeWidth={iconStroke.regular} />
+                  De PowerApps · solo consulta
+                </span>
+              )}
             </>
           }
           facts={facts}
@@ -195,9 +207,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       )}
     >
       <div className="space-y-5">
-        {!ticket.operable && (
-          <p className={notice("info")}>Este ticket viene de PowerApps. Aquí solo se consulta; se sigue gestionando en PowerApps.</p>
-        )}
 
         <div className="grid items-start gap-5 lg:grid-cols-3">
           <div className="space-y-5 lg:col-span-2">

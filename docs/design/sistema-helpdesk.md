@@ -503,6 +503,9 @@ releer la petición mientras se escribe; el recorte con «ver completa» convert
 cabecera en el cuerpo del ticket, y una ventana modal habría tapado el cuadro de
 escritura. La cabecera vuelve a medir siempre lo mismo.
 
+Corte 69: el aviso a todo lo ancho «Este ticket viene de PowerApps…» se sustituye por la
+etiqueta «De PowerApps · solo consulta» junto al estado, en la cabecera.
+
 *No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
 11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 
