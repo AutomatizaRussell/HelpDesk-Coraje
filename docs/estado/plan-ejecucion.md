@@ -692,7 +692,7 @@ Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por part
 
 **Condición de cierre:** cada parte ejercitada en el despliegue por el usuario.
 
-### U30 · Bandeja con personalidad: cabecera del área — **construida el 04-nov-2026 (corte 54), sin desplegar**
+### U30 · Bandeja con personalidad: cabecera del área — **desplegada el 04-nov-2026 (corte 54); ajustes en el corte 55, sin desplegar**
 
 Queja del usuario y de quienes usan HelpDesk (03-nov): la interfaz es plana y «se nota
 hecha por IA». Exploradas en una maqueta (artifact privado del usuario) catorce
@@ -704,9 +704,12 @@ valor y la bandeja montada sobre el borde de la cabecera
 - Construido: cabecera (`patterns/area-hero/`), recuadro del área, persona con
   iniciales, pestañas subrayadas, estado vacío con el globo, iconos en estado y plazo,
   filas que entran escalonadas, un conteo más en `countInbox` (por vencer).
-- **Abierto, decide el usuario:** la animación ambiental definitiva del disco (hoy el
-  globo flota; candidatas en la maqueta: destello ocasional, respiración, combinada) y
-  si se pregunta a mercadeo por el disco (§5.4).
+- Corte 55, tras verla desplegada: forma que cierra la cabecera hasta la esquina
+  inferior en lugar del disco suelto, entrada más lenta, globo quieto, cabecera que
+  termina tras las cifras.
+- **Abierto, decide el usuario:** la animación propia de la cabecera (respuesta sobria
+  al puntero y sorpresa al hacer clic varias veces en el globo; candidatas en la
+  maqueta) y si se pregunta a mercadeo por la forma (§5.4).
 - Fuera de esta unidad: la lista con lectura al lado (dirección E de la maqueta), que
   cambia la navegación y va en una unidad propia.
 

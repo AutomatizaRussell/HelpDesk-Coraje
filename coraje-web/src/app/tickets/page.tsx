@@ -223,9 +223,7 @@ export default async function TicketsPage({
       {inbox === null ? (
         <p className={notice("warning")}>No tienes permiso para consultar tickets.</p>
       ) : (
-        // `-mt-14`: la bandeja se monta sobre el borde inferior de la cabecera,
-        // que deja `pb-24` de aire para ello (patterns/area-hero).
-        <div className="relative -mt-14 space-y-4">
+        <div className="space-y-4">
           {params.redirigido && (
             <FlashToast
               id={`redirigido-${params.redirigido}`}

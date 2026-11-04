@@ -353,12 +353,18 @@ Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
   alcance de la persona («en tu alcance hay 3 tickets vencidos…», resaltando solo los
   vencidos); **cifras** por estado y vencidos, con el marcador del tono de su insignia
   (§5), que cuentan hasta su valor con el punto de los miles.
-- **Disco con el globo blanco** recortado en la esquina superior derecha; se oculta en
-  pantallas estrechas. El disco aparece creciendo una vez; el globo flota despacio.
-  Ninguno gira.
-- **La bandeja se monta sobre el borde** de la cabecera, en una tarjeta con sombra.
-  Las filas entran escalonadas (solo las nuevas); el área va en un recuadro con su
-  código de tres letras; el responsable, con sus iniciales; estado y plazo, con icono.
+- **Forma del área con el globo blanco** que cierra la cabecera por la derecha: un arco
+  amplio arriba, recortado por el borde, que baja hasta la esquina inferior; el globo,
+  centrado en ella y quieto. Entra una vez deslizándose desde la derecha, despacio. Se
+  oculta por debajo de `lg`. Ni la forma ni el globo giran.
+  *Corregido el 04-nov-2026 tras verla desplegada:* la primera versión era un disco
+  suelto que crecía en 600 ms (se leía brusco y asomaba cortado por arriba), dejaba
+  vacía la esquina inferior derecha y su globo flotaba igual que el del estado vacío.
+- **La cabecera termina justo después de las cifras** y la bandeja empieza debajo, en
+  una tarjeta con sombra (la primera versión la montaba sobre el borde y tapaba lo que
+  la vista pusiera antes de ella). Las filas entran escalonadas (solo las nuevas); el
+  área va en un recuadro con su código de tres letras; el responsable, con sus
+  iniciales; estado y plazo, con icono.
 - **Estado vacío** (`patterns/empty-state/`): el mismo motivo a escala de tarjeta.
 
 **Manual de marca, leído el 04-nov-2026** (el PDF está fuera del repositorio). Lo que
@@ -370,8 +376,9 @@ recortadas en círculo y sobre fondos sólidos, **no sobre un disco de color**: 
 una extrapolación. `ABIERTO`: confirmarlo con el área de mercadeo; si lo objeta, se
 cambia `HeroGlobe` y nada más.
 
-`ABIERTO`: la animación ambiental definitiva (el usuario compara candidatas en la
-maqueta).
+`ABIERTO`: la animación propia de la cabecera. Dirección del usuario (04-nov-2026):
+una respuesta sobria al puntero sobre la cabecera y una sorpresa al hacer clic varias
+veces en el globo; las candidatas están en la maqueta.
 
 ## 6. Vistas que el contrato tiene que sostener
 

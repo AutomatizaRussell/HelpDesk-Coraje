@@ -74,6 +74,8 @@
   --hd-radius-surface: 10px;
   --hd-radius-pill: 999px;
   --hd-radius-card: 12px;
+  --hd-radius-hero-mark: 220px;
+  --hd-radius-hero-mark-foot: 72px;
   --hd-radius-shell-item: 8px;
   --hd-radius-scrollbar: 3px;
 
@@ -85,8 +87,10 @@
   --hd-motion-easing: cubic-bezier(0.2, 0, 0, 1);
   --hd-motion-toast-offset: 8px;
   --hd-motion-enter: 600ms;
-  --hd-motion-float: 5s;
-  --hd-motion-float-offset: 8px;
+  --hd-motion-hero-enter: 1200ms;
+  --hd-motion-hero-offset: 48px;
+  --hd-motion-float: 8s;
+  --hd-motion-float-offset: 6px;
   --hd-motion-count: 1100ms;
   --hd-motion-stagger: 40ms;
   --hd-motion-rise-offset: 8px;
@@ -116,7 +120,8 @@
   --hd-size-notice-panel: 384px;
   --hd-size-toast: 384px;
   --hd-size-preview: 75vh;
-  --hd-size-hero-disc: 400px;
+  --hd-size-hero-mark: 440px;
+  --hd-size-hero-mark-lift: 88px;
   --hd-size-hero-globe: 256px;
   --hd-size-hero-stripe: 6px;
   --hd-size-empty-mark: 88px;
@@ -396,6 +401,8 @@
   --radius-surface: var(--hd-radius-surface);
   --radius-pill: var(--hd-radius-pill);
   --radius-card: var(--hd-radius-card);
+  --radius-hero-mark: var(--hd-radius-hero-mark);
+  --radius-hero-mark-foot: var(--hd-radius-hero-mark-foot);
   --radius-shell-item: var(--hd-radius-shell-item);
 
   --shadow-overlay: var(--hd-shadow-overlay);
@@ -432,7 +439,8 @@
   --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
   --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
   --spacing-preview: var(--hd-size-preview);
-  --spacing-hero-disc: var(--hd-size-hero-disc);
+  --spacing-hero-mark: var(--hd-size-hero-mark);
+  --spacing-hero-mark-lift: var(--hd-size-hero-mark-lift);
   --spacing-hero-globe: var(--hd-size-hero-globe);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
   --spacing-empty-mark: var(--hd-size-empty-mark);
@@ -448,10 +456,10 @@
      contrato. Con movimiento reducido, la regla global la deja instantánea. */
   --animate-toast-in: hd-toast-in var(--hd-motion-normal) var(--hd-motion-easing);
 
-  /* Cabecera del área y bandeja (U30). El disco entra una vez; el globo
-     flota siempre, despacio; las filas suben al aparecer. Con movimiento
-     reducido, la regla global de `@layer base` las deja quietas. */
-  --animate-hero-disc: hd-hero-disc-in var(--hd-motion-enter) var(--hd-motion-easing) both;
+  /* Cabecera del área y bandeja (U30). La forma del área entra una vez; el
+     globo flota siempre, despacio; las filas suben al aparecer. Con
+     movimiento reducido, la regla global de `@layer base` las deja quietas. */
+  --animate-hero-mark: hd-hero-mark-in var(--hd-motion-hero-enter) var(--hd-motion-easing) both;
   --animate-float: hd-float var(--hd-motion-float) ease-in-out infinite;
   --animate-rise: hd-rise var(--hd-motion-enter) var(--hd-motion-easing) both;
 }
@@ -467,12 +475,14 @@
   }
 }
 
-/* Crece un poco y aparece. Sin giro: el manual de marca prohíbe girar el
-   globo (§4.1), y el globo va dentro del disco. */
-@keyframes hd-hero-disc-in {
+/* Llega deslizándose desde el borde derecho, que es donde está anclada. Sin
+   crecer —al crecer desde su centro asomaba por encima de la cabecera y se
+   veía cortada— y sin giro: el manual de marca prohíbe girar el globo (§4.1),
+   y el globo va dentro de la forma. */
+@keyframes hd-hero-mark-in {
   from {
     opacity: 0;
-    transform: scale(0.85);
+    transform: translateX(var(--hd-motion-hero-offset));
   }
   to {
     opacity: 1;

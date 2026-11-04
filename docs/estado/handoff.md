@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 55, U30: forma del área y cabecera más corta, SIN DESPLEGAR)
+SOBRE:   `5c04fe4` (corte 54)
+RAMA:    main
+UNIDAD:  U30, ajustes del usuario tras ver el corte 54 desplegado. El disco suelto
+         pasa a ser una forma que cierra la cabecera por la derecha hasta la
+         esquina inferior, con el globo centrado y quieto; entra deslizándose en
+         1,2 s en lugar de crecer en 0,6 s. La cabecera termina tras las cifras y
+         la bandeja ya no se monta sobre ella (tapaba el selector de
+         suplantación). Evidencia: `tsc`, `lint`, 213/213, `next build`.
+SIGUE:   desplegar y revisar; elegir con el usuario la animación propia de la
+         cabecera (puntero y sorpresa al hacer clic en el globo).
+
+--- Corte 54, para contexto:
 CORTE:   04-nov-2026 (corte 54, U30: cabecera del área en la bandeja, SIN DESPLEGAR)
 SOBRE:   `76b23ca` (corte 53)
 RAMA:    main
@@ -1315,8 +1328,8 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 
 ### U30 — cabecera del área en la bandeja (corte 54, sin desplegar)
 
-- `patterns/area-hero/`: cabecera en la tinta del área, disco con el globo
-  (`public/rb-isotype-white-hero.png`, 512 px) y cifras con `CountUp`.
+- `patterns/area-hero/`: cabecera en la tinta del área, forma del área con el globo
+  (`HeroMark`, `public/rb-isotype-white-hero.png`, 512 px) y cifras con `CountUp`.
 - `patterns/empty-state/`, `patterns/area/AreaTile.tsx`, `components/PersonChip.tsx`,
   `components/TabLinks.tsx`; insignias de estado y plazo con icono (también en el
   detalle y el portal).
@@ -1651,6 +1664,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `5c04fe4` | **Corte 54.** U30: cabecera del área en la bandeja. Desplegado el 04-nov-2026; el usuario pidió ajustes al verla |
 | `76b23ca` | **Corte 53.** U29: tickets existentes recodificados por mes. Publicado el 03-nov-2026 |
 | `1145044` | **Corte 52.** U29 parte 6: vista previa y carpeta por ticket. Publicado el 03-nov-2026 |
 | `9b18790` | **Corte 51.** U29 parte 5: toasts. Publicado el 03-nov-2026 |

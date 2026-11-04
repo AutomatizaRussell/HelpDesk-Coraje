@@ -85,6 +85,11 @@ export const helpdeskTheme = {
     // Cajas de cifra de la cabecera del área (U30): más redondas que una
     // superficie de trabajo porque flotan sobre el color, no ordenan datos.
     card: "12px",
+    // La forma del área (U30): arco amplio arriba a la izquierda —la mitad de
+    // su ancho, así se lee como el disco de antes— y una curva corta abajo,
+    // donde la forma se apoya en el borde inferior de la cabecera.
+    heroMark: "220px",
+    heroMarkFoot: "72px",
     shellItem: "8px", // réplica de Conecta (`rounded-lg` de sus ítems)
     scrollbar: "3px", // réplica de Conecta (::-webkit-scrollbar-thumb)
   },
@@ -101,15 +106,19 @@ export const helpdeskTheme = {
     easing: "cubic-bezier(0.2, 0, 0, 1)",
     // Recorrido de entrada del toast: lo justo para que se note que llega.
     toastOffset: "8px",
-    // Cabecera del área (U30). `enter`: el disco aparece una vez al abrir la
-    // vista. `float`/`floatOffset`: el globo sube y baja despacio, siempre;
-    // es lento a propósito para que no distraiga en una pantalla que se mira
-    // muchas veces al día. `count`: lo que tardan las cifras en llegar a su
-    // valor. `stagger`/`riseOffset`: las filas de la bandeja entran una tras
-    // otra, con este retraso entre filas y este recorrido.
+    // Cabecera del área (U30). `enter`: las filas de la bandeja al aparecer.
+    // `heroEnter`/`heroOffset`: la forma del área entra una vez deslizándose
+    // desde el borde derecho, despacio (la primera versión crecía en 600 ms y
+    // se leía brusca, corregido el 04-nov-2026 tras verla desplegada).
+    // `float`/`floatOffset`: el globo sube y baja muy despacio, siempre, para
+    // no distraer en una pantalla que se mira muchas veces al día. `count`: lo
+    // que tardan las cifras en llegar a su valor. `stagger`/`riseOffset`: las
+    // filas entran una tras otra, con este retraso y este recorrido.
     enter: "600ms",
-    float: "5s",
-    floatOffset: "8px",
+    heroEnter: "1200ms",
+    heroOffset: "48px",
+    float: "8s",
+    floatOffset: "6px",
     count: "1100ms",
     stagger: "40ms",
     riseOffset: "8px",
@@ -163,12 +172,15 @@ export const helpdeskTheme = {
     // Alto del visor de adjuntos (U29): casi toda la ventana, con margen para
     // el título de la ventana y el botón de descargar.
     preview: "75vh",
-    // Cabecera del área (U30): el disco del color del área, recortado en la
-    // esquina superior derecha, y el globo blanco dentro. `heroGlobe` fija el
-    // ancho del derivado `public/rb-isotype-white-hero.png` (512 px, el doble);
-    // `brand-assets.test.mts` lo comprueba. `heroStripe`: la franja superior
-    // del color pleno, más gruesa que la franja corporativa del acceso.
-    heroDisc: "400px",
+    // Cabecera del área (U30): la forma del color del área que cierra la
+    // cabecera por la derecha —un arco arriba, recortado por el borde, que
+    // baja hasta la esquina inferior— con el globo blanco centrado. `heroMark`
+    // es su ancho; `heroMarkLift`, cuánto sube por encima del borde superior
+    // (de ahí sale el arco). `heroGlobe` fija el ancho del derivado
+    // `public/rb-isotype-white-hero.png` (512 px, el doble); lo comprueba
+    // `brand-assets.test.mts`. `heroStripe`: la franja superior del color pleno.
+    heroMark: "440px",
+    heroMarkLift: "88px",
     heroGlobe: "256px",
     heroStripe: "6px",
     // Estado vacío (U30): el mismo motivo a escala de tarjeta. Disco exterior
