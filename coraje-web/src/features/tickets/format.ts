@@ -48,6 +48,22 @@ export function personInitials(name: string): string {
     .join("");
 }
 
+/**
+ * El día de vencimiento de las tarjetas de prioridad (U31): «2026-11-09» →
+ * «lun 9 de nov». Llega como fecha sin hora (`AAAA-MM-DD`, ya en Bogotá), así
+ * que se formatea en UTC: en la zona del navegador, la medianoche de un día
+ * puede caer en el anterior.
+ */
+const dueDay = new Intl.DateTimeFormat("es-CO", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
+
+export function formatDueDay(isoDate: string): string {
+  return dueDay
+    .format(new Date(`${isoDate}T00:00:00Z`))
+    .replace(/[.,]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Rótulo de prioridad con su plazo, igual que en el legacy («Media (3 días)»). */
 export function formatPriority(nombre: string, diasSla?: number): string {
   const label = nombre.charAt(0) + nombre.slice(1).toLowerCase();

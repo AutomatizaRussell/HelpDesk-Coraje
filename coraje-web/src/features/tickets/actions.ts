@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
@@ -31,6 +30,7 @@ import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
 import { dispatchTicketMail, resendTicketMail } from "@/server/notifications/ticket-notifications";
 import { logEvent } from "@/server/observability/log";
 import { isTicketDomainError } from "@/server/tickets/ticket-errors";
+import { getCreatedTicketSummary } from "@/server/tickets/ticket-queries";
 
 import type { TicketFormState } from "./action-state";
 
@@ -198,13 +198,21 @@ export async function createTicketAction(_prev: TicketFormState, formData: FormD
     return failed(error, formData, "crear el ticket");
   }
 
-  // El aviso a quien recibe el ticket sale antes de navegar. Si falla, el
-  // detalle lo muestra en «Correos», con la opción de reenviarlo.
-  await dispatchTicketMail(mailIds);
+  // El aviso a quien recibe el ticket sale antes de responder. Si falla, se
+  // dice en la confirmación, y el detalle lo muestra en «Correos» con la
+  // opción de reenviarlo.
+  const mailFailed = (await dispatchTicketMail(mailIds)).some((result) => !result.ok);
   organizeAfterResponse(idTicket, attachments.adjuntos);
+  // La bandeja de detrás de la ventana se vuelve a leer y ya trae el ticket.
   revalidatePath("/tickets");
-  // Fuera del try: redirect() funciona lanzando, y un catch lo tragaría.
-  redirect(`/tickets/${idTicket}?creado=1`);
+  // U31: en lugar de navegar al detalle, la ventana confirma con el código y
+  // quién lo recibió; desde ahí se abre el ticket o se crea otro.
+  return {
+    status: "created",
+    idTicket,
+    ...(await getCreatedTicketSummary(idTicket)),
+    warning: mailFailed ? "El correo de aviso no salió. Puedes reenviarlo desde la sección «Correos» del ticket." : undefined,
+  };
 }
 
 // ---------------------------------------------------------------------------

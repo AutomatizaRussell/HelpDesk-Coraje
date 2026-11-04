@@ -127,6 +127,7 @@
   --hd-size-pointer-grid-reach: 90px;
   --hd-size-spark: 10px;
   --hd-size-spark-reach: 160px;
+  --hd-size-progress: 4px;
   --hd-size-empty-mark: 88px;
   --hd-size-empty-mark-inner: 56px;
   --hd-size-empty-isotype: 32px;
@@ -582,6 +583,32 @@
 .hd-spark:nth-child(10) { --spark-angle: 270deg; }
 .hd-spark:nth-child(11) { --spark-angle: 300deg; }
 .hd-spark:nth-child(12) { --spark-angle: 330deg; }
+
+/* Barra de progreso de un adjunto (U31): el `<progress>` nativo, que el
+   lector de pantalla ya anuncia como tal, con la forma del contrato. Cada
+   motor pinta la barra con su propio pseudoelemento. */
+.hd-progress {
+  appearance: none;
+  width: 100%;
+  height: var(--hd-size-progress);
+  border: 0;
+  border-radius: var(--hd-radius-pill);
+  background-color: var(--hd-color-line);
+  overflow: hidden;
+}
+.hd-progress::-webkit-progress-bar {
+  background-color: var(--hd-color-line);
+  border-radius: var(--hd-radius-pill);
+}
+.hd-progress::-webkit-progress-value {
+  background-color: var(--hd-color-action);
+  border-radius: var(--hd-radius-pill);
+  transition: width var(--hd-motion-normal) var(--hd-motion-easing);
+}
+.hd-progress::-moz-progress-bar {
+  background-color: var(--hd-color-action);
+  border-radius: var(--hd-radius-pill);
+}
 
 /* Entrada escalonada (U30): los hijos de un contenedor `data-stagger` (las
    filas de la bandeja) esperan un paso más cada uno. Se corta en el décimo:

@@ -336,8 +336,30 @@ asignado a…») aparece en una esquina un momento y se va solo.
 - Región `status` con `aria-live`: se anuncia sin mover el foco. Cada uno se cierra
   antes de tiempo con su ×; dura 6 s.
 - `FormFeedback` lo usa para todo éxito de formulario dentro de `AppFrame`; fuera (el
-  portal), el mensaje sigue en línea. Los avisos que llegaban por la URL (ticket creado,
-  ticket redirigido) usan `FlashToast`, que además limpia el parámetro.
+  portal), el mensaje sigue en línea. Los avisos que llegan por la URL (ticket
+  redirigido) usan `FlashToast`, que además limpia el parámetro. *Desde U31, «ticket
+  creado» ya no es un toast:* la ventana confirma con el código (§5.5), porque el
+  código es lo que la persona necesita a mano y un aviso que se va no se copia.
+
+### 5.5 `DECISIÓN` (04-nov-2026, U31) Crear un ticket
+
+Maqueta aprobada por el usuario («T»). `features/tickets/CreateTicketForm.tsx`:
+
+- **Franja del área** arriba del formulario: neutra hasta elegir; después toma el color
+  del área elegida (`data-area`, como el shell) con el semicírculo y el globo, y dice
+  «Llegará a …». Antes de escribir se ve a quién se le escribe.
+- **Áreas como tarjetas** (radios nativos ocultos, con el recuadro y el código del
+  área); tipo, categoría y subcategoría en una fila. La redirección conserva el
+  desplegable (`areaPicker`).
+- **Prioridad en tarjetas** con el día en que vencería un ticket creado hoy. Lo calcula
+  `core.add_colombia_business_days`, la misma función que fija el plazo; si la consulta
+  falla, la tarjeta muestra solo los días y la creación sigue.
+- **Adjuntos** en una zona para elegir o soltar archivos; cada archivo con el recuadro
+  de su tipo, su barra de progreso (`<progress>`) y su estado. Vale también para el
+  cuadro de escritura del detalle.
+- **Confirmación** en lugar del formulario: el área que lo recibió, quién quedó como
+  responsable, el código grande con «Copiar», y «Crear otro» o «Ver el ticket». La
+  bandeja de detrás ya trae el ticket nuevo.
 
 ### 5.4 `DECISIÓN` (04-nov-2026, U30) Cabecera del área
 

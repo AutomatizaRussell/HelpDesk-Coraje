@@ -1,12 +1,12 @@
 "use client";
 
-import { Paperclip, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Upload, X } from "lucide-react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 
 import { IconButton } from "@/design-system/components/IconButton";
 import { iconStroke } from "@/design-system/foundations/iconography";
-import { buttonRecipe } from "@/design-system/recipes/button";
-import { fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
+import { fieldError, fieldLabel } from "@/design-system/recipes/field";
+import { colorTransition, focusRing } from "@/design-system/recipes/interaction";
 import { cn } from "@/design-system/utilities/cn";
 import {
   ACCEPT_ATTRIBUTE,
@@ -33,6 +33,28 @@ import { UploadError, uploadInFragments } from "./fragmented-upload";
  * no hay que subirlos otra vez.
  */
 
+/**
+ * Recuadro con el tipo del archivo (U31): la extensión en mayúsculas sobre un
+ * tono que agrupa familias —PDF, hojas de cálculo, documentos, presentaciones—
+ * para que la lista se reconozca sin leer los nombres. Es apoyo visual: el
+ * nombre completo va al lado.
+ */
+const TYPE_TONE: Record<string, string> = {
+  pdf: "bg-danger-surface text-danger",
+  xls: "bg-success-surface text-success",
+  xlsx: "bg-success-surface text-success",
+  csv: "bg-success-surface text-success",
+  doc: "bg-info-surface text-heading",
+  docx: "bg-info-surface text-heading",
+  ppt: "bg-warning-surface text-warning",
+  pptx: "bg-warning-surface text-warning",
+};
+
+function extensionOf(nombre: string): string {
+  const dot = nombre.lastIndexOf(".");
+  return dot > 0 ? nombre.slice(dot + 1).toLowerCase() : "";
+}
+
 type Item = {
   key: string;
   nombre: string;
@@ -56,6 +78,8 @@ export function AttachmentPicker({
 }) {
   const [items, setItems] = useState<Item[]>([]);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Un archivo arrastrado está sobre la zona: se marca para que se vea dónde soltarlo.
+  const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const busy = items.some((item) => item.estado === "subiendo");
 
@@ -133,14 +157,25 @@ export function AttachmentPicker({
   const listos = items.flatMap((item) => (item.subido ? [item.subido] : []));
   const id = `campo-${name}`;
   const mensaje = error ?? aviso;
+  const full = items.length >= MAX_ATTACHMENTS_PER_SUBMIT;
+
+  // Soltar archivos sobre la zona hace lo mismo que elegirlos (U31). Sin
+  // `preventDefault` en `dragover`, el navegador abriría el archivo en la
+  // pestaña en lugar de dejarlo soltar.
+  const onDragOver = (event: DragEvent) => {
+    if (full) return;
+    event.preventDefault();
+    setDragging(true);
+  };
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault();
+    setDragging(false);
+    if (!full) onChoose(event.dataTransfer.files);
+  };
 
   return (
     <div>
       <p className={fieldLabel} id={`${id}-label`}>Adjuntos (opcional)</p>
-      <p className={fieldHint} id={`${id}-hint`}>
-        Hasta {MAX_ATTACHMENTS_PER_SUBMIT} archivos de {formatBytes(MAX_ATTACHMENT_BYTES)} cada uno: PDF, imágenes, Word, Excel,
-        PowerPoint, CSV o ZIP.
-      </p>
       <input type="hidden" name={name} value={JSON.stringify(listos)} />
       <input
         ref={input}
@@ -153,36 +188,69 @@ export function AttachmentPicker({
         aria-hidden
         onChange={(event) => onChoose(event.target.files)}
       />
-      {items.length < MAX_ATTACHMENTS_PER_SUBMIT && (
+      {!full && (
         <button
           type="button"
-          className={cn(buttonRecipe({ variant: "secondary", size: "sm" }), "mt-2 gap-1.5")}
-          aria-describedby={`${id}-hint`}
           onClick={() => input.current?.click()}
+          onDragOver={onDragOver}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          aria-describedby={`${id}-hint`}
+          className={cn(
+            "mt-2 flex w-full items-center gap-3.5 rounded-card border-2 border-dashed p-4 text-left",
+            dragging ? "border-heading bg-accent-surface" : "border-line-strong bg-surface-sunken hover:border-heading",
+            colorTransition,
+            focusRing,
+          )}
         >
-          <Paperclip aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
-          Adjuntar archivos
+          <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-card bg-accent-surface text-heading">
+            <Upload className="size-5" strokeWidth={iconStroke.regular} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base text-ink">
+              <strong className="font-black text-heading">Elige archivos</strong> o arrástralos aquí
+            </span>
+            <span id={`${id}-hint`} className="block text-sm text-ink-muted">
+              Hasta {MAX_ATTACHMENTS_PER_SUBMIT} archivos de {formatBytes(MAX_ATTACHMENT_BYTES)}: PDF, imágenes, Word, Excel, PowerPoint,
+              CSV o ZIP.
+            </span>
+          </span>
         </button>
       )}
       {items.length > 0 && (
-        <ul className="mt-2 divide-y divide-line rounded-control border border-line" aria-live="polite">
-          {items.map((item) => (
-            <li key={item.key} className="flex items-start justify-between gap-3 px-3 py-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm text-ink">{item.nombre}</p>
-                <p className={cn("text-sm", item.estado === "error" ? "text-danger" : "text-ink-muted")}>
-                  {item.estado === "subiendo" && `Subiendo… ${item.progreso} %`}
+        <ul className="mt-2.5 space-y-2" aria-live="polite">
+          {items.map((item) => {
+            const extension = extensionOf(item.nombre);
+            return (
+              <li key={item.key} className="flex items-center gap-3 rounded-control border border-line px-3 py-2.5">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "grid size-8 shrink-0 place-items-center rounded-control text-2xs font-black uppercase",
+                    TYPE_TONE[extension] ?? "bg-surface-sunken text-ink-muted",
+                  )}
+                >
+                  {extension.slice(0, 4) || "—"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-ink">{item.nombre}</p>
+                  {item.estado === "subiendo" && (
+                    <progress className="hd-progress mt-1.5 block" value={item.progreso} max={100} aria-label={`Subiendo ${item.nombre}`} />
+                  )}
+                  {item.estado === "error" && <p className="text-sm text-danger">{item.error}</p>}
+                </div>
+                <span className={cn("shrink-0 text-sm font-bold", item.estado === "listo" ? "text-success" : "text-ink-muted")}>
+                  {item.estado === "subiendo" && `${item.progreso} %`}
                   {item.estado === "listo" && `${formatBytes(item.tamano)} · listo`}
-                  {item.estado === "error" && item.error}
-                </p>
-              </div>
-              <IconButton
-                label={item.estado === "subiendo" ? `Cancelar la subida de ${item.nombre}` : `Quitar ${item.nombre}`}
-                icon={X}
-                onClick={() => remove(item.key)}
-              />
-            </li>
-          ))}
+                </span>
+                <IconButton
+                  label={item.estado === "subiendo" ? `Cancelar la subida de ${item.nombre}` : `Quitar ${item.nombre}`}
+                  icon={X}
+                  onClick={() => remove(item.key)}
+                />
+              </li>
+            );
+          })}
         </ul>
       )}
       {mensaje && <p className={fieldError}>{mensaje}</p>}

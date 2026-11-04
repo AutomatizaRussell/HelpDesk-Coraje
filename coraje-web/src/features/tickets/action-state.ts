@@ -18,6 +18,19 @@ export type TicketFormState =
       warning?: string;
     }
   | {
+      /**
+       * U31: «Nuevo ticket» ya no navega al detalle al crear: muestra una
+       * confirmación con el código del ticket y quién lo recibió.
+       */
+      status: "created";
+      idTicket: string;
+      codigo: string | null;
+      area: string | null;
+      responsable: string | null;
+      /** Algún correo del alta no salió; el detalle lo muestra en «Correos». */
+      warning?: string;
+    }
+  | {
       status: "error";
       message: string;
       fieldErrors: Record<string, string>;

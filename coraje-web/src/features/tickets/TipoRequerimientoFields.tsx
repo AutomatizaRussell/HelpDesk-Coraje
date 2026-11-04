@@ -1,8 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
-import { fieldControl, fieldError, fieldLabel } from "@/design-system/recipes/field";
+import { AREA_TILE_CLASS } from "@/design-system/patterns/area/area";
+import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
+import { colorTransition } from "@/design-system/recipes/interaction";
+import { cn } from "@/design-system/utilities/cn";
+import { areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
 import type { CreationCatalog } from "@/server/tickets/ticket-queries";
 
 import { formatCatalogLabel } from "./format";
@@ -27,15 +31,78 @@ function distinct(values: (string | null)[]): (string | null)[] {
   return [...new Set(values.map(key))].map((value) => (value === "" ? null : value));
 }
 
+/**
+ * Áreas como tarjetas (U31, «Nuevo ticket»): un botón de opción real por área,
+ * oculto, dentro de una tarjeta con el recuadro de color y el código del área.
+ * Con radios nativos, las flechas recorren las áreas y el lector de pantalla
+ * anuncia el grupo y la elegida. La tarjeta elegida cambia de borde y de
+ * fondo, no solo de color; el foco con teclado se ve en la tarjeta.
+ */
+function AreaCards({
+  areas,
+  value,
+  onChange,
+}: {
+  areas: Catalog["areas"];
+  value: string;
+  onChange: (idArea: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className={fieldLabel}>Área que atiende</legend>
+      <p className={fieldHint}>A quién le escribes: el ticket llega a la bandeja de esa área.</p>
+      <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {areas.map((area) => (
+          <label
+            key={area.idArea}
+            className={cn(
+              "flex cursor-pointer items-center gap-3 rounded-card border-2 border-line bg-surface p-3 hover:border-line-strong",
+              "has-checked:border-heading has-checked:bg-surface-sunken",
+              "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-solid has-focus-visible:outline-focus",
+              colorTransition,
+            )}
+          >
+            <input
+              type="radio"
+              // No viaja como dato: lo que se envía es el tipo resuelto.
+              name="areaElegida"
+              value={area.idArea}
+              checked={value === area.idArea}
+              onChange={() => onChange(area.idArea)}
+              className="sr-only"
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "grid size-10 shrink-0 place-items-center rounded-control text-2xs font-black tracking-wide text-heading",
+                AREA_TILE_CLASS[areaThemeKey(area.nombre)],
+              )}
+            >
+              {areaShortCode(area.nombre)}
+            </span>
+            <span className="min-w-0 font-black text-heading">{area.nombre}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export function TipoRequerimientoFields({
   catalog,
   initialIdTipoReq,
   error,
+  areaPicker = "select",
+  onAreaChange,
 }: {
   catalog: Catalog;
   /** Tipo enviado en un intento fallido, para reconstruir la selección. */
   initialIdTipoReq?: string;
   error?: string;
+  /** `cards`: las áreas como tarjetas (U31, crear); `select`: el desplegable (redirigir). */
+  areaPicker?: "select" | "cards";
+  /** Avisa del área elegida, por nombre, para que el formulario se tiña con su color. */
+  onAreaChange?: (nombreArea: string | null) => void;
 }) {
   const previous = catalog.tipos.find((tipo) => tipo.idTipoReq === initialIdTipoReq);
   const [idArea, setIdArea] = useState(previous?.idArea ?? "");
@@ -57,28 +124,31 @@ export function TipoRequerimientoFields({
 
   const resolved = inCategoria1.find((row) => key(row.categoria2) === categoria2);
 
-  return (
-    <>
+  const chooseArea = (value: string) => {
+    setIdArea(value);
+    setTipo("");
+    setCategoria1("");
+    setCategoria2("");
+    onAreaChange?.(catalog.areas.find((area) => area.idArea === value)?.nombre ?? null);
+  };
+
+  const areaField: ReactNode =
+    areaPicker === "cards" ? (
+      <AreaCards areas={catalog.areas} value={idArea} onChange={chooseArea} />
+    ) : (
       <div>
         <label htmlFor="area" className={fieldLabel}>Área que atiende</label>
-        <select
-          id="area"
-          className={fieldControl()}
-          value={idArea}
-          onChange={(event) => {
-            setIdArea(event.target.value);
-            setTipo("");
-            setCategoria1("");
-            setCategoria2("");
-          }}
-        >
+        <select id="area" className={fieldControl()} value={idArea} onChange={(event) => chooseArea(event.target.value)}>
           <option value="">Elige un área</option>
           {catalog.areas.map((area) => (
             <option key={area.idArea} value={area.idArea}>{area.nombre}</option>
           ))}
         </select>
       </div>
+    );
 
+  const cascade: ReactNode = (
+    <>
       <div>
         <label htmlFor="tipo" className={fieldLabel}>Tipo de requerimiento</label>
         <select
@@ -133,7 +203,15 @@ export function TipoRequerimientoFields({
           </select>
         </div>
       )}
+    </>
+  );
 
+  return (
+    <>
+      {areaField}
+      {/* Con tarjetas, la cascada va en una fila: las tres preguntas son una
+          sola decisión, «de qué se trata», y así se leen. */}
+      {areaPicker === "cards" ? <div className="grid gap-4 sm:grid-cols-3">{cascade}</div> : cascade}
       <input type="hidden" name="idTipoReq" value={resolved?.idTipoReq ?? ""} />
     </>
   );

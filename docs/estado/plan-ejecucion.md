@@ -692,7 +692,7 @@ Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por part
 
 **Condición de cierre:** cada parte ejercitada en el despliegue por el usuario.
 
-### U30 · Bandeja con personalidad: cabecera del área — **desplegada el 04-nov-2026 (corte 54); ajustes en el corte 55, sin desplegar**
+### U30 · Bandeja con personalidad: cabecera del área — **desplegada el 04-nov-2026 (corte 54); ajustes hasta el corte 61, sin desplegar**
 
 Queja del usuario y de quienes usan HelpDesk (03-nov): la interfaz es plana y «se nota
 hecha por IA». Exploradas en una maqueta (artifact privado del usuario) catorce
@@ -715,6 +715,21 @@ valor y la bandeja montada sobre el borde de la cabecera
 
 **Condición de cierre:** el usuario ve la bandeja desplegada en las cinco áreas
 (suplantando) y en los dos modos, y la aprueba o pide ajustes.
+
+### U31 · Crear ticket y detalle con personalidad — **parte 1 construida el 04-nov-2026 (corte 62), sin desplegar**
+
+Lo que la U30 no alcanzó: el resto de la aplicación seguía plano. Diseñado en la
+maqueta y aprobado por el usuario «tal cual» el 04-nov-2026 (tableros T y U).
+
+1. **Crear un ticket** (corte 62, `design/sistema-helpdesk.md` §5.5): franja del área
+   elegida, áreas como tarjetas, prioridad con el día de vencimiento, adjuntos con zona
+   para soltar y confirmación con el código.
+2. **Detalle del ticket** (pendiente): cabecera en la tinta del área del ticket con el
+   código grande y cinco datos, historia que distingue eventos, comentarios y notas
+   internas por forma, y el cuadro de escritura que dice quién verá cada acción.
+
+**Condición de cierre:** el usuario crea un ticket y lo atiende en el despliegue con
+las dos partes, y las aprueba o pide ajustes.
 
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 

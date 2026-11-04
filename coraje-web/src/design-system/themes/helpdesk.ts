@@ -191,6 +191,8 @@ export const helpdeskTheme = {
     // Chispas de la sorpresa del globo: su tamaño y hasta dónde llegan.
     spark: "10px",
     sparkReach: "160px",
+    // Alto de la barra de progreso de un adjunto que se sube (U31).
+    progress: "4px",
     // Estado vacío (U30): el mismo motivo a escala de tarjeta. Disco exterior
     // en la tinta del área, disco interior en el color pleno, globo blanco.
     emptyMark: "88px",

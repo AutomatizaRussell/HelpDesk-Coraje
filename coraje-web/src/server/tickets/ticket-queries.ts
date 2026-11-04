@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/server/observability/log";
 import { resolveGrant, resolveGrants } from "@/server/authorization/authorizer";
 import { TICKET_ACTIONS, type TicketAction } from "@/server/authorization/catalog";
 import {
@@ -669,7 +670,35 @@ export async function listFollowCandidates(params: { excludeIdPersonal: readonly
 export interface CreationCatalog {
   areas: { idArea: string; nombre: string }[];
   tipos: { idTipoReq: string; idArea: string; tipo: string; categoria1: string | null; categoria2: string | null }[];
-  prioridades: { nombre: string; diasSla: number }[];
+  /**
+   * `vence` (U31): el día en que vencería un ticket creado hoy con esa
+   * prioridad, `AAAA-MM-DD` en Bogotá, o `null` si no se pudo calcular.
+   */
+  prioridades: { nombre: string; diasSla: number; vence: string | null }[];
+}
+
+/**
+ * Día de vencimiento de un ticket creado hoy, por cada plazo en días hábiles
+ * (U31: las tarjetas de prioridad dicen «vence el lunes 9»). Lo calcula la
+ * misma función que fija el plazo al crear (`core.add_colombia_business_days`,
+ * con los festivos de Colombia), así que la fecha que se promete es la que el
+ * ticket tendrá. Una consulta para todos los plazos.
+ *
+ * Si falla, devuelve un mapa vacío y la tarjeta muestra solo los días: una
+ * fecha de cortesía no puede impedir que alguien radique un ticket.
+ */
+async function dueDatesFor(dias: number[]): Promise<Map<number, string>> {
+  try {
+    const rows = await prisma.$queryRaw<{ dias: number; vence: Date }[]>`
+      SELECT d AS dias,
+             core.add_colombia_business_days((now() AT TIME ZONE 'America/Bogota')::date, d) AS vence
+      FROM unnest(${dias}::int[]) AS d`;
+    // `vence` es un DATE: llega como medianoche UTC, y su parte de fecha es el día.
+    return new Map(rows.map((row) => [Number(row.dias), row.vence.toISOString().slice(0, 10)]));
+  } catch (error) {
+    logEvent("warn", "ticket.vencimiento_previo_fallido", {}, error);
+    return new Map();
+  }
 }
 
 /**
@@ -698,6 +727,7 @@ export async function getCreationCatalog(): Promise<CreationCatalog> {
 
   const areas = new Map<string, string>();
   for (const tipo of tipos) areas.set(tipo.idArea, tipo.dimArea.nombreArea);
+  const vence = await dueDatesFor(prioridades.map((prioridad) => prioridad.diasSla));
 
   return {
     areas: [...areas].map(([idArea, nombre]) => ({ idArea, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
@@ -708,6 +738,33 @@ export async function getCreationCatalog(): Promise<CreationCatalog> {
       categoria1: tipo.categoria1,
       categoria2: tipo.categoria2,
     })),
-    prioridades: prioridades.map((prioridad) => ({ nombre: prioridad.nombrePrioridad, diasSla: prioridad.diasSla })),
+    prioridades: prioridades.map((prioridad) => ({
+      nombre: prioridad.nombrePrioridad,
+      diasSla: prioridad.diasSla,
+      vence: vence.get(prioridad.diasSla) ?? null,
+    })),
+  };
+}
+
+/**
+ * Lo que la confirmación de «Nuevo ticket» muestra del ticket recién creado
+ * (U31): su código, el área que lo recibió y quién quedó como responsable.
+ * Lo decide la base al crear, así que se lee después, no se supone.
+ */
+export async function getCreatedTicketSummary(
+  idTicket: string,
+): Promise<{ codigo: string | null; area: string | null; responsable: string | null }> {
+  const ticket = await prisma.factTicket.findUnique({
+    where: { idTicket },
+    select: {
+      codigoTicket: true,
+      dimArea: { select: { nombreArea: true } },
+      dimPersonalAsignado: { select: { nombreCompleto: true } },
+    },
+  });
+  return {
+    codigo: ticket?.codigoTicket ?? null,
+    area: ticket?.dimArea?.nombreArea ?? null,
+    responsable: ticket?.dimPersonalAsignado?.nombreCompleto ?? null,
   };
 }

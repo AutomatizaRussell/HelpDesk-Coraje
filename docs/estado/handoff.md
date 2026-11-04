@@ -1,6 +1,21 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 62, U31 parte 1: crear un ticket, SIN DESPLEGAR)
+SOBRE:   `2f030e1` (corte 61)
+RAMA:    main
+UNIDAD:  U31, parte 1 de 2 (design/sistema-helpdesk.md §5.5), según la maqueta
+         aprobada: franja del área elegida, áreas como tarjetas, prioridad en
+         tarjetas con el día de vencimiento (`core.add_colombia_business_days`,
+         con respaldo si falla), adjuntos con zona para soltar y barra de
+         progreso, y confirmación con el código y «Copiar» en lugar de navegar
+         al detalle. Evidencia: `tsc`, `lint`, 215/215, `next build`. **Sin
+         ejercitar:** que `coraje_runtime` pueda ejecutar la función de días
+         hábiles fuera de `crear_ticket_interno` (si no, se ve solo «3 días
+         hábiles» y queda un `warn` en el registro).
+SIGUE:   U31 parte 2: el detalle del ticket según la maqueta («U»).
+
+--- Corte 61, para contexto:
 CORTE:   04-nov-2026 (corte 61, U30: semicírculo de todo el alto, corrido a la derecha, SIN DESPLEGAR)
 SOBRE:   `89198e3` (corte 60)
 RAMA:    main
@@ -1733,6 +1748,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `2f030e1` | **Corte 61.** U30: semicírculo de todo el alto, corrido a la derecha. Publicado el 04-nov-2026 |
 | `89198e3` | **Corte 60.** U30: semicírculo centrado en la parte visible. Publicado el 04-nov-2026 |
 | `78f5daf` | **Corte 59.** U30: contenido montado sobre la cabecera. Publicado el 04-nov-2026 |
 | `ff9f498` | **Corte 58.** U30: semicírculo del área y trama más compacta. Publicado el 04-nov-2026 |

@@ -26,9 +26,11 @@ export function FormFeedback({ state }: { state: TicketFormState }) {
       toast({ message: state.message, id: state.nonce });
       return;
     }
-    if (state.status !== "idle") ref.current?.focus();
+    if (state.status === "error" || state.status === "success") ref.current?.focus();
   }, [state, toast]);
-  if (state.status === "idle") return null;
+  // «Creado» (U31) lo dibuja su propio formulario: la confirmación de «Nuevo
+  // ticket», con el código del ticket.
+  if (state.status === "idle" || state.status === "created") return null;
   if (asToast) return state.warning ? <p className={notice("warning")}>{state.warning}</p> : null;
   return (
     <div className="space-y-2">
