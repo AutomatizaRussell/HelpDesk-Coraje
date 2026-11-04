@@ -1,6 +1,17 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 59, U30: contenido montado sobre la cabecera, SIN DESPLEGAR)
+SOBRE:   `ff9f498` (corte 58)
+RAMA:    main
+UNIDAD:  U30, decisión del usuario sobre el corte entre la cabecera y el lienzo:
+         la tinta sigue 60 px por detrás del contenido, que se monta sobre ella
+         (`-mt-15` en el `main` de los dos shells, `pb-29` en la cabecera). Se
+         aplica a todo el contenido, así que nada queda tapado. Evidencia: `tsc`,
+         `lint`, 213/213, `next build`.
+SIGUE:   desplegar y revisar la bandeja en las cinco áreas y en los dos modos.
+
+--- Corte 58, para contexto:
 CORTE:   04-nov-2026 (corte 58, U30: semicírculo del área y trama más compacta, SIN DESPLEGAR)
 SOBRE:   `00fceb1` (corte 57)
 RAMA:    main
@@ -1699,6 +1710,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `ff9f498` | **Corte 58.** U30: semicírculo del área y trama más compacta. Publicado el 04-nov-2026 |
 | `00fceb1` | **Corte 57.** U30: círculo del área apoyado en la esquina. Publicado el 04-nov-2026 |
 | `69f45cc` | **Corte 56.** U30: trama que sigue al puntero y sorpresa del globo. Publicado el 04-nov-2026 |
 | `1399881` | **Corte 55.** U30: forma del área hasta la esquina, cabecera más corta. Publicado el 04-nov-2026 |

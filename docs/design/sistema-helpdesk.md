@@ -361,9 +361,12 @@ Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
   globo flotaba igual que el del estado vacío); un arco amplio con una curva corta
   abajo (no se leía como círculo); un círculo con solo la esquina inferior rellena (la
   superior quedaba vacía).
-- **La cabecera termina justo después de las cifras** y la bandeja empieza debajo, en
-  una tarjeta con sombra (la primera versión la montaba sobre el borde y tapaba lo que
-  la vista pusiera antes de ella). Las filas entran escalonadas (solo las nuevas); el
+- **El contenido se monta 60 px sobre el borde de la cabecera** (decisión del usuario,
+  04-nov-2026, entre teñir toda la vista y dejar el corte): la tinta sigue por detrás
+  de la primera tarjeta y el paso al lienzo gris queda oculto bajo su borde. El
+  solapamiento lo aplica el shell a todo el contenido, no a la bandeja: la primera
+  versión lo aplicaba a la bandeja y tapaba lo que la vista pusiera antes de ella. La
+  bandeja va en una tarjeta con sombra. Las filas entran escalonadas (solo las nuevas); el
   área va en un recuadro con su código de tres letras; el responsable, con sus
   iniciales; estado y plazo, con icono.
 - **Estado vacío** (`patterns/empty-state/`): el mismo motivo a escala de tarjeta.

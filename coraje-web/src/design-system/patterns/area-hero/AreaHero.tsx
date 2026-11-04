@@ -92,7 +92,11 @@ export function AreaHero({
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
       {/* Antes que la forma y el texto: la trama queda por debajo de los dos. */}
       <HeroPointerGrid />
-      <div className="relative mx-auto max-w-content px-6 pt-9 pb-14 lg:px-10">
+      {/* `pb-29` = 56 px de aire bajo las cifras + los 60 px sobre los que se
+          monta el contenido (`-mt-15` en los shells): la tinta sigue por
+          detrás de la primera tarjeta y el paso al lienzo queda oculto bajo su
+          borde, en lugar de cortar la vista en dos. */}
+      <div className="relative mx-auto max-w-content px-6 pt-9 pb-29 lg:px-10">
         <div className="max-w-4xl lg:mr-88">
           <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
             <div className="min-w-0 flex-1 basis-80">

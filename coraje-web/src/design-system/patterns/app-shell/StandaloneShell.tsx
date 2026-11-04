@@ -74,7 +74,12 @@ export function StandaloneShell({
 
       {hero && <h1 className="sr-only">{title}</h1>}
       {hero}
-      <main id="contenido" className={cn("mx-auto w-full max-w-content flex-1 px-6 lg:px-10", hero ? "pb-8 lg:pb-10" : "py-8 lg:py-10")}>
+      {/* Con cabecera, el contenido sube 60 px y se monta sobre su borde (la
+          cabecera deja ese tramo en `pb-29`); `relative` lo pinta encima. */}
+      <main
+        id="contenido"
+        className={cn("mx-auto w-full max-w-content flex-1 px-6 lg:px-10", hero ? "relative -mt-15 pb-8 lg:pb-10" : "py-8 lg:py-10")}
+      >
         {!hero && <h1 className="mb-6 text-xl font-black tracking-tight text-heading">{title}</h1>}
         {children}
       </main>
