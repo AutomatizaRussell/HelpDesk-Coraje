@@ -516,6 +516,10 @@ Corte 71, en la bandeja: la descripción de la columna «Ticket» se limita con 
 (`max-w-sm`) y no con la celda, cuyo ancho máximo la tabla ignoraba; por eso la tabla se
 cortaba a la derecha. Solicitante, responsable y área en tipo oración.
 
+Corte 72: en la tira del detalle el icono va encima de cada dato, no a su lado. El
+anillo cuenta también la fracción del día hábil en curso o de cierre: un ticket radicado
+un día y cerrado al siguiente marcaba 0 %.
+
 Corte 70, maquetas «V-3», «X-B» y «W-9» del lienzo, elegidas por el usuario:
 - **Anillo de plazo** (`patterns/area-hero/PlazoRing.tsx`) en lugar del semicírculo en la
   cabecera del detalle: el globo blanco en un disco del área, rodeado por un anillo que

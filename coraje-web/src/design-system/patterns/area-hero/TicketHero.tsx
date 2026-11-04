@@ -25,7 +25,9 @@ import { PlazoRing } from "./PlazoRing";
  *   dato que es una persona. Desde `lg` es siempre una fila: con `xl`, en
  *   portátiles de 1280 px caía a una rejilla de dos filas sin divisores y
  *   la cabecera crecía (corte 71). Por debajo, sin anillo, es rejilla.
- *   El anillo va centrado en vertical.
+ *   El anillo va centrado en vertical. El icono va encima del dato y no a su
+ *   lado (corte 72): a seis columnas, a la izquierda le quitaba ancho al
+ *   texto y las etiquetas se montaban.
  *
  * El contenido se monta sobre su borde inferior como en la bandeja (`pb-27`
  * aquí, `-mt-15` en el shell). El código no es un `h1`: el título de la vista
@@ -83,7 +85,7 @@ export function TicketHero({
               <div
                 key={fact.label}
                 className={cn(
-                  "flex min-w-0 items-start gap-2.5 lg:basis-0 lg:px-4 lg:first:pl-0 lg:last:pr-0 lg:not-first:border-l lg:not-first:border-line",
+                  "flex min-w-0 flex-col items-start gap-1.5 lg:basis-0 lg:px-4 lg:first:pl-0 lg:last:pr-0 lg:not-first:border-l lg:not-first:border-line",
                   WEIGHT_CLASS[fact.weight ?? 1],
                 )}
               >
@@ -95,7 +97,7 @@ export function TicketHero({
                     {fact.initials}
                   </span>
                 ) : (
-                  fact.icon && <fact.icon aria-hidden className="mt-0.5 size-4.5 shrink-0 text-accent" strokeWidth={iconStroke.regular} />
+                  fact.icon && <fact.icon aria-hidden className="size-4.5 shrink-0 text-accent" strokeWidth={iconStroke.regular} />
                 )}
                 <div className="min-w-0">
                   <dt className="text-xs text-ink-muted">{fact.label}</dt>

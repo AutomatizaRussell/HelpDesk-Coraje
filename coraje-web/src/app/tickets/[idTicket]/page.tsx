@@ -114,7 +114,7 @@ function ObserverList({
     <ul className="space-y-1">
       {observadores.map((observador) => (
         <li key={observador.idPersonal} className="flex items-center justify-between gap-2">
-          <span>{observador.nombre}</span>
+          <span>{personDisplayName(observador.nombre)}</span>
           {canRemove && <RemoveObserverForm idTicket={idTicket} idObservador={observador.idPersonal} nombre={observador.nombre} />}
         </li>
       ))}
@@ -213,16 +213,19 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   // cierre (algunos legacy), no hay plazo que medir: solo la pista.
   const progress =
     ticket.fechaLimite && (!terminado || ticket.fechaResolucion) ? await getPlazoProgress(ticket.idTicket) : null;
-  const plazo = progress
-    ? {
-        fraction: plazoFraction({ ...progress, vencido: ticket.sla === "VENCIDO" }),
-        label: terminado
-          ? `Se cerró con ${Math.min(progress.consumidos, progress.total)} de ${progress.total} días hábiles del plazo consumidos`
-          : ticket.sla === "VENCIDO"
-            ? `Plazo vencido: ${progress.total} de ${progress.total} días hábiles consumidos`
-            : `Plazo: ${progress.consumidos} de ${progress.total} días hábiles consumidos`,
-      }
-    : { fraction: null, label: "Sin plazo que medir" };
+  const fraction = progress ? plazoFraction({ ...progress, vencido: ticket.sla === "VENCIDO" }) : null;
+  const usado = fraction === null ? 0 : Math.round(fraction * 100);
+  const plazo =
+    progress && fraction !== null
+      ? {
+          fraction,
+          label: terminado
+            ? `Se cerró con el ${usado} % del plazo consumido (${progress.total} días hábiles)`
+            : ticket.sla === "VENCIDO"
+              ? `Plazo vencido (${progress.total} días hábiles)`
+              : `Lleva el ${usado} % del plazo (${progress.total} días hábiles)`,
+        }
+      : { fraction: null, label: "Sin plazo que medir" };
   const card = cn(surface(), "shadow-raised");
 
   return (
@@ -307,7 +310,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                     form={<ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />}
                   >
                     <PersonChip
-                      name={ticket.responsable}
+                      name={ticket.responsable ? personDisplayName(ticket.responsable) : null}
                       initials={ticket.responsable ? personInitials(ticket.responsable) : ""}
                       emptyLabel="Sin responsable"
                     />
@@ -315,7 +318,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 ) : (
                   <Field label="Responsable">
                     <PersonChip
-                      name={ticket.responsable}
+                      name={ticket.responsable ? personDisplayName(ticket.responsable) : null}
                       initials={ticket.responsable ? personInitials(ticket.responsable) : ""}
                       emptyLabel="Sin responsable"
                     />

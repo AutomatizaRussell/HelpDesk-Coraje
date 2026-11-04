@@ -1,6 +1,17 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 72, U32: fracción del día en el anillo e iconos encima, SIN DESPLEGAR)
+SOBRE:   `f8ab5c4` (corte 71)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): `getPlazoProgress` suma la fracción
+         del día hábil en curso o de cierre; la tira del detalle pone el icono encima
+         de cada dato; responsable y observadores en tipo oración. Evidencia: `tsc`,
+         `lint`, pruebas, `next build`. Sin ver en navegador; la consulta sin
+         ejercitar contra la base.
+SIGUE:   desplegar y abrir ADM-202611-7: el anillo debe marcar en torno al 13 %.
+
+--- Corte 71, para contexto:
 CORTE:   04-nov-2026 (corte 71, U32: tira de datos en una fila desde lg, SIN DESPLEGAR)
 SOBRE:   `419dfa8` (corte 70)
 RAMA:    main

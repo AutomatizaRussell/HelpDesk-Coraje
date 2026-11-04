@@ -785,8 +785,11 @@ export async function getCreatedTicketSummary(
  * viernes), en fechas de Bogotá:
  *
  * - `total`: días hábiles después del de radicación, hasta el día límite.
- * - `consumidos`: los mismos, pero solo hasta el día anterior al de cierre
- *   (si terminó) o al de hoy: el día en curso todavía no se ha consumido.
+ * - `consumidos`: los días hábiles completos ya pasados, más la **fracción**
+ *   del día en curso (o del de cierre) si es hábil y cae dentro del plazo:
+ *   a las 15:18 se lleva el 64 % de ese día. Corte 72: sin la fracción, un
+ *   ticket radicado un día y cerrado al siguiente marcaba 0 %, porque el día
+ *   de cierre no contaba hasta terminar.
  *
  * Una consulta de una fila; no se llama para tickets sin fecha límite.
  * Si falla, `null`: el anillo se dibuja vacío y el plazo sigue en texto.
@@ -797,16 +800,23 @@ export async function getPlazoProgress(idTicket: string): Promise<{ consumidos: 
       WITH t AS (
         SELECT (fecha_creacion AT TIME ZONE 'America/Bogota')::date AS c,
                (fecha_limite AT TIME ZONE 'America/Bogota')::date AS l,
-               (COALESCE(fecha_resolucion, now()) AT TIME ZONE 'America/Bogota')::date AS e
+               (COALESCE(fecha_resolucion, now()) AT TIME ZONE 'America/Bogota') AS fin
         FROM helpdesk.fact_ticket
         WHERE id_ticket = ${idTicket}::uuid AND fecha_limite IS NOT NULL
+      ), u AS (
+        SELECT t.*, t.fin::date AS e FROM t
       )
       SELECT
-        (SELECT count(*) FROM generate_series(t.c + 1, LEAST(t.e - 1, t.l), interval '1 day') AS g(d)
-          WHERE EXTRACT(ISODOW FROM g.d) < 6 AND NOT core.is_colombia_holiday(g.d::date))::int AS consumidos,
+        ((SELECT count(*) FROM generate_series(u.c + 1, LEAST(u.e - 1, u.l), interval '1 day') AS g(d)
+           WHERE EXTRACT(ISODOW FROM g.d) < 6 AND NOT core.is_colombia_holiday(g.d::date))
+         + CASE
+             WHEN u.e > u.c AND u.e <= u.l AND EXTRACT(ISODOW FROM u.e) < 6 AND NOT core.is_colombia_holiday(u.e)
+               THEN EXTRACT(EPOCH FROM (u.fin - u.e::timestamp)) / 86400
+             ELSE 0
+           END)::float8 AS consumidos,
         (SELECT count(*) FROM generate_series(t.c + 1, t.l, interval '1 day') AS g(d)
           WHERE EXTRACT(ISODOW FROM g.d) < 6 AND NOT core.is_colombia_holiday(g.d::date))::int AS total
-      FROM t`;
+      FROM u`;
     const row = rows[0];
     return row ? { consumidos: Number(row.consumidos), total: Number(row.total) } : null;
   } catch (error) {
