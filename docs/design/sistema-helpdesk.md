@@ -353,14 +353,17 @@ Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
   alcance de la persona («en tu alcance hay 3 tickets vencidos…», resaltando solo los
   vencidos); **cifras** por estado y vencidos, con el marcador del tono de su insignia
   (§5), que cuentan hasta su valor con el punto de los miles.
-- **Semicírculo del área pegado al borde derecho**, tan alto como la cabecera, con el
-  globo blanco (240 px) en su centro. Entra una vez deslizándose desde la derecha,
-  despacio. Se oculta por debajo de `lg`. Ni la forma ni el globo giran.
-  *Corregido tres veces el 04-nov-2026 tras verlo desplegado:* un disco suelto que
+- **Semicírculo del área pegado al borde derecho**, tan alto como la **parte visible**
+  de la cabecera (hasta donde empieza el contenido), con el globo blanco (272 px) en su
+  centro; un tramo recto del mismo color baja detrás de la primera tarjeta hasta el
+  final de la cabecera. Entra una vez deslizándose desde la derecha, despacio. Se oculta
+  por debajo de `lg`. Ni la forma ni el globo giran.
+  *Corregido cuatro veces el 04-nov-2026 tras verlo desplegado:* un disco suelto que
   crecía en 600 ms (brusco, asomaba cortado por arriba, dejaba vacías las esquinas y su
   globo flotaba igual que el del estado vacío); un arco amplio con una curva corta
   abajo (no se leía como círculo); un círculo con solo la esquina inferior rellena (la
-  superior quedaba vacía).
+  superior quedaba vacía); un semicírculo medido sobre la cabecera entera (al montar el
+  contenido creció, salía demasiado a la izquierda y el globo quedaba bajo la tarjeta).
 - **El contenido se monta 60 px sobre el borde de la cabecera** (decisión del usuario,
   04-nov-2026, entre teñir toda la vista y dejar el corte): la tinta sigue por detrás
   de la primera tarjeta y el paso al lienzo gris queda oculto bajo su borde. El
@@ -450,7 +453,7 @@ Estado al 23-sep-2026 (U5, cambios locales sin publicar). «Verificado» signifi
 | V6 | Ningún control usa `font: inherit` | Detector del barrido | **Verificado** |
 | V7 | La nota interna y la respuesta al cliente son inequívocas | Validación visual del detalle del ticket | **Construido, sin validar en navegador** (corte 18): rótulo en texto, icono distinto y forma distinta (fondo hundido con borde discontinuo) en `TicketHistory.tsx`. Además, quien solo radicó el ticket no recibe las notas internas |
 | V8 | El portal es operable en móvil, teclado y lector de pantalla | Validación real, no inspección | Pendiente: no hay portal (U8) |
-| V9 | La cabecera del área se lee en las cinco áreas y respeta el manual (§5.4) | Bandeja desplegada, suplantando una persona por área | **Construido, sin ver en navegador** (corte 54): tokens en los dos adaptadores, derivado `rb-isotype-white-hero.png` de 512 px cubierto por `brand-assets.test.mts`; contraste del texto navy sobre las tintas ya medido por `area-palette.test.mts` |
+| V9 | La cabecera del área se lee en las cinco áreas y respeta el manual (§5.4) | Bandeja desplegada, suplantando una persona por área | **Construido, sin ver en navegador** (corte 54): tokens en los dos adaptadores, derivado `rb-isotype-white-hero.png` (640 px desde el corte 60) cubierto por `brand-assets.test.mts`; contraste del texto navy sobre las tintas ya medido por `area-palette.test.mts` |
 
 **Changelog:** 03-sep-2026 — línea base. Declara el rediseño completo y la ausencia de
 fase «primero funciona, luego se centraliza» (§1); adopta Lato corrigiendo su deuda de

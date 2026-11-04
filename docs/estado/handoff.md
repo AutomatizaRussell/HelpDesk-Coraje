@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 60, U30: semicírculo centrado en la parte visible, SIN DESPLEGAR)
+SOBRE:   `78f5daf` (corte 59)
+RAMA:    main
+UNIDAD:  U30, corrección del usuario tras ver el corte 59: el semicírculo se mide
+         sobre la parte visible de la cabecera (hasta el contenido) y no sobre la
+         entera; debajo, un tramo recto del mismo color detrás de la tarjeta. El
+         globo pasa a 272 px y su derivado a 640 px. Evidencia: `tsc`, `lint`,
+         213/213, `next build`.
+SIGUE:   desplegar y revisar; después, dar personalidad al resto (crear ticket,
+         detalle), con maqueta primero.
+
+--- Corte 59, para contexto:
 CORTE:   04-nov-2026 (corte 59, U30: contenido montado sobre la cabecera, SIN DESPLEGAR)
 SOBRE:   `ff9f498` (corte 58)
 RAMA:    main
@@ -1375,7 +1387,7 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 ### U30 — cabecera del área en la bandeja (corte 54, sin desplegar)
 
 - `patterns/area-hero/`: cabecera en la tinta del área, forma del área con el globo
-  (`HeroMark`, `public/rb-isotype-white-hero.png`, 512 px) y cifras con `CountUp`.
+  (`HeroMark`, `public/rb-isotype-white-hero.png`, 640 px) y cifras con `CountUp`.
 - `patterns/empty-state/`, `patterns/area/AreaTile.tsx`, `components/PersonChip.tsx`,
   `components/TabLinks.tsx`; insignias de estado y plazo con icono (también en el
   detalle y el portal).
@@ -1710,6 +1722,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `78f5daf` | **Corte 59.** U30: contenido montado sobre la cabecera. Publicado el 04-nov-2026 |
 | `ff9f498` | **Corte 58.** U30: semicírculo del área y trama más compacta. Publicado el 04-nov-2026 |
 | `00fceb1` | **Corte 57.** U30: círculo del área apoyado en la esquina. Publicado el 04-nov-2026 |
 | `69f45cc` | **Corte 56.** U30: trama que sigue al puntero y sorpresa del globo. Publicado el 04-nov-2026 |

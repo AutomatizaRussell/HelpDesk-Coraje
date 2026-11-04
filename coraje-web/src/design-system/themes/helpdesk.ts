@@ -173,12 +173,12 @@ export const helpdeskTheme = {
     // el título de la ventana y el botón de descargar.
     preview: "75vh",
     // Cabecera del área (U30): la forma del color del área es un semicírculo
-    // tan alto como la cabecera, pegado al borde derecho, con el globo blanco
-    // en su centro. `heroGlobe` fija el ancho del globo y, con él, el del
-    // derivado `public/rb-isotype-white-hero.png` (512 px, entre el doble y el
-    // triple); lo comprueba `brand-assets.test.mts`. `heroStripe`: la franja
-    // superior del color pleno.
-    heroGlobe: "240px",
+    // tan alto como la parte visible de la cabecera, pegado al borde derecho,
+    // con el globo blanco en su centro. `heroGlobe` fija el ancho del globo y,
+    // con él, el del derivado `public/rb-isotype-white-hero.png` (640 px, entre
+    // el doble y el triple); lo comprueba `brand-assets.test.mts`.
+    // `heroStripe`: la franja superior del color pleno.
+    heroGlobe: "272px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
     // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un

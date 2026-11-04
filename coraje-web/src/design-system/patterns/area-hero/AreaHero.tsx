@@ -45,28 +45,35 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
 };
 
 /**
- * La forma del área con el globo: un cuadrado tan alto como la cabecera
- * (`inset-y-0` + `aspect-square`) pegado al borde derecho, con las dos
- * esquinas izquierdas redondeadas al máximo. El navegador reduce esos radios
- * a la mitad del alto, así que el lado izquierdo es un **semicírculo** exacto
- * y el derecho queda recto contra el borde. El centro del cuadrado es el
- * centro del semicírculo, y ahí va el globo.
+ * La forma del área con el globo, en dos piezas del mismo color:
  *
- * Cuarta versión, pedida por el usuario el 04-nov-2026 al ver las anteriores
- * desplegadas: un disco suelto dejaba las esquinas derechas vacías, un arco
- * amplio no se leía como círculo, y un círculo con solo la esquina inferior
- * rellena dejaba vacía la superior.
+ * - Un cuadrado pegado al borde derecho, tan alto como la **parte visible**
+ *   de la cabecera: de arriba hasta donde empieza el contenido (`bottom-15`,
+ *   los 60 px sobre los que se monta). Sus dos esquinas izquierdas van
+ *   redondeadas al máximo, el navegador las reduce a la mitad del alto, y el
+ *   lado izquierdo queda como **semicírculo** exacto. El globo va en el centro
+ *   del cuadrado, que es el del semicírculo.
+ * - Debajo, un tramo recto de esos 60 px, desde el centro del semicírculo
+ *   hasta el borde, para que el color llegue al final de la cabecera. Casi
+ *   todo queda detrás de la primera tarjeta; asoma en el margen derecho.
+ *
+ * Quinta versión, pedida por el usuario el 04-nov-2026 al ver las anteriores
+ * desplegadas. Medido sobre la cabecera entera (con el tramo tapado), el
+ * semicírculo salía demasiado ancho y su centro quedaba bajo la tarjeta, así
+ * que el globo se veía pequeño y descentrado.
  */
 function HeroMark() {
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 right-0 hidden aspect-square animate-hero-mark place-items-center rounded-l-pill bg-accent lg:grid"
-    >
-      {/* El globo no flota: el flotado es del estado vacío, y repetirlo aquí
-          hacía que las dos piezas se leyeran como la misma. Su animación es
-          la sorpresa de los cinco clics (`HeroGlobe`). */}
-      <HeroGlobe />
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
+      <div className="absolute top-0 right-0 bottom-15 grid aspect-square place-items-center rounded-l-pill bg-accent">
+        {/* El globo no flota: el flotado es del estado vacío, y repetirlo
+            aquí hacía que las dos piezas se leyeran como la misma. Su
+            animación es la sorpresa de los cinco clics (`HeroGlobe`). */}
+        <HeroGlobe />
+        {/* Dentro del cuadrado para medir desde su centro: la mitad de su
+            ancho es exactamente el radio del semicírculo. */}
+        <span className="absolute top-full right-0 h-15 w-1/2 bg-accent" />
+      </div>
     </div>
   );
 }
@@ -97,7 +104,7 @@ export function AreaHero({
           detrás de la primera tarjeta y el paso al lienzo queda oculto bajo su
           borde, en lugar de cortar la vista en dos. */}
       <div className="relative mx-auto max-w-content px-6 pt-9 pb-29 lg:px-10">
-        <div className="max-w-4xl lg:mr-88">
+        <div className="max-w-4xl lg:mr-96">
           <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
             <div className="min-w-0 flex-1 basis-80">
               {areaName && (
@@ -127,7 +134,7 @@ export function AreaHero({
       </div>
       {/* Después del texto a propósito: el bloque del texto ocupa todo el
           ancho y, pintado encima, se quedaría con los clics del globo. La
-          forma no tapa nada: el texto le deja libre su espacio (`lg:mr-88`). */}
+          forma no tapa nada: el texto le deja libre su espacio (`lg:mr-96`). */}
       <HeroMark />
     </section>
   );
