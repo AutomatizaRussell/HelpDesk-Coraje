@@ -19,7 +19,7 @@ import {
   WithdrawApprovalForm,
 } from "@/features/tickets/TicketActionForms";
 import { EditableField } from "@/features/tickets/TicketDetailActions";
-import { TicketHistory } from "@/features/tickets/TicketHistory";
+import { TicketHistory, TicketRequest } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { markTicketNoticesRead } from "@/server/notifications/ticket-notices";
@@ -175,7 +175,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         <TicketHero
           area={areaThemeKey(ticket.area)}
           code={ticket.codigoTicket ?? "Sin código"}
-          description={ticket.descripcion}
           back={{ href: inboxPath(ticket.modo), label: "Volver a la bandeja" }}
           badges={
             <>
@@ -199,6 +198,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
         <div className="grid items-start gap-5 lg:grid-cols-3">
           <div className="space-y-5 lg:col-span-2">
+            <section className={card} aria-label="Solicitud">
+              <TicketRequest author={ticket.solicitante} fecha={ticket.fechaCreacion} text={ticket.descripcion} />
+            </section>
+
             {hasComposer && (
               <section className={card} aria-label="Escribir en el ticket">
                 <TicketComposer

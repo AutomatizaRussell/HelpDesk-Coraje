@@ -475,6 +475,12 @@ Corte 67: el semicírculo crece con la cabecera hasta 432 px (`size.heroMark`) y
 queda arriba a la derecha. Sin tope, la descripción expandida lo agrandaba hasta tapar
 el texto; con él asoma como mucho 378 px, dentro de los 384 que el texto le deja.
 
+Corte 68, decidido con el usuario: la descripción sale de la cabecera y va como **primer
+mensaje del solicitante** (`TicketRequest`), encima del cuadro de escritura. Atender es
+releer la petición mientras se escribe; el recorte con «ver completa» convertía la
+cabecera en el cuerpo del ticket, y una ventana modal habría tapado el cuadro de
+escritura. La cabecera vuelve a medir siempre lo mismo.
+
 *No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
 11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 

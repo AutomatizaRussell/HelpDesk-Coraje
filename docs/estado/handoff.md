@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 68, U32: la descripción como primer mensaje del ticket, SIN DESPLEGAR)
+SOBRE:   `bff418e` (corte 67)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): la descripción sale de la cabecera del
+         detalle y va como primer mensaje del solicitante (`TicketRequest`), encima
+         del cuadro de escritura. Se retira `HeroDescription`. El tope del
+         semicírculo (corte 67) se conserva: también protege la bandeja si sus
+         cifras bajan a otra fila. Evidencia: `tsc`, `lint`, pruebas, `next build`.
+         Sin ver en navegador.
+SIGUE:   desplegar y revisar un ticket largo y uno corto.
+
+--- Corte 67, para contexto:
 CORTE:   04-nov-2026 (corte 67, U32: tope del semicírculo de la cabecera, SIN DESPLEGAR)
 SOBRE:   `d58bd26` (corte 66)
 RAMA:    main
@@ -1807,6 +1819,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `bff418e` | **Corte 67.** U32: tope del semicírculo; arrastró por error `docs/specs/directorio-personal.md`, ajeno a la unidad. Publicado el 04-nov-2026 |
 | `d58bd26` | **Corte 66.** U32: la descripción del ticket solo en la cabecera. Publicado el 04-nov-2026 |
 | `9a16506` | **Corte 65.** U32: barra superior mínima y escala comprimida. Publicado el 04-nov-2026 |
 | `a8b3511` | **Corte 64.** U31: detalle del ticket con cabecera del área e historia por forma. Publicado el 04-nov-2026 |

@@ -189,6 +189,35 @@ function MessageBubble({ idTicket, entry }: { idTicket: string; entry: TicketHis
   );
 }
 
+/**
+ * Lo que pidió el solicitante al radicar (U32, corte 68), como el primer
+ * mensaje de un hilo de correo: su burbuja clara, con sus iniciales y la
+ * fecha. Va encima del cuadro de escritura, en la columna principal, porque
+ * atender un ticket es releer la petición mientras se escribe la respuesta.
+ *
+ * Antes iba en la cabecera recortada a tres líneas: al expandirla, la
+ * cabecera dejaba de serlo. Una ventana modal se descartó porque tapa el cuadro
+ * de escritura justo cuando hay que leer y escribir a la vez.
+ */
+export function TicketRequest({ author, fecha, text }: { author: string | null; fecha: Date; text: string }) {
+  const name = author ?? "Sin solicitante";
+  return (
+    <div className="flex gap-3">
+      <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-pill bg-avatar-surface text-2xs font-bold text-heading">
+        {author ? personInitials(author) : "?"}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-ink-muted">
+          <span className="font-bold text-ink">{name}</span> · Solicitud · <When fecha={fecha} />
+        </p>
+        <div className="mt-1.5 rounded-card rounded-tl-none bg-surface-sunken px-4 py-3 text-ink">
+          <p className="whitespace-pre-wrap break-words text-base">{text}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TicketHistory({ idTicket, entries }: { idTicket: string; entries: TicketHistoryEntry[] }) {
   if (entries.length === 0) {
     return <p className="text-ink-muted">Este ticket todavía no tiene historia visible.</p>;

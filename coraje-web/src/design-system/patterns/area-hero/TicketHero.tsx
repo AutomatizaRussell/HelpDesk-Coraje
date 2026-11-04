@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import heroGlobe from "../../../../public/rb-isotype-white-hero.png";
 import { iconStroke } from "../../foundations/iconography";
 import { focusRing, modeTransition } from "../../recipes/interaction";
-import { HeroDescription } from "./HeroDescription";
 import { helpdeskTheme } from "../../themes/helpdesk";
 import { cn } from "../../utilities/cn";
 import type { AreaThemeKey } from "../area/area";
@@ -18,8 +17,9 @@ import type { AreaThemeKey } from "../area/area";
  * acento solo aquí dentro—, para que un ticket de Revisoría se vea naranja
  * para todo el que lo abra.
  *
- * Lleva el código grande, el estado y el plazo, la descripción (recortada,
- * con «ver completa»: es su único lugar desde U32) y cinco datos en cajitas. El contenido se monta
+ * Lleva el código grande, el estado y el plazo, y cinco datos en cajitas.
+ * Desde el corte 68 no lleva la descripción: va como primer mensaje en la
+ * columna principal (`TicketRequest`), y la cabecera mide siempre lo mismo. El contenido se monta
  * sobre su borde inferior como en la bandeja (`pb-27` aquí, `-mt-15` en el
  * shell). El semicírculo con el globo es el de la bandeja, del mismo tamaño
  * (U32: el globo más pequeño no se leía como señal de otra vista sino como
@@ -35,15 +35,12 @@ const GLOBE = Number.parseFloat(helpdeskTheme.size.heroGlobe);
 export function TicketHero({
   area,
   code,
-  description,
   badges,
   back,
   facts,
 }: {
   area: AreaThemeKey;
   code: string;
-  /** La descripción completa; la cabecera la recorta y deja verla entera. */
-  description: string;
   /** Estado y plazo (`TicketStatusBadges`). */
   badges: ReactNode;
   back: { href: string; label: string };
@@ -65,7 +62,6 @@ export function TicketHero({
             <p className="text-2xl font-bold tabular-nums tracking-tight text-heading">{code}</p>
             {badges}
           </div>
-          <HeroDescription text={description} />
           <dl className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             {facts.map((fact) => (
               <div key={fact.label} className="rounded-card bg-surface/75 px-3 py-2.5">
