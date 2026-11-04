@@ -45,34 +45,34 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
 };
 
 /**
- * La forma del área con el globo, en dos piezas del mismo color:
+ * La forma del área con el globo: un cuadrado tan alto como **toda** la
+ * cabecera (también los 60 px sobre los que se monta el contenido), con las
+ * dos esquinas izquierdas redondeadas al máximo: el navegador las reduce a la
+ * mitad del alto y el lado izquierdo queda como **semicírculo** exacto, cuya
+ * curva baja sola hasta el borde inferior. Se corre a la derecha un octavo de
+ * su tamaño (`translate-x-1/8`, sobre `translate`, que no choca con el
+ * `transform` de la entrada): sale menos hacia el texto y lo que se pierde por
+ * el borde es la parte recta, no la curva.
  *
- * - Un cuadrado pegado al borde derecho, tan alto como la **parte visible**
- *   de la cabecera: de arriba hasta donde empieza el contenido (`bottom-15`,
- *   los 60 px sobre los que se monta). Sus dos esquinas izquierdas van
- *   redondeadas al máximo, el navegador las reduce a la mitad del alto, y el
- *   lado izquierdo queda como **semicírculo** exacto. El globo va en el centro
- *   del cuadrado, que es el del semicírculo.
- * - Debajo, un tramo recto de esos 60 px, desde el centro del semicírculo
- *   hasta el borde, para que el color llegue al final de la cabecera. Casi
- *   todo queda detrás de la primera tarjeta; asoma en el margen derecho.
+ * El globo no va en el centro del cuadrado sino en el de la **franja
+ * visible**: horizontalmente, el centro del semicírculo; verticalmente, la
+ * mitad del tramo que queda por encima del contenido (`bottom-15`).
  *
- * Quinta versión, pedida por el usuario el 04-nov-2026 al ver las anteriores
- * desplegadas. Medido sobre la cabecera entera (con el tramo tapado), el
- * semicírculo salía demasiado ancho y su centro quedaba bajo la tarjeta, así
- * que el globo se veía pequeño y descentrado.
+ * Sexta versión, del 04-nov-2026, tras ver desplegadas las anteriores. La
+ * quinta medía el semicírculo solo sobre la franja visible: se veía
+ * recortado, y el tramo recto que bajaba desde su punto inferior parecía un
+ * poste suelto en lugar de la continuación de la forma.
  */
 function HeroMark() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
-      <div className="absolute top-0 right-0 bottom-15 grid aspect-square place-items-center rounded-l-pill bg-accent">
-        {/* El globo no flota: el flotado es del estado vacío, y repetirlo
-            aquí hacía que las dos piezas se leyeran como la misma. Su
-            animación es la sorpresa de los cinco clics (`HeroGlobe`). */}
-        <HeroGlobe />
-        {/* Dentro del cuadrado para medir desde su centro: la mitad de su
-            ancho es exactamente el radio del semicírculo. */}
-        <span className="absolute top-full right-0 h-15 w-1/2 bg-accent" />
+      <div className="absolute inset-y-0 right-0 aspect-square translate-x-1/8 rounded-l-pill bg-accent">
+        <div className="absolute inset-x-0 top-0 bottom-15 grid place-items-center">
+          {/* El globo no flota: el flotado es del estado vacío, y repetirlo
+              aquí hacía que las dos piezas se leyeran como la misma. Su
+              animación es la sorpresa de los cinco clics (`HeroGlobe`). */}
+          <HeroGlobe />
+        </div>
       </div>
     </div>
   );

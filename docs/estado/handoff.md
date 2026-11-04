@@ -1,6 +1,17 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 61, U30: semicírculo de todo el alto, corrido a la derecha, SIN DESPLEGAR)
+SOBRE:   `89198e3` (corte 60)
+RAMA:    main
+UNIDAD:  U30, corrección del usuario tras ver el corte 60: el semicírculo vuelve a
+         todo el alto de la cabecera (su curva llega sola al borde inferior, sin
+         el tramo recto que parecía un poste) y se corre a la derecha un octavo de
+         su tamaño; el globo sigue centrado en la franja visible. Evidencia:
+         `tsc`, `lint`, 213/213, `next build`.
+SIGUE:   U31: crear ticket y detalle del ticket según la maqueta aprobada (T y U).
+
+--- Corte 60, para contexto:
 CORTE:   04-nov-2026 (corte 60, U30: semicírculo centrado en la parte visible, SIN DESPLEGAR)
 SOBRE:   `78f5daf` (corte 59)
 RAMA:    main
@@ -1722,6 +1733,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `89198e3` | **Corte 60.** U30: semicírculo centrado en la parte visible. Publicado el 04-nov-2026 |
 | `78f5daf` | **Corte 59.** U30: contenido montado sobre la cabecera. Publicado el 04-nov-2026 |
 | `ff9f498` | **Corte 58.** U30: semicírculo del área y trama más compacta. Publicado el 04-nov-2026 |
 | `00fceb1` | **Corte 57.** U30: círculo del área apoyado en la esquina. Publicado el 04-nov-2026 |
