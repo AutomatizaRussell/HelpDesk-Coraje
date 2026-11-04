@@ -1,6 +1,22 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 73, U35: correos con la marca de la plataforma, SIN DESPLEGAR)
+SOBRE:   `80b5dec` (corte 72)
+RAMA:    main
+UNIDAD:  U35 (design/sistema-helpdesk.md §5.8): los siete correos (cuatro del ticket,
+         respuesta al cliente, invitación y código del portal) pasan por un layout
+         único, `mail-layout.ts`, sobre el tema `themes/helpdesk-email.ts`.
+         Evidencia, en un worktree con solo este cambio: `tsc`, `eslint`, pruebas
+         (226/227; falla `migrator.contract` por el lockfile del checkout aislado,
+         pasa en el árbol de trabajo). Muestras vistas en Edge sin interfaz. Sin
+         `next build`; sin ver en Outlook de escritorio ni en Outlook web.
+LOCAL:   cambios de otra unidad sin commit en tickets/, design-system/ y server/
+         (crear ticket, bandeja, alcance): no van en este corte.
+SIGUE:   desplegar, crear y cerrar un ticket de prueba y mirar los dos correos en
+         Outlook de escritorio y en Outlook web.
+
+--- Corte 72, para contexto:
 CORTE:   04-nov-2026 (corte 72, U32: fracción del día en el anillo e iconos encima, SIN DESPLEGAR)
 SOBRE:   `f8ab5c4` (corte 71)
 RAMA:    main
@@ -1895,6 +1911,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `80b5dec` | **Corte 72.** U32: fracción del día en el anillo de plazo. Los cortes 69 a 71 (`98ccfba`, `419dfa8`, `f8ab5c4`) y la calificación (`3eab809`) tampoco se habían anotado aquí. Publicado el 04-nov-2026 |
 | `253362c` | **Corte 68.** U32: la descripción como primer mensaje del solicitante. Publicado el 04-nov-2026 |
 | `bff418e` | **Corte 67.** U32: tope del semicírculo; arrastró por error `docs/specs/directorio-personal.md`, ajeno a la unidad. Publicado el 04-nov-2026 |
 | `d58bd26` | **Corte 66.** U32: la descripción del ticket solo en la cabecera. Publicado el 04-nov-2026 |

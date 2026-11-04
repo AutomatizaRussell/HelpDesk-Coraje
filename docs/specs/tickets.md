@@ -904,6 +904,9 @@ diario de pendientes «ya no ocurra».
   «HELPDESK - Escalar avisos V2», `helpdesk.aviso_escalamiento` y sus dos funciones
   (`20261103170000_retirar_escalamiento`).
 - El correo de rechazo al cliente (`RECHAZO_CLIENTE`) sale con el rechazo.
+- Desde U35 (04-nov-2026) llevan el layout con la marca de la plataforma
+  (`design/sistema-helpdesk.md` §5.8): título, la descripción, la respuesta o lo que se
+  pide aprobar como cita, y un botón al ticket.
 
 ## 13. `DECISIÓN` (01-oct-2026, U17) Modo Coraje
 

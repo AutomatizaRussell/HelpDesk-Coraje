@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { buildTicketMail, escapeHtml, type TicketMailContext } from "./ticket-mail-content";
+import { escapeHtml } from "./mail-layout";
+import { buildTicketMail, type TicketMailContext } from "./ticket-mail-content";
 
 const base: TicketMailContext = {
   codigo: "TI-2026-0001",
@@ -19,7 +20,8 @@ test("el texto de una persona no entra como HTML activo", () => {
       remitente: "<b>Luis</b>",
     });
     assert.ok(!html.includes("<script>"), kind);
-    assert.ok(!html.includes("<img"), kind);
+    // El layout lleva su propio `<img>`, el logotipo: se busca la inyectada.
+    assert.ok(!html.includes("<img src=x"), kind);
     assert.ok(!html.includes('href="https://malo"'), kind);
     assert.ok(html.includes("&lt;b&gt;Luis&lt;/b&gt;"), kind);
   }

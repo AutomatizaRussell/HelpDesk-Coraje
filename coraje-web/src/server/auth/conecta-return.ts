@@ -49,6 +49,15 @@ export function publicTicketUrl(idTicket: string): string {
 }
 
 /**
+ * URL absoluta de un archivo de `public/` (el logotipo de los correos). Tiene
+ * que estar en `PUBLIC_ASSET_PATHS` (`public-assets.ts`): quien lo pide es el
+ * cliente de correo, sin sesión.
+ */
+export function publicAssetUrl(pathname: `/${string}`): string {
+  return `${PUBLIC_ORIGIN}${APP_BASE_PATH}${pathname}`;
+}
+
+/**
  * Enlace absoluto a una ruta del portal de clientes (`/portal/...`), para los
  * correos que reciben los contactos. Nunca de una cabecera de la petición: un
  * enlace de activación armado con ella mandaría al cliente a donde dijera esa

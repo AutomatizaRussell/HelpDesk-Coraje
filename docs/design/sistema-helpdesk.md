@@ -535,6 +535,25 @@ Corte 70, maquetas «V-3», «X-B» y «W-9» del lienzo, elegidas por el usuari
 *No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
 11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 
+### 5.8 `DECISIÓN` (04-nov-2026, U35) Correos con la marca de la plataforma
+
+Pedida por el usuario: los correos «no tienen nada de HTML y se ven muy planos». Todos
+—los cuatro del ticket, la respuesta al cliente, la invitación y el código del portal—
+se dibujan con un solo layout, `server/notifications/mail-layout.ts`, adaptado de
+`client-email-layout.ts` de Impulsa: tarjeta blanca sobre el lienzo, logotipo y
+«HelpDesk» en la cabecera, título navy con la raya corta en Sky Blue, lo que escribió
+una persona en una cita con filete Sky Blue, botón navy.
+
+- **Tercer adaptador del contrato:** `themes/helpdesk-email.ts`. Colores, radios y
+  ancho del logotipo salen de `helpdeskTheme`; los tamaños, de la escala convertida a
+  píxeles. Fuera de `helpdeskTheme` porque un correo no lee variables CSS y no tiene
+  gemelo en `:root`. Es autoridad en el barrido de `contract.test.mts`.
+- **Tablas con estilos en línea**, botón VML para Outlook y Arial forzada en Outlook:
+  lo que pinta el motor de Word.
+- El logotipo se pide a `conecta.rbgct.cloud/helpdesk/rb-logo.png`, ya público por
+  `public-assets.ts`. Si el cliente de correo bloquea imágenes externas, queda el texto
+  alternativo.
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |

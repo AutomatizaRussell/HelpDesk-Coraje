@@ -764,6 +764,15 @@ solo se califican los tickets nacidos en HelpDesk (`specs/tickets.md` §15).
 **Condición de cierre:** desplegado, una persona califica un ticket cerrado propio y el
 responsable ve el aviso; un segundo intento y uno de otra persona se rechazan.
 
+### U35 · Correos con la marca de la plataforma — **construida el 04-nov-2026 (corte 73)**
+
+Pedida por el usuario: los correos eran HTML sin estilos. Un layout común para los del
+ticket y los del portal, sobre un tercer adaptador del contrato de diseño
+(`design/sistema-helpdesk.md` §5.8).
+
+**Condición de cierre:** desplegado, un ticket creado y cerrado produce correos que se
+ven con la marca en Outlook de escritorio y en Outlook web, con el logotipo cargado.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

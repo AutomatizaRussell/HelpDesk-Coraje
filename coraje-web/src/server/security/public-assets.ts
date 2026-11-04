@@ -18,6 +18,11 @@
  *   lleva las cookies del navegador. Si el perímetro la bloqueara, la imagen
  *   no se rompería de forma evidente: el optimizador recibiría el HTML de una
  *   redirección y fallaría al procesarlo.
+ *
+ * Desde el 04-nov-2026 el logotipo es también la cabecera de los correos
+ * (`mail-layout.ts`): lo descarga el cliente de correo de quien lo recibe,
+ * que tampoco tiene sesión. Sacarlo de esta lista rompe la imagen de todos los
+ * correos ya enviados.
  */
 export const PUBLIC_ASSET_PATHS = new Set(["/rb-logo.png"]);
 

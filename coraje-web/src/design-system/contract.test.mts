@@ -147,6 +147,8 @@ const AUTHORITIES = new Set([
   "design-system/foundations/brand.ts",
   "design-system/foundations/iconography.ts",
   "design-system/themes/helpdesk.ts",
+  // Tercer adaptador: los correos, que no leen variables CSS (U35).
+  "design-system/themes/helpdesk-email.ts",
 ]);
 
 /**
