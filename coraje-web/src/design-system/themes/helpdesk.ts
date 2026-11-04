@@ -85,11 +85,6 @@ export const helpdeskTheme = {
     // Cajas de cifra de la cabecera del área (U30): más redondas que una
     // superficie de trabajo porque flotan sobre el color, no ordenan datos.
     card: "12px",
-    // La forma del área (U30): arco amplio arriba a la izquierda —la mitad de
-    // su ancho, así se lee como el disco de antes— y una curva corta abajo,
-    // donde la forma se apoya en el borde inferior de la cabecera.
-    heroMark: "220px",
-    heroMarkFoot: "72px",
     shellItem: "8px", // réplica de Conecta (`rounded-lg` de sus ítems)
     scrollbar: "3px", // réplica de Conecta (::-webkit-scrollbar-thumb)
   },
@@ -177,16 +172,15 @@ export const helpdeskTheme = {
     // Alto del visor de adjuntos (U29): casi toda la ventana, con margen para
     // el título de la ventana y el botón de descargar.
     preview: "75vh",
-    // Cabecera del área (U30): la forma del color del área que cierra la
-    // cabecera por la derecha —un arco arriba, recortado por el borde, que
-    // baja hasta la esquina inferior— con el globo blanco centrado. `heroMark`
-    // es su ancho; `heroMarkLift`, cuánto sube por encima del borde superior
-    // (de ahí sale el arco). `heroGlobe` fija el ancho del derivado
-    // `public/rb-isotype-white-hero.png` (512 px, el doble); lo comprueba
-    // `brand-assets.test.mts`. `heroStripe`: la franja superior del color pleno.
-    heroMark: "440px",
-    heroMarkLift: "88px",
-    heroGlobe: "256px",
+    // Cabecera del área (U30): un círculo del color del área tan alto como la
+    // cabecera, con la esquina inferior derecha rellena, y el globo blanco en
+    // el centro del círculo. `heroMarkCut`: cuánto se sale el círculo por el
+    // borde derecho. `heroGlobe` fija el ancho del globo y, con él, el del
+    // derivado `public/rb-isotype-white-hero.png` (512 px, entre el doble y el
+    // triple); lo comprueba `brand-assets.test.mts`. `heroStripe`: la franja
+    // superior del color pleno.
+    heroMarkCut: "40px",
+    heroGlobe: "208px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
     // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un

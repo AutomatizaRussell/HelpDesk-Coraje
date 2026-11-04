@@ -353,13 +353,14 @@ Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
   alcance de la persona («en tu alcance hay 3 tickets vencidos…», resaltando solo los
   vencidos); **cifras** por estado y vencidos, con el marcador del tono de su insignia
   (§5), que cuentan hasta su valor con el punto de los miles.
-- **Forma del área con el globo blanco** que cierra la cabecera por la derecha: un arco
-  amplio arriba, recortado por el borde, que baja hasta la esquina inferior; el globo,
-  centrado en ella y quieto. Entra una vez deslizándose desde la derecha, despacio. Se
-  oculta por debajo de `lg`. Ni la forma ni el globo giran.
-  *Corregido el 04-nov-2026 tras verla desplegada:* la primera versión era un disco
-  suelto que crecía en 600 ms (se leía brusco y asomaba cortado por arriba), dejaba
-  vacía la esquina inferior derecha y su globo flotaba igual que el del estado vacío.
+- **Círculo del área con el globo blanco en su centro**, tan alto como la cabecera,
+  algo recortado por el borde derecho y apoyado en la esquina inferior derecha, que
+  queda rellena. Entra una vez deslizándose desde la derecha, despacio. Se oculta por
+  debajo de `lg`. Ni el círculo ni el globo giran.
+  *Corregido dos veces el 04-nov-2026 tras verlo desplegado:* la primera versión era un
+  disco suelto que crecía en 600 ms (se leía brusco y asomaba cortado por arriba), dejaba
+  vacía la esquina y su globo flotaba igual que el del estado vacío; la segunda, un arco
+  amplio con una curva corta abajo, no se leía como círculo.
 - **La cabecera termina justo después de las cifras** y la bandeja empieza debajo, en
   una tarjeta con sombra (la primera versión la montaba sobre el borde y tapaba lo que
   la vista pusiera antes de ella). Las filas entran escalonadas (solo las nuevas); el

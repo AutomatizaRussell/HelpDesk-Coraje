@@ -74,8 +74,6 @@
   --hd-radius-surface: 10px;
   --hd-radius-pill: 999px;
   --hd-radius-card: 12px;
-  --hd-radius-hero-mark: 220px;
-  --hd-radius-hero-mark-foot: 72px;
   --hd-radius-shell-item: 8px;
   --hd-radius-scrollbar: 3px;
 
@@ -122,9 +120,8 @@
   --hd-size-notice-panel: 384px;
   --hd-size-toast: 384px;
   --hd-size-preview: 75vh;
-  --hd-size-hero-mark: 440px;
-  --hd-size-hero-mark-lift: 88px;
-  --hd-size-hero-globe: 256px;
+  --hd-size-hero-mark-cut: 40px;
+  --hd-size-hero-globe: 208px;
   --hd-size-hero-stripe: 6px;
   --hd-size-pointer-grid-dot: 1.8px;
   --hd-size-pointer-grid-gap: 20px;
@@ -408,8 +405,6 @@
   --radius-surface: var(--hd-radius-surface);
   --radius-pill: var(--hd-radius-pill);
   --radius-card: var(--hd-radius-card);
-  --radius-hero-mark: var(--hd-radius-hero-mark);
-  --radius-hero-mark-foot: var(--hd-radius-hero-mark-foot);
   --radius-shell-item: var(--hd-radius-shell-item);
 
   --shadow-overlay: var(--hd-shadow-overlay);
@@ -446,8 +441,7 @@
   --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
   --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
   --spacing-preview: var(--hd-size-preview);
-  --spacing-hero-mark: var(--hd-size-hero-mark);
-  --spacing-hero-mark-lift: var(--hd-size-hero-mark-lift);
+  --spacing-hero-mark-cut: var(--hd-size-hero-mark-cut);
   --spacing-hero-globe: var(--hd-size-hero-globe);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
   --spacing-empty-mark: var(--hd-size-empty-mark);

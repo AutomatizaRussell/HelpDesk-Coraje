@@ -1,6 +1,16 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 57, U30: círculo del área apoyado en la esquina, SIN DESPLEGAR)
+SOBRE:   `69f45cc` (corte 56)
+RAMA:    main
+UNIDAD:  U30, corrección del usuario: la forma del corte 55 no se leía como
+         círculo. Ahora es un círculo tan alto como la cabecera, recortado 40 px
+         por el borde derecho, con la esquina inferior derecha rellena y el globo
+         (208 px) en su centro. Evidencia: `tsc`, `lint`, 213/213, `next build`.
+SIGUE:   desplegar y revisar la cabecera en las cinco áreas.
+
+--- Corte 56, para contexto:
 CORTE:   04-nov-2026 (corte 56, U30: trama que sigue al puntero y sorpresa del globo, SIN DESPLEGAR)
 SOBRE:   `1399881` (corte 55)
 RAMA:    main
@@ -1677,6 +1687,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `69f45cc` | **Corte 56.** U30: trama que sigue al puntero y sorpresa del globo. Publicado el 04-nov-2026 |
 | `1399881` | **Corte 55.** U30: forma del área hasta la esquina, cabecera más corta. Publicado el 04-nov-2026 |
 | `5c04fe4` | **Corte 54.** U30: cabecera del área en la bandeja. Desplegado el 04-nov-2026; el usuario pidió ajustes al verla |
 | `76b23ca` | **Corte 53.** U29: tickets existentes recodificados por mes. Publicado el 03-nov-2026 |
