@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 64, U31 parte 2: detalle del ticket, SIN DESPLEGAR)
+SOBRE:   `8bd0b1c` (corte 63)
+RAMA:    main
+UNIDAD:  U31, parte 2 de 2 (design/sistema-helpdesk.md §5.6): cabecera en el color
+         del área del ticket (`TicketHero`) con los datos fijos, historia que
+         distingue eventos, mensajes y notas internas por forma, cuadro de
+         escritura que dice a quién llegará cada acción, botón propio para la
+         nota interna, y personas y correos a la derecha. Evidencia: `tsc`,
+         `lint`, 216/216, `next build`. Sin ver en navegador.
+SIGUE:   desplegar y revisar crear y atender un ticket; cierre de U30 y U31.
+
+--- Corte 63, para contexto:
 CORTE:   04-nov-2026 (corte 63, U31 parte 1: la ventana de crear toma el color del área, SIN DESPLEGAR)
 SOBRE:   `a7a24cd` (corte 62)
 RAMA:    main
@@ -1760,6 +1772,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `8bd0b1c` | **Corte 63.** U31: la ventana de crear toma el color del área. Publicado el 04-nov-2026 |
 | `a7a24cd` | **Corte 62.** U31 parte 1: crear un ticket. Desplegado el 04-nov-2026; fechas de vencimiento comprobadas |
 | `2f030e1` | **Corte 61.** U30: semicírculo de todo el alto, corrido a la derecha. Publicado el 04-nov-2026 |
 | `89198e3` | **Corte 60.** U30: semicírculo centrado en la parte visible. Publicado el 04-nov-2026 |

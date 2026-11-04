@@ -1,17 +1,13 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
-import { iconStroke } from "@/design-system/foundations/iconography";
-import { AreaName } from "@/design-system/patterns/area/AreaName";
-import { FlashToast } from "@/design-system/patterns/toast/Toaster";
+import { PersonChip } from "@/design-system/components/PersonChip";
+import { TicketHero, type TicketHeroFact } from "@/design-system/patterns/area-hero/TicketHero";
 import { MailStateBadge, SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
-import { focusRing } from "@/design-system/recipes/interaction";
 import { notice, sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
-import { areaThemeKey } from "@/features/areas/area-theme";
-import { formatCatalogLabel, formatDate, formatDateTime, formatPriority } from "@/features/tickets/format";
+import { areaDisplayName, areaThemeKey } from "@/features/areas/area-theme";
+import { formatCatalogLabel, formatDate, formatDateTime, formatPriority, personInitials } from "@/features/tickets/format";
 import {
   AddObserversForm,
   ApprovalResponseForm,
@@ -25,17 +21,19 @@ import {
 import { EditableField } from "@/features/tickets/TicketDetailActions";
 import { TicketHistory } from "@/features/tickets/TicketHistory";
 import { AppFrame } from "@/features/shell/AppFrame";
-import { APP_BASE_PATH } from "@/server/auth/base-path";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { markTicketNoticesRead } from "@/server/notifications/ticket-notices";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
 import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
+import { SLA_STATUS_LABEL } from "@/server/tickets/sla";
 import { inboxPath } from "@/server/tickets/ticket-mode";
 import { getTicketDetail, listFollowCandidates, listReassignCandidates, type TicketDetail } from "@/server/tickets/ticket-queries";
 
 /**
- * Detalle de un ticket: descripción, cuadro para escribir e historia a la
- * izquierda; datos a la derecha, cada uno con su acción al lado (opción B,
+ * Detalle de un ticket (U31, maqueta aprobada «U»): arriba, la cabecera en el
+ * color del área del ticket con el código, el estado y los datos fijos;
+ * debajo, descripción, cuadro para escribir e historia a la izquierda, y
+ * personas y correos a la derecha, cada dato con su acción al lado (opción B,
  * 30-sep-2026). Un ticket
  * inexistente y uno fuera de alcance responden igual, con 404: la vista no le
  * dice a nadie qué tickets existen.
@@ -103,14 +101,7 @@ function ObserverList({
     </ul>
   );
 }
-
-export default async function TicketDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ idTicket: string }>;
-  searchParams: Promise<{ creado?: string }>;
-}) {
+export default async function TicketDetailPage({ params }: { params: Promise<{ idTicket: string }> }) {
   const { idTicket } = await params;
   const employee = await requireCurrentEmployee(`/tickets/${idTicket}`);
   if (!z.uuid().safeParse(idTicket).success) notFound();
@@ -123,7 +114,6 @@ export default async function TicketDetailPage({
   // el número de la campana de esta misma página ya lo descuente.
   await markTicketNoticesRead({ idPersonal: employee.idPersonal, idTicket: ticket.idTicket });
 
-  const { creado } = await searchParams;
   const { capabilities } = ticket;
   // El responsable actual no es destino de su propia reasignación.
   const reassignCandidates = capabilities.reasignar
@@ -146,7 +136,7 @@ export default async function TicketDetailPage({
 
   // Lo que se escribe va en un solo cuadro debajo de la descripción, con un
   // botón por acción (03-nov-2026, sin pestañas); cambiar responsable,
-  // observadores o pedir aprobación, en el panel de datos, junto a lo que
+  // observadores o pedir aprobación, en el panel de la derecha, junto a lo que
   // cambian. Solo aparece lo que el estado y el alcance permiten
   // (`capabilities`), con las mismas reglas del servicio.
   // Quien es a la vez responsable y solicitante responde o anota: comentar su
@@ -154,65 +144,167 @@ export default async function TicketDetailPage({
   const canComment = capabilities.comentarSolicitante && !capabilities.responder;
   const hasComposer = capabilities.responder || capabilities.notaInterna || canComment;
 
+  // U31: la cabecera lleva lo que antes era la columna de datos fijos.
+  const categorias = [ticket.categoria1, ticket.categoria2].flatMap((value) => (value ? [formatCatalogLabel(value)] : [])).join(" · ");
+  const facts: TicketHeroFact[] = [
+    { label: "Solicitante", value: ticket.solicitante ?? "Sin solicitante" },
+    {
+      label: "Plazo",
+      value: ticket.fechaLimite ? formatDate(ticket.fechaLimite) : "Sin fecha límite",
+      detail: ticket.sla ? SLA_STATUS_LABEL[ticket.sla] : null,
+      alert: ticket.sla === "VENCIDO",
+    },
+    { label: "Prioridad", value: ticket.prioridad ? formatPriority(ticket.prioridad) : "Sin prioridad" },
+    { label: "Tipo", value: ticket.tipo ? formatCatalogLabel(ticket.tipo) : "Sin tipo", detail: categorias || null },
+    {
+      label: "Radicado",
+      value: formatDateTime(ticket.fechaCreacion),
+      detail: ticket.fechaResolucion ? `Terminado ${formatDateTime(ticket.fechaResolucion)}` : null,
+    },
+  ];
+  // El título de la cabecera: la primera línea de la descripción, que es lo
+  // que la persona escribió primero. La descripción completa va debajo.
+  const title = ticket.descripcion.split("\n").find((line) => line.trim())?.trim() ?? "";
+  const card = cn(surface(), "shadow-raised");
+
   return (
     // U17: el ticket abre en su modo, llegue de donde llegue (la campana, un
     // enlace, la otra bandeja), y vuelve a la bandeja de ese modo.
-    <AppFrame employee={employee} title={ticket.codigoTicket ?? "Ticket sin código"} mode={ticket.modo}>
-      <div className="space-y-4">
-        <Link
-          href={inboxPath(ticket.modo)}
-          className={cn("inline-flex items-center gap-1 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
-        >
-          <ChevronLeft aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
-          Volver a la bandeja
-        </Link>
-
-        {creado === "1" && (
-          <FlashToast
-            id={`creado-${ticket.idTicket}`}
-            message={`${ticket.codigoTicket ? `Ticket ${ticket.codigoTicket}` : "Ticket"} creado y asignado a ${ticket.responsable ?? "la persona responsable del área"}.`}
-            cleanHref={`${APP_BASE_PATH}/tickets/${ticket.idTicket}`}
-          />
-        )}
+    <AppFrame
+      employee={employee}
+      title={ticket.codigoTicket ?? "Ticket sin código"}
+      mode={ticket.modo}
+      hero={() => (
+        <TicketHero
+          area={areaThemeKey(ticket.area)}
+          code={ticket.codigoTicket ?? "Sin código"}
+          title={title}
+          back={{ href: inboxPath(ticket.modo), label: "Volver a la bandeja" }}
+          badges={
+            <>
+              {ticket.area && (
+                <span className="inline-flex h-6 items-center rounded-pill bg-accent px-2.5 text-xs font-bold text-on-accent">
+                  {areaDisplayName(ticket.area)}
+                </span>
+              )}
+              <TicketStateBadge state={ticket.estado} />
+              {ticket.sla && ticket.sla !== "EN_PLAZO" && <SlaBadge status={ticket.sla} />}
+            </>
+          }
+          facts={facts}
+        />
+      )}
+    >
+      <div className="space-y-5">
         {!ticket.operable && (
           <p className={notice("info")}>Este ticket viene de PowerApps. Aquí solo se consulta; se sigue gestionando en PowerApps.</p>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            <section className={surface()} aria-labelledby="descripcion-titulo">
+        <div className="grid items-start gap-5 lg:grid-cols-3">
+          <div className="space-y-5 lg:col-span-2">
+            <section className={card} aria-labelledby="descripcion-titulo">
               <h2 id="descripcion-titulo" className={sectionTitle}>Descripción</h2>
-              <p className="mt-2 whitespace-pre-wrap break-words text-base text-ink">{ticket.descripcion}</p>
+              <p className="mt-2 whitespace-pre-wrap break-words text-md text-ink">{ticket.descripcion}</p>
             </section>
 
             {hasComposer && (
-              <section className={surface()} aria-label="Escribir en el ticket">
+              <section className={card} aria-label="Escribir en el ticket">
                 <TicketComposer
                   idTicket={ticket.idTicket}
                   canRespond={capabilities.responder}
                   canComment={canComment}
                   canNote={capabilities.notaInterna}
                   waitingApprovalFrom={ticket.aprobacion.pendiente?.aprobador ?? null}
+                  solicitante={ticket.solicitante}
                 />
               </section>
             )}
 
-            <section className={surface()} aria-labelledby="historia-titulo">
+            <section className={card} aria-labelledby="historia-titulo">
               <h2 id="historia-titulo" className={cn(sectionTitle, "mb-4")}>Historia</h2>
               <TicketHistory idTicket={ticket.idTicket} entries={ticket.history} />
             </section>
+          </div>
+
+          <aside className="space-y-5" aria-label="Personas y correos del ticket">
+            <section className={card} aria-label="Personas">
+              <dl className="divide-y divide-line">
+                {capabilities.reasignar ? (
+                  <EditableField
+                    label="Responsable"
+                    actionLabel="Cambiar responsable"
+                    icon="editar"
+                    form={<ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />}
+                  >
+                    <PersonChip
+                      name={ticket.responsable}
+                      initials={ticket.responsable ? personInitials(ticket.responsable) : ""}
+                      emptyLabel="Sin responsable"
+                    />
+                  </EditableField>
+                ) : (
+                  <Field label="Responsable">
+                    <PersonChip
+                      name={ticket.responsable}
+                      initials={ticket.responsable ? personInitials(ticket.responsable) : ""}
+                      emptyLabel="Sin responsable"
+                    />
+                  </Field>
+                )}
+                {capabilities.gestionarObservadores ? (
+                  <EditableField
+                    label="Observadores"
+                    actionLabel="Añadir observadores"
+                    icon="anadir"
+                    form={<AddObserversForm idTicket={ticket.idTicket} candidates={observerCandidates} max={MAX_OBSERVERS_PER_ACTION} />}
+                  >
+                    <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove />
+                  </EditableField>
+                ) : (
+                  <Field label="Observadores">
+                    <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove={false} />
+                  </Field>
+                )}
+                {capabilities.solicitarValidacion ? (
+                  <EditableField
+                    label="Aprobación"
+                    actionLabel="Pedir aprobación"
+                    icon="anadir"
+                    form={<RequestApprovalForm idTicket={ticket.idTicket} candidates={validationCandidates} />}
+                  >
+                    <ApprovalSummary aprobacion={ticket.aprobacion} />
+                  </EditableField>
+                ) : (
+                  (ticket.aprobacion.pendiente || ticket.aprobacion.resueltas.length > 0) && (
+                    <Field label="Aprobación">
+                      <ApprovalSummary aprobacion={ticket.aprobacion} />
+                      {capabilities.responderAprobacion && (
+                        <div className="mt-2 rounded-control border border-line bg-surface-sunken p-3">
+                          <ApprovalResponseForm idTicket={ticket.idTicket} />
+                        </div>
+                      )}
+                      {capabilities.retirarAprobacion && (
+                        <div className="mt-2">
+                          <WithdrawApprovalForm idTicket={ticket.idTicket} />
+                        </div>
+                      )}
+                    </Field>
+                  )
+                )}
+              </dl>
+            </section>
 
             {mails.length > 0 && (
-              <section className={surface()} aria-labelledby="correos-titulo">
+              <section className={card} aria-labelledby="correos-titulo">
                 <h2 id="correos-titulo" className={cn(sectionTitle, "mb-2")}>Correos</h2>
                 <ul className="divide-y divide-line">
                   {mails.map((mail) => (
                     <li key={mail.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                       <div className="min-w-0">
-                        <p className="text-base text-ink">
-                          Para {mail.destinatario} · <span className="text-ink-muted">{mail.asunto}</span>
+                        <p className="text-sm font-bold text-ink">{mail.asunto}</p>
+                        <p className="mt-0.5 text-sm text-ink-muted">
+                          Para {mail.destinatario} · <span className="tabular-nums">{formatDateTime(mail.fecha)}</span>
                         </p>
-                        <p className="mt-0.5 text-sm tabular-nums text-ink-muted">{formatDateTime(mail.fecha)}</p>
                         {mail.estado === "FALLIDO" && mail.error && <p className="mt-1 text-sm text-danger">{mail.error}</p>}
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -224,81 +316,6 @@ export default async function TicketDetailPage({
                 </ul>
               </section>
             )}
-          </div>
-
-          <aside className={cn(surface(), "h-fit")} aria-label="Datos del ticket">
-            <div className="flex flex-wrap items-center gap-2">
-              <TicketStateBadge state={ticket.estado} />
-              {ticket.sla && <SlaBadge status={ticket.sla} />}
-            </div>
-            <dl className="mt-3 divide-y divide-line">
-              <Field label="Vence">{ticket.fechaLimite ? formatDate(ticket.fechaLimite) : "Sin fecha límite"}</Field>
-              <Field label="Prioridad">{ticket.prioridad ? formatPriority(ticket.prioridad) : "Sin prioridad"}</Field>
-              <Field label="Área">{ticket.area ? <AreaName area={areaThemeKey(ticket.area)} name={ticket.area} /> : "Sin área"}</Field>
-              <Field label="Tipo">
-                {ticket.tipo ? formatCatalogLabel(ticket.tipo) : "Sin tipo"}
-                {ticket.categoria1 && (
-                  <span className="block text-sm text-ink-muted">
-                    {[ticket.categoria1, ticket.categoria2].flatMap((value) => (value ? [formatCatalogLabel(value)] : [])).join(" · ")}
-                  </span>
-                )}
-              </Field>
-              <Field label="Solicitante">{ticket.solicitante ?? "Sin solicitante"}</Field>
-              {capabilities.reasignar ? (
-                <EditableField
-                  label="Responsable"
-                  actionLabel="Cambiar responsable"
-                  icon="editar"
-                  form={<ReassignForm idTicket={ticket.idTicket} candidates={reassignCandidates} />}
-                >
-                  {ticket.responsable ?? "Sin responsable"}
-                </EditableField>
-              ) : (
-                <Field label="Responsable">{ticket.responsable ?? "Sin responsable"}</Field>
-              )}
-              {capabilities.gestionarObservadores ? (
-                <EditableField
-                  label="Observadores"
-                  actionLabel="Añadir observadores"
-                  icon="anadir"
-                  form={<AddObserversForm idTicket={ticket.idTicket} candidates={observerCandidates} max={MAX_OBSERVERS_PER_ACTION} />}
-                >
-                  <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove />
-                </EditableField>
-              ) : (
-                <Field label="Observadores">
-                  <ObserverList observadores={ticket.observadores} idTicket={ticket.idTicket} canRemove={false} />
-                </Field>
-              )}
-              {capabilities.solicitarValidacion ? (
-                <EditableField
-                  label="Aprobación"
-                  actionLabel="Pedir aprobación"
-                  icon="anadir"
-                  form={<RequestApprovalForm idTicket={ticket.idTicket} candidates={validationCandidates} />}
-                >
-                  <ApprovalSummary aprobacion={ticket.aprobacion} />
-                </EditableField>
-              ) : (
-                (ticket.aprobacion.pendiente || ticket.aprobacion.resueltas.length > 0) && (
-                  <Field label="Aprobación">
-                    <ApprovalSummary aprobacion={ticket.aprobacion} />
-                    {capabilities.responderAprobacion && (
-                      <div className="mt-2 rounded-control border border-line bg-surface-sunken p-3">
-                        <ApprovalResponseForm idTicket={ticket.idTicket} />
-                      </div>
-                    )}
-                    {capabilities.retirarAprobacion && (
-                      <div className="mt-2">
-                        <WithdrawApprovalForm idTicket={ticket.idTicket} />
-                      </div>
-                    )}
-                  </Field>
-                )
-              )}
-              <Field label="Radicado">{formatDateTime(ticket.fechaCreacion)}</Field>
-              {ticket.fechaResolucion && <Field label="Terminado">{formatDateTime(ticket.fechaResolucion)}</Field>}
-            </dl>
           </aside>
         </div>
       </div>

@@ -422,6 +422,32 @@ las variantes de la maqueta:
   Salta en vertical, sin girar ni deformarse. Decorativa: fuera del orden de
   tabulación y del lector de pantalla.
 
+### 5.6 `DECISIÓN` (04-nov-2026, U31) Detalle del ticket
+
+Maqueta aprobada por el usuario («U»). `app/tickets/[idTicket]/page.tsx`:
+
+- **Cabecera en el color del área del ticket** (`patterns/area-hero/TicketHero.tsx`,
+  con su propio `data-area`), no en el de quien lo mira: un ticket de Revisoría se ve
+  naranja para todos. Código grande, área, estado y plazo; la primera línea de la
+  descripción como título; cinco datos (solicitante, plazo, prioridad, tipo, radicado).
+  El mismo semicírculo de la bandeja, con el globo quieto y más pequeño.
+- **Historia que distingue por forma** (`TicketHistory`): los eventos en una línea con
+  icono; la respuesta del equipo en burbuja navy, el comentario del solicitante en
+  burbuja clara; la nota interna en ámbar, borde punteado, candado y «el solicitante no
+  la ve». Sigue lo más reciente primero, bajo el cuadro de escritura.
+- **El cuadro de escritura dice a quién llegará** lo escrito al pasar por cada botón
+  (ratón o teclado), y se marca con su color: responder («lo verá el solicitante, el
+  ticket se cierra»), comentar («lo verá el equipo»), nota («solo el equipo»). La nota
+  tiene botón propio (variante `internal`): ámbar y punteado como en la historia.
+- A la derecha, personas (responsable con sus iniciales, observadores, aprobación) y
+  correos.
+
+*Diferencia con la maqueta:* la maqueta ponía la historia en orden cronológico y el
+cuadro al final; se conserva el orden vigente (cuadro arriba, lo más reciente primero),
+porque en un ticket largo el cuadro quedaría a varias pantallas de distancia. Y en la
+maqueta «Enviar comentario» parecía del equipo al solicitante; en el código es el
+solicitante escribiéndole al equipo, y su aviso lo dice así.
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |

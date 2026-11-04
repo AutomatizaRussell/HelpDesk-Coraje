@@ -1,9 +1,11 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Check, Lock, MessageSquare, X } from "lucide-react";
 import { useActionState, useState, type ReactNode } from "react";
 
 import { IconButton } from "@/design-system/components/IconButton";
+import { iconStroke } from "@/design-system/foundations/iconography";
+import { cn } from "@/design-system/utilities/cn";
 import { buttonRecipe, type ButtonVariant } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { AttachmentPicker } from "@/features/attachments/AttachmentPicker";
@@ -48,24 +50,33 @@ function TextField({
   hint,
   state,
   rows = 4,
+  aside,
+  controlClassName,
 }: {
   name: string;
   label: string;
   hint?: string;
   state: TicketFormState;
   rows?: number;
+  /** U31: texto junto a la etiqueta, a la derecha (a quién le llegará lo escrito). */
+  aside?: React.ReactNode;
+  /** U31: clases extra del control; un anillo, para no chocar con el borde de la receta. */
+  controlClassName?: string;
 }) {
   const error = state.status === "error" ? state.fieldErrors[name] : undefined;
   const id = `campo-${name}`;
   return (
     <div>
-      <label htmlFor={id} className={fieldLabel}>{label}</label>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <label htmlFor={id} className={fieldLabel}>{label}</label>
+        {aside}
+      </div>
       <textarea
         id={id}
         name={name}
         rows={rows}
         defaultValue={state.status === "error" ? (state.values[name] ?? "") : ""}
-        className={fieldControl({ invalid: Boolean(error), multiline: true })}
+        className={cn(fieldControl({ invalid: Boolean(error), multiline: true }), controlClassName)}
         aria-invalid={Boolean(error) || undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
       />
@@ -110,11 +121,14 @@ export function TicketComposer({
   canComment,
   canNote,
   waitingApprovalFrom = null,
+  solicitante,
 }: {
   idTicket: string;
   canRespond: boolean;
   canComment: boolean;
   canNote: boolean;
+  /** U31: quien radicó, para decir quién verá la respuesta o quién no verá la nota. */
+  solicitante: string | null;
   /** U29: con una aprobación pendiente, el ticket no se cierra. Nombra a quien falta. */
   waitingApprovalFrom?: string | null;
 }) {
@@ -135,17 +149,44 @@ export function TicketComposer({
     .filter(Boolean)
     .join(" ");
   const primary = canRespond ? "responder" : canComment ? "comentar" : "nota";
-  const variant = (action: typeof primary) => (action === primary ? "primary" : "secondary");
+  const variant = (action: typeof primary) => (action === "nota" ? "internal" : action === primary ? "primary" : "secondary");
+
+  // U31: al pasar por un botón (ratón o teclado), el cuadro dice a quién le
+  // llegará lo escrito y se marca con el color de esa acción. Es la defensa
+  // contra escribirle al solicitante lo que era para el equipo: se ve antes
+  // de pulsar, no después.
+  const [intent, setIntent] = useState<typeof primary | null>(null);
+  const quien = solicitante ?? "el solicitante";
+  const audience = {
+    responder: { text: `Lo verá ${quien} · el ticket se cierra`, className: "text-success", ring: "ring-2 ring-success" },
+    comentar: { text: "Lo verá el equipo que lo atiende · el ticket sigue abierto", className: "text-heading", ring: "ring-2 ring-accent" },
+    nota: { text: `Solo lo verá el equipo · ${quien} no`, className: "text-warning", ring: "ring-2 ring-warning" },
+  } as const;
+  const shown = intent ? audience[intent] : null;
+  const preview = (action: typeof primary) => ({
+    onPointerEnter: () => setIntent(action),
+    onPointerLeave: () => setIntent(null),
+    onFocus: () => setIntent(action),
+    onBlur: () => setIntent(null),
+  });
 
   return (
     <form key={formKey} className="space-y-3">
       <input type="hidden" name="idTicket" value={idTicket} />
       <FormFeedback state={state} />
-      <TextField name="texto" label="Escribe en el ticket" hint={hint} state={state} rows={6} />
+      <TextField
+        name="texto"
+        label="Escribe en el ticket"
+        hint={hint}
+        state={state}
+        rows={6}
+        aside={shown && <span className={cn("text-sm font-bold", shown.className)}>{shown.text}</span>}
+        controlClassName={shown?.ring}
+      />
       {attaches && (
         <AttachmentPicker onBusyChange={setUploading} error={state.status === "error" ? state.fieldErrors.adjuntos : undefined} />
       )}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {canRespond && (
           <button
             type="submit"
@@ -154,7 +195,9 @@ export function TicketComposer({
             className={buttonRecipe({ variant: variant("responder") })}
             disabled={pending || uploading || waitingApprovalFrom !== null}
             aria-describedby={waitingApprovalFrom ? "cierre-bloqueado" : undefined}
+            {...preview("responder")}
           >
+            <Check aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
             {responding ? "Guardando…" : uploading ? "Subiendo adjuntos…" : "Responder y cerrar"}
           </button>
         )}
@@ -165,7 +208,9 @@ export function TicketComposer({
             onClick={() => setLast("comentar")}
             className={buttonRecipe({ variant: variant("comentar") })}
             disabled={pending || uploading}
+            {...preview("comentar")}
           >
+            <MessageSquare aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
             {commenting ? "Enviando…" : "Enviar comentario"}
           </button>
         )}
@@ -176,7 +221,9 @@ export function TicketComposer({
             onClick={() => setLast("nota")}
             className={buttonRecipe({ variant: variant("nota") })}
             disabled={pending || uploading}
+            {...preview("nota")}
           >
+            <Lock aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
             {noting ? "Guardando…" : "Guardar nota interna"}
           </button>
         )}

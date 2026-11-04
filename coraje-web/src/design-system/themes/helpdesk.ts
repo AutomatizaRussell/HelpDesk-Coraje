@@ -193,6 +193,9 @@ export const helpdeskTheme = {
     sparkReach: "160px",
     // Alto de la barra de progreso de un adjunto que se sube (U31).
     progress: "4px",
+    // Globo de la cabecera del detalle del ticket (U31): la cabecera es más
+    // baja que la de la bandeja, y el globo, quieto, más pequeño.
+    ticketGlobe: "144px",
     // Estado vacío (U30): el mismo motivo a escala de tarjeta. Disco exterior
     // en la tinta del área, disco interior en el color pleno, globo blanco.
     emptyMark: "88px",

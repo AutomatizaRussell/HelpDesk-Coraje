@@ -716,7 +716,7 @@ valor y la bandeja montada sobre el borde de la cabecera
 **Condición de cierre:** el usuario ve la bandeja desplegada en las cinco áreas
 (suplantando) y en los dos modos, y la aprueba o pide ajustes.
 
-### U31 · Crear ticket y detalle con personalidad — **parte 1 construida el 04-nov-2026 (corte 62), sin desplegar**
+### U31 · Crear ticket y detalle con personalidad — **construida el 04-nov-2026 (cortes 62 a 64); la parte 1, desplegada**
 
 Lo que la U30 no alcanzó: el resto de la aplicación seguía plano. Diseñado en la
 maqueta y aprobado por el usuario «tal cual» el 04-nov-2026 (tableros T y U).
@@ -724,8 +724,9 @@ maqueta y aprobado por el usuario «tal cual» el 04-nov-2026 (tableros T y U).
 1. **Crear un ticket** (corte 62, `design/sistema-helpdesk.md` §5.5): franja del área
    elegida, áreas como tarjetas, prioridad con el día de vencimiento, adjuntos con zona
    para soltar y confirmación con el código.
-2. **Detalle del ticket** (pendiente): cabecera en la tinta del área del ticket con el
-   código grande y cinco datos, historia que distingue eventos, comentarios y notas
+   Corte 63: la ventana entera toma el color del área, con menos peso y mayúsculas.
+2. **Detalle del ticket** (corte 64, §5.6): cabecera en el color del área del ticket con
+   el código grande y cinco datos, historia que distingue eventos, comentarios y notas
    internas por forma, y el cuadro de escritura que dice quién verá cada acción.
 
 **Condición de cierre:** el usuario crea un ticket y lo atiende en el despliegue con

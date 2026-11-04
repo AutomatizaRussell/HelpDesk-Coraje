@@ -18,6 +18,10 @@ const variants = {
   primary: "bg-action text-on-action hover:bg-action-hover",
   secondary: "border border-line-strong bg-surface text-heading hover:bg-surface-sunken",
   danger: "border border-danger bg-surface text-danger hover:bg-danger-surface",
+  // U31: guardar una nota interna. Ámbar y con borde punteado, la misma forma
+  // que la nota en la historia: el botón ya dice que lo escrito no sale del
+  // equipo, antes de pulsarlo.
+  internal: "border-2 border-dashed border-warning bg-warning-surface text-warning hover:bg-surface",
 } as const;
 
 const sizes = {
