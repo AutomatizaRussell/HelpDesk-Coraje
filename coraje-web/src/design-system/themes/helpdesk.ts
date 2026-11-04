@@ -182,6 +182,12 @@ export const helpdeskTheme = {
     // el doble y el triple); lo comprueba `brand-assets.test.mts`.
     // `heroStripe`: la franja superior del color pleno.
     heroGlobe: "232px",
+    // Tope del semicírculo (U32): crece con la cabecera hasta aquí y no más.
+    // Sin tope, una cabecera alta (la descripción de un ticket expandida) lo
+    // agrandaba hasta tapar el texto. Asoma 7/8 de su ancho (el resto queda
+    // fuera por `translate-x-1/8`): 432 × 7/8 = 378 px, dentro de los 384
+    // que el texto le deja libres (`lg:mr-96`) en las dos cabeceras.
+    heroMark: "432px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
     // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un

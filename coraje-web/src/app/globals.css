@@ -121,6 +121,7 @@
   --hd-size-toast: 384px;
   --hd-size-preview: 75vh;
   --hd-size-hero-globe: 232px;
+  --hd-size-hero-mark: 432px;
   --hd-size-hero-stripe: 6px;
   --hd-size-pointer-grid-dot: 1.5px;
   --hd-size-pointer-grid-gap: 14px;
@@ -442,6 +443,7 @@
   --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
   --spacing-preview: var(--hd-size-preview);
   --spacing-hero-globe: var(--hd-size-hero-globe);
+  --spacing-hero-mark: var(--hd-size-hero-mark);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
   --spacing-empty-mark: var(--hd-size-empty-mark);
   --spacing-empty-mark-inner: var(--hd-size-empty-mark-inner);

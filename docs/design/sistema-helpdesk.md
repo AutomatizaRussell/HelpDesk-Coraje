@@ -471,6 +471,10 @@ líneas con «Ver la descripción completa» si no cabe (`HeroDescription`). El 
 detalle pasa al tamaño del de la bandeja: el más pequeño se leía como descuido, no como
 señal de otra vista.
 
+Corte 67: el semicírculo crece con la cabecera hasta 432 px (`size.heroMark`) y se
+queda arriba a la derecha. Sin tope, la descripción expandida lo agrandaba hasta tapar
+el texto; con él asoma como mucho 378 px, dentro de los 384 que el texto le deja.
+
 *No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
 11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 

@@ -1,6 +1,17 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 67, U32: tope del semicírculo de la cabecera, SIN DESPLEGAR)
+SOBRE:   `d58bd26` (corte 66)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): el semicírculo de las dos cabeceras
+         deja de medir todo el alto: crece hasta `size.heroMark` (432 px) y se queda
+         arriba a la derecha. La descripción expandida lo agrandaba hasta tapar el
+         texto. El texto del detalle reserva 384 px, como el de la bandeja.
+         Evidencia: `tsc`, `lint`, pruebas, `next build`. Sin ver en navegador.
+SIGUE:   desplegar y expandir la descripción de un ticket largo.
+
+--- Corte 66, para contexto:
 CORTE:   04-nov-2026 (corte 66, U32: la descripción del ticket solo en la cabecera, SIN DESPLEGAR)
 SOBRE:   `9a16506` (corte 65)
 RAMA:    main
@@ -1796,6 +1807,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `d58bd26` | **Corte 66.** U32: la descripción del ticket solo en la cabecera. Publicado el 04-nov-2026 |
 | `9a16506` | **Corte 65.** U32: barra superior mínima y escala comprimida. Publicado el 04-nov-2026 |
 | `a8b3511` | **Corte 64.** U31: detalle del ticket con cabecera del área e historia por forma. Publicado el 04-nov-2026 |
 | `8bd0b1c` | **Corte 63.** U31: la ventana de crear toma el color del área. Publicado el 04-nov-2026 |

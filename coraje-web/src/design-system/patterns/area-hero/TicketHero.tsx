@@ -53,7 +53,7 @@ export function TicketHero({
     <section data-area={area} aria-label="Resumen del ticket" className={cn("relative overflow-hidden bg-accent-surface", modeTransition)}>
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
       <div className="relative mx-auto max-w-content px-6 pt-5 pb-27 lg:px-10">
-        <div className="max-w-5xl lg:mr-88">
+        <div className="max-w-5xl lg:mr-96">
           <Link
             href={back.href}
             className={cn("inline-flex items-center gap-1 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
@@ -81,7 +81,7 @@ export function TicketHero({
       </div>
       {/* Después del texto, como en la bandeja; aquí no recibe clics. */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
-        <div className="absolute inset-y-0 right-0 aspect-square translate-x-1/8 rounded-l-pill bg-accent">
+        <div className="absolute top-0 right-0 h-full max-h-hero-mark aspect-square translate-x-1/8 rounded-l-pill bg-accent">
           <div className="absolute inset-x-0 top-0 bottom-15 grid place-items-center">
             <Image src={heroGlobe} alt="" width={GLOBE} height={GLOBE} className="size-hero-globe" />
           </div>

@@ -66,7 +66,7 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
 function HeroMark() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
-      <div className="absolute inset-y-0 right-0 aspect-square translate-x-1/8 rounded-l-pill bg-accent">
+      <div className="absolute top-0 right-0 h-full max-h-hero-mark aspect-square translate-x-1/8 rounded-l-pill bg-accent">
         <div className="absolute inset-x-0 top-0 bottom-15 grid place-items-center">
           {/* El globo no flota: el flotado es del estado vacío, y repetirlo
               aquí hacía que las dos piezas se leyeran como la misma. Su
