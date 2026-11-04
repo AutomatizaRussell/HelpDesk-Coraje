@@ -35,6 +35,18 @@ export function areaThemeKey(nombreArea: string | null | undefined): AreaThemeKe
 }
 
 /**
+ * Nombre del área para leer (U31): el directorio lo guarda en mayúsculas
+ * («ADMINISTRACIÓN-RECEPCIÓN»), y una lista de nombres a gritos pesa. Cada
+ * palabra pasa a minúscula con mayúscula inicial, salvo las siglas de hasta
+ * tres letras, que se quedan como están: «BPO» sigue siendo «BPO».
+ */
+export function areaDisplayName(nombreArea: string): string {
+  const lower = nombreArea.trim().toLocaleLowerCase("es-CO");
+  const sentence = lower.charAt(0).toLocaleUpperCase("es-CO") + lower.slice(1);
+  return nombreArea.trim().length <= 3 ? nombreArea.trim() : sentence;
+}
+
+/**
  * Código de tres letras del área para su recuadro en la bandeja (U30):
  * «ADMINISTRACIÓN» → «ADM», «Revisoría» → «REV», «BPO» → «BPO». Son las tres
  * primeras letras del nombre sin tildes, igual que el prefijo del código de

@@ -1,11 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import { createContext, useCallback, useContext, useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { iconStroke } from "../../foundations/iconography";
 import { colorTransition, focusRing } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
+import type { AreaThemeKey } from "../area/area";
 
 /**
  * Ventana emergente con un formulario. Se usa solo cuando tapar lo de atrás
@@ -42,10 +43,27 @@ export function useFormDialogClose(): (() => void) | null {
   return useContext(FormDialogCloseContext);
 }
 
+/**
+ * Tono de la ventana (U31): el contenido elige un área y la ventana entera
+ * toma su color —encabezado en la tinta, franja superior y acento de lo que
+ * hay dentro—, con una línea bajo el título («Llegará a Contabilidad»).
+ * `data-area` en el `<dialog>` redefine el acento, como en el shell (U16): el
+ * contenido no necesita saber de colores. `null` vuelve al tono neutro.
+ */
+export type FormDialogTone = { area: AreaThemeKey; subtitle: string } | null;
+
+const FormDialogToneContext = createContext<((tone: FormDialogTone) => void) | null>(null);
+
+/** `null` fuera de una ventana. */
+export function useFormDialogTone(): ((tone: FormDialogTone) => void) | null {
+  return useContext(FormDialogToneContext);
+}
+
 export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DISCARD_QUESTION, size = "form", children }: FormDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const dirty = useRef(false);
   const titleId = useId();
+  const [tone, setTone] = useState<FormDialogTone>(null);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -56,6 +74,14 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
     }
     if (!open && dialog.open) dialog.close();
   }, [open]);
+
+  // Al cerrar, la próxima apertura empieza neutra. Ajuste en el render, no en
+  // un efecto: un efecto pintaría primero el tono viejo.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) setTone(null);
+  }
 
   const requestClose = useCallback(() => {
     if (dirty.current && !window.confirm(discardQuestion)) return;
@@ -72,6 +98,7 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
   return (
     <dialog
       ref={ref}
+      data-area={tone?.area}
       aria-labelledby={titleId}
       onCancel={(event) => {
         // Escape: el navegador cerraría sin preguntar.
@@ -89,10 +116,20 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
     >
       {open && (
         <>
-          <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 lg:px-6">
-            <h2 id={titleId} className="text-lg font-black tracking-tight text-heading">
-              {title}
-            </h2>
+          <div aria-hidden="true" className={cn("h-hero-stripe", tone ? "bg-accent" : "bg-transparent", colorTransition)} />
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 border-b border-line px-5 py-4 lg:px-6",
+              tone && "bg-accent-surface",
+              colorTransition,
+            )}
+          >
+            <div className="min-w-0">
+              <h2 id={titleId} className="text-lg font-black tracking-tight text-heading">
+                {title}
+              </h2>
+              {tone && <p className="text-base text-heading">{tone.subtitle}</p>}
+            </div>
             <button
               type="button"
               onClick={requestClose}
@@ -102,7 +139,9 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
               <X aria-hidden="true" className="size-5" strokeWidth={iconStroke.regular} />
             </button>
           </div>
-          <FormDialogCloseContext.Provider value={requestClose}>{children}</FormDialogCloseContext.Provider>
+          <FormDialogToneContext.Provider value={setTone}>
+            <FormDialogCloseContext.Provider value={requestClose}>{children}</FormDialogCloseContext.Provider>
+          </FormDialogToneContext.Provider>
         </>
       )}
     </dialog>

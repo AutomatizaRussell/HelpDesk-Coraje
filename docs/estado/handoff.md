@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 63, U31 parte 1: la ventana de crear toma el color del área, SIN DESPLEGAR)
+SOBRE:   `a7a24cd` (corte 62)
+RAMA:    main
+UNIDAD:  U31, ajustes del usuario tras ver el corte 62 desplegado: la ventana
+         entera se tiñe con el área elegida (`useFormDialogTone` en
+         `FormDialog`), nombres de área sin mayúsculas (`areaDisplayName`),
+         menos Black y versalitas. Ejercitado en el corte 62: las fechas de
+         vencimiento salen («lun 9 de nov»), así que `coraje_runtime` sí ejecuta
+         `core.add_colombia_business_days`. Evidencia: `tsc`, `lint`, 216/216.
+SIGUE:   U31 parte 2: el detalle del ticket.
+
+--- Corte 62, para contexto:
 CORTE:   04-nov-2026 (corte 62, U31 parte 1: crear un ticket, SIN DESPLEGAR)
 SOBRE:   `2f030e1` (corte 61)
 RAMA:    main
@@ -1748,6 +1760,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `a7a24cd` | **Corte 62.** U31 parte 1: crear un ticket. Desplegado el 04-nov-2026; fechas de vencimiento comprobadas |
 | `2f030e1` | **Corte 61.** U30: semicírculo de todo el alto, corrido a la derecha. Publicado el 04-nov-2026 |
 | `89198e3` | **Corte 60.** U30: semicírculo centrado en la parte visible. Publicado el 04-nov-2026 |
 | `78f5daf` | **Corte 59.** U30: contenido montado sobre la cabecera. Publicado el 04-nov-2026 |

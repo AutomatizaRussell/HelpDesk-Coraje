@@ -345,9 +345,12 @@ asignado a…») aparece en una esquina un momento y se va solo.
 
 Maqueta aprobada por el usuario («T»). `features/tickets/CreateTicketForm.tsx`:
 
-- **Franja del área** arriba del formulario: neutra hasta elegir; después toma el color
-  del área elegida (`data-area`, como el shell) con el semicírculo y el globo, y dice
-  «Llegará a …». Antes de escribir se ve a quién se le escribe.
+- **La ventana entera toma el color del área elegida** (`useFormDialogTone`, corte 63,
+  pedido del usuario al verla): franja superior, encabezado en la tinta con «Llegará a
+  …» bajo el título, y la selección de área y prioridad en su acento. El cuerpo sigue
+  blanco. Los nombres de área se leen sin las mayúsculas del directorio
+  (`areaDisplayName`), y la ventana usa menos Black y menos versalitas (la primera
+  versión, con una franja aparte, se veía sobrecargada).
 - **Áreas como tarjetas** (radios nativos ocultos, con el recuadro y el código del
   área); tipo, categoría y subcategoría en una fila. La redirección conserva el
   desplegable (`areaPicker`).

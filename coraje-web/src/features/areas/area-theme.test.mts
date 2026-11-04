@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { areaShortCode, areaThemeKey } from "./area-theme";
+import { areaDisplayName, areaShortCode, areaThemeKey } from "./area-theme";
+
+test("el nombre del área se lee sin gritar y las siglas se quedan", () => {
+  assert.equal(areaDisplayName("CONTABILIDAD"), "Contabilidad");
+  assert.equal(areaDisplayName("ADMINISTRACIÓN-RECEPCIÓN"), "Administración-recepción");
+  assert.equal(areaDisplayName("REVISORÍA"), "Revisoría");
+  assert.equal(areaDisplayName("BPO"), "BPO");
+});
 
 test("el código corto del área son sus tres primeras letras, sin tildes y en mayúsculas", () => {
   assert.equal(areaShortCode("ADMINISTRACIÓN"), "ADM");

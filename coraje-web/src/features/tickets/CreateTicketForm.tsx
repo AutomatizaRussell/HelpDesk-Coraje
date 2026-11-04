@@ -1,20 +1,17 @@
 "use client";
 
 import { CircleCheck, Copy, Send } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
-import heroGlobe from "../../../public/rb-isotype-white-hero.png";
-import { useFormDialogClose } from "@/design-system/patterns/form-dialog/FormDialog";
+import { useFormDialogClose, useFormDialogTone } from "@/design-system/patterns/form-dialog/FormDialog";
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { buttonRecipe } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { colorTransition, focusRing } from "@/design-system/recipes/interaction";
 import { notice, surface } from "@/design-system/recipes/surface";
-import { helpdeskTheme } from "@/design-system/themes/helpdesk";
 import { cn } from "@/design-system/utilities/cn";
-import { areaThemeKey } from "@/features/areas/area-theme";
+import { areaDisplayName, areaThemeKey } from "@/features/areas/area-theme";
 import { AttachmentPicker } from "@/features/attachments/AttachmentPicker";
 import type { CreationCatalog, FollowCandidate } from "@/server/tickets/ticket-queries";
 
@@ -34,8 +31,8 @@ import { TipoRequerimientoFields } from "./TipoRequerimientoFields";
  * responsable los decide la base (`helpdesk.crear_ticket_interno`), no el
  * formulario.
  *
- * Arriba, una franja que toma el color del área elegida: antes de escribir se
- * ve a quién se le escribe. La prioridad va en tarjetas con el día en que
+ * Al elegir el área, la ventana entera toma su color y dice a quién llegará
+ * (`useFormDialogTone`): antes de escribir se ve a quién se le escribe. La prioridad va en tarjetas con el día en que
  * vencería el ticket, que calcula la misma función que fija el plazo.
  *
  * Si la creación falla, el formulario vuelve con lo que se había elegido y
@@ -70,11 +67,24 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
   // Dentro de la ventana emergente, «Cancelar» la cierra y el diálogo ya es la
   // superficie; en la página completa, «Cancelar» vuelve a la bandeja.
   const closeDialog = useFormDialogClose();
+  // U31: en la ventana, el área elegida tiñe la ventana entera (encabezado,
+  // franja y acento); en la página completa, el propio formulario.
+  const setTone = useFormDialogTone();
+  const chooseArea = (nombre: string | null) => {
+    setAreaName(nombre);
+    setTone?.(nombre ? { area: areaThemeKey(nombre), subtitle: `Llegará a ${areaDisplayName(nombre)}` } : null);
+  };
 
   if (state.status === "created") {
     return (
       <div className={closeDialog ? undefined : surface({ padded: false })}>
-        <CreatedTicket state={state} onCreateAnother={onCreateAnother} />
+        <CreatedTicket
+          state={state}
+          onCreateAnother={() => {
+            setTone?.(null);
+            onCreateAnother();
+          }}
+        />
       </div>
     );
   }
@@ -82,8 +92,12 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
   const describedBy = (field: string) => (failed?.fieldErrors[field] ? `${field}-error` : undefined);
 
   return (
-    <form action={formAction} className={closeDialog ? undefined : surface({ padded: false })} noValidate>
-      <AreaBand areaName={areaName} />
+    <form
+      action={formAction}
+      data-area={!closeDialog && areaName ? areaThemeKey(areaName) : undefined}
+      className={closeDialog ? undefined : surface({ padded: false })}
+      noValidate
+    >
       <div className="space-y-6 p-5 lg:p-7">
         {failed && <p className={notice("danger")} role="alert">{failed.message}</p>}
 
@@ -94,7 +108,7 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
           initialIdTipoReq={failed?.values.idTipoReq}
           error={failed?.fieldErrors.idTipoReq}
           areaPicker="cards"
-          onAreaChange={setAreaName}
+          onAreaChange={chooseArea}
         />
 
         <fieldset>
@@ -105,8 +119,8 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
               <label
                 key={prioridad.nombre}
                 className={cn(
-                  "flex cursor-pointer items-center justify-between gap-3 rounded-card border-2 border-line bg-surface px-4 py-3.5 hover:border-line-strong",
-                  "has-checked:border-heading has-checked:bg-surface-sunken",
+                  "flex cursor-pointer items-center justify-between gap-3 rounded-card border-2 border-line bg-surface px-4 py-3 hover:border-line-strong",
+                  "has-checked:border-accent has-checked:bg-accent-surface",
                   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-solid has-focus-visible:outline-focus",
                   colorTransition,
                 )}
@@ -119,13 +133,12 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
                   className="sr-only"
                 />
                 <span>
-                  <span className="block text-md font-black text-heading">{formatPriority(prioridad.nombre)}</span>
-                  <span className="block text-ink-muted">{prioridad.diasSla} días hábiles</span>
+                  <span className="block font-bold text-heading">{formatPriority(prioridad.nombre)}</span>
+                  <span className="block text-sm text-ink-muted">{prioridad.diasSla} días hábiles</span>
                 </span>
                 {prioridad.vence && (
-                  <span className="text-right">
-                    <span className="block text-xs font-black uppercase tracking-widest text-ink-muted">Vence</span>
-                    <span className="block font-black text-heading">{formatDueDay(prioridad.vence)}</span>
+                  <span className="text-right text-sm text-ink-muted">
+                    Vence <span className="block font-bold text-heading">{formatDueDay(prioridad.vence)}</span>
                   </span>
                 )}
               </label>
@@ -157,7 +170,7 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
           className="rounded-card border border-line px-4 py-3"
           open={Boolean(failed?.values.idObservadores || failed?.fieldErrors.idObservadores)}
         >
-          <summary className={cn("cursor-pointer rounded-control font-black text-heading", focusRing)}>
+          <summary className={cn("cursor-pointer rounded-control font-bold text-heading", focusRing)}>
             Observadores <span className="font-normal text-ink-muted">(opcional)</span>
           </summary>
           <div className="mt-3">
@@ -176,7 +189,7 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-5 py-4 lg:px-7">
-        <p className="mr-auto text-sm text-ink-muted">{areaName ? `Lo recibe ${areaName}.` : "Elige el área que atiende para continuar."}</p>
+        <p className="mr-auto text-sm text-ink-muted">{areaName ? `Lo recibe ${areaDisplayName(areaName)}.` : "Elige el área que atiende para continuar."}</p>
         {closeDialog ? (
           <button type="button" onClick={closeDialog} className={buttonRecipe({ variant: "secondary", size: "lg" })}>Cancelar</button>
         ) : (
@@ -188,38 +201,6 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
         </button>
       </div>
     </form>
-  );
-}
-
-/**
- * La franja de arriba del formulario (U31). Con un área elegida, toma su
- * color —`data-area` redefine el acento, como en el shell (U16)— y dice a
- * quién llegará el ticket, con el motivo del globo de la cabecera de la
- * bandeja. Sin área, es neutra. El globo es decorativo.
- */
-function AreaBand({ areaName }: { areaName: string | null }) {
-  // La franja mide unos 90 px: el globo va al tamaño del disco interior del
-  // estado vacío, que deja aire dentro del semicírculo.
-  const globe = Number.parseFloat(helpdeskTheme.size.emptyMarkInner);
-  return (
-    <div
-      data-area={areaName ? areaThemeKey(areaName) : undefined}
-      className={cn("relative overflow-hidden", areaName ? "bg-accent-surface" : "bg-surface-sunken", colorTransition)}
-    >
-      <div aria-hidden="true" className={cn("h-hero-stripe", areaName ? "bg-accent" : "bg-line", colorTransition)} />
-      {areaName && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 hidden aspect-square translate-x-1/8 animate-hero-mark place-items-center rounded-l-pill bg-accent sm:grid"
-        >
-          <Image src={heroGlobe} alt="" width={globe} height={globe} className="size-empty-mark-inner" />
-        </div>
-      )}
-      <div className="relative px-5 py-4 lg:px-7">
-        <p className="text-xs font-black uppercase tracking-widest text-ink-muted">{areaName ? "Llegará a" : "Antes de escribir"}</p>
-        <p className="mt-0.5 text-xl font-black tracking-tight text-heading">{areaName ?? "Elige a quién le escribes"}</p>
-      </div>
-    </div>
   );
 }
 
@@ -252,7 +233,7 @@ function CreatedTicket({
       <CircleCheck aria-hidden className="mx-auto size-16 animate-rise text-success" strokeWidth={iconStroke.light} />
       <h3 className="mt-4 text-xl font-black tracking-tight text-heading">Ticket creado</h3>
       <p className="mx-auto mt-1.5 max-w-md text-md text-ink-muted">
-        {state.area ? `Llegó a ${state.area}` : "Llegó a su área"}
+        {state.area ? `Llegó a ${areaDisplayName(state.area)}` : "Llegó a su área"}
         {state.responsable ? (
           <>
             {" "}y quedó asignado a <strong className="font-bold text-ink">{state.responsable}</strong>.
@@ -266,7 +247,7 @@ function CreatedTicket({
       {state.codigo && (
         <div className="mt-6 inline-flex animate-rise items-center gap-4 rounded-card border-2 border-accent bg-accent-surface py-3 pr-3 pl-5">
           <span className="text-left">
-            <span className="block text-xs font-black uppercase tracking-widest text-ink-muted">Código</span>
+            <span className="block text-sm text-ink-muted">Código</span>
             <span className="block text-2xl font-black tabular-nums tracking-wide text-heading">{state.codigo}</span>
           </span>
           <button type="button" onClick={copy} className={buttonRecipe({ variant: "primary" })}>

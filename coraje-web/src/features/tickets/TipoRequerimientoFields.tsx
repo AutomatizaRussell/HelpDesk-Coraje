@@ -6,7 +6,7 @@ import { AREA_TILE_CLASS } from "@/design-system/patterns/area/area";
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { colorTransition } from "@/design-system/recipes/interaction";
 import { cn } from "@/design-system/utilities/cn";
-import { areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
+import { areaDisplayName, areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
 import type { CreationCatalog } from "@/server/tickets/ticket-queries";
 
 import { formatCatalogLabel } from "./format";
@@ -56,8 +56,9 @@ function AreaCards({
           <label
             key={area.idArea}
             className={cn(
-              "flex cursor-pointer items-center gap-3 rounded-card border-2 border-line bg-surface p-3 hover:border-line-strong",
-              "has-checked:border-heading has-checked:bg-surface-sunken",
+              "flex cursor-pointer items-center gap-3 rounded-card border-2 border-line bg-surface px-3 py-2.5 hover:border-line-strong",
+              // La elegida toma el acento, que en la ventana ya es el de esa área.
+              "has-checked:border-accent has-checked:bg-accent-surface",
               "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-solid has-focus-visible:outline-focus",
               colorTransition,
             )}
@@ -74,13 +75,13 @@ function AreaCards({
             <span
               aria-hidden="true"
               className={cn(
-                "grid size-10 shrink-0 place-items-center rounded-control text-2xs font-black tracking-wide text-heading",
+                "grid size-8 shrink-0 place-items-center rounded-control text-2xs font-bold tracking-wide text-heading",
                 AREA_TILE_CLASS[areaThemeKey(area.nombre)],
               )}
             >
               {areaShortCode(area.nombre)}
             </span>
-            <span className="min-w-0 font-black text-heading">{area.nombre}</span>
+            <span className="min-w-0 font-bold text-heading">{areaDisplayName(area.nombre)}</span>
           </label>
         ))}
       </div>
