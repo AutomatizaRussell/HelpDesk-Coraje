@@ -465,6 +465,12 @@ secciones (128 px en escritorio) empujaban el contenido.
   Lato Black sale de las vistas (queda Bold); sin versalitas en las cifras de la
   cabecera ni en los títulos de la tabla. El globo de la cabecera baja a 232 px.
 
+Corte 66, en el detalle: la descripción tenía dos lugares (su primera línea como título
+de la cabecera y entera en una tarjeta). Ahora solo va en la cabecera, recortada a tres
+líneas con «Ver la descripción completa» si no cabe (`HeroDescription`). El globo del
+detalle pasa al tamaño del de la bandeja: el más pequeño se leía como descuido, no como
+señal de otra vista.
+
 *No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
 11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 

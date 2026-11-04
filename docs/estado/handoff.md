@@ -1,6 +1,17 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 66, U32: la descripción del ticket solo en la cabecera, SIN DESPLEGAR)
+SOBRE:   `9a16506` (corte 65)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): la tarjeta «Descripción» del detalle
+         se retira; la cabecera lleva la descripción entera recortada a tres líneas
+         con «Ver la descripción completa» si no cabe (`HeroDescription`). El globo
+         del detalle toma el tamaño del de la bandeja y `size.ticketGlobe` se retira.
+         Evidencia: `tsc`, `lint`, pruebas, `next build`. Sin ver en navegador.
+SIGUE:   desplegar y revisar un ticket de descripción larga y uno corto.
+
+--- Corte 65, para contexto:
 CORTE:   04-nov-2026 (corte 65, U32: barra superior mínima y escala más contenida, SIN DESPLEGAR)
 SOBRE:   `a8b3511` (corte 64)
 RAMA:    main
@@ -1785,6 +1796,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `9a16506` | **Corte 65.** U32: barra superior mínima y escala comprimida. Publicado el 04-nov-2026 |
 | `a8b3511` | **Corte 64.** U31: detalle del ticket con cabecera del área e historia por forma. Publicado el 04-nov-2026 |
 | `8bd0b1c` | **Corte 63.** U31: la ventana de crear toma el color del área. Publicado el 04-nov-2026 |
 | `a7a24cd` | **Corte 62.** U31 parte 1: crear un ticket. Desplegado el 04-nov-2026; fechas de vencimiento comprobadas |

@@ -162,9 +162,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       detail: ticket.fechaResolucion ? `Terminado ${formatDateTime(ticket.fechaResolucion)}` : null,
     },
   ];
-  // El título de la cabecera: la primera línea de la descripción, que es lo
-  // que la persona escribió primero. La descripción completa va debajo.
-  const title = ticket.descripcion.split("\n").find((line) => line.trim())?.trim() ?? "";
   const card = cn(surface(), "shadow-raised");
 
   return (
@@ -178,7 +175,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         <TicketHero
           area={areaThemeKey(ticket.area)}
           code={ticket.codigoTicket ?? "Sin código"}
-          title={title}
+          description={ticket.descripcion}
           back={{ href: inboxPath(ticket.modo), label: "Volver a la bandeja" }}
           badges={
             <>
@@ -202,11 +199,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
         <div className="grid items-start gap-5 lg:grid-cols-3">
           <div className="space-y-5 lg:col-span-2">
-            <section className={card} aria-labelledby="descripcion-titulo">
-              <h2 id="descripcion-titulo" className={sectionTitle}>Descripción</h2>
-              <p className="mt-2 whitespace-pre-wrap break-words text-md text-ink">{ticket.descripcion}</p>
-            </section>
-
             {hasComposer && (
               <section className={card} aria-label="Escribir en el ticket">
                 <TicketComposer

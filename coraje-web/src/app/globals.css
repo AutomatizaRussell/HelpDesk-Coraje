@@ -128,7 +128,6 @@
   --hd-size-spark: 10px;
   --hd-size-spark-reach: 160px;
   --hd-size-progress: 4px;
-  --hd-size-ticket-globe: 144px;
   --hd-size-empty-mark: 88px;
   --hd-size-empty-mark-inner: 56px;
   --hd-size-empty-isotype: 32px;
@@ -447,7 +446,6 @@
   --spacing-empty-mark: var(--hd-size-empty-mark);
   --spacing-empty-mark-inner: var(--hd-size-empty-mark-inner);
   --spacing-empty-isotype: var(--hd-size-empty-isotype);
-  --spacing-ticket-globe: var(--hd-size-ticket-globe);
   --container-access-panel: var(--hd-size-access-panel);
   --container-content: var(--hd-size-content-max);
   --container-form: var(--hd-size-form-max);
