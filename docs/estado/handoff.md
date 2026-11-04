@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 58, U30: semicírculo del área y trama más compacta, SIN DESPLEGAR)
+SOBRE:   `00fceb1` (corte 57)
+RAMA:    main
+UNIDAD:  U30, corrección del usuario tras ver el corte 57: con las dos esquinas
+         derechas rellenas, la forma es un semicírculo pegado al borde
+         (`rounded-l-pill` sobre un cuadrado del alto de la cabecera); globo de
+         240 px en su centro; trama del puntero de 90 px de alcance y puntos
+         cada 14 px. Evidencia: `tsc`, `lint`, 213/213, `next build`.
+SIGUE:   desplegar y revisar; decidir con el usuario si la tinta del área se
+         extiende bajo la bandeja (sin decidir).
+
+--- Corte 57, para contexto:
 CORTE:   04-nov-2026 (corte 57, U30: círculo del área apoyado en la esquina, SIN DESPLEGAR)
 SOBRE:   `69f45cc` (corte 56)
 RAMA:    main
@@ -1687,6 +1699,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `00fceb1` | **Corte 57.** U30: círculo del área apoyado en la esquina. Publicado el 04-nov-2026 |
 | `69f45cc` | **Corte 56.** U30: trama que sigue al puntero y sorpresa del globo. Publicado el 04-nov-2026 |
 | `1399881` | **Corte 55.** U30: forma del área hasta la esquina, cabecera más corta. Publicado el 04-nov-2026 |
 | `5c04fe4` | **Corte 54.** U30: cabecera del área en la bandeja. Desplegado el 04-nov-2026; el usuario pidió ajustes al verla |

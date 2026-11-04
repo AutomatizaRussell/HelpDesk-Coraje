@@ -21,8 +21,8 @@ import { HeroPointerGrid } from "./HeroPointerGrid";
  * el color pleno: naranja, Sea Green y Sky Blue no sostienen texto.
  *
  * **La forma con el globo es una pieza aparte a propósito** (`HeroMark`): un
- * círculo del alto de la cabecera, apoyado en la esquina inferior derecha,
- * con el globo en su centro. El manual de marca (§4.1) admite el globo como
+ * semicírculo del alto de la cabecera, pegado al borde derecho, con el globo
+ * en su centro. El manual de marca (§4.1) admite el globo como
  * motivo decorativo, blanco, sin girar ni deformar, y lo ilustra sobre fotos
  * recortadas en círculo y sobre fondos sólidos; sobre una forma de color no
  * lo ilustra. Si el área de mercadeo lo objeta, se cambia `HeroMark` y nada
@@ -45,22 +45,24 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
 };
 
 /**
- * La forma del área con el globo: un **círculo** tan alto como la cabecera
- * (`inset-y-0` + `aspect-square`), que se sale `hero-mark-cut` por el borde
- * derecho, unido a un **cuadrante** que rellena desde su centro la esquina
- * inferior derecha. El contorno es el arco del círculo y, abajo a la derecha,
- * cae recto al borde: el círculo «se apoya» en la esquina (pedido del usuario
- * el 04-nov-2026; la versión anterior, un arco de 220 px con una curva corta
- * abajo, no se leía como círculo). El globo va en el centro del círculo.
+ * La forma del área con el globo: un cuadrado tan alto como la cabecera
+ * (`inset-y-0` + `aspect-square`) pegado al borde derecho, con las dos
+ * esquinas izquierdas redondeadas al máximo. El navegador reduce esos radios
+ * a la mitad del alto, así que el lado izquierdo es un **semicírculo** exacto
+ * y el derecho queda recto contra el borde. El centro del cuadrado es el
+ * centro del semicírculo, y ahí va el globo.
+ *
+ * Cuarta versión, pedida por el usuario el 04-nov-2026 al ver las anteriores
+ * desplegadas: un disco suelto dejaba las esquinas derechas vacías, un arco
+ * amplio no se leía como círculo, y un círculo con solo la esquina inferior
+ * rellena dejaba vacía la superior.
  */
 function HeroMark() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 -right-hero-mark-cut hidden aspect-square animate-hero-mark place-items-center lg:grid"
+      className="pointer-events-none absolute inset-y-0 right-0 hidden aspect-square animate-hero-mark place-items-center rounded-l-pill bg-accent lg:grid"
     >
-      <span className="absolute inset-0 rounded-pill bg-accent" />
-      <span className="absolute right-0 bottom-0 h-1/2 w-1/2 bg-accent" />
       {/* El globo no flota: el flotado es del estado vacío, y repetirlo aquí
           hacía que las dos piezas se leyeran como la misma. Su animación es
           la sorpresa de los cinco clics (`HeroGlobe`). */}
@@ -91,7 +93,7 @@ export function AreaHero({
       {/* Antes que la forma y el texto: la trama queda por debajo de los dos. */}
       <HeroPointerGrid />
       <div className="relative mx-auto max-w-content px-6 pt-9 pb-14 lg:px-10">
-        <div className="max-w-4xl lg:mr-80">
+        <div className="max-w-4xl lg:mr-88">
           <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
             <div className="min-w-0 flex-1 basis-80">
               {areaName && (
@@ -121,7 +123,7 @@ export function AreaHero({
       </div>
       {/* Después del texto a propósito: el bloque del texto ocupa todo el
           ancho y, pintado encima, se quedaría con los clics del globo. La
-          forma no tapa nada: el texto le deja libre su espacio (`lg:mr-80`). */}
+          forma no tapa nada: el texto le deja libre su espacio (`lg:mr-88`). */}
       <HeroMark />
     </section>
   );

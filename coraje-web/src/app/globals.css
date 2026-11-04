@@ -120,12 +120,11 @@
   --hd-size-notice-panel: 384px;
   --hd-size-toast: 384px;
   --hd-size-preview: 75vh;
-  --hd-size-hero-mark-cut: 40px;
-  --hd-size-hero-globe: 208px;
+  --hd-size-hero-globe: 240px;
   --hd-size-hero-stripe: 6px;
-  --hd-size-pointer-grid-dot: 1.8px;
-  --hd-size-pointer-grid-gap: 20px;
-  --hd-size-pointer-grid-reach: 150px;
+  --hd-size-pointer-grid-dot: 1.5px;
+  --hd-size-pointer-grid-gap: 14px;
+  --hd-size-pointer-grid-reach: 90px;
   --hd-size-spark: 10px;
   --hd-size-spark-reach: 160px;
   --hd-size-empty-mark: 88px;
@@ -441,7 +440,6 @@
   --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
   --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
   --spacing-preview: var(--hd-size-preview);
-  --spacing-hero-mark-cut: var(--hd-size-hero-mark-cut);
   --spacing-hero-globe: var(--hd-size-hero-globe);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
   --spacing-empty-mark: var(--hd-size-empty-mark);

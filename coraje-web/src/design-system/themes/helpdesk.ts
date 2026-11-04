@@ -172,22 +172,22 @@ export const helpdeskTheme = {
     // Alto del visor de adjuntos (U29): casi toda la ventana, con margen para
     // el título de la ventana y el botón de descargar.
     preview: "75vh",
-    // Cabecera del área (U30): un círculo del color del área tan alto como la
-    // cabecera, con la esquina inferior derecha rellena, y el globo blanco en
-    // el centro del círculo. `heroMarkCut`: cuánto se sale el círculo por el
-    // borde derecho. `heroGlobe` fija el ancho del globo y, con él, el del
+    // Cabecera del área (U30): la forma del color del área es un semicírculo
+    // tan alto como la cabecera, pegado al borde derecho, con el globo blanco
+    // en su centro. `heroGlobe` fija el ancho del globo y, con él, el del
     // derivado `public/rb-isotype-white-hero.png` (512 px, entre el doble y el
     // triple); lo comprueba `brand-assets.test.mts`. `heroStripe`: la franja
     // superior del color pleno.
-    heroMarkCut: "40px",
-    heroGlobe: "208px",
+    heroGlobe: "240px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
     // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un
-    // círculo de `pointerGridReach` alrededor del puntero.
-    pointerGridDot: "1.8px",
-    pointerGridGap: "20px",
-    pointerGridReach: "150px",
+    // círculo de `pointerGridReach` alrededor del puntero. Compactada el
+    // 04-nov-2026 tras verla desplegada (antes 150 px de alcance y 20 px entre
+    // puntos: se leía como una mancha grande).
+    pointerGridDot: "1.5px",
+    pointerGridGap: "14px",
+    pointerGridReach: "90px",
     // Chispas de la sorpresa del globo: su tamaño y hasta dónde llegan.
     spark: "10px",
     sparkReach: "160px",
