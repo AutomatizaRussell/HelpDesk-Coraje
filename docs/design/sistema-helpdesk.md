@@ -504,7 +504,17 @@ cabecera en el cuerpo del ticket, y una ventana modal habría tapado el cuadro d
 escritura. La cabecera vuelve a medir siempre lo mismo.
 
 Corte 69: el aviso a todo lo ancho «Este ticket viene de PowerApps…» se sustituye por la
-etiqueta «De PowerApps · solo consulta» junto al estado, en la cabecera.
+etiqueta «De PowerApps» junto al estado, en la cabecera (corte 71: sin «· solo
+consulta», que ya se ve en que no hay cuadro de escritura ni acciones).
+
+Corte 71: la tira de datos del detalle es una fila desde `lg` (antes desde `xl`: en
+portátiles de 1280 px caía a dos filas sin divisores) y el anillo va centrado en
+vertical. La etiqueta del área se mantiene: el color no identifica el área, porque
+las áreas sin color propio comparten el de «general».
+
+Corte 71, en la bandeja: la descripción de la columna «Ticket» se limita con un bloque
+(`max-w-sm`) y no con la celda, cuyo ancho máximo la tabla ignoraba; por eso la tabla se
+cortaba a la derecha. Solicitante, responsable y área en tipo oración.
 
 Corte 70, maquetas «V-3», «X-B» y «W-9» del lienzo, elegidas por el usuario:
 - **Anillo de plazo** (`patterns/area-hero/PlazoRing.tsx`) en lugar del semicírculo en la

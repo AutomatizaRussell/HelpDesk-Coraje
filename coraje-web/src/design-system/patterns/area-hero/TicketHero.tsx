@@ -22,7 +22,10 @@ import { PlazoRing } from "./PlazoRing";
  *   blanco y no sobre la tinta, para que nombres y fechas contrasten; las
  *   columnas se reparten el ancho según lo que llevan (`weight`), sin hueco a
  *   la derecha. El solicitante va primero y con sus iniciales: es el único
- *   dato que es una persona. En pantallas estrechas la tira pasa a rejilla.
+ *   dato que es una persona. Desde `lg` es siempre una fila: con `xl`, en
+ *   portátiles de 1280 px caía a una rejilla de dos filas sin divisores y
+ *   la cabecera crecía (corte 71). Por debajo, sin anillo, es rejilla.
+ *   El anillo va centrado en vertical.
  *
  * El contenido se monta sobre su borde inferior como en la bandeja (`pb-27`
  * aquí, `-mt-15` en el shell). El código no es un `h1`: el título de la vista
@@ -40,7 +43,7 @@ export type TicketHeroFact = {
   weight?: 1 | 2 | 3;
 };
 
-const WEIGHT_CLASS = { 1: "xl:grow", 2: "xl:grow-2", 3: "xl:grow-3" } as const;
+const WEIGHT_CLASS = { 1: "lg:grow", 2: "lg:grow-2", 3: "lg:grow-3" } as const;
 
 export function TicketHero({
   area,
@@ -75,12 +78,12 @@ export function TicketHero({
             <p className="text-2xl font-bold tabular-nums tracking-tight text-heading">{code}</p>
             {badges}
           </div>
-          <dl className="mt-5 grid grid-cols-2 gap-4 rounded-card bg-surface px-5 py-4 shadow-raised sm:grid-cols-3 xl:flex xl:gap-0">
+          <dl className="mt-5 grid grid-cols-2 gap-4 rounded-card bg-surface px-5 py-4 shadow-raised sm:grid-cols-3 lg:flex lg:gap-0">
             {facts.map((fact) => (
               <div
                 key={fact.label}
                 className={cn(
-                  "flex min-w-0 items-start gap-2.5 xl:basis-0 xl:px-4 xl:first:pl-0 xl:last:pr-0 xl:not-first:border-l xl:not-first:border-line",
+                  "flex min-w-0 items-start gap-2.5 lg:basis-0 lg:px-4 lg:first:pl-0 lg:last:pr-0 lg:not-first:border-l lg:not-first:border-line",
                   WEIGHT_CLASS[fact.weight ?? 1],
                 )}
               >
@@ -105,7 +108,7 @@ export function TicketHero({
             ))}
           </dl>
         </div>
-        <div className="hidden pt-2 lg:block">
+        <div className="hidden self-center lg:block">
           <PlazoRing fraction={plazo.fraction} label={plazo.label} />
         </div>
       </div>

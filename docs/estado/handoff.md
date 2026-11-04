@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 71, U32: tira de datos en una fila desde lg, SIN DESPLEGAR)
+SOBRE:   `419dfa8` (corte 70)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): la tira de la cabecera del detalle
+         pasa a fila desde `lg` (con `xl` caía a dos filas en 1280 px), el anillo se
+         centra en vertical y la etiqueta de PowerApps queda en «De PowerApps». En la
+         bandeja, la tabla deja de cortarse (descripción limitada por bloque) y
+         nombres y áreas van en tipo oración.
+         Evidencia: `tsc`, `lint`, pruebas, `next build`. Sin ver en navegador.
+SIGUE:   desplegar y revisar la cabecera del detalle a 1280 px y más ancho.
+
+--- Corte 70, para contexto:
 CORTE:   04-nov-2026 (corte 70, U32: anillo de plazo y tira de datos en el detalle, SIN DESPLEGAR)
 SOBRE:   `98ccfba` (corte 69)
 RAMA:    main

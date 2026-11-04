@@ -16,7 +16,7 @@ import { badge } from "@/design-system/recipes/badge";
 import { notice } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaDisplayName, areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
-import { formatCatalogLabel, formatDate, formatDateTime, personInitials } from "@/features/tickets/format";
+import { formatCatalogLabel, formatDate, formatDateTime, personDisplayName, personInitials } from "@/features/tickets/format";
 import { inboxSummary } from "@/features/tickets/inbox-summary";
 import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
@@ -294,7 +294,7 @@ export default async function TicketsPage({
                           colorTransition,
                         )}
                       >
-                        <td className="max-w-md px-6 py-3.5">
+                        <td className="px-6 py-3.5">
                           <Link
                             href={view === "redirigir" ? `/redirigir/${row.idTicket}` : `/tickets/${row.idTicket}`}
                             className={cn(
@@ -304,8 +304,11 @@ export default async function TicketsPage({
                           >
                             {row.codigoTicket ?? "Sin código"}
                           </Link>
-                          <p className="mt-0.5 truncate text-sm text-ink-muted">{row.descripcion}</p>
-                          {!row.operable && <p className="mt-0.5 text-xs text-ink-muted">De PowerApps · solo consulta</p>}
+                          {/* Corte 71: el ancho máximo de una celda no limita la tabla; el de un
+                              bloque dentro de ella sí. Sin esto, la descripción
+                              ensanchaba la columna y la tabla se cortaba. */}
+                          <p className="mt-0.5 max-w-sm truncate text-sm text-ink-muted">{row.descripcion}</p>
+                          {!row.operable && <p className="mt-0.5 text-xs text-ink-muted">De PowerApps</p>}
                           {row.validacionParaMi && <p className="mt-1"><span className={badge("info")}>Te piden aprobar</span></p>}
                         </td>
                         <td className="px-3 py-3.5">
@@ -328,7 +331,7 @@ export default async function TicketsPage({
                             <AreaTile
                               area={areaThemeKey(row.area)}
                               code={areaShortCode(row.area)}
-                              name={row.area}
+                              name={areaDisplayName(row.area)}
                               detail={row.tipo ? formatCatalogLabel(row.tipo) : null}
                             />
                           ) : (
@@ -338,10 +341,10 @@ export default async function TicketsPage({
                             </>
                           )}
                         </td>
-                        <td className="px-3 py-3.5">{row.solicitante ?? "—"}</td>
+                        <td className="px-3 py-3.5">{row.solicitante ? personDisplayName(row.solicitante) : "—"}</td>
                         <td className="px-3 py-3.5">
                           <PersonChip
-                            name={row.responsable}
+                            name={row.responsable ? personDisplayName(row.responsable) : null}
                             initials={row.responsable ? personInitials(row.responsable) : ""}
                             emptyLabel="Sin responsable"
                           />

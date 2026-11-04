@@ -247,12 +247,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <TicketStateBadge state={ticket.estado} />
               {ticket.sla && ticket.sla !== "EN_PLAZO" && <SlaBadge status={ticket.sla} />}
               {/* Corte 69: antes, un aviso a todo lo ancho sobre el contenido.
-                  La etiqueta dice lo mismo —de dónde viene y que aquí no se
-                  gestiona— junto al estado, que es donde se mira. */}
+                  La etiqueta dice de dónde viene, junto al estado; que aquí no
+                  se gestiona ya se ve: no hay cuadro de escritura ni acciones. */}
               {!ticket.operable && (
                 <span className={badge("neutral")}>
                   <History aria-hidden className="size-3" strokeWidth={iconStroke.regular} />
-                  De PowerApps · solo consulta
+                  De PowerApps
                 </span>
               )}
             </>
