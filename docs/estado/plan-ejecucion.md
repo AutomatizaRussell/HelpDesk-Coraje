@@ -732,6 +732,17 @@ maqueta y aprobado por el usuario «tal cual» el 04-nov-2026 (tableros T y U).
 **Condición de cierre:** el usuario crea un ticket y lo atiende en el despliegue con
 las dos partes, y las aprueba o pide ajustes.
 
+### U32 · Barra superior mínima y escala contenida — **construida el 04-nov-2026 (corte 65)**
+
+Pedida por el usuario tras ver U30 y U31 desplegadas: al 100 % todo se veía como al
+125 %, y barra y fila de secciones empujaban el contenido hacia abajo. Las secciones
+pasan a la barra, la barra de Conecta adelgaza a «HelpDesk», campana y avatar, el
+interruptor de modo va junto a las vistas de la bandeja y la escala de títulos y cifras
+se comprime (`design/sistema-helpdesk.md` §5.7).
+
+**Condición de cierre:** el usuario revisa bandeja, detalle y crear al 100 % y los
+aprueba o pide ajustes.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

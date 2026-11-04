@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import { StandaloneShell } from "@/design-system/patterns/app-shell/StandaloneShell";
 import { ConectaShell } from "@/design-system/patterns/conecta-shell/ConectaShell";
-import { ModeSwitch } from "@/design-system/patterns/mode-switch/ModeSwitch";
 import { ToastProvider } from "@/design-system/patterns/toast/Toaster";
 import type { EmployeeSessionContext } from "@/server/auth/employee-session";
 import { readEntryContext } from "@/server/auth/entry-cookie";
@@ -11,8 +10,8 @@ import { resolveGrants } from "@/server/authorization/authorizer";
 import { AVISO_ACTIONS, SALUD_ACTIONS } from "@/server/authorization/catalog";
 import { countBellNotices } from "@/server/notifications/ticket-notices";
 import { getPersonAreaName } from "@/server/personal/person-area";
-import { countModePending, getModeAccess } from "@/server/tickets/mode-access";
-import { TICKET_MODES, TICKET_MODE_LABEL, inboxPath, type TicketMode } from "@/server/tickets/ticket-mode";
+import { getModeAccess } from "@/server/tickets/mode-access";
+import type { TicketMode } from "@/server/tickets/ticket-mode";
 import { areaThemeKey } from "@/features/areas/area-theme";
 import { NoticeBellMenu } from "@/features/avisos/NoticeBellMenu";
 // SUPLANTACIÓN — bloque temporal para pruebas.
@@ -43,9 +42,7 @@ import { helpdeskSections } from "./helpdesk-sections";
  *
  * `mode` (U17) lo decide la vista: la bandeja, por la URL; el detalle, por el
  * ticket; los accesos de clientes son siempre Externo. El interruptor de modo
- * aparece solo para quien tiene trabajo con clientes (`getModeAccess`), y
- * lleva el número de lo que espera en el otro modo: un conteo más, sobre lo
- * asignado a la persona.
+ * vive en la bandeja desde U32 (`InboxModeSwitch`).
  */
 export async function AppFrame({
   employee,
@@ -77,28 +74,13 @@ export async function AppFrame({
   ]);
   // U15: el número de la campana, dos conteos sobre índices parciales. Va
   // después de los permisos porque sin `aviso.consultar` no hay campana.
-  // U17: el número del interruptor es lo que espera en el otro modo; sin
-  // acceso a Externo no hay interruptor ni conteo.
-  const otherMode: TicketMode = mode === "externo" ? "interno" : "externo";
-  const [bellCount, otherPending] = await Promise.all([
-    grants.has(AVISO_ACTIONS.consultar) ? countBellNotices(employee.idPersonal) : null,
-    modeAccess.externo ? countModePending(employee.idPersonal, otherMode) : null,
-  ]);
+  // El interruptor de modo ya no es del marco (U32): va en la bandeja
+  // (`InboxModeSwitch`), que es donde cambia algo.
+  const bellCount = grants.has(AVISO_ACTIONS.consultar) ? await countBellNotices(employee.idPersonal) : null;
   // La campana es la misma en los dos modos; «Ver todos» deja en el modo actual.
   const noticeBell = (anchor: "topbar" | "appBar") =>
     bellCount === null ? undefined : (
       <NoticeBellMenu count={bellCount} anchor={anchor} allHref={mode === "externo" ? "/avisos?modo=externo" : "/avisos"} />
-    );
-  const modeSwitch =
-    otherPending === null ? undefined : (
-      <ModeSwitch
-        items={TICKET_MODES.map((item) => ({
-          label: TICKET_MODE_LABEL[item],
-          href: inboxPath(item),
-          current: item === mode,
-          pending: item === otherMode ? otherPending : 0,
-        }))}
-      />
     );
 
   const areaTheme = areaThemeKey(areaName);
@@ -135,7 +117,6 @@ export async function AppFrame({
         areaTheme={areaTheme}
         mode={mode}
         moduleName="HelpDesk"
-        modeSwitch={modeSwitch}
         noticeBell={noticeBell("topbar")}
         hero={heroNode}
         signOutAction={signOutAction}
@@ -152,7 +133,6 @@ export async function AppFrame({
       moduleNav={sections}
       areaTheme={areaTheme}
       mode={mode}
-      modeSwitch={modeSwitch}
       noticeBell={noticeBell("appBar")}
       hero={heroNode}
       signOutAction={signOutAction}

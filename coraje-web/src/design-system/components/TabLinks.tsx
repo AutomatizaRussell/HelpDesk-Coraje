@@ -11,7 +11,7 @@ import { cn } from "../utilities/cn";
  * competiría con la cabecera del área.
  *
  * El subrayado es el acento del área, que es marca y no texto (Sky Blue no
- * llega a 3:1 sobre blanco): por eso la pestaña actual cambia además a Black
+ * llega a 3:1 sobre blanco): por eso la pestaña actual cambia además a Bold
  * y a navy. El foco va hacia dentro porque la fila se desplaza en móvil y un
  * anillo hacia fuera quedaría recortado.
  */
@@ -27,10 +27,10 @@ export function TabLinks({ label, items }: { label: string; items: readonly TabL
               href={item.href}
               aria-current={item.current ? "page" : undefined}
               className={cn(
-                "whitespace-nowrap border-b-3 pt-4.5 pb-3.5 text-md",
+                "whitespace-nowrap border-b-2 pt-3.5 pb-3 text-base",
                 colorTransition,
                 focusRingInset,
-                item.current ? "border-accent font-black text-heading" : "border-transparent font-bold text-ink-muted hover:text-heading",
+                item.current ? "border-accent font-bold text-heading" : "border-transparent text-ink-muted hover:text-heading",
               )}
             >
               {item.label}

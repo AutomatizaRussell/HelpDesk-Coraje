@@ -28,11 +28,12 @@ import {
  *
  * - **Columna replegada** (≥ lg): navy, con el isotipo blanco arriba y los
  *   iconos del menú de Conecta, como en Conecta.
- * - **Topbar**: blanca (navy en modo Externo, U17) y sin franja, como la de Conecta: hamburguesa,
- *   antetítulo y título, rol y nombre, y el avatar con su menú. Sin logotipo:
- *   la marca va en el sidebar. Antes del separador, la campana de avisos de
- *   HelpDesk (U15): es de este módulo, no parte de la réplica de Conecta.
- * - **Navegación de HelpDesk**: fila de pestañas bajo la topbar (`ModuleNav`).
+ * - **Topbar**: blanca (navy en modo Externo, U17) y sin franja. Desde U32
+ *   ya no replica la de Conecta: hamburguesa, «HelpDesk», las secciones del
+ *   módulo si hay más de una (`ModuleNav`), la campana de avisos (U15) y el
+ *   avatar con su menú, que lleva el nombre. El título de la vista y el rol
+ *   repetían lo que la cabecera de cada vista ya dice. Sin logotipo: la marca
+ *   va en la columna.
  * - **Sidebar desplegado**: en Conecta, la hamburguesa ensancha la columna y
  *   empuja el contenido. Aquí es un `<dialog>` modal que se **superpone** sin
  *   desplazar nada, para que la bandeja no cambie de ancho. El diálogo nativo
@@ -44,7 +45,11 @@ import {
  * propios de HelpDesk. **Solo deciden qué se muestra**, nunca un permiso.
  */
 export type ConectaShellProps = {
-  /** Título de la vista, en la topbar. */
+  /**
+   * Título de la vista: encabeza el contenido o, con cabecera, queda para
+   * lector de pantalla (la cabecera ya lo dice a la vista). Desde U32 no va
+   * en la topbar, que solo nombra el módulo.
+   */
   title: string;
   displayName: string;
   /** Área o cargo; `null` pinta el mismo texto por defecto que Conecta. */
@@ -58,8 +63,6 @@ export type ConectaShellProps = {
   mode: ColorMode;
   /** Antetítulo de la topbar: el nombre del módulo, igual en los dos modos. */
   moduleName: string;
-  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Externo. */
-  modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
   /**
@@ -83,7 +86,6 @@ export function ConectaShell({
   areaTheme,
   mode,
   moduleName,
-  modeSwitch,
   hero,
   children,
 }: ConectaShellProps) {
@@ -160,21 +162,12 @@ export function ConectaShell({
                 >
                   <Menu aria-hidden="true" className="size-5" strokeWidth={iconStroke.regular} />
                 </button>
-                <div className="min-w-0">
-                  <p className="hidden text-2xs font-black uppercase tracking-widest text-shell-topbar-muted sm:block">
-                    {moduleName}
-                  </p>
-                  <h1 className="truncate text-md font-black tracking-tight text-shell-topbar-ink lg:text-lg">{title}</h1>
-                </div>
+                <p className="hidden text-base font-bold text-shell-topbar-ink sm:block">{moduleName}</p>
+                <ModuleNav items={moduleNav} className="sm:ml-4 sm:border-l sm:border-shell-topbar-line sm:pl-5" />
               </div>
 
-              <div className="flex shrink-0 items-center gap-3 lg:gap-5">
+              <div className="flex shrink-0 items-center gap-3">
                 {noticeBell}
-                <span aria-hidden="true" className="hidden h-10 w-px bg-shell-topbar-line sm:block" />
-                <div className="hidden text-right sm:block">
-                  <p className="max-w-48 truncate text-base font-bold text-shell-topbar-ink">{CONECTA_ROLE_LABEL}</p>
-                  <p className="mt-0.5 max-w-56 truncate text-xs text-shell-topbar-muted">{displayName}</p>
-                </div>
                 <UserMenu
                   displayName={displayName}
                   roleLabel={CONECTA_ROLE_LABEL}
@@ -184,9 +177,9 @@ export function ConectaShell({
               </div>
             </div>
           </div>
-          <ModuleNav items={moduleNav} trailing={modeSwitch} />
         </header>
 
+        {hero && <h1 className="sr-only">{title}</h1>}
         {hero}
         {/* Con cabecera, el contenido sube 60 px y se monta sobre su borde (la
             cabecera deja ese tramo en `pb-29`); `relative` lo pinta encima. */}
@@ -194,6 +187,7 @@ export function ConectaShell({
           id="contenido"
           className={cn("mx-auto w-full max-w-content flex-1 px-6 lg:px-10", hero ? "relative -mt-15 pb-8 lg:pb-10" : "py-8 lg:py-10")}
         >
+          {!hero && <h1 className="mb-6 text-xl font-bold tracking-tight text-heading">{title}</h1>}
           {children}
         </main>
       </div>

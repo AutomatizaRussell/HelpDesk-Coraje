@@ -125,7 +125,7 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
             )}
           >
             <div className="min-w-0">
-              <h2 id={titleId} className="text-lg font-black tracking-tight text-heading">
+              <h2 id={titleId} className="text-lg font-bold tracking-tight text-heading">
                 {title}
               </h2>
               {tone && <p className="text-base text-heading">{tone.subtitle}</p>}

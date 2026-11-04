@@ -23,7 +23,7 @@ export function EmptyState({ title, children }: { title: string; children: React
           <Image src={isotype} alt="" width={size} height={size} className="size-empty-isotype" />
         </span>
       </span>
-      <h2 className="mt-4 text-md font-black text-heading">{title}</h2>
+      <h2 className="mt-4 text-md font-bold text-heading">{title}</h2>
       <p className="mx-auto mt-1 max-w-md text-base text-ink-muted">{children}</p>
     </div>
   );

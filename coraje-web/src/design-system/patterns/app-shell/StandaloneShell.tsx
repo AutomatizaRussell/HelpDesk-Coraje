@@ -15,8 +15,8 @@ import { UserMenu } from "../user-menu/UserMenu";
  * pedirían otro ingreso.
  *
  * Diseño propio y mínimo: el logotipo oficial con su espacio libre (es la
- * única marca en pantalla), la persona con su menú y la misma navegación de
- * HelpDesk que en el modo Conecta, para que la aplicación se use igual en los
+ * única marca en pantalla), las secciones de HelpDesk en la misma barra
+ * (U32), la campana y el avatar con su menú, como en el modo Conecta, para que la aplicación se use igual en los
  * dos.
  */
 export type StandaloneShellProps = {
@@ -29,8 +29,6 @@ export type StandaloneShellProps = {
   areaTheme: AreaThemeKey;
   /** Modo (U17): `externo` pinta todo el shell en navy. */
   mode: ColorMode;
-  /** El interruptor de modo, al final de las pestañas; se omite si la persona no tiene Externo. */
-  modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
   /**
@@ -52,7 +50,6 @@ export function StandaloneShell({
   noticeBell,
   areaTheme,
   mode,
-  modeSwitch,
   hero,
   children,
 }: StandaloneShellProps) {
@@ -61,15 +58,16 @@ export function StandaloneShell({
       <header className="sticky top-0 z-(--hd-layer-topbar)">
         <div className={cn("border-b border-shell-topbar-line bg-shell-topbar-surface", modeTransition)}>
           <div className="flex h-app-bar items-center justify-between gap-4 pr-4 lg:h-app-bar-wide lg:pr-8">
-            <BrandLogo placement={mode === "externo" ? "appBarInverse" : "appBar"} />
+            <div className="flex min-w-0 items-center self-stretch">
+              <BrandLogo placement={mode === "externo" ? "appBarInverse" : "appBar"} />
+              <ModuleNav items={moduleNav} className="border-l border-shell-topbar-line pl-5" />
+            </div>
             <div className="flex min-w-0 items-center gap-3">
-              <p className="hidden max-w-56 truncate text-base font-bold text-shell-topbar-ink sm:block">{displayName}</p>
               {noticeBell}
               <UserMenu displayName={displayName} anchor="appBar" signOutAction={signOutAction} />
             </div>
           </div>
         </div>
-        <ModuleNav items={moduleNav} trailing={modeSwitch} />
       </header>
 
       {hero && <h1 className="sr-only">{title}</h1>}
@@ -80,7 +78,7 @@ export function StandaloneShell({
         id="contenido"
         className={cn("mx-auto w-full max-w-content flex-1 px-6 lg:px-10", hero ? "relative -mt-15 pb-8 lg:pb-10" : "py-8 lg:py-10")}
       >
-        {!hero && <h1 className="mb-6 text-xl font-black tracking-tight text-heading">{title}</h1>}
+        {!hero && <h1 className="mb-6 text-xl font-bold tracking-tight text-heading">{title}</h1>}
         {children}
       </main>
     </div>

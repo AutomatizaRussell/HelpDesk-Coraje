@@ -95,8 +95,8 @@
   --hd-motion-celebrate: 1100ms;
   --hd-motion-hop-height: 34px;
 
-  --hd-size-topbar: 64px;
-  --hd-size-topbar-wide: 84px;
+  --hd-size-topbar: 56px;
+  --hd-size-topbar-wide: 60px;
   --hd-size-app-bar: 72px;
   --hd-size-app-bar-wide: 84px;
   --hd-size-logo-app-bar: 132px;
@@ -120,7 +120,7 @@
   --hd-size-notice-panel: 384px;
   --hd-size-toast: 384px;
   --hd-size-preview: 75vh;
-  --hd-size-hero-globe: 272px;
+  --hd-size-hero-globe: 232px;
   --hd-size-hero-stripe: 6px;
   --hd-size-pointer-grid-dot: 1.5px;
   --hd-size-pointer-grid-gap: 14px;
@@ -208,16 +208,16 @@
   --hd-type-sm-line-height: 1.125rem;
   --hd-type-base-size: 0.875rem;
   --hd-type-base-line-height: 1.25rem;
-  --hd-type-md-size: 1rem;
-  --hd-type-md-line-height: 1.5rem;
-  --hd-type-lg-size: 1.25rem;
-  --hd-type-lg-line-height: 1.75rem;
-  --hd-type-xl-size: 1.5rem;
-  --hd-type-xl-line-height: 2rem;
-  --hd-type-2xl-size: 2.125rem;
-  --hd-type-2xl-line-height: 2.5rem;
-  --hd-type-3xl-size: 2.5rem;
-  --hd-type-3xl-line-height: 3rem;
+  --hd-type-md-size: 0.9375rem;
+  --hd-type-md-line-height: 1.375rem;
+  --hd-type-lg-size: 1.0625rem;
+  --hd-type-lg-line-height: 1.5rem;
+  --hd-type-xl-size: 1.25rem;
+  --hd-type-xl-line-height: 1.75rem;
+  --hd-type-2xl-size: 1.625rem;
+  --hd-type-2xl-line-height: 2rem;
+  --hd-type-3xl-size: 1.875rem;
+  --hd-type-3xl-line-height: 2.25rem;
 }
 
 /* Acento por área de quien entra (U16). El shell pone `data-area` en su raíz

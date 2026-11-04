@@ -99,32 +99,32 @@ export function AreaHero({
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
       {/* Antes que la forma y el texto: la trama queda por debajo de los dos. */}
       <HeroPointerGrid />
-      {/* `pb-29` = 56 px de aire bajo las cifras + los 60 px sobre los que se
+      {/* `pb-27` = 48 px de aire bajo las cifras + los 60 px sobre los que se
           monta el contenido (`-mt-15` en los shells): la tinta sigue por
           detrás de la primera tarjeta y el paso al lienzo queda oculto bajo su
           borde, en lugar de cortar la vista en dos. */}
-      <div className="relative mx-auto max-w-content px-6 pt-9 pb-29 lg:px-10">
+      <div className="relative mx-auto max-w-content px-6 pt-7 pb-27 lg:px-10">
         <div className="max-w-4xl lg:mr-96">
           <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
             <div className="min-w-0 flex-1 basis-80">
               {areaName && (
-                <p className="inline-flex h-6 items-center rounded-pill bg-accent px-2.5 text-xs font-black uppercase tracking-widest text-on-accent">
+                <p className="inline-flex h-6 items-center rounded-pill bg-accent px-2.5 text-xs font-bold text-on-accent">
                   {areaName}
                 </p>
               )}
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-heading">{title}</h2>
-              <p className="mt-2 text-md text-heading">{summary}</p>
+              <h2 className="mt-2.5 text-3xl font-bold tracking-tight text-heading">{title}</h2>
+              <p className="mt-1.5 text-md text-heading">{summary}</p>
             </div>
             {action}
           </div>
-          <dl className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {stats.map((stat) => (
-              <div key={stat.label} className="rounded-card bg-surface/75 px-3.5 py-3">
-                <dt className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-ink-muted">
+              <div key={stat.label} className="rounded-card bg-surface/75 px-3.5 py-2.5">
+                <dt className="flex items-center gap-2 text-sm text-ink-muted">
                   <span aria-hidden="true" className={cn("size-2 shrink-0", MARKER_CLASS[stat.tone])} />
                   {stat.label}
                 </dt>
-                <dd className={cn("mt-1 text-2xl font-black tabular-nums", stat.tone === "danger" && stat.value > 0 ? "text-danger" : "text-heading")}>
+                <dd className={cn("mt-0.5 text-2xl font-bold tabular-nums", stat.tone === "danger" && stat.value > 0 ? "text-danger" : "text-heading")}>
                   <CountUp value={stat.value} />
                 </dd>
               </div>

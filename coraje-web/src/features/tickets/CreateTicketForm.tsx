@@ -231,7 +231,7 @@ function CreatedTicket({
   return (
     <div data-area={state.area ? areaThemeKey(state.area) : undefined} className="px-6 py-10 text-center">
       <CircleCheck aria-hidden className="mx-auto size-16 animate-rise text-success" strokeWidth={iconStroke.light} />
-      <h3 className="mt-4 text-xl font-black tracking-tight text-heading">Ticket creado</h3>
+      <h3 className="mt-4 text-xl font-bold tracking-tight text-heading">Ticket creado</h3>
       <p className="mx-auto mt-1.5 max-w-md text-md text-ink-muted">
         {state.area ? `Llegó a ${areaDisplayName(state.area)}` : "Llegó a su área"}
         {state.responsable ? (
@@ -248,7 +248,7 @@ function CreatedTicket({
         <div className="mt-6 inline-flex animate-rise items-center gap-4 rounded-card border-2 border-accent bg-accent-surface py-3 pr-3 pl-5">
           <span className="text-left">
             <span className="block text-sm text-ink-muted">Código</span>
-            <span className="block text-2xl font-black tabular-nums tracking-wide text-heading">{state.codigo}</span>
+            <span className="block text-2xl font-bold tabular-nums tracking-wide text-heading">{state.codigo}</span>
           </span>
           <button type="button" onClick={copy} className={buttonRecipe({ variant: "primary" })}>
             <Copy aria-hidden className="size-4" strokeWidth={iconStroke.regular} />

@@ -75,12 +75,11 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 >   con el logotipo azul y su espacio libre (72 px, 84 en escritorio), y el avatar con su
 >   menú. Nada de Conecta.
 > - **Navegación propia de HelpDesk** (`patterns/module-nav/`), igual en los dos modos:
->   fila de pestañas bajo la barra superior. Horizontal y no un segundo sidebar, para no
->   quitarle 250-300 px a la bandeja. La pestaña activa lleva el subrayado del acento;
->   hoy solo existe «Inicio» (`features/shell/helpdesk-sections.ts`).
+>   desde U32, **dentro de la barra superior** y solo si hay más de una sección
+>   (`features/shell/helpdesk-sections.ts`). Horizontal y no un segundo sidebar, para no
+>   quitarle 250-300 px a la bandeja. La activa lleva el subrayado del acento.
 >
-> `ABIERTO` **Retirar la topbar** en modo Conecta. Queda para después. Dato para
-> decidirlo: topbar y pestañas ocupan 108 px en móvil y 128 en escritorio.
+> `DECISIÓN` (04-nov-2026, U32) La topbar de Conecta **se conserva, mínima**: §5.7.
 >
 > **Fuente de la réplica:** RBGCT-REACT, verificada el 24-sep-2026 con acceso de
 > lectura. `main`, `stiben` y `lulox` apuntan las tres a `cb06681` (21-sep-2026), y el
@@ -447,6 +446,27 @@ cuadro al final; se conserva el orden vigente (cuadro arriba, lo más reciente p
 porque en un ticket largo el cuadro quedaría a varias pantallas de distancia. Y en la
 maqueta «Enviar comentario» parecía del equipo al solicitante; en el código es el
 solicitante escribiéndole al equipo, y su aviso lo dice así.
+
+### 5.7 `DECISIÓN` (04-nov-2026, U32) Barra mínima y escala contenida
+
+Pedida por el usuario: al 100 % la pantalla se leía como al 125 %, y barra más fila de
+secciones (128 px en escritorio) empujaban el contenido.
+
+- **Sin fila de secciones.** Las secciones van en la barra y solo si hay más de una: la
+  mayoría de las personas solo tiene Tickets.
+- **Topbar de Conecta mínima (60 px, 56 en móvil):** hamburguesa, «HelpDesk», secciones,
+  campana y avatar. Ya no lleva el título de la vista ni el rol con el nombre (el nombre
+  está en el menú del avatar). El título encabeza el contenido o, con cabecera, queda
+  para lector de pantalla. La barra directa conserva su alto, que fija el espacio libre
+  del logotipo.
+- **El interruptor Interno/Externo va junto a las vistas de la bandeja**
+  (`features/shell/InboxModeSwitch.tsx`): solo cambia algo allí.
+- **Escala:** `md` 15, `lg` 17, `xl` 20, `2xl` 26, `3xl` 30 px; `base` y `sm` no cambian.
+  Lato Black sale de las vistas (queda Bold); sin versalitas en las cifras de la
+  cabecera ni en los títulos de la tabla. El globo de la cabecera baja a 232 px.
+
+*No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
+11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 
 ## 6. Vistas que el contrato tiene que sostener
 

@@ -50,7 +50,7 @@ export function UserMenu({
         popoverTarget={menuId}
         aria-label="Menú de usuario"
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-pill bg-accent text-base font-black text-on-accent hover:ring-2 hover:ring-accent-surface",
+          "flex size-10 shrink-0 items-center justify-center rounded-pill bg-accent text-sm font-bold text-on-accent hover:ring-2 hover:ring-accent-surface",
           colorTransition,
           focusRingTopbar,
         )}
@@ -69,7 +69,7 @@ export function UserMenu({
         <div className="flex items-center gap-3 border-b border-shell-menu-line bg-shell-menu-header-surface px-4 py-4">
           <span
             aria-hidden="true"
-            className="flex size-11 shrink-0 items-center justify-center rounded-pill bg-accent text-md font-black text-on-accent"
+            className="flex size-11 shrink-0 items-center justify-center rounded-pill bg-accent text-md font-bold text-on-accent"
           >
             {initial}
           </span>

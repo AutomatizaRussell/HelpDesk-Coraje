@@ -124,10 +124,13 @@ export const helpdeskTheme = {
     hopHeight: "34px",
   },
   size: {
-    // Topbar replicada de Conecta (h-16, lg:h-[84px]). No lleva logotipo: la
-    // marca va en el sidebar, como en Conecta (design/sistema-helpdesk.md §2).
-    topbar: "64px",
-    topbarWide: "84px",
+    // Topbar de la entrada desde Conecta. Nació como réplica de la de Conecta
+    // (h-16, lg:h-[84px]); desde U32 solo lleva el nombre del módulo, sus
+    // secciones, la campana y el avatar, y adelgaza: el título de cada vista
+    // va en su contenido o en su cabecera. Sin logotipo: la marca va en la
+    // columna (design/sistema-helpdesk.md §2).
+    topbar: "56px",
+    topbarWide: "60px",
     // Barra propia de HelpDesk en entrada directa, sin shell de Conecta, con
     // el logotipo. El manual exige un ancho mínimo de 30 mm (≈ 113 px) y un
     // espacio libre de al menos el 20 % de su ancho. Con la proporción del
@@ -178,7 +181,7 @@ export const helpdeskTheme = {
     // con él, el del derivado `public/rb-isotype-white-hero.png` (640 px, entre
     // el doble y el triple); lo comprueba `brand-assets.test.mts`.
     // `heroStripe`: la franja superior del color pleno.
-    heroGlobe: "272px",
+    heroGlobe: "232px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
     // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un

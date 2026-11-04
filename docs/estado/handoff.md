@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 65, U32: barra superior mínima y escala más contenida, SIN DESPLEGAR)
+SOBRE:   `a8b3511` (corte 64)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): sin fila de secciones bajo la barra
+         (las secciones van en la barra y solo si hay más de una); la barra de
+         Conecta queda en «HelpDesk», campana y avatar, 60 px; el título de la
+         vista baja al contenido; el interruptor Interno/Externo pasa a las vistas
+         de la bandeja (`InboxModeSwitch`); escala de `md` a `3xl` comprimida
+         (15/17/20/26/30) y Black retirado de vistas. Evidencia: `tsc`, `lint`,
+         216/216, `next build`. Sin ver en navegador.
+SIGUE:   desplegar y revisar bandeja, detalle y crear al 100 %; cierre de U30 a U32.
+
+--- Corte 64, para contexto:
 CORTE:   04-nov-2026 (corte 64, U31 parte 2: detalle del ticket, SIN DESPLEGAR)
 SOBRE:   `8bd0b1c` (corte 63)
 RAMA:    main
@@ -1772,6 +1785,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `a8b3511` | **Corte 64.** U31: detalle del ticket con cabecera del área e historia por forma. Publicado el 04-nov-2026 |
 | `8bd0b1c` | **Corte 63.** U31: la ventana de crear toma el color del área. Publicado el 04-nov-2026 |
 | `a7a24cd` | **Corte 62.** U31 parte 1: crear un ticket. Desplegado el 04-nov-2026; fechas de vencimiento comprobadas |
 | `2f030e1` | **Corte 61.** U30: semicírculo de todo el alto, corrido a la derecha. Publicado el 04-nov-2026 |

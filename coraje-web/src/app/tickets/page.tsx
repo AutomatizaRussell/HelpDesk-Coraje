@@ -15,11 +15,12 @@ import { colorTransition, focusRing } from "@/design-system/recipes/interaction"
 import { badge } from "@/design-system/recipes/badge";
 import { notice } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
-import { areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
+import { areaDisplayName, areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
 import { formatCatalogLabel, formatDate, formatDateTime, personInitials } from "@/features/tickets/format";
 import { inboxSummary } from "@/features/tickets/inbox-summary";
 import { InboxSearch } from "@/features/tickets/InboxSearch";
 import { AppFrame } from "@/features/shell/AppFrame";
+import { InboxModeSwitch } from "@/features/shell/InboxModeSwitch";
 import { greetingFor, greetingName, longDateLabel } from "@/features/shell/greeting";
 import { APP_BASE_PATH } from "@/server/auth/base-path";
 import { requireCurrentEmployee } from "@/server/auth/current-employee";
@@ -138,7 +139,7 @@ function InboxHero({
   const now = new Date();
   return (
     <AreaHero
-      areaName={areaName}
+      areaName={areaName ? areaDisplayName(areaName) : null}
       title={`${greetingFor(now)}, ${greetingName(employeeName)}`}
       summary={
         <>
@@ -146,7 +147,7 @@ function InboxHero({
           {counts &&
             inboxSummary(counts.vencidos, counts.porVencer).map((part) =>
               part.alert ? (
-                <strong key={part.text} className="font-black text-danger">
+                <strong key={part.text} className="font-bold text-danger">
                   {part.text}
                 </strong>
               ) : (
@@ -236,11 +237,12 @@ export default async function TicketsPage({
           )}
 
           <section aria-label={VIEW_LABEL[view]} className="overflow-hidden rounded-surface bg-surface shadow-raised">
-            <div className="border-b border-line px-6">
+            <div className="flex items-center justify-between gap-4 border-b border-line px-6">
               <TabLinks
                 label="Vistas de la bandeja"
                 items={views.map((item) => ({ label: VIEW_LABEL[item], href: inboxHref(mode, item, filters), current: item === view }))}
               />
+              <InboxModeSwitch idPersonal={employee.idPersonal} mode={mode} />
             </div>
             <div className="border-b border-line px-6 py-4">
               <InboxSearch
@@ -263,15 +265,15 @@ export default async function TicketsPage({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-base">
-                  <thead className="border-b border-line text-xs uppercase tracking-widest text-ink-muted">
+                  <thead className="border-b border-line text-sm text-ink-muted">
                     <tr>
-                      <th scope="col" className="px-6 pt-4 pb-2.5 font-black">Ticket</th>
-                      <th scope="col" className="px-3 pt-4 pb-2.5 font-black">Estado</th>
+                      <th scope="col" className="px-6 pt-4 pb-2.5 font-bold">Ticket</th>
+                      <th scope="col" className="px-3 pt-4 pb-2.5 font-bold">Estado</th>
                       {/* Lo que espera área todavía no tiene plazo: empieza al redirigirlo. */}
-                      <th scope="col" className="px-3 pt-4 pb-2.5 font-black">{view === "redirigir" ? "Radicado" : "Plazo"}</th>
-                      <th scope="col" className="px-3 pt-4 pb-2.5 font-black">Área y tipo</th>
-                      <th scope="col" className="px-3 pt-4 pb-2.5 font-black">Solicitante</th>
-                      <th scope="col" className="px-3 pt-4 pb-2.5 font-black">Responsable</th>
+                      <th scope="col" className="px-3 pt-4 pb-2.5 font-bold">{view === "redirigir" ? "Radicado" : "Plazo"}</th>
+                      <th scope="col" className="px-3 pt-4 pb-2.5 font-bold">Área y tipo</th>
+                      <th scope="col" className="px-3 pt-4 pb-2.5 font-bold">Solicitante</th>
+                      <th scope="col" className="px-3 pt-4 pb-2.5 font-bold">Responsable</th>
                       <th scope="col" className="w-10"><span className="sr-only">Abrir</span></th>
                     </tr>
                   </thead>
@@ -296,7 +298,7 @@ export default async function TicketsPage({
                           <Link
                             href={view === "redirigir" ? `/redirigir/${row.idTicket}` : `/tickets/${row.idTicket}`}
                             className={cn(
-                              "rounded-control font-black tabular-nums text-heading underline-offset-3 after:absolute after:inset-0 group-hover:underline",
+                              "rounded-control font-bold tabular-nums text-heading underline-offset-3 after:absolute after:inset-0 group-hover:underline",
                               focusRing,
                             )}
                           >
@@ -314,7 +316,7 @@ export default async function TicketsPage({
                             <span className="tabular-nums">{formatDateTime(row.fechaCreacion)}</span>
                           ) : row.fechaLimite ? (
                             <div className="flex flex-col items-start gap-1">
-                              <span className={cn("tabular-nums", row.sla === "VENCIDO" && "font-black text-danger")}>{formatDate(row.fechaLimite)}</span>
+                              <span className={cn("tabular-nums", row.sla === "VENCIDO" && "font-bold text-danger")}>{formatDate(row.fechaLimite)}</span>
                               {row.sla && row.sla !== "EN_PLAZO" && <SlaBadge status={row.sla} />}
                             </div>
                           ) : (

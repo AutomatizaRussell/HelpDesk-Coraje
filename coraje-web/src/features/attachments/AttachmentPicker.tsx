@@ -208,7 +208,7 @@ export function AttachmentPicker({
           </span>
           <span className="min-w-0">
             <span className="block text-base text-ink">
-              <strong className="font-black text-heading">Elige archivos</strong> o arrástralos aquí
+              <strong className="font-bold text-heading">Elige archivos</strong> o arrástralos aquí
             </span>
             <span id={`${id}-hint`} className="block text-sm text-ink-muted">
               Hasta {MAX_ATTACHMENTS_PER_SUBMIT} archivos de {formatBytes(MAX_ATTACHMENT_BYTES)}: PDF, imágenes, Word, Excel, PowerPoint,

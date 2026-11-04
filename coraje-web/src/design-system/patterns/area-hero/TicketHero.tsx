@@ -19,7 +19,7 @@ import type { AreaThemeKey } from "../area/area";
  *
  * Lleva el código grande, el estado y el plazo, la primera línea de la
  * descripción como título, y cinco datos en cajitas. El contenido se monta
- * sobre su borde inferior como en la bandeja (`pb-29` aquí, `-mt-15` en el
+ * sobre su borde inferior como en la bandeja (`pb-27` aquí, `-mt-15` en el
  * shell). El semicírculo con el globo es el de la bandeja, más bajo y con el
  * globo quieto y más pequeño: la sorpresa de los cinco clics es de la bandeja.
  *
@@ -49,7 +49,7 @@ export function TicketHero({
   return (
     <section data-area={area} aria-label="Resumen del ticket" className={cn("relative overflow-hidden bg-accent-surface", modeTransition)}>
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
-      <div className="relative mx-auto max-w-content px-6 pt-6 pb-29 lg:px-10">
+      <div className="relative mx-auto max-w-content px-6 pt-5 pb-27 lg:px-10">
         <div className="max-w-5xl lg:mr-88">
           <Link
             href={back.href}
@@ -59,15 +59,15 @@ export function TicketHero({
             {back.label}
           </Link>
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
-            <p className="text-2xl font-black tabular-nums tracking-tight text-heading">{code}</p>
+            <p className="text-2xl font-bold tabular-nums tracking-tight text-heading">{code}</p>
             {badges}
           </div>
-          <p className="mt-1.5 line-clamp-2 text-lg font-bold text-heading">{title}</p>
+          <p className="mt-1 line-clamp-2 text-lg text-heading">{title}</p>
           <dl className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             {facts.map((fact) => (
               <div key={fact.label} className="rounded-card bg-surface/75 px-3 py-2.5">
-                <dt className="text-xs font-bold text-ink-muted">{fact.label}</dt>
-                <dd className={cn("mt-0.5 font-bold", fact.alert ? "text-danger" : "text-heading")}>
+                <dt className="text-xs text-ink-muted">{fact.label}</dt>
+                <dd className={cn("mt-0.5 text-base font-bold", fact.alert ? "text-danger" : "text-heading")}>
                   {fact.value}
                   {fact.detail && <span className="block text-sm font-normal text-ink-muted">{fact.detail}</span>}
                 </dd>

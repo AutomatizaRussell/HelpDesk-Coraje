@@ -29,13 +29,17 @@ export const typography = {
     xs: { size: "0.6875rem", lineHeight: "1rem" }, // 11 / 16
     sm: { size: "0.8125rem", lineHeight: "1.125rem" }, // 13 / 18
     base: { size: "0.875rem", lineHeight: "1.25rem" }, // 14 / 20
-    md: { size: "1rem", lineHeight: "1.5rem" }, // 16 / 24
-    lg: { size: "1.25rem", lineHeight: "1.75rem" }, // 20 / 28
-    xl: { size: "1.5rem", lineHeight: "2rem" }, // 24 / 32
-    // Cifras y saludo de la cabecera del área (U30). Lato Black a estos
-    // tamaños es lo que le da voz a la pantalla; no son para texto corrido.
-    "2xl": { size: "2.125rem", lineHeight: "2.5rem" }, // 34 / 40
-    "3xl": { size: "2.5rem", lineHeight: "3rem" }, // 40 / 48
+    // U32 (04-nov-2026): de `md` hacia arriba la escala se comprimió. Con
+    // la anterior (16/20/24/34/40), al 100 % la pantalla se leía como al
+    // 125 %: los títulos y las cifras pesaban más que lo que encabezan. El
+    // texto corrido (`base`, `sm`) no cambia: achicarlo restaría lectura
+    // sin dar aire.
+    md: { size: "0.9375rem", lineHeight: "1.375rem" }, // 15 / 22
+    lg: { size: "1.0625rem", lineHeight: "1.5rem" }, // 17 / 24
+    xl: { size: "1.25rem", lineHeight: "1.75rem" }, // 20 / 28
+    // Cifras y saludo de la cabecera del área (U30); no son para texto corrido.
+    "2xl": { size: "1.625rem", lineHeight: "2rem" }, // 26 / 32
+    "3xl": { size: "1.875rem", lineHeight: "2.25rem" }, // 30 / 36
   },
 } as const;
 
