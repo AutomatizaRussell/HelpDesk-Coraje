@@ -69,3 +69,62 @@ export function formatPriority(nombre: string, diasSla?: number): string {
   const label = nombre.charAt(0) + nombre.slice(1).toLowerCase();
   return diasSla === undefined ? label : `${label} · ${diasSla} días hábiles`;
 }
+
+/**
+ * Fecha corta de la cabecera del detalle (U32): «12 ene 2024». La de
+ * `formatDate` («12/01/2024») y la larga con «p. m.» partían las cajas en
+ * tres líneas. Se arma por partes porque `es-CO` añade un punto al mes
+ * abreviado («ene.») según la versión de ICU.
+ */
+const shortParts = new Intl.DateTimeFormat("es-CO", {
+  timeZone: "America/Bogota",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function shortPieces(value: Date): Record<"day" | "month" | "year" | "hour" | "minute", string> {
+  const parts = Object.fromEntries(shortParts.formatToParts(value).map((part) => [part.type, part.value]));
+  return {
+    day: parts.day ?? "",
+    month: (parts.month ?? "").replace(/\./g, ""),
+    year: parts.year ?? "",
+    hour: parts.hour ?? "",
+    minute: parts.minute ?? "",
+  };
+}
+
+export function formatShortDate(value: Date): string {
+  const { day, month, year } = shortPieces(value);
+  return `${day} ${month} ${year}`;
+}
+
+/** «12 ene 2024 · 12:08», en reloj de 24 horas. */
+export function formatShortDateTime(value: Date): string {
+  const { hour, minute } = shortPieces(value);
+  return `${formatShortDate(value)} · ${hour}:${minute}`;
+}
+
+/** Partículas que van en minúscula dentro de un nombre («María de la Cruz»). */
+const NAME_PARTICLES = new Set(["de", "del", "la", "las", "los", "y"]);
+
+/**
+ * Nombre de una persona en tipo oración (U32): el directorio los guarda en
+ * mayúsculas («MARY JULIETH RIVERA GUEVARA»), que sobre la cabecera pesaban
+ * más que el código del ticket. Se corrige al mostrar, no en el dato, como
+ * los nombres de área (`areaDisplayName`).
+ */
+export function personDisplayName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word, index) => {
+      const lower = word.toLocaleLowerCase("es-CO");
+      if (index > 0 && NAME_PARTICLES.has(lower)) return lower;
+      return lower.charAt(0).toLocaleUpperCase("es-CO") + lower.slice(1);
+    })
+    .join(" ");
+}

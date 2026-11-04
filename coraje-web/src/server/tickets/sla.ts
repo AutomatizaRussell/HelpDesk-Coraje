@@ -35,3 +35,21 @@ export const SLA_STATUS_LABEL: Record<SlaStatus, string> = {
   POR_VENCER: "Por vencer",
   EN_PLAZO: "En plazo",
 };
+
+/**
+ * Fracción del plazo consumida, para el anillo de la cabecera del detalle
+ * (U32). Cuenta **días hábiles** —los del plazo, con festivos de Colombia—,
+ * no tiempo de reloj: un anillo por horas avanzaría en fines de semana y
+ * festivos, en los que el plazo no corre.
+ *
+ * `consumidos` y `total` los calcula PostgreSQL (`getPlazoProgress`). Un
+ * ticket vencido tiene el anillo cerrado aunque el conteo por días aún no
+ * llegue al total (vence a una hora del último día). Sin días hábiles en el
+ * plazo (radicado y vencido el mismo día), está vacío o cerrado según venza.
+ */
+export function plazoFraction(params: { consumidos: number; total: number; vencido: boolean }): number {
+  const { consumidos, total, vencido } = params;
+  if (vencido) return 1;
+  if (total <= 0) return 0;
+  return Math.min(1, Math.max(0, consumidos / total));
+}

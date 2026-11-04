@@ -777,3 +777,40 @@ export async function getCreatedTicketSummary(
     responsable: ticket?.dimPersonalAsignado?.nombreCompleto ?? null,
   };
 }
+
+/**
+ * Días hábiles del plazo de un ticket: los que ya pasaron y los que tiene en
+ * total (U32, el anillo de la cabecera del detalle). Los cuenta PostgreSQL con
+ * el mismo calendario que fija el plazo (`core.is_colombia_holiday`, lunes a
+ * viernes), en fechas de Bogotá:
+ *
+ * - `total`: días hábiles después del de radicación, hasta el día límite.
+ * - `consumidos`: los mismos, pero solo hasta el día anterior al de cierre
+ *   (si terminó) o al de hoy: el día en curso todavía no se ha consumido.
+ *
+ * Una consulta de una fila; no se llama para tickets sin fecha límite.
+ * Si falla, `null`: el anillo se dibuja vacío y el plazo sigue en texto.
+ */
+export async function getPlazoProgress(idTicket: string): Promise<{ consumidos: number; total: number } | null> {
+  try {
+    const rows = await prisma.$queryRaw<{ consumidos: number; total: number }[]>`
+      WITH t AS (
+        SELECT (fecha_creacion AT TIME ZONE 'America/Bogota')::date AS c,
+               (fecha_limite AT TIME ZONE 'America/Bogota')::date AS l,
+               (COALESCE(fecha_resolucion, now()) AT TIME ZONE 'America/Bogota')::date AS e
+        FROM helpdesk.fact_ticket
+        WHERE id_ticket = ${idTicket}::uuid AND fecha_limite IS NOT NULL
+      )
+      SELECT
+        (SELECT count(*) FROM generate_series(t.c + 1, LEAST(t.e - 1, t.l), interval '1 day') AS g(d)
+          WHERE EXTRACT(ISODOW FROM g.d) < 6 AND NOT core.is_colombia_holiday(g.d::date))::int AS consumidos,
+        (SELECT count(*) FROM generate_series(t.c + 1, t.l, interval '1 day') AS g(d)
+          WHERE EXTRACT(ISODOW FROM g.d) < 6 AND NOT core.is_colombia_holiday(g.d::date))::int AS total
+      FROM t`;
+    const row = rows[0];
+    return row ? { consumidos: Number(row.consumidos), total: Number(row.total) } : null;
+  } catch (error) {
+    logEvent("warn", "ticket.plazo_progreso_fallido", { idTicket }, error);
+    return null;
+  }
+}

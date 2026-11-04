@@ -1,8 +1,9 @@
-import { History } from "lucide-react";
+import { CalendarClock, Clock, Flag, History, Star, Tag } from "lucide-react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { PersonChip } from "@/design-system/components/PersonChip";
+import { RatingStars } from "@/design-system/components/RatingStars";
 import { TicketHero, type TicketHeroFact } from "@/design-system/patterns/area-hero/TicketHero";
 import { MailStateBadge, SlaBadge, TicketStateBadge } from "@/design-system/patterns/ticket-status/TicketStatusBadges";
 import { iconStroke } from "@/design-system/foundations/iconography";
@@ -10,7 +11,15 @@ import { badge } from "@/design-system/recipes/badge";
 import { sectionTitle, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaDisplayName, areaThemeKey } from "@/features/areas/area-theme";
-import { formatCatalogLabel, formatDate, formatDateTime, formatPriority, personInitials } from "@/features/tickets/format";
+import {
+  formatCatalogLabel,
+  formatDateTime,
+  formatPriority,
+  formatShortDate,
+  formatShortDateTime,
+  personDisplayName,
+  personInitials,
+} from "@/features/tickets/format";
 import {
   AddObserversForm,
   ApprovalResponseForm,
@@ -29,9 +38,16 @@ import { requireCurrentEmployee } from "@/server/auth/current-employee";
 import { markTicketNoticesRead } from "@/server/notifications/ticket-notices";
 import { listTicketMail } from "@/server/notifications/ticket-notifications";
 import { MAX_OBSERVERS_PER_ACTION } from "@/server/tickets/follow-rules";
-import { SLA_STATUS_LABEL } from "@/server/tickets/sla";
+import { SLA_STATUS_LABEL, plazoFraction } from "@/server/tickets/sla";
+import { isOpenState } from "@/server/tickets/ticket-state";
 import { inboxPath } from "@/server/tickets/ticket-mode";
-import { getTicketDetail, listFollowCandidates, listReassignCandidates, type TicketDetail } from "@/server/tickets/ticket-queries";
+import {
+  getPlazoProgress,
+  getTicketDetail,
+  listFollowCandidates,
+  listReassignCandidates,
+  type TicketDetail,
+} from "@/server/tickets/ticket-queries";
 
 /**
  * Detalle de un ticket (U31, maqueta aprobada «U»): arriba, la cabecera en el
@@ -148,26 +164,65 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const canComment = capabilities.comentarSolicitante && !capabilities.responder;
   const hasComposer = capabilities.responder || capabilities.notaInterna || canComment;
 
-  // U31: la cabecera lleva lo que antes era la columna de datos fijos.
+  // U31: la cabecera lleva lo que antes era la columna de datos fijos. U32:
+  // en una tira con icono por dato (maqueta «W-9»), nombres en tipo oración y
+  // fechas cortas, que antes partían las cajas en tres líneas.
   const categorias = [ticket.categoria1, ticket.categoria2].flatMap((value) => (value ? [formatCatalogLabel(value)] : [])).join(" · ");
+  const terminado = !isOpenState(ticket.estado);
+  // Terminado: si se cerró dentro del plazo. Abierto: cómo va (`slaStatus`).
+  const plazoDetail = terminado
+    ? ticket.fechaLimite && ticket.fechaResolucion
+      ? ticket.fechaResolucion <= ticket.fechaLimite
+        ? "Cumplido"
+        : "Fuera de plazo"
+      : null
+    : ticket.sla
+      ? SLA_STATUS_LABEL[ticket.sla]
+      : null;
   const facts: TicketHeroFact[] = [
-    { label: "Solicitante", value: ticket.solicitante ?? "Sin solicitante" },
+    {
+      label: "Solicitante",
+      value: ticket.solicitante ? personDisplayName(ticket.solicitante) : "Sin solicitante",
+      initials: ticket.solicitante ? personInitials(ticket.solicitante) : "",
+      weight: 3,
+    },
     {
       label: "Plazo",
-      value: ticket.fechaLimite ? formatDate(ticket.fechaLimite) : "Sin fecha límite",
-      detail: ticket.sla ? SLA_STATUS_LABEL[ticket.sla] : null,
+      icon: CalendarClock,
+      value: ticket.fechaLimite ? formatShortDate(ticket.fechaLimite) : "Sin fecha límite",
+      detail: plazoDetail,
       alert: ticket.sla === "VENCIDO",
+      weight: 2,
     },
-    { label: "Prioridad", value: ticket.prioridad ? formatPriority(ticket.prioridad) : "Sin prioridad" },
-    { label: "Tipo", value: ticket.tipo ? formatCatalogLabel(ticket.tipo) : "Sin tipo", detail: categorias || null },
+    { label: "Prioridad", icon: Flag, value: ticket.prioridad ? formatPriority(ticket.prioridad) : "Sin prioridad" },
+    { label: "Tipo", icon: Tag, value: ticket.tipo ? formatCatalogLabel(ticket.tipo) : "Sin tipo", detail: categorias || null, weight: 2 },
     {
       label: "Radicado",
-      value: formatDateTime(ticket.fechaCreacion),
-      detail: ticket.fechaResolucion ? `Terminado ${formatDateTime(ticket.fechaResolucion)}` : null,
+      icon: Clock,
+      value: formatShortDateTime(ticket.fechaCreacion),
+      detail: ticket.fechaResolucion ? `Cerrado ${formatShortDateTime(ticket.fechaResolucion)}` : null,
+      weight: 3,
     },
     // U34: la calificación es un dato del ticket, visible para quien lo consulta.
-    ...(ticket.calificacion !== null ? [{ label: "Calificación", value: `${ticket.calificacion} de 5` }] : []),
+    ...(ticket.calificacion !== null
+      ? [{ label: "Calificación", icon: Star, value: <RatingStars value={ticket.calificacion} />, weight: 2 as const }]
+      : []),
   ];
+
+  // U32: el anillo de plazo. Sin fecha límite, o terminado sin fecha de
+  // cierre (algunos legacy), no hay plazo que medir: solo la pista.
+  const progress =
+    ticket.fechaLimite && (!terminado || ticket.fechaResolucion) ? await getPlazoProgress(ticket.idTicket) : null;
+  const plazo = progress
+    ? {
+        fraction: plazoFraction({ ...progress, vencido: ticket.sla === "VENCIDO" }),
+        label: terminado
+          ? `Se cerró con ${Math.min(progress.consumidos, progress.total)} de ${progress.total} días hábiles del plazo consumidos`
+          : ticket.sla === "VENCIDO"
+            ? `Plazo vencido: ${progress.total} de ${progress.total} días hábiles consumidos`
+            : `Plazo: ${progress.consumidos} de ${progress.total} días hábiles consumidos`,
+      }
+    : { fraction: null, label: "Sin plazo que medir" };
   const card = cn(surface(), "shadow-raised");
 
   return (
@@ -203,6 +258,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </>
           }
           facts={facts}
+          plazo={plazo}
         />
       )}
     >

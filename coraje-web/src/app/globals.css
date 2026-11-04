@@ -94,6 +94,8 @@
   --hd-motion-rise-offset: 8px;
   --hd-motion-celebrate: 1100ms;
   --hd-motion-hop-height: 34px;
+  --hd-motion-ring-fill: 1600ms;
+  --hd-motion-ring-breathe: 2400ms;
 
   --hd-size-topbar: 56px;
   --hd-size-topbar-wide: 60px;
@@ -122,6 +124,8 @@
   --hd-size-preview: 75vh;
   --hd-size-hero-globe: 232px;
   --hd-size-hero-mark: 432px;
+  --hd-size-plazo-ring: 176px;
+  --hd-size-ring-globe: 96px;
   --hd-size-hero-stripe: 6px;
   --hd-size-pointer-grid-dot: 1.5px;
   --hd-size-pointer-grid-gap: 14px;
@@ -444,6 +448,8 @@
   --spacing-preview: var(--hd-size-preview);
   --spacing-hero-globe: var(--hd-size-hero-globe);
   --spacing-hero-mark: var(--hd-size-hero-mark);
+  --spacing-plazo-ring: var(--hd-size-plazo-ring);
+  --spacing-ring-globe: var(--hd-size-ring-globe);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
   --spacing-empty-mark: var(--hd-size-empty-mark);
   --spacing-empty-mark-inner: var(--hd-size-empty-mark-inner);
@@ -546,6 +552,53 @@
   }
   72% {
     transform: translateY(calc(-0.35 * var(--hd-motion-hop-height)));
+  }
+}
+
+/* Anillo de plazo del detalle (U32, `patterns/area-hero/PlazoRing`). El arco
+   crece desde cero hasta su `stroke-dashoffset` (el atributo es el valor
+   final: la animación solo declara el inicio). Lleno, la punta aparece y late:
+   lo que se mueve es el frente, como algo que sigue avanzando. Con movimiento
+   reducido, la punta está quieta y visible desde el principio. */
+@keyframes hd-ring-fill {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+.hd-ring-fill {
+  animation: hd-ring-fill var(--hd-motion-ring-fill) var(--hd-motion-easing) both;
+}
+
+@keyframes hd-ring-appear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hd-ring-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+}
+
+.hd-ring-tip {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    hd-ring-appear var(--hd-motion-normal) linear var(--hd-motion-ring-fill) forwards,
+    hd-ring-breathe var(--hd-motion-ring-breathe) ease-in-out calc(var(--hd-motion-ring-fill) + var(--hd-motion-normal)) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hd-ring-tip {
+    opacity: 1;
+    animation: none;
   }
 }
 

@@ -1,36 +1,46 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import heroGlobe from "../../../../public/rb-isotype-white-hero.png";
 import { iconStroke } from "../../foundations/iconography";
 import { focusRing, modeTransition } from "../../recipes/interaction";
-import { helpdeskTheme } from "../../themes/helpdesk";
 import { cn } from "../../utilities/cn";
 import type { AreaThemeKey } from "../area/area";
+import { PlazoRing } from "./PlazoRing";
 
 /**
- * Cabecera del detalle de un ticket (U31, maqueta aprobada «U»): la misma
- * familia que la cabecera de la bandeja (`AreaHero`), en el color del **área
- * del ticket** y no en el de quien lo mira —`data-area` propio redefine el
- * acento solo aquí dentro—, para que un ticket de Revisoría se vea naranja
- * para todo el que lo abra.
+ * Cabecera del detalle de un ticket, en el color del **área del ticket** y no
+ * en el de quien lo mira: `data-area` propio redefine el acento solo aquí
+ * dentro, para que un ticket de Revisoría se vea naranja para todo el que lo
+ * abra.
  *
- * Lleva el código grande, el estado y el plazo, y cinco datos en cajitas.
- * Desde el corte 68 no lleva la descripción: va como primer mensaje en la
- * columna principal (`TicketRequest`), y la cabecera mide siempre lo mismo. El contenido se monta
- * sobre su borde inferior como en la bandeja (`pb-27` aquí, `-mt-15` en el
- * shell). El semicírculo con el globo es el de la bandeja, del mismo tamaño
- * (U32: el globo más pequeño no se leía como señal de otra vista sino como
- * descuido), pero quieto: la sorpresa de los cinco clics es de la bandeja.
+ * U32 (04-nov-2026, maquetas aprobadas «V-3», «X-B» y «W-9»):
+ * - **Anillo de plazo** a la derecha (`PlazoRing`) en lugar del semicírculo
+ *   de la bandeja: la forma propia del detalle, y la que dice cómo va el
+ *   plazo.
+ * - **Datos en una tira blanca** con un icono por dato y divisores finos. Sobre
+ *   blanco y no sobre la tinta, para que nombres y fechas contrasten; las
+ *   columnas se reparten el ancho según lo que llevan (`weight`), sin hueco a
+ *   la derecha. El solicitante va primero y con sus iniciales: es el único
+ *   dato que es una persona. En pantallas estrechas la tira pasa a rejilla.
  *
- * El código no es un `h1`: el título de la vista ya lo es (en la topbar de
- * Conecta, o para lector de pantalla en la entrada directa).
+ * El contenido se monta sobre su borde inferior como en la bandeja (`pb-27`
+ * aquí, `-mt-15` en el shell). El código no es un `h1`: el título de la vista
+ * ya lo es, para lector de pantalla.
  */
-export type TicketHeroFact = { label: string; value: string; detail?: string | null; alert?: boolean };
+export type TicketHeroFact = {
+  label: string;
+  value: ReactNode;
+  detail?: string | null;
+  alert?: boolean;
+  /** Icono del dato; el solicitante lleva `initials` en su lugar. */
+  icon?: LucideIcon;
+  initials?: string;
+  /** Peso de la columna en la tira: cuánto texto suele llevar. */
+  weight?: 1 | 2 | 3;
+};
 
-const GLOBE = Number.parseFloat(helpdeskTheme.size.heroGlobe);
+const WEIGHT_CLASS = { 1: "xl:grow", 2: "xl:grow-2", 3: "xl:grow-3" } as const;
 
 export function TicketHero({
   area,
@@ -38,19 +48,22 @@ export function TicketHero({
   badges,
   back,
   facts,
+  plazo,
 }: {
   area: AreaThemeKey;
   code: string;
-  /** Estado y plazo (`TicketStatusBadges`). */
+  /** Área, estado, plazo y origen (`TicketStatusBadges`). */
   badges: ReactNode;
   back: { href: string; label: string };
   facts: readonly TicketHeroFact[];
+  /** Fracción del plazo consumida (0–1) y su lectura en texto; `null` sin plazo que medir. */
+  plazo: { fraction: number | null; label: string };
 }) {
   return (
     <section data-area={area} aria-label="Resumen del ticket" className={cn("relative overflow-hidden bg-accent-surface", modeTransition)}>
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
-      <div className="relative mx-auto max-w-content px-6 pt-5 pb-27 lg:px-10">
-        <div className="max-w-5xl lg:mr-96">
+      <div className="mx-auto flex max-w-content items-start gap-10 px-6 pt-5 pb-27 lg:px-10">
+        <div className="min-w-0 flex-1">
           <Link
             href={back.href}
             className={cn("inline-flex items-center gap-1 rounded-control text-sm font-bold text-heading hover:underline", focusRing)}
@@ -62,25 +75,38 @@ export function TicketHero({
             <p className="text-2xl font-bold tabular-nums tracking-tight text-heading">{code}</p>
             {badges}
           </div>
-          <dl className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+          <dl className="mt-5 grid grid-cols-2 gap-4 rounded-card bg-surface px-5 py-4 shadow-raised sm:grid-cols-3 xl:flex xl:gap-0">
             {facts.map((fact) => (
-              <div key={fact.label} className="rounded-card bg-surface/75 px-3 py-2.5">
-                <dt className="text-xs text-ink-muted">{fact.label}</dt>
-                <dd className={cn("mt-0.5 text-base font-bold", fact.alert ? "text-danger" : "text-heading")}>
-                  {fact.value}
-                  {fact.detail && <span className="block text-sm font-normal text-ink-muted">{fact.detail}</span>}
-                </dd>
+              <div
+                key={fact.label}
+                className={cn(
+                  "flex min-w-0 items-start gap-2.5 xl:basis-0 xl:px-4 xl:first:pl-0 xl:last:pr-0 xl:not-first:border-l xl:not-first:border-line",
+                  WEIGHT_CLASS[fact.weight ?? 1],
+                )}
+              >
+                {fact.initials !== undefined ? (
+                  <span
+                    aria-hidden="true"
+                    className="grid size-8 shrink-0 place-items-center rounded-pill bg-avatar-surface text-2xs font-bold text-heading"
+                  >
+                    {fact.initials}
+                  </span>
+                ) : (
+                  fact.icon && <fact.icon aria-hidden className="mt-0.5 size-4.5 shrink-0 text-accent" strokeWidth={iconStroke.regular} />
+                )}
+                <div className="min-w-0">
+                  <dt className="text-xs text-ink-muted">{fact.label}</dt>
+                  <dd className={cn("mt-0.5 font-bold", fact.alert ? "text-danger" : "text-heading")}>
+                    {fact.value}
+                    {fact.detail && <span className="block text-sm font-normal text-ink-muted">{fact.detail}</span>}
+                  </dd>
+                </div>
               </div>
             ))}
           </dl>
         </div>
-      </div>
-      {/* Después del texto, como en la bandeja; aquí no recibe clics. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
-        <div className="absolute top-0 right-0 h-full max-h-hero-mark aspect-square translate-x-1/8 rounded-l-pill bg-accent">
-          <div className="absolute inset-x-0 top-0 bottom-15 grid place-items-center">
-            <Image src={heroGlobe} alt="" width={GLOBE} height={GLOBE} className="size-hero-globe" />
-          </div>
+        <div className="hidden pt-2 lg:block">
+          <PlazoRing fraction={plazo.fraction} label={plazo.label} />
         </div>
       </div>
     </section>

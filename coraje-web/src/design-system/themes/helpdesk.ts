@@ -122,6 +122,10 @@ export const helpdeskTheme = {
     // colores de la marca durante `celebrate`.
     celebrate: "1100ms",
     hopHeight: "34px",
+    // Anillo de plazo del detalle (U32): se llena en `ringFill` al abrir y,
+    // lleno, la punta late con un ciclo de `ringBreathe`.
+    ringFill: "1600ms",
+    ringBreathe: "2400ms",
   },
   size: {
     // Topbar de la entrada desde Conecta. Nació como réplica de la de Conecta
@@ -188,6 +192,9 @@ export const helpdeskTheme = {
     // fuera por `translate-x-1/8`): 432 × 7/8 = 378 px, dentro de los 384
     // que el texto le deja libres (`lg:mr-96`) en las dos cabeceras.
     heroMark: "432px",
+    // Anillo de plazo de la cabecera del detalle (U32) y el globo de su disco.
+    plazoRing: "176px",
+    ringGlobe: "96px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
     // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un

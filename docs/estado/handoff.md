@@ -1,6 +1,18 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 70, U32: anillo de plazo y tira de datos en el detalle, SIN DESPLEGAR)
+SOBRE:   `98ccfba` (corte 69)
+RAMA:    main
+UNIDAD:  U32 (design/sistema-helpdesk.md §5.7): la cabecera del detalle cambia el
+         semicírculo por el anillo de plazo (`PlazoRing`, días hábiles con
+         `getPlazoProgress`) y las cajas por una tira blanca con iconos, nombre en
+         tipo oración, fechas cortas y calificación en estrellas. Evidencia: `tsc`,
+         `lint`, pruebas, `next build`. Sin ver en navegador; `getPlazoProgress`
+         sin ejercitar contra la base (si falla, el anillo queda vacío y lo registra).
+SIGUE:   desplegar y abrir un ticket abierto, uno vencido y uno cerrado calificado.
+
+--- Corte 69, para contexto:
 CORTE:   04-nov-2026 (corte 69, U32: etiqueta de PowerApps en la cabecera del detalle, SIN DESPLEGAR)
 SOBRE:   `3eab809` (calificación, de otra sesión)
 RAMA:    main

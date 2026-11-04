@@ -19,7 +19,7 @@ import { cn } from "@/design-system/utilities/cn";
 import { AttachmentLink } from "@/features/attachments/AttachmentLink";
 import type { TicketHistoryEntry } from "@/server/tickets/ticket-queries";
 
-import { formatDateTime, personInitials } from "./format";
+import { formatDateTime, personDisplayName, personInitials } from "./format";
 
 /**
  * Historia del ticket, con lo más reciente primero (el orden lo da la
@@ -203,7 +203,7 @@ function MessageBubble({ idTicket, entry }: { idTicket: string; entry: TicketHis
  * de escritura justo cuando hay que leer y escribir a la vez.
  */
 export function TicketRequest({ author, fecha, text }: { author: string | null; fecha: Date; text: string }) {
-  const name = author ?? "Sin solicitante";
+  const name = author ? personDisplayName(author) : "Sin solicitante";
   return (
     <div className="flex gap-3">
       <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-pill bg-avatar-surface text-2xs font-bold text-heading">

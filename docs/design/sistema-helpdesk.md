@@ -506,6 +506,18 @@ escritura. La cabecera vuelve a medir siempre lo mismo.
 Corte 69: el aviso a todo lo ancho «Este ticket viene de PowerApps…» se sustituye por la
 etiqueta «De PowerApps · solo consulta» junto al estado, en la cabecera.
 
+Corte 70, maquetas «V-3», «X-B» y «W-9» del lienzo, elegidas por el usuario:
+- **Anillo de plazo** (`patterns/area-hero/PlazoRing.tsx`) en lugar del semicírculo en la
+  cabecera del detalle: el globo blanco en un disco del área, rodeado por un anillo que
+  se llena con los días hábiles consumidos del plazo (`getPlazoProgress`, con
+  `core.is_colombia_holiday`). Siempre del color del área: vencido, se cierra sin pasar
+  a rojo. Al abrir se llena; luego su punta late (`.hd-ring-fill`, `.hd-ring-tip`).
+- **Datos en una tira blanca** con icono por dato y divisores; el solicitante primero,
+  con sus iniciales; la calificación en estrellas navy (`components/RatingStars.tsx`).
+  Nombres en tipo oración (`personDisplayName`) y fechas cortas («12 ene 2024 · 12:08»).
+- Se descartaron la constelación (compite con el anillo) y la línea de tiempo (repite
+  lo que dice el anillo; las reasignaciones ya están en la Historia).
+
 *No se hizo:* escalar toda la interfaz al 80 %. Llevaría el texto corrido de 14 a
 11,2 px, y lo que al usuario se ve grande depende también del escalado de su pantalla.
 
