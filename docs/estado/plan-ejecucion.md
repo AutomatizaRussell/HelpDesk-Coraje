@@ -743,6 +743,17 @@ se comprime (`design/sistema-helpdesk.md` §5.7).
 **Condición de cierre:** el usuario revisa bandeja, detalle y crear al 100 % y los
 aprueba o pide ajustes.
 
+### U33 · Crear ticket compacto — **construida el 04-nov-2026 (corte 69)**
+
+Pedida por el usuario: «Nuevo ticket» se alargaba demasiado (unos 1.090 px en
+escritorio y 1.460 en móvil, calculados). Elegida la forma compacta entre tres maquetas
+(`design/sistema-helpdesk.md` §5.5): áreas en chips, prioridad en una fila, y adjuntos y
+observadores como botones, con los archivos en chips y el contador en el botón. El
+comportamiento de servidor no cambia.
+
+**Condición de cierre:** el usuario crea un ticket con adjuntos y observadores en
+escritorio y en móvil, y lo aprueba o pide ajustes.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

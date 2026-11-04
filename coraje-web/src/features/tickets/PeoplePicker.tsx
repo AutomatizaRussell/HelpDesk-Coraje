@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
 import { cn } from "@/design-system/utilities/cn";
@@ -27,6 +27,7 @@ export function PeoplePicker({
   initialSelected = [],
   error,
   max,
+  onSelectionChange,
 }: {
   name: string;
   label: string;
@@ -38,10 +39,17 @@ export function PeoplePicker({
   error?: string;
   /** Tope de la selección múltiple; el servidor lo vuelve a aplicar. */
   max?: number;
+  /**
+   * Avisa cuántas personas hay elegidas (U33): «Nuevo ticket» lo muestra en el
+   * botón que abre el panel plegado, para que la selección se vea cerrado.
+   */
+  onSelectionChange?: (count: number) => void;
 }) {
   const baseId = useId();
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set(initialSelected));
+
+  useEffect(() => onSelectionChange?.(selected.size), [selected, onSelectionChange]);
 
   const normalized = filter.trim().toLocaleLowerCase("es");
   const visible = useMemo(

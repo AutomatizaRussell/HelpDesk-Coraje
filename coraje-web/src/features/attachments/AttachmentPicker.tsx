@@ -1,10 +1,11 @@
 "use client";
 
-import { Upload, X } from "lucide-react";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { CircleAlert, CircleCheck, Paperclip, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 
 import { IconButton } from "@/design-system/components/IconButton";
 import { iconStroke } from "@/design-system/foundations/iconography";
+import { buttonRecipe } from "@/design-system/recipes/button";
 import { fieldError, fieldLabel } from "@/design-system/recipes/field";
 import { colorTransition, focusRing } from "@/design-system/recipes/interaction";
 import { cn } from "@/design-system/utilities/cn";
@@ -66,15 +67,78 @@ type Item = {
   cancelar?: AbortController;
 };
 
+/**
+ * Un archivo en la forma compacta (U33): recuadro del tipo, nombre recortado,
+ * y su estado —barra mientras sube, tamaño y marca al terminar, alerta si
+ * falló— con la × para quitarlo o cancelar la subida.
+ */
+function AttachmentChip({ item, onRemove }: { item: Item; onRemove: () => void }) {
+  const extension = extensionOf(item.nombre);
+  return (
+    <li
+      className={cn(
+        "inline-flex max-w-full items-center gap-2 rounded-pill border bg-surface py-0.5 pr-0.5 pl-1",
+        item.estado === "error" ? "border-danger" : "border-line",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "shrink-0 rounded-pill px-1.5 py-0.5 text-2xs font-bold uppercase",
+          TYPE_TONE[extension] ?? "bg-surface-sunken text-ink-muted",
+        )}
+      >
+        {extension.slice(0, 4) || "—"}
+      </span>
+      <span className="min-w-0 max-w-48 truncate text-sm text-ink" title={item.nombre}>{item.nombre}</span>
+      {item.estado === "subiendo" && (
+        // La barra de `hd-progress` ocupa todo el ancho de su contenedor.
+        <span className="w-10 shrink-0">
+          <progress className="hd-progress block" value={item.progreso} max={100} aria-label={`Subiendo ${item.nombre}`} />
+        </span>
+      )}
+      {item.estado === "listo" && (
+        <span className="inline-flex shrink-0 items-center gap-1 text-sm text-ink-muted">
+          {formatBytes(item.tamano)}
+          <CircleCheck aria-hidden className="size-4 text-success" strokeWidth={iconStroke.regular} />
+          <span className="sr-only">listo</span>
+        </span>
+      )}
+      {item.estado === "error" && (
+        <>
+          <CircleAlert aria-hidden className="size-4 shrink-0 text-danger" strokeWidth={iconStroke.regular} />
+          <span className="sr-only">no se adjuntó</span>
+        </>
+      )}
+      <IconButton
+        label={item.estado === "subiendo" ? `Cancelar la subida de ${item.nombre}` : `Quitar ${item.nombre}`}
+        icon={X}
+        onClick={onRemove}
+        className="size-7 rounded-pill"
+      />
+    </li>
+  );
+}
+
 export function AttachmentPicker({
   name = "adjuntos",
   onBusyChange,
   error,
+  layout = "zone",
+  trailing,
 }: {
   name?: string;
   onBusyChange: (busy: boolean) => void;
   /** Error que devolvió el servidor para este campo. */
   error?: string;
+  /**
+   * `zone` (U31): zona grande para elegir o soltar y una fila por archivo; la
+   * usa el cuadro de escritura del detalle. `compact` (U33, «Nuevo ticket»):
+   * un botón y los archivos en chips, para que el formulario no se alargue.
+   */
+  layout?: "zone" | "compact";
+  /** Solo en `compact`: acciones que van en la misma fila que «Adjuntar archivos». */
+  trailing?: ReactNode;
 }) {
   const [items, setItems] = useState<Item[]>([]);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -173,9 +237,9 @@ export function AttachmentPicker({
     if (!full) onChoose(event.dataTransfer.files);
   };
 
-  return (
-    <div>
-      <p className={fieldLabel} id={`${id}-label`}>Adjuntos (opcional)</p>
+  // Lo que se envía y el selector nativo son iguales en las dos formas.
+  const controls = (
+    <>
       <input type="hidden" name={name} value={JSON.stringify(listos)} />
       <input
         ref={input}
@@ -188,6 +252,59 @@ export function AttachmentPicker({
         aria-hidden
         onChange={(event) => onChoose(event.target.files)}
       />
+    </>
+  );
+
+  if (layout === "compact") {
+    const failed = items.filter((item) => item.estado === "error");
+    return (
+      // En la forma compacta se suelta en todo el bloque, no solo en el botón:
+      // el botón es pequeño para apuntar con un archivo arrastrado.
+      <div onDragOver={onDragOver} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+        {controls}
+        <div className="flex flex-wrap items-center gap-2">
+          {!full && (
+            <button
+              type="button"
+              onClick={() => input.current?.click()}
+              aria-describedby={`${id}-hint`}
+              className={cn(buttonRecipe({ variant: "secondary" }), dragging && "border-heading bg-accent-surface")}
+            >
+              <Paperclip aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
+              Adjuntar archivos
+            </button>
+          )}
+          {trailing}
+          {!full && (
+            <span id={`${id}-hint`} className="text-sm text-ink-muted">
+              Hasta {MAX_ATTACHMENTS_PER_SUBMIT}, de {formatBytes(MAX_ATTACHMENT_BYTES)} cada uno
+            </span>
+          )}
+        </div>
+        <div aria-live="polite">
+          {items.length > 0 && (
+            <ul className="mt-2.5 flex flex-wrap gap-2" aria-label="Archivos adjuntos">
+              {items.map((item) => (
+                <AttachmentChip key={item.key} item={item} onRemove={() => remove(item.key)} />
+              ))}
+            </ul>
+          )}
+          {/* El error de cada archivo va en texto, no solo en el borde rojo del chip. */}
+          {failed.map((item) => (
+            <p key={item.key} className={fieldError}>
+              {item.error?.includes(item.nombre) ? item.error : `${item.nombre}: ${item.error}`}
+            </p>
+          ))}
+        </div>
+        {mensaje && <p className={fieldError}>{mensaje}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className={fieldLabel} id={`${id}-label`}>Adjuntos (opcional)</p>
+      {controls}
       {!full && (
         <button
           type="button"

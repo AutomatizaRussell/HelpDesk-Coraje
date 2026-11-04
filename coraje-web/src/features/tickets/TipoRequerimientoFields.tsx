@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import { AREA_TILE_CLASS } from "@/design-system/patterns/area/area";
-import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
+import { fieldControl, fieldError, fieldLabel } from "@/design-system/recipes/field";
 import { colorTransition } from "@/design-system/recipes/interaction";
 import { cn } from "@/design-system/utilities/cn";
 import { areaDisplayName, areaShortCode, areaThemeKey } from "@/features/areas/area-theme";
@@ -32,13 +32,17 @@ function distinct(values: (string | null)[]): (string | null)[] {
 }
 
 /**
- * Áreas como tarjetas (U31, «Nuevo ticket»): un botón de opción real por área,
- * oculto, dentro de una tarjeta con el recuadro de color y el código del área.
- * Con radios nativos, las flechas recorren las áreas y el lector de pantalla
- * anuncia el grupo y la elegida. La tarjeta elegida cambia de borde y de
- * fondo, no solo de color; el foco con teclado se ve en la tarjeta.
+ * Áreas como chips (U31 las puso en tarjetas; U33 las compacta, porque en
+ * móvil las tarjetas apiladas ocupaban unos 390 px): un botón de opción real
+ * por área, oculto, dentro de un chip con el recuadro de color y el código del
+ * área. Con radios nativos, las flechas recorren las áreas y el lector de
+ * pantalla anuncia el grupo y la elegida. El chip elegido cambia de borde y de
+ * fondo, no solo de color; el foco con teclado se ve en el chip.
+ *
+ * Sin texto de ayuda: en la ventana, el encabezado ya dice «Llegará a …» al
+ * elegir, y en la página completa lo dice el pie.
  */
-function AreaCards({
+function AreaChips({
   areas,
   value,
   onChange,
@@ -50,13 +54,12 @@ function AreaCards({
   return (
     <fieldset>
       <legend className={fieldLabel}>Área que atiende</legend>
-      <p className={fieldHint}>A quién le escribes: el ticket llega a la bandeja de esa área.</p>
-      <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-2 flex flex-wrap gap-2">
         {areas.map((area) => (
           <label
             key={area.idArea}
             className={cn(
-              "flex cursor-pointer items-center gap-3 rounded-card border-2 border-line bg-surface px-3 py-2.5 hover:border-line-strong",
+              "inline-flex cursor-pointer items-center gap-2 rounded-pill border-2 border-line bg-surface py-1 pr-3.5 pl-1 hover:border-line-strong",
               // La elegida toma el acento, que en la ventana ya es el de esa área.
               "has-checked:border-accent has-checked:bg-accent-surface",
               "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-solid has-focus-visible:outline-focus",
@@ -75,13 +78,13 @@ function AreaCards({
             <span
               aria-hidden="true"
               className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-control text-2xs font-bold tracking-wide text-heading",
+                "grid size-7 shrink-0 place-items-center rounded-pill text-2xs font-bold tracking-wide text-heading",
                 AREA_TILE_CLASS[areaThemeKey(area.nombre)],
               )}
             >
               {areaShortCode(area.nombre)}
             </span>
-            <span className="min-w-0 font-bold text-heading">{areaDisplayName(area.nombre)}</span>
+            <span className="min-w-0 text-sm font-bold text-heading">{areaDisplayName(area.nombre)}</span>
           </label>
         ))}
       </div>
@@ -100,8 +103,8 @@ export function TipoRequerimientoFields({
   /** Tipo enviado en un intento fallido, para reconstruir la selección. */
   initialIdTipoReq?: string;
   error?: string;
-  /** `cards`: las áreas como tarjetas (U31, crear); `select`: el desplegable (redirigir). */
-  areaPicker?: "select" | "cards";
+  /** `chips`: las áreas como chips (U33, crear); `select`: el desplegable (redirigir). */
+  areaPicker?: "select" | "chips";
   /** Avisa del área elegida, por nombre, para que el formulario se tiña con su color. */
   onAreaChange?: (nombreArea: string | null) => void;
 }) {
@@ -134,8 +137,8 @@ export function TipoRequerimientoFields({
   };
 
   const areaField: ReactNode =
-    areaPicker === "cards" ? (
-      <AreaCards areas={catalog.areas} value={idArea} onChange={chooseArea} />
+    areaPicker === "chips" ? (
+      <AreaChips areas={catalog.areas} value={idArea} onChange={chooseArea} />
     ) : (
       <div>
         <label htmlFor="area" className={fieldLabel}>Área que atiende</label>
@@ -210,9 +213,9 @@ export function TipoRequerimientoFields({
   return (
     <>
       {areaField}
-      {/* Con tarjetas, la cascada va en una fila: las tres preguntas son una
+      {/* Con chips, la cascada va en una fila: las tres preguntas son una
           sola decisión, «de qué se trata», y así se leen. */}
-      {areaPicker === "cards" ? <div className="grid gap-4 sm:grid-cols-3">{cascade}</div> : cascade}
+      {areaPicker === "chips" ? <div className="grid gap-4 sm:grid-cols-3">{cascade}</div> : cascade}
       <input type="hidden" name="idTipoReq" value={resolved?.idTipoReq ?? ""} />
     </>
   );

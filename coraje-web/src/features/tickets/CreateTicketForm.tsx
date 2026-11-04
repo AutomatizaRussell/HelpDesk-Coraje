@@ -1,14 +1,14 @@
 "use client";
 
-import { CircleCheck, Copy, Send } from "lucide-react";
+import { ChevronDown, CircleCheck, Copy, Send, Users } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { useFormDialogClose, useFormDialogTone } from "@/design-system/patterns/form-dialog/FormDialog";
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { buttonRecipe } from "@/design-system/recipes/button";
-import { fieldControl, fieldError, fieldHint, fieldLabel } from "@/design-system/recipes/field";
-import { colorTransition, focusRing } from "@/design-system/recipes/interaction";
+import { fieldControl, fieldError, fieldLabel } from "@/design-system/recipes/field";
+import { colorTransition } from "@/design-system/recipes/interaction";
 import { notice, surface } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaDisplayName, areaThemeKey } from "@/features/areas/area-theme";
@@ -27,13 +27,20 @@ import { TipoRequerimientoFields } from "./TipoRequerimientoFields";
  *
  * La cascada de tipo de requerimiento vive en `TipoRequerimientoFields`,
  * compartida con la clasificación de tickets del portal (T3); aquí, con las
- * áreas como tarjetas. Lo que se envía es solo el tipo resuelto: el área y el
+ * áreas como chips. Lo que se envía es solo el tipo resuelto: el área y el
  * responsable los decide la base (`helpdesk.crear_ticket_interno`), no el
  * formulario.
  *
  * Al elegir el área, la ventana entera toma su color y dice a quién llegará
- * (`useFormDialogTone`): antes de escribir se ve a quién se le escribe. La prioridad va en tarjetas con el día en que
- * vencería el ticket, que calcula la misma función que fija el plazo.
+ * (`useFormDialogTone`): antes de escribir se ve a quién se le escribe. La
+ * prioridad va en una fila de opciones con el día en que vencería el ticket,
+ * que calcula la misma función que fija el plazo.
+ *
+ * U33 compactó la forma (pedido del usuario: en un portátil la ventana pedía
+ * desplazarse casi el doble de su alto): áreas en chips, prioridad en una
+ * fila, ayudas en la línea de su etiqueta, y adjuntos y observadores como dos
+ * botones en una fila, con los archivos en chips y el número de observadores
+ * en el botón.
  *
  * Si la creación falla, el formulario vuelve con lo que se había elegido y
  * escrito. Si sale bien, en lugar del formulario aparece la confirmación con
@@ -64,6 +71,11 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
     (area) => area.idArea === catalog.tipos.find((tipo) => tipo.idTipoReq === failed?.values.idTipoReq)?.idArea,
   );
   const [areaName, setAreaName] = useState<string | null>(initialArea?.nombre ?? null);
+  // Observadores (U11): plegados, porque la mayoría de los tickets no los
+  // necesita; si el intento fallido traía alguno o un error, el panel se abre.
+  const initialObservers = failed?.values.idObservadores ? failed.values.idObservadores.split(",") : [];
+  const [observersOpen, setObserversOpen] = useState(initialObservers.length > 0 || Boolean(failed?.fieldErrors.idObservadores));
+  const [observerCount, setObserverCount] = useState(initialObservers.length);
   // Dentro de la ventana emergente, «Cancelar» la cierra y el diálogo ya es la
   // superficie; en la página completa, «Cancelar» vuelve a la bandeja.
   const closeDialog = useFormDialogClose();
@@ -98,7 +110,7 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
       className={closeDialog ? undefined : surface({ padded: false })}
       noValidate
     >
-      <div className="space-y-6 p-5 lg:p-7">
+      <div className="space-y-5 p-5 lg:p-6">
         {failed && <p className={notice("danger")} role="alert">{failed.message}</p>}
 
         <TipoRequerimientoFields
@@ -107,19 +119,24 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
           catalog={catalog}
           initialIdTipoReq={failed?.values.idTipoReq}
           error={failed?.fieldErrors.idTipoReq}
-          areaPicker="cards"
+          areaPicker="chips"
           onAreaChange={chooseArea}
         />
 
-        <fieldset>
-          <legend className={fieldLabel}>Prioridad</legend>
-          <p className={fieldHint}>El plazo empieza a contar hoy, en días hábiles.</p>
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        {/* U33: una fila de opciones del mismo ancho, en lugar de tarjetas
+            de dos líneas en dos columnas. En móvil, cada opción parte el
+            nombre y el día en dos líneas para caber las tres. */}
+        <fieldset aria-describedby={failed?.fieldErrors.prioridad ? "prioridad-error" : undefined}>
+          <legend className={fieldLabel}>
+            Prioridad <span className="font-normal text-ink-muted">· plazo en días hábiles desde hoy</span>
+          </legend>
+          <div className="mt-2 grid auto-cols-fr grid-flow-col gap-2">
             {catalog.prioridades.map((prioridad) => (
               <label
                 key={prioridad.nombre}
                 className={cn(
-                  "flex cursor-pointer items-center justify-between gap-3 rounded-card border-2 border-line bg-surface px-4 py-3 hover:border-line-strong",
+                  "flex min-w-0 cursor-pointer flex-col rounded-control border-2 border-line bg-surface px-3 py-1.5 hover:border-line-strong",
+                  "sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-1.5",
                   "has-checked:border-accent has-checked:bg-accent-surface",
                   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-solid has-focus-visible:outline-focus",
                   colorTransition,
@@ -132,30 +149,34 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
                   defaultChecked={(failed?.values.prioridad ?? "MEDIA") === prioridad.nombre}
                   className="sr-only"
                 />
-                <span>
-                  <span className="block font-bold text-heading">{formatPriority(prioridad.nombre)}</span>
-                  <span className="block text-sm text-ink-muted">{prioridad.diasSla} días hábiles</span>
+                <span className="font-bold text-heading">{formatPriority(prioridad.nombre)}</span>
+                <span className="text-sm text-ink-muted">
+                  {prioridad.vence ? (
+                    <>
+                      <span className="hidden sm:inline">{prioridad.diasSla} días · </span>vence {formatDueDay(prioridad.vence)}
+                    </>
+                  ) : (
+                    `${prioridad.diasSla} días`
+                  )}
                 </span>
-                {prioridad.vence && (
-                  <span className="text-right text-sm text-ink-muted">
-                    Vence <span className="block font-bold text-heading">{formatDueDay(prioridad.vence)}</span>
-                  </span>
-                )}
               </label>
             ))}
           </div>
-          {failed?.fieldErrors.prioridad && <p className={fieldError}>{failed.fieldErrors.prioridad}</p>}
+          {failed?.fieldErrors.prioridad && <p id="prioridad-error" className={fieldError}>{failed.fieldErrors.prioridad}</p>}
         </fieldset>
 
         <div>
-          <label htmlFor="descripcion" className={fieldLabel}>Descripción</label>
-          <p id="descripcion-hint" className={fieldHint}>Qué necesitas y cualquier dato que ayude a resolverlo.</p>
+          {/* La ayuda va en la línea de la etiqueta: así no suma una fila. */}
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <label htmlFor="descripcion" className={fieldLabel}>Descripción</label>
+            <p id="descripcion-hint" className="text-sm text-ink-muted">Qué necesitas y cualquier dato que ayude a resolverlo.</p>
+          </div>
           <textarea
             id="descripcion"
             name="descripcion"
-            rows={5}
+            rows={4}
             defaultValue={failed?.values.descripcion ?? ""}
-            className={cn(fieldControl({ invalid: Boolean(failed?.fieldErrors.descripcion), multiline: true }), "mt-2")}
+            className={fieldControl({ invalid: Boolean(failed?.fieldErrors.descripcion), multiline: true })}
             aria-invalid={Boolean(failed?.fieldErrors.descripcion) || undefined}
             aria-describedby={cn("descripcion-hint", describedBy("descripcion"))}
           />
@@ -164,16 +185,36 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
           )}
         </div>
 
-        <AttachmentPicker onBusyChange={setUploading} error={failed?.fieldErrors.adjuntos} />
-
-        <details
-          className="rounded-card border border-line px-4 py-3"
-          open={Boolean(failed?.values.idObservadores || failed?.fieldErrors.idObservadores)}
-        >
-          <summary className={cn("cursor-pointer rounded-control font-bold text-heading", focusRing)}>
-            Observadores <span className="font-normal text-ink-muted">(opcional)</span>
-          </summary>
-          <div className="mt-3">
+        {/* Adjuntos y observadores son opcionales: un botón cada uno en la
+            misma fila, y lo elegido se ve sin abrir nada (chips y contador). */}
+        <div>
+          <AttachmentPicker
+            layout="compact"
+            onBusyChange={setUploading}
+            error={failed?.fieldErrors.adjuntos}
+            trailing={
+              <button
+                type="button"
+                aria-expanded={observersOpen}
+                aria-controls="observadores-panel"
+                onClick={() => setObserversOpen((open) => !open)}
+                className={buttonRecipe({ variant: "secondary" })}
+              >
+                <Users aria-hidden className="size-4" strokeWidth={iconStroke.regular} />
+                Observadores
+                {observerCount > 0 && (
+                  <span className="rounded-pill bg-accent-surface px-1.5 text-sm font-bold text-heading">
+                    {observerCount}
+                    <span className="sr-only"> elegidos</span>
+                  </span>
+                )}
+                <ChevronDown aria-hidden className={cn("size-4", observersOpen && "rotate-180")} strokeWidth={iconStroke.regular} />
+              </button>
+            }
+          />
+          {/* Plegado con `hidden`, no desmontado: las personas elegidas se
+              siguen enviando con el panel cerrado. */}
+          <div id="observadores-panel" hidden={!observersOpen} className="mt-3 rounded-card border border-line p-4">
             <PeoplePicker
               name="idObservadores"
               label="Personas que deben seguir este ticket"
@@ -181,15 +222,25 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
               candidates={followCandidates}
               mode="multiple"
               max={maxObservers}
-              initialSelected={failed?.values.idObservadores ? failed.values.idObservadores.split(",") : []}
+              initialSelected={initialObservers}
               error={failed?.fieldErrors.idObservadores}
+              onSelectionChange={setObserverCount}
             />
           </div>
-        </details>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-5 py-4 lg:px-7">
-        <p className="mr-auto text-sm text-ink-muted">{areaName ? `Lo recibe ${areaDisplayName(areaName)}.` : "Elige el área que atiende para continuar."}</p>
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-5 py-4 lg:px-6">
+        <p
+          className={cn(
+            "mr-auto text-sm text-ink-muted",
+            // En la ventana, con el área elegida, el encabezado ya dice «Llegará
+            // a …»: en móvil se omite aquí para que el pie quepa en una fila.
+            closeDialog && areaName && "hidden sm:block",
+          )}
+        >
+          {areaName ? `Lo recibe ${areaDisplayName(areaName)}.` : "Elige el área que atiende para continuar."}
+        </p>
         {closeDialog ? (
           <button type="button" onClick={closeDialog} className={buttonRecipe({ variant: "secondary", size: "lg" })}>Cancelar</button>
         ) : (

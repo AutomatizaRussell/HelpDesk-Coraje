@@ -363,6 +363,28 @@ Maqueta aprobada por el usuario («T»). `features/tickets/CreateTicketForm.tsx`
   responsable, el código grande con «Copiar», y «Crear otro» o «Ver el ticket». La
   bandeja de detrás ya trae el ticket nuevo.
 
+`DECISIÓN` (04-nov-2026, U33) **Forma compacta**, elegida por el usuario entre tres
+maquetas (compacta, dos columnas, dos pasos). La ventana medía unos 1.090 px de alto en
+escritorio y 1.460 en móvil, calculados desde las recetas: en un portátil pedía
+desplazarse casi el doble de lo visible. Sustituye, en crear, las tarjetas de área y de
+prioridad y la zona de adjuntos de arriba:
+
+- **Áreas en chips** (radios nativos ocultos, con el recuadro y el código del área), sin
+  texto de ayuda: al elegir, el encabezado dice «Llegará a …».
+- **Prioridad en una fila** de opciones del mismo ancho: nombre, días y día de
+  vencimiento; en móvil, nombre y día en dos líneas.
+- Las ayudas de prioridad y descripción van en la línea de su etiqueta; la descripción
+  abre con cuatro filas.
+- **Adjuntar archivos** y **Observadores** son dos botones en una fila. Los archivos van
+  en chips con su estado (barra, tamaño y marca, alerta) y el error de cada uno en texto
+  debajo; se pueden soltar en todo el bloque (`AttachmentPicker`, `layout="compact"`).
+  El botón de observadores muestra cuántos hay elegidos y abre el panel; plegado con
+  `hidden`, la selección se sigue enviando.
+- En móvil, con el área elegida, el pie omite «Lo recibe …» para caber en una fila.
+
+Estimado: unos 650 px en escritorio y 760 en móvil, sin medir en navegador. Sin tokens
+nuevos. El cuadro de escritura del detalle conserva la zona grande (`layout="zone"`).
+
 ### 5.4 `DECISIÓN` (04-nov-2026, U30) Cabecera del área
 
 Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).

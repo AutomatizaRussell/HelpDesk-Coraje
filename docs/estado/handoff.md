@@ -1,6 +1,21 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 69, U33: crear ticket compacto, SIN DESPLEGAR)
+SOBRE:   `253362c` (corte 68)
+RAMA:    main
+UNIDAD:  U33 (design/sistema-helpdesk.md §5.5): «Nuevo ticket» compacto. Áreas en
+         chips, prioridad en una fila, ayudas en la línea de su etiqueta, y adjuntos
+         y observadores como dos botones en una fila, con los archivos en chips y el
+         número de observadores en el botón. `AttachmentPicker` gana
+         `layout="compact"`; el detalle sigue con la zona. Sin tokens nuevos.
+         Evidencia, sobre un árbol con cambios de otras unidades sin commit: `tsc`,
+         `lint`, `next build` (DATABASE_URL de relleno) y 203/206 pruebas; las 3 que
+         fallan leen una migración de calificación aún vacía, ajena a esta unidad.
+         Sin ver en navegador.
+SIGUE:   desplegar y crear un ticket con adjuntos y observadores, en escritorio y móvil.
+
+--- Corte 68, para contexto:
 CORTE:   04-nov-2026 (corte 68, U32: la descripción como primer mensaje del ticket, SIN DESPLEGAR)
 SOBRE:   `bff418e` (corte 67)
 RAMA:    main
@@ -1819,6 +1834,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `253362c` | **Corte 68.** U32: la descripción como primer mensaje del solicitante. Publicado el 04-nov-2026 |
 | `bff418e` | **Corte 67.** U32: tope del semicírculo; arrastró por error `docs/specs/directorio-personal.md`, ajeno a la unidad. Publicado el 04-nov-2026 |
 | `d58bd26` | **Corte 66.** U32: la descripción del ticket solo en la cabecera. Publicado el 04-nov-2026 |
 | `9a16506` | **Corte 65.** U32: barra superior mínima y escala comprimida. Publicado el 04-nov-2026 |
