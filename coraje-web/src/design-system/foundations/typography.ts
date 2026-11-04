@@ -32,6 +32,10 @@ export const typography = {
     md: { size: "1rem", lineHeight: "1.5rem" }, // 16 / 24
     lg: { size: "1.25rem", lineHeight: "1.75rem" }, // 20 / 28
     xl: { size: "1.5rem", lineHeight: "2rem" }, // 24 / 32
+    // Cifras y saludo de la cabecera del área (U30). Lato Black a estos
+    // tamaños es lo que le da voz a la pantalla; no son para texto corrido.
+    "2xl": { size: "2.125rem", lineHeight: "2.5rem" }, // 34 / 40
+    "3xl": { size: "2.5rem", lineHeight: "3rem" }, // 40 / 48
   },
 } as const;
 

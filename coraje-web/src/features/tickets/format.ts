@@ -34,6 +34,20 @@ export function formatCatalogLabel(value: string): string {
   return value.charAt(0).toLocaleUpperCase("es-CO") + value.slice(1);
 }
 
+/**
+ * Iniciales de una persona para su círculo (U30): primera letra de las dos
+ * primeras palabras, en mayúscula. «Andrés Ríos» → «AR»; «MATEO» → «M». Los
+ * nombres llegan del directorio con mayúsculas o sin ellas: no importa.
+ */
+export function personInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toLocaleUpperCase("es-CO"))
+    .join("");
+}
+
 /** Rótulo de prioridad con su plazo, igual que en el legacy («Media (3 días)»). */
 export function formatPriority(nombre: string, diasSla?: number): string {
   const label = nombre.charAt(0) + nombre.slice(1).toLowerCase();

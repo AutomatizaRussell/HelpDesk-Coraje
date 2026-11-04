@@ -18,7 +18,8 @@ import { isOpenState, type TicketState } from "./ticket-state";
  */
 export type SlaStatus = "VENCIDO" | "POR_VENCER" | "EN_PLAZO";
 
-const DUE_SOON_MS = 24 * 60 * 60 * 1000;
+/** Ventana de «por vencer». La usa también el conteo de la bandeja (`countInbox`). */
+export const DUE_SOON_MS = 24 * 60 * 60 * 1000;
 
 export function slaStatus(params: { state: TicketState; fechaLimite: Date | null; now: Date }): SlaStatus | null {
   const { state, fechaLimite, now } = params;

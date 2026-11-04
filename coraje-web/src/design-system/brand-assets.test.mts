@@ -32,7 +32,11 @@ const widest = (prefix: string) =>
 const assets = [
   { file: "rb-logo.png", display: widest("logo") },
   { file: "rb-logo-white.png", display: widest("logo") },
-  { file: "rb-isotype-white.png", display: px("isotype") },
+  // El isotipo pequeño sirve a la columna de Conecta y al estado vacío (U30).
+  { file: "rb-isotype-white.png", display: Math.max(px("isotype"), px("emptyIsotype")) },
+  // El de la cabecera del área (U30) es otro archivo: a 256 px, el de 108 px
+  // se vería borroso, y servir uno de 512 px en la columna sería desperdicio.
+  { file: "rb-isotype-white-hero.png", display: px("heroGlobe") },
 ];
 
 for (const { file, display } of assets) {

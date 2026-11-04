@@ -20,3 +20,16 @@ export const AREA_DOT_CLASS: Record<AreaThemeKey, string> = {
   legal: "bg-area-legal",
   general: "bg-area-general",
 };
+
+/**
+ * La tinta del área al 20 %, fondo del recuadro con el código del área en la
+ * bandeja (U30). El texto encima es navy: `area-palette.test.mts` mide que
+ * se lea (≥ 4,5:1) en las cinco.
+ */
+export const AREA_TILE_CLASS: Record<AreaThemeKey, string> = {
+  revisoria: "bg-area-revisoria-surface",
+  contabilidad: "bg-area-contabilidad-surface",
+  bpo: "bg-area-bpo-surface",
+  legal: "bg-area-legal-surface",
+  general: "bg-area-general-surface",
+};

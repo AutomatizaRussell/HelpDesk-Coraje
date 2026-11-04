@@ -62,6 +62,13 @@ export type ConectaShellProps = {
   modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
+  /**
+   * Cabecera de ancho completo entre la navegación y el contenido (U30, la
+   * del área en la bandeja). El título de la vista sigue en la topbar; el
+   * contenido pierde el margen superior para que la primera tarjeta se monte
+   * sobre el borde de la cabecera.
+   */
+  hero?: ReactNode;
   children: ReactNode;
 };
 
@@ -77,6 +84,7 @@ export function ConectaShell({
   mode,
   moduleName,
   modeSwitch,
+  hero,
   children,
 }: ConectaShellProps) {
   const sidebarRef = useRef<HTMLDialogElement>(null);
@@ -179,7 +187,8 @@ export function ConectaShell({
           <ModuleNav items={moduleNav} trailing={modeSwitch} />
         </header>
 
-        <main id="contenido" className="mx-auto w-full max-w-content flex-1 px-6 py-8 lg:px-10 lg:py-10">
+        {hero}
+        <main id="contenido" className={cn("mx-auto w-full max-w-content flex-1 px-6 lg:px-10", hero ? "pb-8 lg:pb-10" : "py-8 lg:py-10")}>
           {children}
         </main>
       </div>

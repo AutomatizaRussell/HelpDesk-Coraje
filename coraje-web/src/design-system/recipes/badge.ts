@@ -21,5 +21,6 @@ const tones = {
 export type BadgeTone = keyof typeof tones;
 
 export function badge(tone: BadgeTone): string {
-  return cn("inline-flex items-center whitespace-nowrap rounded-pill border px-2 text-xs font-bold", tones[tone]);
+  // `gap-1`: la insignia de estado y la de plazo llevan icono desde U30.
+  return cn("inline-flex items-center gap-1 whitespace-nowrap rounded-pill border px-2 text-xs font-bold", tones[tone]);
 }

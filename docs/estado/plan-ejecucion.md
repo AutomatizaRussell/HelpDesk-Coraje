@@ -692,6 +692,27 @@ Lo que el usuario pidió del 29-oct al 03-nov, en este orden, un commit por part
 
 **Condición de cierre:** cada parte ejercitada en el despliegue por el usuario.
 
+### U30 · Bandeja con personalidad: cabecera del área — **construida el 04-nov-2026 (corte 54), sin desplegar**
+
+Queja del usuario y de quienes usan HelpDesk (03-nov): la interfaz es plana y «se nota
+hecha por IA». Exploradas en una maqueta (artifact privado del usuario) catorce
+direcciones; el usuario eligió la **N**: cabecera en la tinta del área de quien entra,
+con un disco de su color pleno y el globo blanco dentro, cifras que cuentan hasta su
+valor y la bandeja montada sobre el borde de la cabecera
+(`design/sistema-helpdesk.md` §5.4).
+
+- Construido: cabecera (`patterns/area-hero/`), recuadro del área, persona con
+  iniciales, pestañas subrayadas, estado vacío con el globo, iconos en estado y plazo,
+  filas que entran escalonadas, un conteo más en `countInbox` (por vencer).
+- **Abierto, decide el usuario:** la animación ambiental definitiva del disco (hoy el
+  globo flota; candidatas en la maqueta: destello ocasional, respiración, combinada) y
+  si se pregunta a mercadeo por el disco (§5.4).
+- Fuera de esta unidad: la lista con lectura al lado (dirección E de la maqueta), que
+  cambia la navegación y va en una unidad propia.
+
+**Condición de cierre:** el usuario ve la bandeja desplegada en las cinco áreas
+(suplantando) y en los dos modos, y la aprueba o pide ajustes.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

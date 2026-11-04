@@ -40,6 +40,7 @@
   --hd-color-on-accent: #001871;
   --hd-color-info: #00a9ce;
   --hd-color-info-surface: #cceef5;
+  --hd-color-avatar-surface: #ccd1e3;
 
   /* Color de cada área (U16, themes/helpdesk.ts `area`). */
   --hd-area-revisoria-mark: #ed8b00;
@@ -72,15 +73,23 @@
   --hd-radius-control: 6px;
   --hd-radius-surface: 10px;
   --hd-radius-pill: 999px;
+  --hd-radius-card: 12px;
   --hd-radius-shell-item: 8px;
   --hd-radius-scrollbar: 3px;
 
   --hd-shadow-overlay: 0 16px 48px rgba(0, 24, 113, 0.18);
+  --hd-shadow-raised: 0 1px 2px rgba(0, 24, 113, 0.06), 0 12px 32px rgba(0, 24, 113, 0.12);
 
   --hd-motion-fast: 120ms;
   --hd-motion-normal: 180ms;
   --hd-motion-easing: cubic-bezier(0.2, 0, 0, 1);
   --hd-motion-toast-offset: 8px;
+  --hd-motion-enter: 600ms;
+  --hd-motion-float: 5s;
+  --hd-motion-float-offset: 8px;
+  --hd-motion-count: 1100ms;
+  --hd-motion-stagger: 40ms;
+  --hd-motion-rise-offset: 8px;
 
   --hd-size-topbar: 64px;
   --hd-size-topbar-wide: 84px;
@@ -107,6 +116,12 @@
   --hd-size-notice-panel: 384px;
   --hd-size-toast: 384px;
   --hd-size-preview: 75vh;
+  --hd-size-hero-disc: 400px;
+  --hd-size-hero-globe: 256px;
+  --hd-size-hero-stripe: 6px;
+  --hd-size-empty-mark: 88px;
+  --hd-size-empty-mark-inner: 56px;
+  --hd-size-empty-isotype: 32px;
 
   --hd-layer-rail: 20;
   --hd-layer-topbar: 30;
@@ -189,6 +204,10 @@
   --hd-type-lg-line-height: 1.75rem;
   --hd-type-xl-size: 1.5rem;
   --hd-type-xl-line-height: 2rem;
+  --hd-type-2xl-size: 2.125rem;
+  --hd-type-2xl-line-height: 2.5rem;
+  --hd-type-3xl-size: 2.5rem;
+  --hd-type-3xl-line-height: 3rem;
 }
 
 /* Acento por área de quien entra (U16). El shell pone `data-area` en su raíz
@@ -292,6 +311,10 @@
   --text-lg--line-height: var(--hd-type-lg-line-height);
   --text-xl: var(--hd-type-xl-size);
   --text-xl--line-height: var(--hd-type-xl-line-height);
+  --text-2xl: var(--hd-type-2xl-size);
+  --text-2xl--line-height: var(--hd-type-2xl-line-height);
+  --text-3xl: var(--hd-type-3xl-size);
+  --text-3xl--line-height: var(--hd-type-3xl-line-height);
 
   /* Color semántico de HelpDesk. */
   --color-canvas: var(--hd-color-canvas);
@@ -313,6 +336,13 @@
   --color-area-bpo: var(--hd-area-bpo-mark);
   --color-area-legal: var(--hd-area-legal-mark);
   --color-area-general: var(--hd-area-general-mark);
+  /* El recuadro con el código del área de un ticket (U30, `patterns/area`). */
+  --color-area-revisoria-surface: var(--hd-area-revisoria-surface);
+  --color-area-contabilidad-surface: var(--hd-area-contabilidad-surface);
+  --color-area-bpo-surface: var(--hd-area-bpo-surface);
+  --color-area-legal-surface: var(--hd-area-legal-surface);
+  --color-area-general-surface: var(--hd-area-general-surface);
+  --color-avatar-surface: var(--hd-color-avatar-surface);
   --color-focus: var(--hd-color-focus);
   --color-focus-inverse: var(--hd-color-focus-inverse);
   --color-action: var(--hd-color-action);
@@ -365,9 +395,11 @@
   --radius-control: var(--hd-radius-control);
   --radius-surface: var(--hd-radius-surface);
   --radius-pill: var(--hd-radius-pill);
+  --radius-card: var(--hd-radius-card);
   --radius-shell-item: var(--hd-radius-shell-item);
 
   --shadow-overlay: var(--hd-shadow-overlay);
+  --shadow-raised: var(--hd-shadow-raised);
   --shadow-shell-menu: var(--hd-shell-menu-shadow);
 
   --ease-standard: var(--hd-motion-easing);
@@ -400,6 +432,12 @@
   --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
   --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
   --spacing-preview: var(--hd-size-preview);
+  --spacing-hero-disc: var(--hd-size-hero-disc);
+  --spacing-hero-globe: var(--hd-size-hero-globe);
+  --spacing-hero-stripe: var(--hd-size-hero-stripe);
+  --spacing-empty-mark: var(--hd-size-empty-mark);
+  --spacing-empty-mark-inner: var(--hd-size-empty-mark-inner);
+  --spacing-empty-isotype: var(--hd-size-empty-isotype);
   --container-access-panel: var(--hd-size-access-panel);
   --container-content: var(--hd-size-content-max);
   --container-form: var(--hd-size-form-max);
@@ -409,6 +447,13 @@
   /* Entrada del toast: sube y aparece, con la duración y la curva del
      contrato. Con movimiento reducido, la regla global la deja instantánea. */
   --animate-toast-in: hd-toast-in var(--hd-motion-normal) var(--hd-motion-easing);
+
+  /* Cabecera del área y bandeja (U30). El disco entra una vez; el globo
+     flota siempre, despacio; las filas suben al aparecer. Con movimiento
+     reducido, la regla global de `@layer base` las deja quietas. */
+  --animate-hero-disc: hd-hero-disc-in var(--hd-motion-enter) var(--hd-motion-easing) both;
+  --animate-float: hd-float var(--hd-motion-float) ease-in-out infinite;
+  --animate-rise: hd-rise var(--hd-motion-enter) var(--hd-motion-easing) both;
 }
 
 @keyframes hd-toast-in {
@@ -421,6 +466,55 @@
     transform: none;
   }
 }
+
+/* Crece un poco y aparece. Sin giro: el manual de marca prohíbe girar el
+   globo (§4.1), y el globo va dentro del disco. */
+@keyframes hd-hero-disc-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hd-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(-1 * var(--hd-motion-float-offset)));
+  }
+}
+
+@keyframes hd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hd-motion-rise-offset));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrada escalonada (U30): los hijos de un contenedor `data-stagger` (las
+   filas de la bandeja) esperan un paso más cada uno. Se corta en el décimo:
+   más allá, la última fila tardaría demasiado en aparecer y la espera dejaría
+   de leerse como ritmo para leerse como lentitud. React conserva las filas
+   que no cambian entre una búsqueda y otra, así que solo entran las nuevas. */
+[data-stagger] > :nth-child(2) { animation-delay: var(--hd-motion-stagger); }
+[data-stagger] > :nth-child(3) { animation-delay: calc(var(--hd-motion-stagger) * 2); }
+[data-stagger] > :nth-child(4) { animation-delay: calc(var(--hd-motion-stagger) * 3); }
+[data-stagger] > :nth-child(5) { animation-delay: calc(var(--hd-motion-stagger) * 4); }
+[data-stagger] > :nth-child(6) { animation-delay: calc(var(--hd-motion-stagger) * 5); }
+[data-stagger] > :nth-child(7) { animation-delay: calc(var(--hd-motion-stagger) * 6); }
+[data-stagger] > :nth-child(8) { animation-delay: calc(var(--hd-motion-stagger) * 7); }
+[data-stagger] > :nth-child(9) { animation-delay: calc(var(--hd-motion-stagger) * 8); }
+[data-stagger] > :nth-child(n + 10) { animation-delay: calc(var(--hd-motion-stagger) * 9); }
 
 @layer base {
   html {

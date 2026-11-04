@@ -53,6 +53,11 @@ export const helpdeskTheme = {
     info: brandPrimitives.skyBlue,
     infoSurface: tint("skyBlue", 20),
 
+    // Fondo del círculo con las iniciales de una persona (U30): navy al
+    // 20 %, con las iniciales en navy. No sigue al área: es una persona, no
+    // un área, y debe verse igual para todos.
+    avatarSurface: tint("navy", 20),
+
     // El foco es navy y no el acento: un anillo de foco necesita 3:1 contra
     // lo que lo rodea (WCAG 1.4.11) y Sky Blue no lo alcanza sobre blanco.
     focus: brandPrimitives.navy,
@@ -77,11 +82,18 @@ export const helpdeskTheme = {
     control: "6px",
     surface: "10px",
     pill: "999px",
+    // Cajas de cifra de la cabecera del área (U30): más redondas que una
+    // superficie de trabajo porque flotan sobre el color, no ordenan datos.
+    card: "12px",
     shellItem: "8px", // réplica de Conecta (`rounded-lg` de sus ítems)
     scrollbar: "3px", // réplica de Conecta (::-webkit-scrollbar-thumb)
   },
   shadow: {
     overlay: "0 16px 48px rgba(0, 24, 113, 0.18)",
+    // Superficie elevada sobre el lienzo (la bandeja bajo la cabecera, U30):
+    // un borde de contacto y una sombra larga y tenue, teñida de navy. Es lo
+    // que separa la tarjeta del lienzo sin depender solo del borde de 1 px.
+    raised: "0 1px 2px rgba(0, 24, 113, 0.06), 0 12px 32px rgba(0, 24, 113, 0.12)",
   },
   motion: {
     fast: "120ms",
@@ -89,6 +101,18 @@ export const helpdeskTheme = {
     easing: "cubic-bezier(0.2, 0, 0, 1)",
     // Recorrido de entrada del toast: lo justo para que se note que llega.
     toastOffset: "8px",
+    // Cabecera del área (U30). `enter`: el disco aparece una vez al abrir la
+    // vista. `float`/`floatOffset`: el globo sube y baja despacio, siempre;
+    // es lento a propósito para que no distraiga en una pantalla que se mira
+    // muchas veces al día. `count`: lo que tardan las cifras en llegar a su
+    // valor. `stagger`/`riseOffset`: las filas de la bandeja entran una tras
+    // otra, con este retraso entre filas y este recorrido.
+    enter: "600ms",
+    float: "5s",
+    floatOffset: "8px",
+    count: "1100ms",
+    stagger: "40ms",
+    riseOffset: "8px",
   },
   size: {
     // Topbar replicada de Conecta (h-16, lg:h-[84px]). No lleva logotipo: la
@@ -139,6 +163,19 @@ export const helpdeskTheme = {
     // Alto del visor de adjuntos (U29): casi toda la ventana, con margen para
     // el título de la ventana y el botón de descargar.
     preview: "75vh",
+    // Cabecera del área (U30): el disco del color del área, recortado en la
+    // esquina superior derecha, y el globo blanco dentro. `heroGlobe` fija el
+    // ancho del derivado `public/rb-isotype-white-hero.png` (512 px, el doble);
+    // `brand-assets.test.mts` lo comprueba. `heroStripe`: la franja superior
+    // del color pleno, más gruesa que la franja corporativa del acceso.
+    heroDisc: "400px",
+    heroGlobe: "256px",
+    heroStripe: "6px",
+    // Estado vacío (U30): el mismo motivo a escala de tarjeta. Disco exterior
+    // en la tinta del área, disco interior en el color pleno, globo blanco.
+    emptyMark: "88px",
+    emptyMarkInner: "56px",
+    emptyIsotype: "32px",
   },
   layer: {
     rail: "20",

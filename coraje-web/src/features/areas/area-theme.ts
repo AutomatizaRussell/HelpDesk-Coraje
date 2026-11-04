@@ -33,3 +33,14 @@ export function areaThemeKey(nombreArea: string | null | undefined): AreaThemeKe
   if (!nombreArea) return "general";
   return BY_NAME[normalizeAreaName(nombreArea)] ?? "general";
 }
+
+/**
+ * Código de tres letras del área para su recuadro en la bandeja (U30):
+ * «ADMINISTRACIÓN» → «ADM», «Revisoría» → «REV», «BPO» → «BPO». Son las tres
+ * primeras letras del nombre sin tildes, igual que el prefijo del código de
+ * ticket (`ADM-202611-1`), así que la persona ve la misma sigla en las dos
+ * columnas. Es apoyo visual: el nombre completo va al lado.
+ */
+export function areaShortCode(nombreArea: string): string {
+  return normalizeAreaName(nombreArea).replace(/[^a-z0-9]/g, "").slice(0, 3).toUpperCase();
+}

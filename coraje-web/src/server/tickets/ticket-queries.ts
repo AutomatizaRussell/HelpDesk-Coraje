@@ -12,7 +12,7 @@ import {
 
 import { FOLLOWER_WHERE } from "./follow-rules";
 import { UNREDIRECTED_WHERE, canRedirect } from "./redirect-queries";
-import { slaStatus, type SlaStatus } from "./sla";
+import { DUE_SOON_MS, slaStatus, type SlaStatus } from "./sla";
 import { modeCondition, ticketModeOf, type TicketMode } from "./ticket-mode";
 import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
 
@@ -125,6 +125,8 @@ export interface InboxPage {
 export interface InboxCounts {
   porEstado: Record<TicketState, number>;
   vencidos: number;
+  /** Abiertos que vencen en menos de un día (U30): la frase de la cabecera. */
+  porVencer: number;
 }
 
 
@@ -279,7 +281,7 @@ export async function listInbox(params: {
 /**
  * Los contadores de arriba de la bandeja, sobre **todo** mi alcance de
  * consulta en el modo, no sobre la vista ni los filtros: responden «cómo está
- * lo mío», y cambiar de pestaña no debe cambiarlos. Dos consultas agregadas
+ * lo mío», y cambiar de pestaña no debe cambiarlos. Tres consultas agregadas
  * en la base, sin traer tickets a memoria.
  *
  * `null` si la persona no puede consultar tickets.
@@ -291,13 +293,19 @@ export async function countInbox(idPersonal: string, mode: TicketMode): Promise<
   const scope = consultScopeConditions(grant.alcance, grant.actor);
   const where: Prisma.FactTicketWhereInput = { AND: [scope === null ? {} : { OR: scope }, modeCondition(mode)] };
 
-  const [grupos, estados, vencidos] = await Promise.all([
+  // Un solo «ahora» para los dos conteos de plazo: con dos relojes, un ticket
+  // que vence justo entre una consulta y la otra se contaría dos veces o
+  // ninguna. Los límites son los de `slaStatus`.
+  const now = new Date();
+  const open = { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } };
+  const [grupos, estados, vencidos, porVencer] = await Promise.all([
     prisma.factTicket.groupBy({ by: ["idEstado"], where, _count: { _all: true } }),
     prisma.dimEstado.findMany({ select: { idEstado: true, nombreEstado: true } }),
+    prisma.factTicket.count({ where: { AND: [where, open, { fechaLimite: { lt: now } }] } }),
+    // U30: la cabecera dice cuántos están por vencer. Misma forma que el
+    // conteo de vencidos, sobre los mismos índices.
     prisma.factTicket.count({
-      where: {
-        AND: [where, { dimEstado: { nombreEstado: { in: [...OPEN_STATES] } } }, { fechaLimite: { lt: new Date() } }],
-      },
+      where: { AND: [where, open, { fechaLimite: { gte: now, lt: new Date(now.getTime() + DUE_SOON_MS) } }] },
     }),
   ]);
 
@@ -307,7 +315,7 @@ export async function countInbox(idPersonal: string, mode: TicketMode): Promise<
     const estado = nombre.get(grupo.idEstado);
     if (estado && isTicketState(estado)) porEstado[estado] += grupo._count._all;
   }
-  return { porEstado, vencidos };
+  return { porEstado, vencidos, porVencer };
 }
 
 /**

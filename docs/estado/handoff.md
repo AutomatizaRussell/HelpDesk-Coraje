@@ -1,6 +1,20 @@
 # Handoff técnico
 
 ```
+CORTE:   04-nov-2026 (corte 54, U30: cabecera del área en la bandeja, SIN DESPLEGAR)
+SOBRE:   `76b23ca` (corte 53)
+RAMA:    main
+UNIDAD:  U30 (design/sistema-helpdesk.md §5.4). La bandeja abre con una cabecera
+         en la tinta del área de quien entra: saludo, frase de plazo, «Nuevo
+         ticket», cifras que cuentan y un disco con el globo blanco. La bandeja se
+         monta sobre ella con pestañas, iconos de estado y plazo, recuadro del
+         área, iniciales del responsable y estados vacíos con el globo.
+         `countInbox` cuenta además los «por vencer». Evidencia: `tsc`, `lint`,
+         213/213, `next build` (con `DATABASE_URL` de relleno: en local no hay
+         base). Nada visto en navegador.
+SIGUE:   desplegar U29 y U30 juntos y revisar la bandeja en las cinco áreas.
+
+--- Corte 53, para contexto:
 CORTE:   03-nov-2026 (corte 53, U29: recodificar los tickets existentes, SIN DESPLEGAR)
 SOBRE:   `1145044` (corte 52)
 RAMA:    main
@@ -1299,6 +1313,18 @@ levantamiento de PowerApps (U0), lo que se construya será diseño por analogía
 
 ## 3. Capacidades publicadas en esta unidad
 
+### U30 — cabecera del área en la bandeja (corte 54, sin desplegar)
+
+- `patterns/area-hero/`: cabecera en la tinta del área, disco con el globo
+  (`public/rb-isotype-white-hero.png`, 512 px) y cifras con `CountUp`.
+- `patterns/empty-state/`, `patterns/area/AreaTile.tsx`, `components/PersonChip.tsx`,
+  `components/TabLinks.tsx`; insignias de estado y plazo con icono (también en el
+  detalle y el portal).
+- Tokens nuevos en los dos adaptadores: tipos `2xl`/`3xl`, radio `card`, sombra
+  `raised`, seis de movimiento, seis de tamaño, `avatarSurface`.
+- `countInbox` devuelve `porVencer` (una consulta agregada más, sobre los mismos índices).
+- Pendiente de decidir: animación ambiental definitiva y consulta a mercadeo por el disco.
+
 ### U11 — seguimiento del ticket (corte 22, sin desplegar)
 
 - **Observadores:** personas reales del directorio que ven el ticket y su historia
@@ -1625,6 +1651,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `76b23ca` | **Corte 53.** U29: tickets existentes recodificados por mes. Publicado el 03-nov-2026 |
 | `1145044` | **Corte 52.** U29 parte 6: vista previa y carpeta por ticket. Publicado el 03-nov-2026 |
 | `9b18790` | **Corte 51.** U29 parte 5: toasts. Publicado el 03-nov-2026 |
 | `6b9543f` | **Corte 50.** U29 parte 4: código `ADM-202611-1`. Publicado el 03-nov-2026 |
@@ -1757,11 +1784,17 @@ o su Nginx interno) que reenvíe `/helpdesk/*` al contenedor de HelpDesk. Sin el
 aunque el deploy de HelpDesk funcione y la persona tenga rol asignado, esa ruta no le
 llega ningún tráfico.
 
-## Acción inmediata para la siguiente sesión — desplegar U28 y revisar los logotipos de U27
+## Acción inmediata para la siguiente sesión — desplegar U29 y U30 y revisar la bandeja
 
-Se desvía de la cola (U7, adjuntos) por el frente de economía de recursos que pidió el
-usuario el 03-nov. Condiciones en `plan-ejecucion.md`, U26 y U27. Después se vuelve a
-los adjuntos.
+Un solo despliegue lleva las dos unidades. Revisar la bandeja suplantando a una persona
+por área (las cinco) y en los dos modos; la condición de cierre de U30 está en
+`plan-ejecucion.md`. Se desvía de la cola (U7, adjuntos) porque el usuario priorizó el
+frente visual el 03-nov. Después se vuelve a los adjuntos.
+
+## Anterior — desplegar U28 y revisar los logotipos de U27
+
+Se desvió de la cola por el frente de economía de recursos del 03-nov. Condiciones en
+`plan-ejecucion.md`, U26 y U27.
 
 ## Siguiente — poner en marcha los adjuntos
 

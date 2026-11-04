@@ -51,11 +51,18 @@ export async function AppFrame({
   employee,
   title,
   mode = "interno",
+  hero,
   children,
 }: {
   employee: EmployeeSessionContext;
   title: string;
   mode?: TicketMode;
+  /**
+   * Cabecera de ancho completo de la vista (U30, la del área en la bandeja).
+   * Es una función porque necesita el área de quien entra, que este marco ya
+   * consulta para el color: así la vista no la vuelve a pedir.
+   */
+  hero?: (context: { areaName: string | null }) => ReactNode;
   children: ReactNode;
 }) {
   const [entry, grants, modeAccess, areaName, suplantacion] = await Promise.all([
@@ -95,6 +102,7 @@ export async function AppFrame({
     );
 
   const areaTheme = areaThemeKey(areaName);
+  const heroNode = hero?.({ areaName });
 
   const sections = helpdeskSections(mode, {
     administrarAccesos: modeAccess.administrarAccesos,
@@ -129,6 +137,7 @@ export async function AppFrame({
         moduleName="HelpDesk"
         modeSwitch={modeSwitch}
         noticeBell={noticeBell("topbar")}
+        hero={heroNode}
         signOutAction={signOutAction}
       >
         {content}
@@ -145,6 +154,7 @@ export async function AppFrame({
       mode={mode}
       modeSwitch={modeSwitch}
       noticeBell={noticeBell("appBar")}
+      hero={heroNode}
       signOutAction={signOutAction}
     >
       {content}

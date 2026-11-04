@@ -147,6 +147,14 @@ Russell Bedford (inspeccionado el 23-sep-2026). Lo que obliga a este contrato:
 **Personalidad:** precisa · adulta · sobria · operativa · confiable. Nace del orden y el
 ritmo, **no de saturar color o negrilla**.
 
+> `DECISIÓN` **Corrección de la personalidad (03 y 04-nov-2026, usuario, U30).** El
+> criterio anterior se cumplió al pie de la letra y produjo una interfaz plana que las
+> personas que la usan y el propio usuario leen como «hecha por IA». Se mantiene la
+> sobriedad en **lo que se trabaja** (la tabla, los formularios, el detalle) y se le da
+> voz a **lo que recibe**: una cabecera en el color del área de quien entra, cifras
+> grandes en Lato Black que cuentan hasta su valor, el globo de la marca como motivo,
+> movimiento lento y escaso, y estados vacíos con dibujo. Concreción en §5.4.
+
 Diferencia de tono respecto a Impulsa, y es real: Impulsa es documental y pausada —se
 prepara una solicitud, se revisa, se despacha—. Una mesa de ayuda es **una cola**. Su
 pantalla principal es una bandeja que alguien mira muchas veces al día, donde importan
@@ -331,6 +339,40 @@ asignado a…») aparece en una esquina un momento y se va solo.
   portal), el mensaje sigue en línea. Los avisos que llegaban por la URL (ticket creado,
   ticket redirigido) usan `FlashToast`, que además limpia el parámetro.
 
+### 5.4 `DECISIÓN` (04-nov-2026, U30) Cabecera del área
+
+Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
+`design-system/patterns/area-hero/`:
+
+- **Fondo en la tinta del área al 20 %**, franja superior y disco en su color pleno:
+  todo sale del acento que el shell ya redefine por área (§5.1), así que el patrón no
+  sabe de áreas. El texto va en navy (≥ 4,5:1 sobre las cinco tintas): por eso la
+  cabecera es la tinta y no el color pleno, que no sostiene texto en naranja, Sea Green
+  ni Sky Blue.
+- **Saludo** con el primer nombre y la fecha de Bogotá; **una frase de plazo** sobre el
+  alcance de la persona («en tu alcance hay 3 tickets vencidos…», resaltando solo los
+  vencidos); **cifras** por estado y vencidos, con el marcador del tono de su insignia
+  (§5), que cuentan hasta su valor con el punto de los miles.
+- **Disco con el globo blanco** recortado en la esquina superior derecha; se oculta en
+  pantallas estrechas. El disco aparece creciendo una vez; el globo flota despacio.
+  Ninguno gira.
+- **La bandeja se monta sobre el borde** de la cabecera, en una tarjeta con sombra.
+  Las filas entran escalonadas (solo las nuevas); el área va en un recuadro con su
+  código de tres letras; el responsable, con sus iniciales; estado y plazo, con icono.
+- **Estado vacío** (`patterns/empty-state/`): el mismo motivo a escala de tarjeta.
+
+**Manual de marca, leído el 04-nov-2026** (el PDF está fuera del repositorio). Lo que
+obliga aquí: el globo solo es motivo decorativo, **no se distorsiona ni se gira**
+(§4.1); el logotipo completo no va dentro de una forma (§4.2), regla que no alcanza al
+globo suelto; no se añaden palabras para leerse con el logotipo (§4.2), así que
+«HelpDesk» nunca va junto a él. El manual ilustra el globo blanco sobre fotos
+recortadas en círculo y sobre fondos sólidos, **no sobre un disco de color**: el disco es
+una extrapolación. `ABIERTO`: confirmarlo con el área de mercadeo; si lo objeta, se
+cambia `HeroGlobe` y nada más.
+
+`ABIERTO`: la animación ambiental definitiva (el usuario compara candidatas en la
+maqueta).
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |
@@ -388,6 +430,7 @@ Estado al 23-sep-2026 (U5, cambios locales sin publicar). «Verificado» signifi
 | V6 | Ningún control usa `font: inherit` | Detector del barrido | **Verificado** |
 | V7 | La nota interna y la respuesta al cliente son inequívocas | Validación visual del detalle del ticket | **Construido, sin validar en navegador** (corte 18): rótulo en texto, icono distinto y forma distinta (fondo hundido con borde discontinuo) en `TicketHistory.tsx`. Además, quien solo radicó el ticket no recibe las notas internas |
 | V8 | El portal es operable en móvil, teclado y lector de pantalla | Validación real, no inspección | Pendiente: no hay portal (U8) |
+| V9 | La cabecera del área se lee en las cinco áreas y respeta el manual (§5.4) | Bandeja desplegada, suplantando una persona por área | **Construido, sin ver en navegador** (corte 54): tokens en los dos adaptadores, derivado `rb-isotype-white-hero.png` de 512 px cubierto por `brand-assets.test.mts`; contraste del texto navy sobre las tintas ya medido por `area-palette.test.mts` |
 
 **Changelog:** 03-sep-2026 — línea base. Declara el rediseño completo y la ausencia de
 fase «primero funciona, luego se centraliza» (§1); adopta Lato corrigiendo su deuda de
@@ -409,3 +452,6 @@ mesa de ayuda y la autoridad única de color de estado (§5).
   semántico por área exige confirmar antes el mapeo con el usuario.
 - 01-oct-2026 — U16. §5.1: color por área (acento de quien entra, punto del área del
   ticket), con el token `info` fijo para los estados.
+- 04-nov-2026 — U30. §2: se corrige la personalidad (sobria en lo que se trabaja, con
+  voz en lo que recibe). §5.4: cabecera del área, estado vacío y reglas del manual de
+  marca leídas sobre el PDF.

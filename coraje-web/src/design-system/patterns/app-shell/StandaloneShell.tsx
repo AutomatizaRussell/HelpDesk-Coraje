@@ -33,6 +33,14 @@ export type StandaloneShellProps = {
   modeSwitch?: ReactNode;
   /** La campana de avisos, junto al avatar; se omite si la persona no tiene `aviso.consultar`. */
   noticeBell?: ReactNode;
+  /**
+   * Cabecera de ancho completo entre la navegación y el contenido (U30, la
+   * del área en la bandeja). Con ella, el título de la vista se lee solo en
+   * lector de pantalla —el saludo ocupa su lugar a la vista— y el contenido
+   * no lleva margen superior: la primera tarjeta se monta sobre el borde de
+   * la cabecera.
+   */
+  hero?: ReactNode;
   children: ReactNode;
 };
 
@@ -45,6 +53,7 @@ export function StandaloneShell({
   areaTheme,
   mode,
   modeSwitch,
+  hero,
   children,
 }: StandaloneShellProps) {
   return (
@@ -63,8 +72,10 @@ export function StandaloneShell({
         <ModuleNav items={moduleNav} trailing={modeSwitch} />
       </header>
 
-      <main id="contenido" className="mx-auto w-full max-w-content flex-1 px-6 py-8 lg:px-10 lg:py-10">
-        <h1 className="mb-6 text-xl font-black tracking-tight text-heading">{title}</h1>
+      {hero && <h1 className="sr-only">{title}</h1>}
+      {hero}
+      <main id="contenido" className={cn("mx-auto w-full max-w-content flex-1 px-6 lg:px-10", hero ? "pb-8 lg:pb-10" : "py-8 lg:py-10")}>
+        {!hero && <h1 className="mb-6 text-xl font-black tracking-tight text-heading">{title}</h1>}
         {children}
       </main>
     </div>
