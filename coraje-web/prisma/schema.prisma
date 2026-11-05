@@ -68,7 +68,8 @@ model DimArea {
   codigoArea          String                   @unique @map("codigo_area") @db.VarChar(10)
   dimPersonal         DimPersonal[]
   dimTipoRequerimiento DimTipoRequerimiento[]
-  factTicket          FactTicket[]
+  factTicket          FactTicket[]             @relation("FactTicketAreaDestino")
+  factTicketRemitidos FactTicket[]             @relation("FactTicketAreaRemite")
   ticketCodigoCounter TicketCodigoCounter[]
   ticketCodigoMes     TicketCodigoMes[]
 
@@ -617,6 +618,11 @@ model FactTicket {
   idClienteContai      String?                 @map("id_cliente_contai") @db.Uuid
   idSolicitante        String?                 @map("id_solicitante") @db.Uuid
   idAreaDestino        String?                 @map("id_area_destino") @db.Uuid
+  // U38 (tickets.md §3.2): el área de quien radicó, fijada al nacer el ticket
+  // y nunca recalculada. La escriben crear_ticket_interno y la ingesta
+  // (Área_Remite del ítem legacy); coraje_runtime no tiene UPDATE sobre ella.
+  // NULL en los tickets del portal y en 10 legacy sin el dato.
+  idAreaRemite         String?                 @map("id_area_remite") @db.Uuid
   idAsignado           String?                 @map("id_asignado") @db.Uuid
   idEstado             String                  @map("id_estado") @db.Uuid
   idPrioridad          String?                 @map("id_prioridad") @db.Uuid
@@ -638,7 +644,8 @@ model FactTicket {
   // origen_sistema = PORTAL_CLIENTE.
   idContactoPortal     String?                 @map("id_contacto_portal") @db.Uuid
   portalContacto       PortalContacto?         @relation(fields: [idContactoPortal], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  dimArea              DimArea?                @relation(fields: [idAreaDestino], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+  dimArea              DimArea?                @relation("FactTicketAreaDestino", fields: [idAreaDestino], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
+  dimAreaRemite        DimArea?                @relation("FactTicketAreaRemite", fields: [idAreaRemite], references: [idArea], onDelete: NoAction, onUpdate: NoAction)
   dimPersonalAsignado  DimPersonal?            @relation("FactTicketAsignado", fields: [idAsignado], references: [idPersonal], onDelete: NoAction, onUpdate: NoAction)
   dimClienteContai     DimClienteContai?       @relation(fields: [idClienteContai], references: [idClienteContai], onDelete: NoAction, onUpdate: NoAction)
   dimEstado            DimEstado               @relation(fields: [idEstado], references: [idEstado], onDelete: NoAction, onUpdate: NoAction)

@@ -1,6 +1,23 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 81, U38: área que remite, SIN DESPLEGAR)
+SOBRE:   `1642e95` (corte 80)
+RAMA:    main
+UNIDAD:  U38 (specs/tickets.md §3.2), primera pieza de U39 (indicadores, traslado del
+         Power BI «IND HELPDESK»): `fact_ticket.id_area_remite` se fija al nacer el
+         ticket. La 06 la toma de `Área_Remite` de SharePoint; `crear_ticket_interno`,
+         del solicitante. Solo `coraje_etl` puede reescribirla. Evidencia: `prisma
+         validate`, `tsc`, `eslint`, pruebas 238/238 (5 nuevas de contrato), `next
+         build` con `DATABASE_URL` de relleno, y la migración más la 06 nueva contra
+         PGlite en el orden del despliegue, 16/16. Sin ejercitar contra la base real.
+LOCAL:   nada.
+SIGUE:   desplegar `web`, DESPUÉS reimportar la ingesta y lanzarla (una sola
+         reimportación lleva U36 y U38 si la de U36 no se hizo): en la salida de la
+         06, `area_remite_sin_resolver = 0`, y la comprobación de operacion.md,
+         «Área que remite (U38)». Luego, lo pendiente del corte 80.
+
+--- Corte 80, para contexto:
 CORTE:   05-nov-2026 (corte 80, desbordes en móvil, SIN DESPLEGAR)
 SOBRE:   corte 79 (mismo push)
 RAMA:    main

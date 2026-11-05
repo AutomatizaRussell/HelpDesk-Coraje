@@ -175,6 +175,27 @@ ticket migrado recibe un evento `MIGRACION_LEGACY` con su estado inicial, idempo
 > el `Reasignado` de SharePoint en `ABIERTO`: no tiene fila en `dim_estado` y cae en el
 > valor por defecto. La traducción correcta está en §4.2.
 
+### 3.2 `DECISIÓN` (05-nov-2026, U38) Área que remite, fijada al nacer el ticket
+
+`fact_ticket.id_area_remite` es el área de quien radicó **en el momento de radicar**.
+No se deduce del área actual de la persona. PowerApps la guardaba así (`Área_Remite`,
+tomada del perfil al crear), y el Power BI «IND HELPDESK» agrupa por ella las páginas
+«Tickets creados».
+
+| Origen | De dónde sale | Quién la escribe |
+|---|---|---|
+| `SHAREPOINT_LEGACY` | `Área_Remite` del ítem, con `core.norm_text` contra `dim_area` | Transform 06, como `coraje_etl`; la sigue si el ítem cambia |
+| `SISTEMA_INTERNO` | Área del solicitante en `dim_personal` al radicar | `crear_ticket_interno` |
+| `PORTAL_CLIENTE` | Ninguna: la radica un contacto de cliente | Queda `NULL` |
+
+`coraje_runtime` no tiene `UPDATE` sobre la columna. Un solicitante activo sin área
+radica igual, con el área en `NULL`.
+
+Motivo, medido el 05-nov-2026 sobre 3.088 tickets legacy: deducirla del área actual
+dejaba **672 sin área** (solicitantes que ya salieron) y **11 en otra área**. Los 3.078
+valores no vacíos de `Área_Remite` tenían área en el catálogo; 10 venían vacíos y quedan
+`NULL`, igual que en el Power BI.
+
 ## 4. Vocabulario de estados
 
 > **`RATIFICADO` (03-sep-2026), salvo lo que sigue marcado aparte.** El usuario confirmó
@@ -718,6 +739,7 @@ que lo reparte reasignando.
 | V24 | Un `AsignadoA` escrito que no resuelve deja el ticket sin responsable, y uno vacío cae en `Recibe` (§4.2) | Nodo `PG - Transform 06`, expresión de `id_asignado` | **Probado contra un PostgreSQL desechable** (PGlite, 03-nov-2026): 5/5 casos sobre la expresión tal como está en el workflow. Sin ejercitar contra la base real |
 | V25 | Todo tipo «proyectos y ti» tiene regla activa hacia Alex (§7.5) | `prisma/migrations/20261103100000_enrutar_proyectos_y_ti` | **Probado contra PGlite** con datos (03-nov-2026), desplegado con el corte 40; sin consultar en la base real |
 | V26 | Adjuntos: reglas, workflow y tabla (§14.8) | `attachment-rules.test.mts`, `attachments.contract.test.mts`, `n8n/HELPDESK - Adjuntos V1.json` | **Probado sin Graph** (03-nov-2026): reglas 6/6, contrato 6/6, nodos del workflow 12/12 con respuestas simuladas, tabla contra PGlite (par evento-ticket, objeto único, 26 MB). **Sin ejercitar contra OneDrive** |
+| V27 | El área que remite se fija al nacer el ticket y no sigue al solicitante (§3.2) | `prisma/migrations/20261105110000_area_remite_ticket`, nodo `PG - Transform 06`, `area-remite.contract.test.mts` | **Probado contra PGlite** (05-nov-2026), en el orden del despliegue: 06 anterior, migración, 06 nueva como `coraje_etl`, creación como `coraje_runtime`; 16/16, con los permisos de F6 emulados. **Sin ejercitar contra la base real** |
 
 ## 11. `DECISIÓN` Observadores y solicitud de validación — construidos (U11)
 

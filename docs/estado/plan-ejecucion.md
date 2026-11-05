@@ -801,6 +801,45 @@ del detalle (`design/sistema-helpdesk.md` §5.4).
 con los hilos en el monitor ancho, y las rayas siguen al puntero en la bandeja y en el
 detalle.
 
+### U38 · Área que remite — **construida el 05-nov-2026 (corte 81)**
+
+Primera pieza de U39. El área de quien radica queda en el ticket al nacer
+(`specs/tickets.md` §3.2): la 06 la toma de `Área_Remite` de SharePoint y
+`crear_ticket_interno` la copia del solicitante. Deducirla del área actual dejaba 672 de
+3.088 tickets legacy sin área.
+
+**Condición de cierre:** desplegado `web` y reimportada la ingesta, la salida de la 06
+da `area_remite_sin_resolver = 0`, y la consulta de `estado/operacion.md` («Área que
+remite (U38)») cuenta 3.078 tickets legacy con área y 10 sin ella.
+
+### U39 · Indicadores: traslado del Power BI «IND HELPDESK» — **decidida en concepto el 05-nov-2026, sin construir**
+
+El reporte de Power BI que hoy abre la pantalla `Indicadores` de PowerApps, rehecho en
+HelpDesk con su lógica y un diseño propio. El inventario salió del `.pbit`: seis
+páginas (tickets recibidos y creados, sus detalles, % oportunidad de respuesta y
+calidad), ocho medidas, dos listas de SharePoint.
+
+Decisiones del usuario (05-nov-2026):
+
+- **La lógica se copia tal cual**, incluida la escala de % oportunidad, que se
+  redefinirá después. Solo se corrige lo que está objetivamente mal: los días se
+  cuentan **hábiles** (`core.add_colombia_business_days`), no calendario, y las tres
+  cifras de la tarjeta (total, respondidos, sin respuesta) usan el mismo universo.
+  Primero se reproduce la versión en días calendario y se concilia contra el Power BI;
+  después se pasa a días hábiles.
+- **Datos:** solo `origen_sistema = 'SHAREPOINT_LEGACY'` mientras PowerApps siga en
+  uso. Al apagarlo, los tickets de HelpDesk.
+- **Visibilidad por jerarquía:** cada persona ve lo suyo y lo de quienes están por
+  debajo. En Conecta la jerarquía es el nivel deducido del nombre del cargo dentro del
+  área (Socio 0, Gerente 1, Senior 2, Líder o Semi-senior 3, Analista o Asistente 4),
+  sin jefe directo. Falta decidir entre dos formas:
+  - fijar el nivel en el ticket al nacer;
+  - usar el área del ticket con el nivel de quien consulta.
+
+  También falta ubicar a los 2 coordinadores, que no encajan en ningún nivel.
+
+**Depende de:** U38 desplegada.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note

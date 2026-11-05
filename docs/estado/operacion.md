@@ -348,6 +348,30 @@ JULIANA TANGARIFE RICO y ya no de `MERCADEO.MDE`.
 explícita y diga por qué. La ingesta no puede, y `coraje_etl` no tiene `DELETE` sobre la
 tabla.
 
+### Área que remite (U38)
+
+`specs/tickets.md` §3.2. Mismo orden que U36, y se hace en el mismo paso si U36 sigue
+sin desplegar:
+
+1. **Desplegar `web` primero.** La migración `20261105110000_area_remite_ticket` crea
+   `fact_ticket.id_area_remite`, concede su `UPDATE` solo a `coraje_etl` y llena los
+   tickets internos que ya existen. No toca los legacy.
+2. **Después, reimportar la ingesta** sobre el mismo `id` y lanzar *Manual Trigger*. Si
+   se importa antes, la 06 falla porque la columna no existe, y la ingesta queda parada
+   sin dañar nada. La primera ejecución reescribe una vez los 3.078 tickets legacy con
+   área (`ultima_actualizacion` incluida; nada la lee para ordenar).
+3. **Revisar la salida de `PG - Transform 06 Tickets Legacy`:** `area_remite_sin_resolver`
+   debe ser 0. Si no lo es, hay un texto de `Área_Remite` que no coincide con ningún área
+   del catálogo, y se corrige en la regla de la 06, no en la base.
+
+Comprobación (esperado: `SHAREPOINT_LEGACY` 3.078 con área y 10 sin ella, a la fecha del
+05-nov-2026; `SISTEMA_INTERNO`, todos con área):
+
+```bash
+docker exec -i coraje_postgres psql -X -P pager=off -U coraje_etl -d coraje \
+ -c "SELECT origen_sistema, count(*) FILTER (WHERE id_area_remite IS NOT NULL) AS con_area, count(*) FILTER (WHERE id_area_remite IS NULL) AS sin_area FROM helpdesk.fact_ticket GROUP BY 1 ORDER BY 1"
+```
+
 ### Retiro del espejo en PowerApps (U24)
 
 `specs/sincronizacion-sharepoint.md` §9. HelpDesk deja de escribir en SharePoint. La

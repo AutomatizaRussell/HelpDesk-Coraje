@@ -132,15 +132,19 @@ function prismaColumns(model: string): string[] {
     .map((m) => m[3].match(/@map\("([^"]+)"\)/)?.[1] ?? m[1]);
 }
 
-/** Columnas de la última concesión de UPDATE por columna sobre fact_ticket. */
+/**
+ * Columnas de la última concesión de UPDATE por columna sobre fact_ticket a
+ * coraje_runtime. Las concesiones que solo nombran a coraje_etl (U38, el área
+ * que remite) amplían la ingesta, no la aplicación, y no cuentan aquí.
+ */
 function grantedUpdateColumns(): string[] {
   const grants = [
     // [^)]: la lista de columnas no lleva paréntesis. Con [\s\S]*? la
     // coincidencia empezaba en el GRANT UPDATE de otra tabla y se extendía
     // hasta la siguiente concesión sobre fact_ticket, con el escritor entero
     // dentro (U34 lo destapó al poner una concesión detrás de la de U29).
-    ...migrationsSql.matchAll(/GRANT UPDATE \(([^)]*)\) ON "helpdesk"\."fact_ticket" TO/g),
-  ];
+    ...migrationsSql.matchAll(/GRANT UPDATE \(([^)]*)\) ON "helpdesk"\."fact_ticket" TO ([^;]*);/g),
+  ].filter((grant) => grant[2].includes('"coraje_runtime"'));
   assert.ok(grants.length > 0, "una migración debe conceder UPDATE por columna sobre fact_ticket");
   return [...grants[grants.length - 1][1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
 }
@@ -157,6 +161,9 @@ const PROTECTED_COLUMNS: Record<string, string> = {
   // coraje_etl conserva la de 20260925180000 porque la ingesta copia la
   // calificación de los tickets de PowerApps.
   calificacion: "solo la escribe calificar_ticket, con su evento CALIFICACION (U34)",
+  // Protegida solo para coraje_runtime: coraje_etl la recibe en su propia
+  // concesión (U38) para copiar Área_Remite de los tickets de PowerApps.
+  id_area_remite: "se fija al nacer el ticket y no se recalcula (U38)",
 };
 
 test("los roles de servicio pueden actualizar toda columna de fact_ticket salvo las protegidas", () => {
