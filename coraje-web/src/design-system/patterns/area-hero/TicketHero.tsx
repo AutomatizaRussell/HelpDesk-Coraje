@@ -6,6 +6,7 @@ import { iconStroke } from "../../foundations/iconography";
 import { focusRing, modeTransition } from "../../recipes/interaction";
 import { cn } from "../../utilities/cn";
 import type { AreaThemeKey } from "../area/area";
+import { HeroPointerGrid } from "./HeroPointerGrid";
 import { PlazoRing } from "./PlazoRing";
 
 /**
@@ -67,7 +68,11 @@ export function TicketHero({
   return (
     <section data-area={area} aria-label="Resumen del ticket" className={cn("relative overflow-hidden bg-accent-surface", modeTransition)}>
       <div aria-hidden="true" className="h-hero-stripe bg-accent" />
-      <div className="mx-auto flex max-w-content items-start gap-10 px-6 pt-5 pb-27 lg:px-10">
+      {/* La trama del puntero, como en la bandeja. El contenido lleva
+          `relative` para pintarse encima: una capa posicionada se pinta sobre
+          los bloques que no lo están. */}
+      <HeroPointerGrid />
+      <div className="relative mx-auto flex max-w-content items-start gap-10 px-6 pt-5 pb-27 lg:px-10">
         <div className="min-w-0 flex-1">
           <Link
             href={back.href}

@@ -41,6 +41,7 @@
   --hd-color-info: #00a9ce;
   --hd-color-info-surface: #cceef5;
   --hd-color-avatar-surface: #ccd1e3;
+  --hd-color-mark-line: #ffffff;
 
   /* Color de cada área (U16, themes/helpdesk.ts `area`). */
   --hd-area-revisoria-mark: #ed8b00;
@@ -127,9 +128,11 @@
   --hd-size-plazo-ring: 176px;
   --hd-size-ring-globe: 96px;
   --hd-size-hero-stripe: 6px;
-  --hd-size-pointer-grid-dot: 1.5px;
-  --hd-size-pointer-grid-gap: 14px;
-  --hd-size-pointer-grid-reach: 90px;
+  --hd-size-pointer-line: 1.5px;
+  --hd-size-pointer-line-gap: 7px;
+  --hd-size-pointer-reach: 64px;
+  --hd-size-hero-mark-line: 2px;
+  --hd-size-hero-mark-line-gap: 14px;
   --hd-size-spark: 10px;
   --hd-size-spark-reach: 160px;
   --hd-size-progress: 4px;
@@ -448,6 +451,15 @@
   --spacing-preview: var(--hd-size-preview);
   --spacing-hero-globe: var(--hd-size-hero-globe);
   --spacing-hero-mark: var(--hd-size-hero-mark);
+  /* Lo que sobra a cada lado de la columna de contenido: 0 mientras la
+     ventana no la supere. `cqw` lo mide sobre el contenedor de la forma
+     (`@container` en `HeroMark`), no sobre la ventana, que incluye la barra
+     lateral. Se resuelve en el elemento que lo usa: no es un valor fijo. */
+  --spacing-hero-mark-gutter: calc((100cqw - min(100cqw, var(--hd-size-content-max))) / 2);
+  /* La mitad del margen: lo que se corre el globo para quedar en el centro
+     de todo el azul visible. Se repite la expresión en lugar de citar la de
+     arriba porque este bloque es `inline` y no emite sus variables. */
+  --spacing-hero-mark-shift: calc((100cqw - min(100cqw, var(--hd-size-content-max))) / 4);
   --spacing-plazo-ring: var(--hd-size-plazo-ring);
   --spacing-ring-globe: var(--hd-size-ring-globe);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
@@ -521,21 +533,50 @@
 }
 
 /* Trama que sigue al puntero (U30, `patterns/area-hero/HeroPointerGrid`).
-   Una retícula de puntos del color del área cubre la cabecera, pero la
-   máscara solo la deja ver en un círculo alrededor del puntero. El componente
+   Rayas finas del color del área, en el ángulo de las franjas del globo (las
+   mismas de la forma en pantalla ancha, a escala menor; antes eran puntos,
+   cambiadas el 05-nov-2026), cubren la cabecera, pero la máscara solo las
+   deja ver en un círculo alrededor del puntero. El componente
    mueve el círculo escribiendo `--pointer-x` y `--pointer-y` en el elemento
    (sin volver a renderizar) y lo enciende con `data-active`. Sin prefijo
    `--hd-`: no son tokens del contrato sino coordenadas en vivo. */
 .hd-pointer-grid {
-  background-image: radial-gradient(var(--hd-color-accent) var(--hd-size-pointer-grid-dot), transparent var(--hd-size-pointer-grid-dot));
-  background-size: var(--hd-size-pointer-grid-gap) var(--hd-size-pointer-grid-gap);
-  -webkit-mask-image: radial-gradient(circle var(--hd-size-pointer-grid-reach) at var(--pointer-x, 0) var(--pointer-y, 0), black, transparent);
-  mask-image: radial-gradient(circle var(--hd-size-pointer-grid-reach) at var(--pointer-x, 0) var(--pointer-y, 0), black, transparent);
+  background: repeating-linear-gradient(135deg, var(--hd-color-accent) 0 var(--hd-size-pointer-line), transparent var(--hd-size-pointer-line) var(--hd-size-pointer-line-gap));
+  -webkit-mask-image: radial-gradient(circle var(--hd-size-pointer-reach) at var(--pointer-x, 0) var(--pointer-y, 0), black, transparent);
+  mask-image: radial-gradient(circle var(--hd-size-pointer-reach) at var(--pointer-x, 0) var(--pointer-y, 0), black, transparent);
   opacity: 0;
   transition: opacity var(--hd-motion-normal) var(--hd-motion-easing);
 }
 .hd-pointer-grid[data-active] {
   opacity: 1;
+}
+
+/* Hilos de la forma de la cabecera (`patterns/area-hero/AreaHero`,
+   `HeroMark`), solo en pantalla ancha. Líneas de `hero-mark-line` cada
+   `hero-mark-line-gap`, en el ángulo de las franjas del globo (135° en CSS:
+   suben hacia la derecha). El elemento empieza en el centro del globo; la
+   máscara radial, centrada ahí, deja un claro algo mayor que el globo y los
+   hace aparecer poco a poco: el claro hace de contorno. Los radios salen del
+   tamaño del globo para que sigan a `size.heroGlobe` si cambia.
+
+   Una segunda máscara, intersecada con la primera, solo deja ver el último
+   tramo del elemento, de largo proporcional al margen que sobra a cada lado
+   de la columna (`--mark-gutter`, la misma medida que `hero-mark-gutter`,
+   resuelta con `cqw` sobre el contenedor de `HeroMark`). Con margen 0 el
+   tramo mide 0 y no hay hilos: sin ella asomarían en las esquinas del
+   semicírculo en un portátil. No vale una consulta `@container`: no admite
+   `var()`, y el ancho de la columna es un token. */
+.hd-mark-lines {
+  --mark-gutter: calc((100cqw - min(100cqw, var(--hd-size-content-max))) / 2);
+  background: repeating-linear-gradient(135deg, var(--hd-color-mark-line) 0 var(--hd-size-hero-mark-line), transparent var(--hd-size-hero-mark-line) var(--hd-size-hero-mark-line-gap));
+  -webkit-mask-image:
+    radial-gradient(circle at 0 50%, transparent calc(var(--hd-size-hero-globe) * 0.57), black calc(var(--hd-size-hero-globe) * 0.86)),
+    linear-gradient(to right, transparent calc(100% - 2 * var(--mark-gutter)), black calc(100% - var(--mark-gutter)));
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(circle at 0 50%, transparent calc(var(--hd-size-hero-globe) * 0.57), black calc(var(--hd-size-hero-globe) * 0.86)),
+    linear-gradient(to right, transparent calc(100% - 2 * var(--mark-gutter)), black calc(100% - var(--mark-gutter)));
+  mask-composite: intersect;
 }
 
 /* Sorpresa del globo (U30, `patterns/area-hero/HeroGlobe`): el globo salta dos

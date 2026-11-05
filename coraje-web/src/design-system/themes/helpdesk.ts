@@ -58,6 +58,10 @@ export const helpdeskTheme = {
     // un área, y debe verse igual para todos.
     avatarSurface: tint("navy", 20),
 
+    // Hilos que llenan la forma de la cabecera en pantalla ancha
+    // (`.hd-mark-lines`): blancos, como el globo que comparte la forma.
+    markLine: brandPrimitives.white,
+
     // El foco es navy y no el acento: un anillo de foco necesita 3:1 contra
     // lo que lo rodea (WCAG 1.4.11) y Sky Blue no lo alcanza sobre blanco.
     focus: brandPrimitives.navy,
@@ -196,14 +200,22 @@ export const helpdeskTheme = {
     plazoRing: "176px",
     ringGlobe: "96px",
     heroStripe: "6px",
-    // Trama que sigue al puntero sobre la cabecera (U30): puntos del color
-    // del área de `pointerGridDot` cada `pointerGridGap`, visibles solo en un
-    // círculo de `pointerGridReach` alrededor del puntero. Compactada el
-    // 04-nov-2026 tras verla desplegada (antes 150 px de alcance y 20 px entre
-    // puntos: se leía como una mancha grande).
-    pointerGridDot: "1.5px",
-    pointerGridGap: "14px",
-    pointerGridReach: "90px",
+    // Trama que sigue al puntero sobre la cabecera (U30), en la bandeja y en
+    // el detalle del ticket, del color del área y visible solo en un círculo
+    // alrededor del puntero. Compactada el 04-nov-2026 tras verla desplegada
+    // (antes 150 px de alcance: se leía como una mancha grande).
+    // 05-nov-2026: los puntos pasan a rayas de `pointerLine` cada
+    // `pointerLineGap`, en el ángulo de las franjas del globo (las de la forma
+    // en pantalla ancha, más pequeñas), y el círculo baja a `pointerReach`.
+    pointerLine: "1.5px",
+    pointerLineGap: "7px",
+    pointerReach: "64px",
+    // Hilos de la forma en pantalla ancha (05-nov-2026, variante «16» de la
+    // maqueta): líneas de `heroMarkLine` cada `heroMarkLineGap` en el ángulo
+    // de las franjas del globo. Finas a propósito: llevan el ritmo del globo
+    // sin competir con el grosor de sus franjas.
+    heroMarkLine: "2px",
+    heroMarkLineGap: "14px",
     // Chispas de la sorpresa del globo: su tamaño y hasta dónde llegan.
     spark: "10px",
     sparkReach: "160px",

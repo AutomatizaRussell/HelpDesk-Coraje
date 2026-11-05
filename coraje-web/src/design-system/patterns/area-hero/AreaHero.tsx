@@ -58,6 +58,17 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
  * visible**: horizontalmente, el centro del semicírculo; verticalmente, la
  * mitad del tramo que queda por encima del contenido (`bottom-15`).
  *
+ * **Anclada a la columna, no a la ventana** (05-nov-2026). El texto vive en
+ * una columna de ancho máximo centrada; la forma, pegada al borde de la
+ * ventana, se separaba de él en un monitor ancho. Ahora el cuadrado se aparta
+ * del borde lo que sobra a cada lado de la columna (`right-hero-mark-gutter`,
+ * medido con `cqw` sobre este contenedor) y un tramo recto lleva el color
+ * hasta el borde. Para que ese tramo no sea un bloque liso, el globo se
+ * centra en todo el azul y unos hilos blancos en el ángulo de sus franjas
+ * (`.hd-mark-lines`) llenan el lado derecho (variante «16» de la maqueta,
+ * elegida por el usuario). Mientras la ventana no supere la columna, el
+ * margen es 0 y todo queda como antes.
+ *
  * Sexta versión, del 04-nov-2026, tras ver desplegadas las anteriores. La
  * quinta medía el semicírculo solo sobre la franja visible: se veía
  * recortado, y el tramo recto que bajaba desde su punto inferior parecía un
@@ -65,9 +76,23 @@ const MARKER_CLASS: Record<BadgeTone, string> = {
  */
 function HeroMark() {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
-      <div className="absolute top-0 right-0 h-full max-h-hero-mark aspect-square translate-x-1/8 rounded-l-pill bg-accent">
-        <div className="absolute inset-x-0 top-0 bottom-15 grid place-items-center">
+    <div aria-hidden="true" className="@container pointer-events-none absolute inset-0 hidden animate-hero-mark lg:block">
+      <div className="absolute top-0 right-hero-mark-gutter h-full max-h-hero-mark aspect-square translate-x-1/8 rounded-l-pill bg-accent">
+        {/* Tramo recto: desde el centro del cuadrado hasta el borde de la
+            ventana. Lo que pasa del borde por `translate-x-1/8` lo recorta la
+            cabecera (`overflow-hidden`). */}
+        <div className="absolute inset-y-0 left-1/2 -right-hero-mark-gutter bg-accent" />
+        {/* El globo se corre la mitad del margen (`hero-mark-shift`): queda en
+            el centro de todo el azul visible y no en el del semicírculo, que
+            en pantalla ancha ya no es el centro de la forma. Con margen 0 está
+            donde siempre. */}
+        <div className="absolute top-0 bottom-15 left-hero-mark-shift -right-hero-mark-shift grid place-items-center">
+          {/* Hilos: nacen en el centro del globo y van hasta el borde; su
+              máscara los abre en un claro alrededor del globo y los apaga
+              cuando no sobra margen (`.hd-mark-lines`). Centrados en vertical
+              sobre el globo: `-top-15 -bottom-15` compensa el `bottom-15` de
+              este bloque. */}
+          <div className="hd-mark-lines absolute -top-15 -bottom-15 left-1/2 -right-hero-mark-shift opacity-60" />
           {/* El globo no flota: el flotado es del estado vacío, y repetirlo
               aquí hacía que las dos piezas se leyeran como la misma. Su
               animación es la sorpresa de los cinco clics (`HeroGlobe`). */}
@@ -117,7 +142,9 @@ export function AreaHero({
             </div>
             {action}
           </div>
-          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Cuatro cifras (abiertos, asignados, vencidos, cerrados): dos por
+              fila en móvil y las cuatro en una fila desde tableta. */}
+          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.label} className="rounded-card bg-surface/75 px-3.5 py-2.5">
                 <dt className="flex items-center gap-2 text-sm text-ink-muted">

@@ -411,6 +411,12 @@ Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
   abajo (no se leía como círculo); un círculo con solo la esquina inferior rellena (la
   superior quedaba vacía); un semicírculo medido sobre la cabecera entera (al montar el
   contenido creció, salía demasiado a la izquierda y el globo quedaba bajo la tarjeta).
+  *Corregido el 05-nov-2026* (monitor ancho): la forma se ancla al borde de la columna
+  de contenido y no al de la ventana; el tramo que sobra hasta el borde lleva el color
+  del área, el globo se centra en todo el azul y unos hilos blancos en el ángulo de
+  sus franjas (`.hd-mark-lines`) llenan el lado derecho, abiertos en un claro alrededor
+  del globo. Elegida entre variantes en una maqueta (la «16»). Por debajo del ancho de
+  la columna no cambia nada.
 - **El contenido se monta 60 px sobre el borde de la cabecera** (decisión del usuario,
   04-nov-2026, entre teñir toda la vista y dejar el corte): la tinta sigue por detrás
   de la primera tarjeta y el paso al lienzo gris queda oculto bajo su borde. El

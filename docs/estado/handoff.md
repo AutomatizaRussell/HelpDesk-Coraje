@@ -1,6 +1,26 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 75, U37: cabecera en pantalla ancha, SIN DESPLEGAR)
+SOBRE:   `11b164c` (corte 74, publicado en el mismo push)
+RAMA:    main
+UNIDAD:  U37 (design/sistema-helpdesk.md §5.4): la forma de la cabecera de la bandeja
+         se ancla al borde de la columna de contenido (`hero-mark-gutter`, medido con
+         `cqw`) y no al de la ventana; en pantalla ancha el globo se centra en todo el
+         azul y `.hd-mark-lines` llena el lado derecho. Con margen 0 (portátil) la
+         geometría es la de antes. La trama del puntero pasa a rayas de 1,5 px cada
+         7 px y 64 px de alcance, y entra en `TicketHero`. Incluye, por decisión del
+         usuario, las cifras en `sm:grid-cols-4` que ya estaban en local.
+         Evidencia: `tsc`, `eslint`, pruebas 233/233, `next build` compila (falla al
+         recolectar datos sin `DATABASE_URL`); clases generadas comprobadas en el CSS.
+         Sin ver en navegador.
+LOCAL:   cambios de otra unidad sin commit en tickets/, features/ y server/ (crear
+         ticket, bandeja, alcance): no van en este corte.
+SIGUE:   desplegar y revisar la bandeja en el portátil (debe verse igual) y en el
+         monitor ancho (hilos y globo centrado), y pasar el puntero por la bandeja y
+         por el detalle de un ticket. Después, lo pendiente del corte 74.
+
+--- Corte 74, para contexto:
 CORTE:   05-nov-2026 (corte 74, U36: atribución legacy congelada, SIN DESPLEGAR)
 SOBRE:   `eb126d3` (corte 73)
 RAMA:    main

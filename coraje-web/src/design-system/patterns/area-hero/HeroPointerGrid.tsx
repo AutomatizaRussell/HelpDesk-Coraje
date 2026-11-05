@@ -4,8 +4,10 @@ import { useEffect, useRef } from "react";
 
 /**
  * Trama que sigue al puntero sobre la cabecera del área (U30, elegida por el
- * usuario entre las variantes de la maqueta: la «S-3»). Una retícula de puntos
- * del color del área aparece solo alrededor del puntero y se apaga al salir.
+ * usuario entre las variantes de la maqueta: la «S-3»). Una trama del color
+ * del área aparece solo alrededor del puntero y se apaga al salir. Desde el
+ * 05-nov-2026 son rayas finas en el ángulo de las franjas del globo, no
+ * puntos, y también va en la cabecera del detalle (`TicketHero`).
  *
  * Escucha el movimiento en su **contenedor** (la cabecera), no en sí misma: es
  * una capa sin eventos (`pointer-events-none`) para no robarle el clic a nada.

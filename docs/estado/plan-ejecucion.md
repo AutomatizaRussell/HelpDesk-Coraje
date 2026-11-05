@@ -789,6 +789,18 @@ ejecución reatribuye solo los tickets de `mercadeo.mde@` (`estado/operacion.md`
 **Fuera de esta unidad:** el resto de la fase A (correo de acceso, señales negativas,
 cuentas de cargo, equivalencia de áreas) y las fases B-D.
 
+### U37 · Cabecera en pantalla ancha — **construida el 05-nov-2026 (corte 75)**
+
+En un monitor más ancho que la columna de contenido, la forma de la cabecera se separaba
+del texto. Ahora se ancla al borde de la columna, el tramo hasta el borde lleva el globo
+centrado y unos hilos blancos (variante «16» de la maqueta, elegida por el usuario). La
+trama del puntero pasa de puntos a rayas finas, con menos alcance, y llega a la cabecera
+del detalle (`design/sistema-helpdesk.md` §5.4).
+
+**Condición de cierre:** desplegado, la bandeja se ve igual que antes en el portátil y
+con los hilos en el monitor ancho, y las rayas siguen al puntero en la bandeja y en el
+detalle.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note
