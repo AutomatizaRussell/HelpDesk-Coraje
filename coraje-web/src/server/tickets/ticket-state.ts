@@ -33,6 +33,33 @@ export const TICKET_STATE_LABEL: Record<TicketState, string> = {
 };
 
 /**
+ * Qué se elige en el filtro «Estado» de la bandeja y qué cuentan las cifras
+ * de su cabecera (04-nov-2026, pedido del usuario). No es otro vocabulario de
+ * estados: es lo que se ofrece para filtrar.
+ *
+ * - `VENCIDO` no es un estado de `dim_estado`, es una condición: abierto o
+ *   asignado con la fecha límite ya pasada (la regla de `slaStatus`). Por eso
+ *   los vencidos también salen al filtrar por Abierto o Asignado.
+ * - `RECHAZADO` no se ofrece: rechazar se retiró en U29 (tickets.md, T8), y
+ *   ningún ticket lo tiene. Sigue en `TICKET_STATES` porque la historia y la
+ *   base todavía lo nombran.
+ */
+export const INBOX_STATE_FILTERS = ["ABIERTO", "ASIGNADO", "VENCIDO", "CERRADO"] as const;
+
+export type InboxStateFilter = (typeof INBOX_STATE_FILTERS)[number];
+
+export const INBOX_STATE_FILTER_LABEL: Record<InboxStateFilter, string> = {
+  ABIERTO: TICKET_STATE_LABEL.ABIERTO,
+  ASIGNADO: TICKET_STATE_LABEL.ASIGNADO,
+  VENCIDO: "Vencido",
+  CERRADO: TICKET_STATE_LABEL.CERRADO,
+};
+
+export function isInboxStateFilter(value: string): value is InboxStateFilter {
+  return (INBOX_STATE_FILTERS as readonly string[]).includes(value);
+}
+
+/**
  * `EXCEPCIÓN TEMPORAL` — solo los tickets creados en HelpDesk se operan desde
  * HelpDesk: los internos (`SISTEMA_INTERNO`, U7) y los del portal de
  * clientes (`PORTAL_CLIENTE`, U8). U9 fijó la regla: su dueño es HelpDesk.

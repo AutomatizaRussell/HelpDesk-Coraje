@@ -397,8 +397,9 @@ Elegida por el usuario entre catorce direcciones de una maqueta (la «N»).
   ni Sky Blue.
 - **Saludo** con el primer nombre y la fecha de Bogotá; **una frase de plazo** sobre el
   alcance de la persona («en tu alcance hay 3 tickets vencidos…», resaltando solo los
-  vencidos); **cifras** por estado y vencidos, con el marcador del tono de su insignia
-  (§5), que cuentan hasta su valor con el punto de los miles.
+  vencidos); **cifras** Abiertos, Asignados, Vencidos y Cerrados (las opciones del
+  filtro de estado; sin Rechazados desde el corte 78), con el marcador del tono de su
+  insignia (§5), que cuentan hasta su valor con el punto de los miles.
 - **Semicírculo del área pegado al borde derecho**, tan alto como toda la cabecera y
   corrido a la derecha un octavo de su tamaño, con el globo blanco (272 px) centrado en
   la **franja visible** (hasta donde empieza el contenido). Entra una vez deslizándose

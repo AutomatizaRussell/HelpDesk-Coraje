@@ -15,7 +15,15 @@ import { FOLLOWER_WHERE } from "./follow-rules";
 import { UNREDIRECTED_WHERE, canRedirect } from "./redirect-queries";
 import { DUE_SOON_MS, slaStatus, type SlaStatus } from "./sla";
 import { modeCondition, ticketModeOf, type TicketMode } from "./ticket-mode";
-import { OPEN_STATES, TICKET_STATES, isOpenState, isOperableInHelpDesk, isTicketState, type TicketState } from "./ticket-state";
+import {
+  OPEN_STATES,
+  TICKET_STATES,
+  isOpenState,
+  isOperableInHelpDesk,
+  isTicketState,
+  type InboxStateFilter,
+  type TicketState,
+} from "./ticket-state";
 
 /**
  * Lecturas del ciclo del ticket. Toda consulta pasa por el alcance de
@@ -103,7 +111,8 @@ export interface InboxRow {
 export interface InboxFilters {
   /** Busca en el código, la descripción y el nombre de quien radicó. */
   texto: string | null;
-  estado: TicketState | null;
+  /** Un estado, o `VENCIDO` (`INBOX_STATE_FILTERS`). */
+  estado: InboxStateFilter | null;
 }
 
 /** Longitud máxima del texto de búsqueda. Más largo no es una búsqueda. */
@@ -188,7 +197,12 @@ function filterConditions(filters: InboxFilters): Prisma.FactTicketWhereInput[] 
       ],
     });
   }
-  if (filters.estado) conditions.push({ dimEstado: { nombreEstado: filters.estado } });
+  if (filters.estado === "VENCIDO") {
+    // La misma condición que cuenta la tarjeta «Vencidos» (`countInbox`).
+    conditions.push({ dimEstado: { nombreEstado: { in: [...OPEN_STATES] } }, fechaLimite: { lt: new Date() } });
+  } else if (filters.estado) {
+    conditions.push({ dimEstado: { nombreEstado: filters.estado } });
+  }
   return conditions;
 }
 
@@ -214,8 +228,8 @@ export async function listInbox(params: {
   const where: Prisma.FactTicketWhereInput = { AND: [base, ...filterConditions(params.filters)] };
   // Por vencimiento solo cuando todo lo listado está abierto: en una lista con
   // terminados, la fecha límite de un ticket cerrado ya no ordena nada.
-  const onlyOpen =
-    params.view === "pendientes" || (params.filters.estado !== null && isOpenState(params.filters.estado));
+  const estado = params.filters.estado;
+  const onlyOpen = params.view === "pendientes" || estado === "VENCIDO" || (estado !== null && isOpenState(estado));
   const orderBy: Prisma.FactTicketOrderByWithRelationInput[] =
     params.view === "redirigir"
       ? [{ fechaCreacion: "asc" }]

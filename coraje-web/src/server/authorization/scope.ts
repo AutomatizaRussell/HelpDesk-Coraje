@@ -83,7 +83,7 @@ export interface ScopeTicket {
  *   porque son la voz de quien pidió, no de quien atiende.
  * - Todo lo demás: ser su responsable. Es la regla del legacy
  *   (reglas-negocio-powerapps.md §6): quien recibe el ticket es quien actúa
- *   sobre él. Radicarlo no da derecho a responderlo ni a rechazarlo.
+ *   sobre él. Radicarlo no da derecho a responderlo ni a cerrarlo.
  *
  * - Redirigir (T3): cae en «ser su responsable», y un ticket sin clasificar
  *   no tiene responsable ni área. Por eso solo `TOTAL` lo cubre, y es el

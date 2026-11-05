@@ -39,7 +39,7 @@ import {
   type InboxView,
   viewAllowsStateFilter,
 } from "@/server/tickets/ticket-queries";
-import { TICKET_STATE_LABEL, isTicketState, type TicketState } from "@/server/tickets/ticket-state";
+import { TICKET_STATE_LABEL, isInboxStateFilter, type TicketState } from "@/server/tickets/ticket-state";
 
 /**
  * Bandeja de tickets (design/sistema-helpdesk.md §6: densidad y escaneo).
@@ -114,14 +114,16 @@ function inboxHref(mode: TicketMode, view: InboxView, filters: InboxFilters, pag
 
 /**
  * Las cifras de la cabecera, sobre todo el alcance de la persona
- * (`countInbox`): una por estado, con el tono de su insignia, y los vencidos
- * después de los abiertos y asignados, que son los que todavía se pueden
- * atender. «Vencidos» y no el «SLA cumplido» del prototipo de TI, que contaba
- * cerrados entre total y no decía nada del plazo.
+ * (`countInbox`): una por cada opción del filtro de estado
+ * (`INBOX_STATE_FILTERS`), con el tono de su insignia, y los vencidos después
+ * de los abiertos y asignados, que son los que todavía se pueden atender.
+ * «Vencidos» y no el «SLA cumplido» del prototipo de TI, que contaba cerrados
+ * entre total y no decía nada del plazo. Sin «Rechazado»: rechazar se retiró
+ * en U29 y la cifra sería siempre cero.
  */
 function heroStats(counts: InboxCounts): HeroStat[] {
   const state = (key: TicketState): HeroStat => ({ label: TICKET_STATE_LABEL[key], value: counts.porEstado[key], tone: TICKET_STATE_TONE[key] });
-  return [state("ABIERTO"), state("ASIGNADO"), { label: "Vencidos", value: counts.vencidos, tone: "danger" }, state("RECHAZADO"), state("CERRADO")];
+  return [state("ABIERTO"), state("ASIGNADO"), { label: "Vencidos", value: counts.vencidos, tone: "danger" }, state("CERRADO")];
 }
 
 /** La cabecera del área de la bandeja (U30): saludo, plazo en una frase, acción y cifras. */
@@ -194,7 +196,7 @@ export default async function TicketsPage({
   // La URL es entrada externa: un texto demasiado largo se recorta y un
   // estado desconocido se ignora, en vez de fallar.
   const texto = params.q?.trim().slice(0, INBOX_SEARCH_MAX) || null;
-  const estado = params.estado && isTicketState(params.estado) && viewAllowsStateFilter(view) ? params.estado : null;
+  const estado = params.estado && isInboxStateFilter(params.estado) && viewAllowsStateFilter(view) ? params.estado : null;
   const filters: InboxFilters = { texto, estado };
   const filtering = filters.texto !== null || filters.estado !== null;
 

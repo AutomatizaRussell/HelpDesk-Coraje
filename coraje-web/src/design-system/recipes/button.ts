@@ -8,7 +8,7 @@ import { colorTransition, focusRing } from "./interaction";
  *
  * Jerarquía: `primary` es la única acción principal de una vista; `secondary`
  * acompaña sin competir; `danger` declara un efecto que no se deshace
- * (rechazar) y nunca recibe el foco inicial. El peso es `bold` (700): Lato no
+ * (revocar un acceso) y nunca recibe el foco inicial. El peso es `bold` (700): Lato no
  * tiene intermedios.
  *
  * `disabled` se ve apagado y no reacciona al pasar el ratón: un botón que

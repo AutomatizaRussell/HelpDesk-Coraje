@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { buttonRecipe } from "@/design-system/recipes/button";
 import { fieldControl, fieldLabel } from "@/design-system/recipes/field";
-import { TICKET_STATES, TICKET_STATE_LABEL } from "@/server/tickets/ticket-state";
+import { INBOX_STATE_FILTERS, INBOX_STATE_FILTER_LABEL } from "@/server/tickets/ticket-state";
 
 /**
  * Búsqueda y filtro de la bandeja, aplicados mientras se escribe.
@@ -134,8 +134,8 @@ export function InboxSearch({
             className={fieldControl()}
           >
             <option value="">Todos</option>
-            {TICKET_STATES.map((state) => (
-              <option key={state} value={state}>{TICKET_STATE_LABEL[state]}</option>
+            {INBOX_STATE_FILTERS.map((state) => (
+              <option key={state} value={state}>{INBOX_STATE_FILTER_LABEL[state]}</option>
             ))}
           </select>
         </div>

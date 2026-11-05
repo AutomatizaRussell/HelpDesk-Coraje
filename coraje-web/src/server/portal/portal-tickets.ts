@@ -16,8 +16,8 @@ import type { PortalAccess } from "./portal-access";
  * inexistente.
  *
  * Lo que el contacto no ve: responsable, área, tipo, plazo interno, notas
- * internas y clasificación. Ve su descripción, el estado, y las respuestas o
- * rechazos que la firma le dirigió.
+ * internas y clasificación. Ve su descripción, el estado y las respuestas
+ * que la firma le dirigió.
  */
 
 function ownTickets(access: PortalAccess): Prisma.FactTicketWhereInput {

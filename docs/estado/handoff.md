@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 78, U30: filtro y cifras de la bandeja sin Rechazado, SIN DESPLEGAR)
+SOBRE:   corte 77 (mismo push)
+RAMA:    main
+UNIDAD:  U30, ajuste (pedido del usuario del 04-nov): el filtro de estado y las
+         cifras de la cabecera usan `INBOX_STATE_FILTERS` (Abierto, Asignado,
+         Vencido, Cerrado). «Vencido» filtra con la misma condición que cuenta la
+         cifra. `RECHAZADO` sigue en `TICKET_STATES` porque la base y la historia lo
+         nombran. Evidencia: `tsc`, `eslint`, pruebas 233/233. Sin ver en navegador.
+LOCAL:   crear ticket y desbordes en móvil: cortes 79 y 80, mismo push.
+SIGUE:   en «Todo mi alcance», ni el filtro ni las cifras dicen «Rechazado»;
+         «Vencido» lista lo mismo que cuenta su cifra.
+
+--- Corte 77, para contexto:
 CORTE:   05-nov-2026 (corte 77, U32: consulta del anillo de plazo, SIN DESPLEGAR)
 SOBRE:   `793769c` (corte 76)
 RAMA:    main
