@@ -309,6 +309,45 @@ docker exec -it coraje_postgres psql -U coraje_etl -d coraje \
  -c "SELECT f.codigo_ticket, s.payload->>'AsignadoA' AS asignado_en_powerapps FROM staging.sp_helpdesk_raw s JOIN helpdesk.ticket_legacy_sharepoint_ref r ON r.sp_id = s.sp_id JOIN helpdesk.fact_ticket f ON f.id_ticket = r.id_ticket WHERE f.origen_sistema = 'SHAREPOINT_LEGACY' AND NULLIF(TRIM(s.payload->>'AsignadoA'), '') IS NOT NULL AND f.id_asignado IS NULL"
 ```
 
+### Ocupación de correos (U36)
+
+`specs/directorio-personal.md` §4.3. **El orden importa:**
+
+1. **Desplegar `web` primero.** La migración `20261105100000_ocupacion_correo_personal`
+   crea `core.personal_correo_ocupacion` y escribe los dos intervalos reconstruidos de
+   `mercadeo.mde@`. Si los ítems 311 y 405 no tienen los `id_personal` esperados,
+   aborta y el despliegue falla. No se corrige forzando: se vuelve a mirar la base.
+2. **Después, importar la ingesta** sobre el mismo `id` y lanzar *Manual Trigger*. Si
+   se importa antes del despliegue, la 04 y la 06 fallan porque la tabla no existe. La
+   ingesta queda parada hasta desplegar, sin dañar nada.
+3. **Revisar la salida de la primera ejecución:**
+   - `PG - Transform 03 Personal`, `correos_invalidos`: se espera el ítem 405 con `"."`.
+     Hay que corregirlo en la lista.
+   - `PG - Transform 06 Tickets Legacy`:
+     - `ocupacion_sembrada`: un intervalo por cada correo conocido, solo esta vez. En
+       las siguientes ejecuciones, 0 salvo correos nuevos.
+     - `relevos_correo`: correos cuyo ocupante activo no es el que deja la siembra. Se
+       relevan desde ahora y no tocan tickets pasados.
+     - `atribucion_cambiada`: **solo deben aparecer tickets de `mercadeo.mde@`**, que
+       vuelven a Juliana, y alguno reasignado en PowerApps desde la última ejecución.
+       Cualquier otro se explica antes de seguir.
+
+Comprobación:
+
+```bash
+docker exec -it coraje_postgres psql -U coraje_etl -d coraje \
+ -c "SELECT origen, count(*) AS intervalos, count(*) FILTER (WHERE hasta IS NULL) AS abiertos FROM core.personal_correo_ocupacion GROUP BY 1 ORDER BY 1" \
+ -c "SELECT d.nombre_completo, o.desde, o.hasta, o.origen FROM core.personal_correo_ocupacion o JOIN core.dim_personal d ON d.id_personal = o.id_personal WHERE o.correo = 'mercadeo.mde@rbcol.co' ORDER BY o.desde NULLS FIRST" \
+ -c "SELECT d.nombre_completo, count(*) AS tickets FROM staging.sp_helpdesk_raw s JOIN helpdesk.ticket_legacy_sharepoint_ref r ON r.sp_id = s.sp_id JOIN helpdesk.fact_ticket f ON f.id_ticket = r.id_ticket JOIN core.dim_personal d ON d.id_personal IN (f.id_solicitante, f.id_asignado) WHERE 'mercadeo.mde@rbcol.co' IN (LOWER(TRIM(s.payload->>'Title')), LOWER(TRIM(s.payload->>'AsignadoA')), LOWER(TRIM(s.payload->>'Recibe'))) GROUP BY 1"
+```
+
+En la última consulta, los tickets de `mercadeo.mde@` deben salir a nombre de
+JULIANA TANGARIFE RICO y ya no de `MERCADEO.MDE`.
+
+**Corregir un intervalo cerrado** exige una migración que desactive el trigger de forma
+explícita y diga por qué. La ingesta no puede, y `coraje_etl` no tiene `DELETE` sobre la
+tabla.
+
 ### Retiro del espejo en PowerApps (U24)
 
 `specs/sincronizacion-sharepoint.md` §9. HelpDesk deja de escribir en SharePoint. La

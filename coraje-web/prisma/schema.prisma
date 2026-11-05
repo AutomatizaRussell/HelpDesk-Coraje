@@ -152,6 +152,7 @@ model DimPersonal {
   suplantacionAuditoriaReal              SuplantacionAuditoria[] @relation("SuplantacionAuditoriaReal")
   suplantacionAuditoriaSuplantado        SuplantacionAuditoria[] @relation("SuplantacionAuditoriaSuplantado")
   // FIN SUPLANTACIÓN
+  ocupacionesCorreo                      PersonalCorreoOcupacion[]
 
   // Como máximo un marcador histórico por correo compartido — protege la regla
   // dura de F10: nunca atribuir historial a quien ocupa el buzón hoy.
@@ -162,6 +163,30 @@ model DimPersonal {
   // §7.1 señalaba este hueco; este índice es lo que lo cierra.
   @@unique([correoCorporativo], map: "ux_dim_personal_correo_activo", where: raw("estado_activo AND NOT es_responsable_historico_no_identificado"))
   @@map("dim_personal")
+  @@schema("core")
+}
+
+/// Quién ocupaba cada correo corporativo y en qué intervalo
+/// (docs/specs/directorio-personal.md §4.3). La Transform 06 resuelve con
+/// ella el correo de cada ticket legacy a la persona de su fecha, en lugar de
+/// recalcularlo desde el estado actual de la lista. Solo crece: el trigger
+/// trg_guardar_personal_correo_ocupacion impide borrar, editar un intervalo
+/// cerrado o solapar dos. Solo la escribe la ingesta (coraje_etl); la
+/// aplicación no la lee. `desde` nulo = desde siempre; `hasta` nulo = abierto.
+/// CHECK no representables: correo válido en minúsculas, desde < hasta, origen.
+model PersonalCorreoOcupacion {
+  idOcupacion String      @id @default(dbgenerated("gen_random_uuid()")) @map("id_ocupacion") @db.Uuid
+  correo      String      @db.VarChar(150)
+  idPersonal  String      @map("id_personal") @db.Uuid
+  desde       DateTime?   @db.Timestamptz(6)
+  hasta       DateTime?   @db.Timestamptz(6)
+  origen      String      @db.VarChar(30)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  dimPersonal DimPersonal @relation(fields: [idPersonal], references: [idPersonal], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([correo], map: "ux_personal_correo_ocupacion_abierta", where: raw("hasta IS NULL"))
+  @@index([correo, desde], map: "ix_personal_correo_ocupacion_correo")
+  @@map("personal_correo_ocupacion")
   @@schema("core")
 }
 

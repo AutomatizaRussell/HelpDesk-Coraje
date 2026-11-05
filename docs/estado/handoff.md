@@ -1,6 +1,26 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 74, U36: atribución legacy congelada, SIN DESPLEGAR)
+SOBRE:   `eb126d3` (corte 73)
+RAMA:    main
+UNIDAD:  U36 (specs/directorio-personal.md §4.3): la ocupación de cada correo pasa a
+         `core.personal_correo_ocupacion`, que solo crece (trigger). La 06 la siembra
+         y la lee en vez de recalcularla desde la lista. La 04 no crea marcadores
+         sobre correos con dueño. La 03 descarta los textos que no son correos. La
+         migración reconstruye los 7 tickets de `mercadeo.mde@` a nombre de Juliana
+         (D4). Evidencia: `prisma validate`, `tsc`, `eslint`, pruebas 233/233 (6
+         nuevas de contrato), `next build` con `DATABASE_URL` de relleno, sobre un
+         árbol con cambios de UI de otra unidad. Sin ejercitar contra la base: no hay
+         base local.
+LOCAL:   cambios de otra unidad sin commit en tickets/, design-system/ y server/: no
+         van en este corte. El primer borrador de directorio-personal.md salió por
+         error en `bff418e` (corte de diseño); este corte lo sustituye.
+SIGUE:   desplegar `web`, DESPUÉS reimportar la ingesta y lanzarla, y revisar
+         `atribucion_cambiada` en la salida de la 06 (operacion.md, «Ocupación de
+         correos (U36)»). Corregir en la lista el ítem 405 («.»).
+
+--- Corte 73, para contexto:
 CORTE:   04-nov-2026 (corte 73, U35: correos con la marca de la plataforma, SIN DESPLEGAR)
 SOBRE:   `80b5dec` (corte 72)
 RAMA:    main

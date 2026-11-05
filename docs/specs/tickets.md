@@ -591,6 +591,13 @@ Decisión del usuario: la ingesta absorbe el relevo sin intervención manual.
   intervalos que no se solapan, la resolución ya no puede ser ambigua. Donde hay
   marcador histórico, §7.3 sigue igual y el marcador lo cubre todo.
 
+> **Corregido el 05-nov-2026 (U36, `specs/directorio-personal.md` §4.3).** Los
+> intervalos ya no se recalculan en cada ejecución: viven en
+> `core.personal_correo_ocupacion`, que solo crece. La regla de este apartado solo se
+> aplica la primera vez que se ve un correo. Un relevo posterior cuenta desde que la
+> ingesta lo detecta. Motivo: dos ediciones de la lista llevaron los 7 tickets de
+> `mercadeo.mde@` de Juliana a un marcador histórico.
+
 **Lo que no resuelve:**
 - La fecha del relevo es la del alta del ítem en la lista, no la fecha real del cambio.
 - Si la cuenta de Entra del buzón ya está enlazada a quien se fue (`entra_object_id`),

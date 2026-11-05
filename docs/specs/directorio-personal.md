@@ -1,9 +1,11 @@
 # Directorio de personal sin la lista «Personal GCT»
 
 ```
-ESTADO:      PROPUESTA, sin aprobar. Nada construido. Decisiones del usuario
-             pendientes en §8
-CORTE:       04-nov-2026, sobre 9a16506
+ESTADO:      §4.3 (atribución congelada) y el saneamiento de correos de la 03
+             CONSTRUIDOS en U36, SIN DESPLEGAR. El resto de §4 es propuesta: D1,
+             D2, D3, D4 y D5 decididas el 05-nov-2026 (§8); fases A4-A6, B, C y D
+             sin construir
+CORTE:       05-nov-2026 (corte 74), sobre eb126d3
 EVIDENCIA:   lectura de código (`employee-admission.ts`, `employee-session.ts`,
              `ticket-queries.ts`, `ticket-commands.ts`, `schema.prisma`), de las
              Transform 03, 04 y 06 del workflow de ingesta, y del modelo
@@ -47,22 +49,38 @@ usuario (04-nov-2026): la lista debe ser lo último de lo que se dependa.
 | H6 | El ingreso de HelpDesk usa la App Registration «GCT - Conecta RBG», compartida con Conecta; su secreto vive en Conecta, en Coolify de HelpDesk y en n8n | `estado/operacion.md`, «Consecuencia de compartir la App Registration» |
 | H7 | En Conecta, `DatosEmpleado` tiene `id_empleado` estable, `correo_corporativo` **único**, `estado` (`ACTIVA`/`INACTIVO`), `fecha_ingreso`, `fecha_retiro`, área y cargo. **No guarda el `oid` de Entra**: `auth_id` existe pero ningún código lo escribe | RBGCT-REACT `backend/empleados/models/empleado.py` en 62e8518 |
 
-> **Discrepancia sin resolver:** el pedido habla de «3.000+ tickets reales»; el último
-> conteo documentado es 2.313 tickets y 439 eventos (`CLAUDE.md`). No cambia el diseño,
-> que no toca claves de tickets, pero el número se mide en §9 antes de cualquier
-> migración.
+> **Discrepancia resuelta (05-nov-2026):** hay 3.088 tickets reales (§3). El 2.313 de
+> `CLAUDE.md` es el conteo de la migración inicial y está desactualizado.
 
-## 3. Inferencias que hay que confirmar con datos
+## 3. Lo que mostró la base (05-nov-2026)
 
-**Caso del ítem 405 («.»).** Con H2 y H5, el resultado esperado de la ingesta del 26-oct
-es este. **No está verificado**:
+Consultas C1–C3 corridas por el usuario en la VPS, en modo de solo lectura.
 
-- Alizon queda activa con correo `"."`. Si ya tenía `oid` enlazado y rol, sigue
-  entrando: la admisión la encuentra por `oid`.
-- `mercadeo.mde@` queda sin ese ítem. Si el ítem 311 (Juliana) sigue activo en la
-  lista, Juliana vuelve a ser la única ocupante y **los tickets de `mercadeo.mde@`
-  radicados desde el 13-oct pasan a atribuírsele en la siguiente 06**.
-- Un segundo ítem con `"."` choca con el índice y para la ingesta, como el 13-oct.
+- **Tickets reales: 3.088**, todos de SharePoint. Los 2 creados en HelpDesk
+  (`SISTEMA_INTERNO`) son de prueba.
+- **9 personas con rol**, 2 de ellas enlazadas a Entra. Las 9 tienen un correo válido.
+- **Ítem 405 (Alizon):** fila creada el 26-oct, correo `"."`, activa, sin rol y sin
+  enlace. Hoy el ingreso no le afecta.
+- **Ítem 311 (Juliana):** su correo en la lista es ahora `mercadeo.gct@`, no
+  `mercadeo.mde@` como recoge `tickets.md` §7.4 el 23-oct. No hay forma de fechar el
+  cambio: la 03 reescribe `updated_at` en cada ejecución y el staging solo guarda el
+  estado actual del ítem.
+- **Nadie en la lista tiene ya `mercadeo.mde@`.** El 29-oct la Transform 04 creó la
+  fila `MERCADEO.MDE` con el marcador histórico, porque esa transform marca toda fila
+  que crea para un correo de ticket que no está en `dim_personal`. Desde entonces, el
+  marcador cubre los **7 tickets** de ese correo: 5 como solicitante (04-jun-2025 a
+  15-sep-2026) y 2 como responsable (17-jun-2025 a 31-jul-2026).
+- **H2, confirmado con un caso real.** Según §7.4, Juliana ocupaba `mercadeo.mde@`
+  desde el alta de su ítem (19-may-2025) hasta la de Alizon (13-oct-2026), y los 7
+  tickets caen en ese intervalo. Bastaron dos ediciones en la lista para que pasaran de
+  ella a «responsable no identificado» sin que nadie lo decidiera. No quedaron
+  atribuidos a otra persona: fue un fallo cerrado, pero se perdió información correcta.
+- **Segundo mecanismo, que §4.3 tiene que cerrar:** cuando a alguien le cambian el
+  correo en la lista, la 04 crea un marcador para el correo viejo y ese marcador se
+  queda con todo su historial. La fila `MERCADEO.GCT` (marcador del 04-jun-2026) es
+  anterior a este caso y cubre 3 tickets entre 2024 y 2025.
+- Un segundo ítem con `"."` chocaría con el índice y pararía la ingesta, como pasó el
+  13-oct. Está deducido de H5, no observado.
 
 **Dos personas con `mercadeo.mde@` en Teams.** En Conecta no puede ser: el correo es
 único (H7). En Exchange, una misma dirección SMTP no puede estar en dos destinatarios.
@@ -90,7 +108,8 @@ Graph Explorer con la cuenta propia (§9, C4).
 | Cuenta habilitada o borrada | Entra | Sincronización de Graph | Señal negativa |
 | Nombre visible | Entra (claim `name`) hasta que exista Conecta; luego Conecta | Cada ingreso; luego la sincronización con Conecta | Mostrar |
 | Cargo, alta, baja | Conecta | Endpoint (§4.7) | Cargo: mostrar. Baja: señal negativa |
-| Área **en HelpDesk** | HelpDesk (propuesto, §8 D2) | Al conceder el rol | Autoriza: reasignación, recepción |
+| Área de la persona | Conecta; mientras no exista su endpoint, la lista | Endpoint (§4.7) | Hecho organizativo |
+| Traducción de área de Conecta a área de HelpDesk | HelpDesk (§4.10) | Tabla versionada | Autoriza: reasignación, recepción |
 | Rol | HelpDesk | Se concede a mano | Concede |
 | Ítem de la lista, su correo y su estado | La lista, solo mientras viva PowerApps | Transform 03, en tabla propia | Atribuir tickets de PowerApps. Estado inactivo: señal negativa transitoria |
 
@@ -101,23 +120,37 @@ completa y nadie pisa columnas ajenas. El enlace de cada fila de fuente con
 `id_personal` se hace con reglas explícitas en SQL (§4.4 y §4.6). Ninguna fuente borra
 filas de `dim_personal`.
 
-### 4.3 Congelar la atribución histórica (primer paso, construible ya)
+### 4.3 Congelar la atribución histórica — construido en U36 (05-nov-2026), sin desplegar
 
-1. Tabla `core.personal_correo_ocupacion (correo, id_personal, desde, hasta, origen)`,
-   sembrada **una vez** con el resultado exacto de la sección −1 actual de la 06.
+1. Tabla `core.personal_correo_ocupacion (correo, id_personal, desde, hasta, origen)`
+   (migración `20261105100000_ocupacion_correo_personal`). Los extremos abiertos se
+   guardan como `NULL` porque Prisma no representa `infinity`. La migración no puede
+   sembrarla, porque `coraje_migrator` no lee `staging`. La siembra la hace la 06 la
+   primera vez que ve cada correo, con la regla de §7.3–§7.4.
 2. La 06 deja de calcular intervalos y lee esa tabla.
-3. La tabla solo admite **añadir**: un relevo detectado por la 03 cierra el intervalo
-   abierto y abre otro desde la fecha de detección. Nunca reescribe intervalos cerrados.
-   Corregir uno es una migración versionada con causa.
+3. La tabla solo crece. Cuando cambia el ocupante activo de un correo, la 06 cierra el
+   intervalo abierto y abre otro **desde ese momento**, no desde el alta del ítem. El
+   trigger `trg_guardar_personal_correo_ocupacion` rechaza borrar, editar un intervalo
+   cerrado y solapar dos. Corregir uno es una migración con causa. El intervalo
+   abierto de un marcador histórico no se releva: §7.3 sigue igual.
 4. Con eso, un error en la lista (un `"."`, un ítem borrado o un correo cambiado) solo
    afecta a los tickets que lleguen después, y queda en la salida de la 03.
+5. La 04 deja de crear marcadores para correos que ya tienen intervalos en la tabla.
+   Solo los crea para correos que nunca tuvieron dueño conocido.
 
-**Validación antes de cambiar la 06:** con la tabla sembrada, comparar en la base viva
-la atribución actual contra la que produciría la tabla (`EXCEPT` en los dos sentidos).
-El resultado tiene que ser cero filas. Si no lo es, se para y se explica cada fila.
+**Salida de la 06** desde U36: `ocupacion_sembrada`, `relevos_correo` y
+`atribucion_cambiada_total`/`atribucion_cambiada`, que lista los tickets legacy que
+cambiaron de persona en la ejecución. **Validación de la primera ejecución:** solo
+deben aparecer los tickets de `mercadeo.mde@`, más alguno reasignado en PowerApps desde
+la ejecución anterior. Cualquier otro es un defecto de la siembra y se explica antes de
+seguir (`estado/operacion.md`, «Ocupación de correos (U36)»).
 
-**Decisión del usuario (§8 D4):** si la siembra recoge el estado actual, incluido el
-posible efecto del `"."`, o el anterior al 26-oct.
+**`DECISIÓN` (05-nov-2026, D4): reconstruir.** La migración escribe los intervalos de
+`mercadeo.mde@` que daba la regla de §7.4 antes de las ediciones de la lista:
+Juliana desde siempre hasta el 2026-10-13T18:31:39Z, y Alizon desde entonces. La 06
+devuelve los 7 tickets a Juliana en su siguiente ejecución. La fila `MERCADEO.MDE` del
+29-oct se conserva sin tickets: borrarla es una operación destructiva que no aporta
+nada.
 
 ### 4.4 Admisión nueva
 
@@ -126,7 +159,7 @@ posible efecto del `"."`, o el anterior al 26-oct.
 | Buscar | Por `oid`. Si no hay fila enlazada: por **correo de acceso** igual a `preferred_username`, entre filas con rol y sin enlace. Nunca por el correo de la lista |
 | Enlazar | Igual que hoy: solo si la fila no tiene enlace (V4). Mover un enlace es una operación administrativa auditada, nunca efecto de una petición ni de una sincronización |
 | Admitir | Rol no nulo **y** ninguna señal negativa vigente |
-| Señales negativas | Entra: deshabilitada o borrada. Conecta: `INACTIVO` o `fecha_retiro` ≤ hoy. Lista, solo hasta que exista Conecta: ítem inactivo. Cada una produce su causa (`CUENTA_DESHABILITADA`, `RETIRADO`) |
+| Señales negativas | Entra: deshabilitada o borrada. Conecta: `INACTIVO` o `fecha_retiro` ≤ hoy. Lista, solo hasta que exista Conecta: ítem inactivo. Cada una produce su causa (`CUENTA_DESHABILITADA`, `RETIRADO`). **Bloquean sin quitar el rol** (D3): si la fuente corrige el error, la persona vuelve a entrar sin reasignar nada. Cada bloqueo nuevo avisa a Teams. A una cuenta de cargo (§4.9) solo le aplican las de Entra |
 | Ausencia de dato | Una fuente que nunca ha respondido **no** es señal negativa: el token ya prueba que la cuenta vive |
 
 Se mantiene la relectura en cada petición (`readEmployeeSession`), ahora sobre
@@ -182,7 +215,8 @@ Cuerpo:    { "correos": ["a@rbcol.co", …] }            máx. 100, minúsculas
 Respuesta: { "personas": [ {
              "correo", "id_empleado", "estado": "ACTIVA"|"INACTIVO",
              "fecha_ingreso", "fecha_retiro",
-             "primer_nombre", "primer_apellido", "area", "cargo" } ],
+             "primer_nombre", "primer_apellido",
+             "area": { "id", "nombre" }, "cargo" } ],
              "desconocidos": ["…"] }
 ```
 
@@ -209,18 +243,48 @@ Respuesta: { "personas": [ {
 | Respuesta parcial o mal formada | Se descarta el lote completo y se registra. Una respuesta vacía **no** se interpreta como «todos dados de baja» |
 | Graph responde `404` en masa | Si más del 20 % de los consultados sale borrado, se aborta sin aplicar (umbral a validar) |
 
-### 4.9 Cuentas compartidas tipo `mercadeo.mde@`
+### 4.9 Cuentas de cargo tipo `mercadeo.mde@` — `DECISIÓN` (05-nov-2026, D1)
 
-Son dos problemas distintos:
+**Se admiten como cuentas de cargo.** Una cuenta de Entra cuya contraseña pasa de un
+ocupante a otro es una identidad del cargo, no de una persona, y HelpDesk la modela así:
 
-- **Buzón de cargo como correo de la persona en la lista:** solo afecta a la atribución
-  legacy, y §4.3 lo resuelve. En adelante, el correo de acceso es la cuenta personal.
-- **Cuenta de Entra con contraseña compartida que se usa para entrar:** una sesión de
-  HelpDesk probaría «alguien con la clave del cargo», no una persona. Rompe la
-  atribución y la revocación individual. **Propuesto (§8 D1): no se admite.** Una cuenta
-  así no recibe rol, y quien ocupe el cargo entra con su cuenta personal. Si el negocio
-  necesita que los tickets lleguen «al cargo», se resuelve con enrutamiento al área o a
-  la persona, no con una identidad compartida.
+- **Fila propia en `dim_personal`**, con `tipo_cuenta = CARGO`, nombre del cargo,
+  correo de acceso del buzón, su `oid` y su rol. Las filas de las personas que lo
+  ocuparon siguen existiendo para la atribución legacy, pero ninguna se enlaza a ese
+  `oid`.
+- **Lo que hace la cuenta se atribuye al cargo.** El registro de eventos no puede decir
+  qué ocupante actuó, y la interfaz no lo aparenta.
+- **Señales:** solo las de Entra. Conecta describe personas, y su baja o su área no
+  corresponden a un cargo. El área de una cuenta de cargo se fija en HelpDesk; es la
+  única excepción a §4.10.
+- **Relevo:** cuando cambia el ocupante, HelpDesk revoca todas las sesiones de la
+  cuenta. Cambiar la contraseña es trabajo de TI y HelpDesk no puede exigirlo.
+- **Ya enlazada a una persona** (riesgo de `tickets.md` §7.4): se mueve el `oid` a la
+  fila del cargo con la operación auditada de §4.4.
+
+**Costo aceptado:** no hay revocación individual ni atribución a una persona. Quien deja
+el cargo conserva el acceso mientras la contraseña no cambie.
+
+La atribución legacy de los buzones de cargo no cambia: la resuelven los intervalos de
+ocupación (§4.3).
+
+### 4.10 Área: de Conecta, traducida por HelpDesk — `DECISIÓN` (05-nov-2026, D2)
+
+El área en que trabaja una persona es un hecho organizativo y lo decide Conecta, como
+hoy lo decide la lista. HelpDesk no puede ser dueño de ese hecho. Lo que sí le
+corresponde es **cómo se traduce un área de Conecta a un área de HelpDesk**, porque las
+dos listas no son la misma. Ya pasa hoy: la 03 traduce «Proyectos y TI» de la lista a
+«Administración».
+
+- **Tabla versionada `core.area_equivalencia`** (área de origen → `id_area`), que hereda
+  la traducción que hoy está escrita dentro de la 03. Cambiarla es una migración.
+- **Un área de origen sin traducción no se adivina.** La persona queda sin área en
+  HelpDesk: no puede reasignar ni recibe por recepción, y se avisa a Teams. Falla
+  cerrado, igual que la 01 con un área desconocida.
+- **Un cambio de área en Conecta cambia los permisos en la siguiente sincronización** y
+  queda avisado. Es lo que pasa hoy con la lista.
+- **Mientras no exista el endpoint de Conecta,** la fuente sigue siendo la lista, con la
+  misma tabla.
 
 ## 5. Riesgos y escenarios de fallo
 
@@ -229,24 +293,29 @@ Son dos problemas distintos:
 | Duplicar a una persona | Alta en HelpDesk y después un ítem nuevo en la lista con otro correo | La 03 solo adopta por correo exacto. Lo demás se reporta y se enlaza a mano. Contar duplicados en la revisión diaria |
 | Perder una señal de baja en la transición | Se deja de leer el estado de la lista antes de que exista Conecta | El ítem inactivo sigue siendo señal negativa hasta que Conecta esté en producción (§4.4) |
 | Conceder de más por correo de acceso mal escrito | El admin escribe el correo de otra persona | Antes de enlazar se compara el `name` del token con el de la fila. Si difieren, se avisa sin bloquear. Toda concesión queda auditada |
-| `oid` enlazado a quien se fue (tickets.md §7.4) | El buzón de cargo ya tiene enlace con la persona anterior | Con D1 no aplica: los buzones de cargo no reciben rol. Para casos heredados, mover el enlace con la operación auditada de §4.4 |
+| `oid` enlazado a quien se fue (tickets.md §7.4) | El buzón de cargo ya tiene enlace con la persona anterior | Mover el `oid` a la fila del cargo (§4.9) con la operación auditada de §4.4 |
+| Ocupante saliente de una cuenta de cargo | Deja el cargo y conserva la contraseña | Revocar las sesiones en el relevo. El resto depende de que TI cambie la contraseña (costo aceptado en D1) |
+| Conecta bloquea una cuenta de cargo | Su correo pertenece en Conecta a una persona que se retira | A las cuentas de cargo no se les aplican señales de Conecta (§4.9) |
 | Credencial de Graph con lectura del tenant | Filtración del secreto | App dedicada y certificado. Permiso de solo lectura. Rotación en `operacion.md` |
-| El área de Conecta cambia permisos | Recursos humanos mueve a alguien y cambia lo que puede reasignar | Con D2, el área en HelpDesk es propia. Si la de Conecta no coincide, solo se avisa |
+| El área de Conecta cambia permisos | Recursos humanos mueve a alguien y cambia lo que puede reasignar | Es el comportamiento buscado (D2). Cada cambio se avisa. Un área sin traducción deja a la persona sin área, nunca en una adivinada |
 | El equipo de Conecta no acepta o tarda | Sin endpoint, sin señal de baja de Conecta | El diseño funciona sin él (§6, fases A y B). Mientras tanto, la baja la cubren Entra y la lista |
 | Siembra de §4.3 con datos ya contaminados | El `"."` ya reatribuyó tickets | §8 D4 y comprobación C3 antes de sembrar |
 
 ## 6. Qué se puede construir ya
 
 **Fase A, sin Graph ni Conecta:**
-1. Sanear la 03: un correo que no cumpla el patrón se trata como ausente y se reporta
-   en la salida.
-2. §4.3: tabla de ocupación append-only, siembra validada y la 06 leyéndola.
+1. **Construido (U36).** Sanear la 03: un correo que no cumpla el patrón entra como
+   ausente y se reporta en `correos_invalidos`.
+2. **Construido (U36).** §4.3: tabla de ocupación que solo crece, reconstrucción de
+   `mercadeo.mde@`, la 06 leyéndola y la 04 sin marcadores para correos con dueño.
 3. `core.personal_lista`, separada de `dim_personal`. La 03 deja de escribir en las
    columnas de identidad.
 4. Correo de acceso, nueva búsqueda de arranque, señales negativas con causa y nombre
    visible desde el claim `name`.
-5. Operación auditada para conceder rol, dar de alta y mover un enlace. Por `psql` con
-   función SQL si no hay pantalla.
+5. Operación auditada para conceder rol, dar de alta, mover un enlace y revocar las
+   sesiones de una cuenta. Por `psql` con función SQL si no hay pantalla.
+6. `tipo_cuenta` (`PERSONA`/`CARGO`) y `core.area_equivalencia`, sembrada con la
+   traducción que hoy vive dentro de la 03.
 
 **Fase B, con la credencial de Graph:** `staging.entra_usuario_raw`,
 `core.personal_entra`, workflow diario y señal de cuenta deshabilitada.
@@ -265,13 +334,13 @@ tabla de ocupación quedan congeladas como histórico.
 
 ## 8. Decisiones del usuario
 
-| # | Pregunta | Propuesto |
+| # | Pregunta | Estado |
 |---|---|---|
-| D1 | ¿Se admite entrar con una cuenta de contraseña compartida? | No |
-| D2 | ¿El área que autoriza en HelpDesk es propia o la de Conecta? | Propia; Conecta solo avisa si difieren |
-| D3 | Ante una baja en Conecta o una cuenta deshabilitada: ¿se bloquea el ingreso, se quita el rol o solo se avisa? | Bloquear sin borrar el rol (reversible) y avisar |
-| D4 | ¿La siembra de §4.3 toma el estado actual o el anterior al 26-oct? | Depende de C3 |
-| D5 | ¿Graph por personas con rol o por `delta` del tenant? | Por personas con rol |
+| D1 | ¿Se admite entrar con una cuenta de contraseña compartida? | **Decidido (05-nov-2026):** sí, como cuenta de cargo (§4.9) |
+| D2 | ¿Quién decide el área que autoriza en HelpDesk? | **Decidido (05-nov-2026):** Conecta, y la lista mientras tanto. HelpDesk solo es dueño de la traducción (§4.10) |
+| D3 | Ante una baja o una cuenta deshabilitada, ¿qué se hace? | **Decidido (05-nov-2026):** bloquear sin quitar el rol y avisar (§4.4) |
+| D4 | Donde un cambio en la lista llevó tickets a un marcador, ¿se reconstruye la atribución con los intervalos de §7.4 o se acepta el marcador? | **Decidido (05-nov-2026):** reconstruir los 7 tickets de `mercadeo.mde@` (§4.3) |
+| D5 | ¿Graph por personas con rol o por `delta` del tenant? | **Decidido (05-nov-2026):** por personas con rol (§4.6) |
 
 ## 9. Datos a medir antes de construir
 
@@ -292,5 +361,8 @@ Las consultas las corre el usuario contra la base de la VPS.
 | P2 | La 06 reescribe la atribución legacy en cada ejecución | Transform 06 | Verificado por inspección; sin ejercitar |
 | P3 | Asignar y seguir exigen rol | `ticket-queries.ts`, `ticket-commands.ts` | Verificado por inspección |
 | P4 | Conecta no guarda el `oid` de Entra | RBGCT-REACT 62e8518 | Verificado por inspección (`auth_id` sin escritor) |
-| P5 | Efecto del `"."` sobre la atribución | Base viva | **Inferencia**, pendiente de C3 |
-| P6 | Todo lo de §4 | — | Sin construir |
+| P5 | Un cambio en la lista reescribe la atribución pasada | Base viva, C3 | **Verificado con datos** (05-nov-2026): 7 tickets de `mercadeo.mde@` pasaron al marcador creado el 29-oct |
+| P6 | La 06 resuelve con la tabla; ninguna query de la ingesta la borra; solo se cierra `hasta`; la 04 respeta la ocupación; un mismo patrón de correo en la 03, la 06 y la tabla | `legacy-attribution.contract.test.mts` | **Verificado por prueba** (6 pruebas, U36). Sin ejercitar contra la base |
+| P7 | La tabla rechaza borrar, editar un intervalo cerrado y solapar | Trigger de `20261105100000_ocupacion_correo_personal` | Construido; sin ejercitar (no hay base local) |
+| P8 | La primera ejecución solo reatribuye los tickets de `mercadeo.mde@` | Salida de la 06 en n8n | **Pendiente**: tras desplegar y reimportar |
+| P9 | Resto de §4 (admisión, Graph, Conecta, cuentas de cargo, áreas) | — | Sin construir |

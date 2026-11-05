@@ -773,6 +773,22 @@ ticket y los del portal, sobre un tercer adaptador del contrato de diseño
 **Condición de cierre:** desplegado, un ticket creado y cerrado produce correos que se
 ven con la marca en Outlook de escritorio y en Outlook web, con el logotipo cargado.
 
+### U36 · Atribución legacy congelada — **construida el 05-nov-2026 (corte 74)**
+
+Primera entrega de `specs/directorio-personal.md` (§4.3 y fase A1-A2). Dos ediciones de
+«Personal GCT» llevaron los 7 tickets de `mercadeo.mde@` de Juliana a un marcador
+histórico, porque la 06 recalculaba la ocupación de cada correo en cada ejecución.
+Ahora la ocupación vive en `core.personal_correo_ocupacion`, que solo crece. La 04 no
+crea marcadores sobre correos con dueño, la 03 no acepta textos que no son correos, y la
+migración reconstruye `mercadeo.mde@` (D4, decisión del usuario).
+
+**Condición de cierre:** desplegado `web`, reimportada la ingesta, y la primera
+ejecución reatribuye solo los tickets de `mercadeo.mde@` (`estado/operacion.md`,
+«Ocupación de correos (U36)»).
+
+**Fuera de esta unidad:** el resto de la fase A (correo de acceso, señales negativas,
+cuentas de cargo, equivalencia de áreas) y las fases B-D.
+
 ### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note
