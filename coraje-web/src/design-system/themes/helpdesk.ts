@@ -206,10 +206,11 @@ export const helpdeskTheme = {
     // (antes 150 px de alcance: se leía como una mancha grande).
     // 05-nov-2026: los puntos pasan a rayas de `pointerLine` cada
     // `pointerLineGap`, en el ángulo de las franjas del globo (las de la forma
-    // en pantalla ancha, más pequeñas), y el círculo baja a `pointerReach`.
+    // en pantalla ancha, más pequeñas), y el círculo baja a `pointerReach`
+    // (64 px en el corte 75; la mitad en el 76, a pedido del usuario).
     pointerLine: "1.5px",
     pointerLineGap: "7px",
-    pointerReach: "64px",
+    pointerReach: "32px",
     // Hilos de la forma en pantalla ancha (05-nov-2026, variante «16» de la
     // maqueta): líneas de `heroMarkLine` cada `heroMarkLineGap` en el ángulo
     // de las franjas del globo. Finas a propósito: llevan el ritmo del globo

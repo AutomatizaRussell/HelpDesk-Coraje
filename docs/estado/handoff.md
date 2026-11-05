@@ -1,6 +1,15 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 76, U37: alcance de la trama del puntero a la mitad, SIN DESPLEGAR)
+SOBRE:   `722aab8` (corte 75)
+RAMA:    main
+UNIDAD:  U37, ajuste: `size.pointerReach` baja de 64 px a 32 px. Evidencia: pruebas
+         del contrato. Sin ver en navegador.
+LOCAL:   los mismos cambios de otra unidad del corte 75: no van en este corte.
+SIGUE:   lo del corte 75.
+
+--- Corte 75, para contexto:
 CORTE:   05-nov-2026 (corte 75, U37: cabecera en pantalla ancha, SIN DESPLEGAR)
 SOBRE:   `11b164c` (corte 74, publicado en el mismo push)
 RAMA:    main
