@@ -7,11 +7,10 @@ import { FormDialog } from "@/design-system/patterns/form-dialog/FormDialog";
 
 /**
  * «Nuevo ticket» abierto encima de la bandeja (decisión del usuario del
- * 30-sep-2026). Es la ruta interceptada `app/tickets/@modal/(.)nuevo`: desde
- * la bandeja se abre aquí; abrir o recargar `/tickets/nuevo` directamente
- * sigue mostrando la página completa. Así la URL se puede compartir y el
- * botón atrás cierra la ventana, que eran los dos riesgos de una ventana
- * emergente para un formulario largo.
+ * 30-sep-2026). Es la ruta interceptada `app/tickets/@modal/(.)nuevo`, y es
+ * la única forma de radicar: abrir o recargar `/tickets/nuevo` directamente
+ * lleva a la bandeja (04-nov-2026). Tener URL propia hace que el botón atrás
+ * cierre la ventana.
  */
 
 const DIALOG_PATH = "/tickets/nuevo";

@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 79, U33: crear ticket solo en la ventana, SIN DESPLEGAR)
+SOBRE:   corte 78 (mismo push)
+RAMA:    main
+UNIDAD:  U33, ajuste (design/sistema-helpdesk.md §5.5): `/tickets/nuevo` cargada
+         directamente exige sesión y redirige a la bandeja; el formulario solo existe
+         en la ruta interceptada. `FormDialog` avisa con `beforeunload` si hay algo
+         escrito, y `useFormDialogSettled` lo apaga al crear el ticket. Evidencia:
+         `tsc`, `eslint`, pruebas 233/233. Sin ver en navegador.
+LOCAL:   desbordes en móvil: corte 80, mismo push.
+SIGUE:   abrir «Nuevo ticket», escribir y recargar: el navegador pregunta; tras
+         crear, recargar no pregunta y la URL directa cae en la bandeja.
+
+--- Corte 78, para contexto:
 CORTE:   05-nov-2026 (corte 78, U30: filtro y cifras de la bandeja sin Rechazado, SIN DESPLEGAR)
 SOBRE:   corte 77 (mismo push)
 RAMA:    main

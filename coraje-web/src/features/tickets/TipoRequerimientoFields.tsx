@@ -39,8 +39,8 @@ function distinct(values: (string | null)[]): (string | null)[] {
  * pantalla anuncia el grupo y la elegida. El chip elegido cambia de borde y de
  * fondo, no solo de color; el foco con teclado se ve en el chip.
  *
- * Sin texto de ayuda: en la ventana, el encabezado ya dice «Llegará a …» al
- * elegir, y en la página completa lo dice el pie.
+ * Sin texto de ayuda: el encabezado de la ventana ya dice «Llegará a …» al
+ * elegir.
  */
 function AreaChips({
   areas,

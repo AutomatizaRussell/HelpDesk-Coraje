@@ -362,6 +362,10 @@ Maqueta aprobada por el usuario («T»). `features/tickets/CreateTicketForm.tsx`
 - **Confirmación** en lugar del formulario: el área que lo recibió, quién quedó como
   responsable, el código grande con «Copiar», y «Crear otro» o «Ver el ticket». La
   bandeja de detrás ya trae el ticket nuevo.
+- **Solo en la ventana** (decisión del usuario, 04-nov-2026, corte 79): abrir o recargar
+  `/tickets/nuevo` directamente lleva a la bandeja; ya no hay versión a página completa.
+  Con algo escrito, recargar o cerrar la pestaña pide confirmación al navegador
+  (`beforeunload`); creado el ticket, ya no la pide (`useFormDialogSettled`).
 
 `DECISIÓN` (04-nov-2026, U33) **Forma compacta**, elegida por el usuario entre tres
 maquetas (compacta, dos columnas, dos pasos). La ventana medía unos 1.090 px de alto en

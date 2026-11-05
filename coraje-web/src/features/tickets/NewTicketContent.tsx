@@ -8,9 +8,9 @@ import { getCreationCatalog, listFollowCandidates } from "@/server/tickets/ticke
 import { CreateTicketForm } from "./CreateTicketForm";
 
 /**
- * Contenido de «Nuevo ticket», el mismo en la página completa y en la ventana
- * emergente. Consulta el mismo permiso que `createInternalTicket` exige, para
- * no ofrecer un formulario que la acción va a rechazar. La acción lo vuelve a
+ * Contenido de «Nuevo ticket», dentro de su ventana emergente
+ * (`NewTicketDialog`). Consulta el mismo permiso que `createInternalTicket`
+ * exige, para no ofrecer un formulario que la acción va a rechazar. La acción lo vuelve a
  * comprobar: esta vista no es la barrera.
  */
 export async function NewTicketContent({ employee }: { employee: EmployeeSessionContext }) {

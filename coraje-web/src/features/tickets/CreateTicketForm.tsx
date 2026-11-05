@@ -2,14 +2,14 @@
 
 import { ChevronDown, CircleCheck, Copy, Send, Users } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
-import { useFormDialogClose, useFormDialogTone } from "@/design-system/patterns/form-dialog/FormDialog";
+import { useFormDialogClose, useFormDialogSettled, useFormDialogTone } from "@/design-system/patterns/form-dialog/FormDialog";
 import { iconStroke } from "@/design-system/foundations/iconography";
 import { buttonRecipe } from "@/design-system/recipes/button";
 import { fieldControl, fieldError, fieldLabel } from "@/design-system/recipes/field";
 import { colorTransition } from "@/design-system/recipes/interaction";
-import { notice, surface } from "@/design-system/recipes/surface";
+import { notice } from "@/design-system/recipes/surface";
 import { cn } from "@/design-system/utilities/cn";
 import { areaDisplayName, areaThemeKey } from "@/features/areas/area-theme";
 import { AttachmentPicker } from "@/features/attachments/AttachmentPicker";
@@ -76,40 +76,40 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
   const initialObservers = failed?.values.idObservadores ? failed.values.idObservadores.split(",") : [];
   const [observersOpen, setObserversOpen] = useState(initialObservers.length > 0 || Boolean(failed?.fieldErrors.idObservadores));
   const [observerCount, setObserverCount] = useState(initialObservers.length);
-  // Dentro de la ventana emergente, «Cancelar» la cierra y el diálogo ya es la
-  // superficie; en la página completa, «Cancelar» vuelve a la bandeja.
+  // El formulario vive solo en la ventana emergente (`NewTicketDialog`; la
+  // página directa redirige a la bandeja): «Cancelar» la cierra con la misma
+  // confirmación que la X, y el área elegida tiñe la ventana entera (U31).
   const closeDialog = useFormDialogClose();
-  // U31: en la ventana, el área elegida tiñe la ventana entera (encabezado,
-  // franja y acento); en la página completa, el propio formulario.
   const setTone = useFormDialogTone();
+  const settleDialog = useFormDialogSettled();
   const chooseArea = (nombre: string | null) => {
     setAreaName(nombre);
     setTone?.(nombre ? { area: areaThemeKey(nombre), subtitle: `Llegará a ${areaDisplayName(nombre)}` } : null);
   };
 
+  // Creado el ticket, lo escrito ya está guardado: cerrar o recargar no debe
+  // preguntar por descartarlo.
+  const created = state.status === "created";
+  useEffect(() => {
+    if (created) settleDialog?.();
+  }, [created, settleDialog]);
+
   if (state.status === "created") {
     return (
-      <div className={closeDialog ? undefined : surface({ padded: false })}>
-        <CreatedTicket
-          state={state}
-          onCreateAnother={() => {
-            setTone?.(null);
-            onCreateAnother();
-          }}
-        />
-      </div>
+      <CreatedTicket
+        state={state}
+        onCreateAnother={() => {
+          setTone?.(null);
+          onCreateAnother();
+        }}
+      />
     );
   }
 
   const describedBy = (field: string) => (failed?.fieldErrors[field] ? `${field}-error` : undefined);
 
   return (
-    <form
-      action={formAction}
-      data-area={!closeDialog && areaName ? areaThemeKey(areaName) : undefined}
-      className={closeDialog ? undefined : surface({ padded: false })}
-      noValidate
-    >
+    <form action={formAction} noValidate>
       <div className="space-y-5 p-5 lg:p-6">
         {failed && <p className={notice("danger")} role="alert">{failed.message}</p>}
 
@@ -234,18 +234,16 @@ function CreateTicketRound({ catalog, followCandidates, maxObservers, onCreateAn
         <p
           className={cn(
             "mr-auto text-sm text-ink-muted",
-            // En la ventana, con el área elegida, el encabezado ya dice «Llegará
+            // Con el área elegida, el encabezado de la ventana ya dice «Llegará
             // a …»: en móvil se omite aquí para que el pie quepa en una fila.
-            closeDialog && areaName && "hidden sm:block",
+            areaName && "hidden sm:block",
           )}
         >
           {areaName ? `Lo recibe ${areaDisplayName(areaName)}.` : "Elige el área que atiende para continuar."}
         </p>
-        {closeDialog ? (
-          <button type="button" onClick={closeDialog} className={buttonRecipe({ variant: "secondary", size: "lg" })}>Cancelar</button>
-        ) : (
-          <Link href="/tickets" className={buttonRecipe({ variant: "secondary", size: "lg" })}>Cancelar</Link>
-        )}
+        <button type="button" onClick={closeDialog ?? undefined} className={buttonRecipe({ variant: "secondary", size: "lg" })}>
+          Cancelar
+        </button>
         <button type="submit" className={buttonRecipe({ variant: "primary", size: "lg" })} disabled={pending || uploading}>
           <Send aria-hidden className="size-4.5" strokeWidth={iconStroke.regular} />
           {pending ? "Creando…" : uploading ? "Subiendo adjuntos…" : "Crear ticket"}

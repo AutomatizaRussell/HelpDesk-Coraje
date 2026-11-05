@@ -10,14 +10,17 @@ import type { AreaThemeKey } from "../area/area";
 
 /**
  * Ventana emergente con un formulario. Se usa solo cuando tapar lo de atrás
- * no cuesta nada (crear un ticket) o cuando conviene interrumpir (rechazar,
- * que no se deshace); para escribir mientras se lee, no: la respuesta de un
+ * no cuesta nada (crear un ticket) o cuando conviene interrumpir una acción
+ * que no se deshace; para escribir mientras se lee, no: la respuesta de un
  * ticket va al final de su historia, a la vista.
  *
  * `<dialog>` nativo, como el sidebar de Conecta: bloqueo del foco, Escape,
  * devolución del foco y capa superior sin librería. Cerrar —Escape, la X, un
  * clic en el fondo o `requestClose` desde el contenido— pide confirmación si
- * ya se escribió algo: un error de clic no borra lo escrito.
+ * ya se escribió algo: un error de clic no borra lo escrito. Recargar o
+ * cerrar la pestaña también: con la ventana abierta y algo escrito, el
+ * navegador pregunta antes (`beforeunload`). Ese aviso lo redacta el
+ * navegador; ninguno deja poner un texto propio.
  *
  * Controlado: quien lo usa decide cuándo está abierto (`open`) y qué pasa al
  * cerrar (`onClose`: volver atrás, cambiar un estado local).
@@ -41,6 +44,19 @@ const FormDialogCloseContext = createContext<(() => void) | null>(null);
 /** `null` fuera de una ventana: el contenido se dibuja en una página. */
 export function useFormDialogClose(): (() => void) | null {
   return useContext(FormDialogCloseContext);
+}
+
+/**
+ * Declara que ya no hay nada que perder, aunque se haya escrito: el contenido
+ * lo llama cuando lo escrito quedó guardado (un ticket creado). Sin esto, la
+ * confirmación de la ventana ya terminada preguntaría por descartar algo que
+ * ya existe. Escribir de nuevo vuelve a activar la confirmación.
+ */
+const FormDialogSettledContext = createContext<(() => void) | null>(null);
+
+/** `null` fuera de una ventana. */
+export function useFormDialogSettled(): (() => void) | null {
+  return useContext(FormDialogSettledContext);
 }
 
 /**
@@ -88,6 +104,25 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
     dirty.current = false;
     onClose();
   }, [discardQuestion, onClose]);
+
+  // Estable: el contenido lo usa como dependencia de un efecto.
+  const settle = useCallback(() => {
+    dirty.current = false;
+  }, []);
+
+  // Recargar o cerrar la pestaña con algo escrito. El oyente vive solo
+  // mientras la ventana está abierta y consulta `dirty` en el momento del
+  // evento: escribir no lo vuelve a registrar. `preventDefault` es la forma
+  // estándar de pedir el aviso; Chrome solo lo muestra si la persona ya
+  // interactuó con la página, y escribir cuenta.
+  useEffect(() => {
+    if (!open) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (dirty.current) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [open]);
 
   // El contenido ocupa todo el diálogo: un clic cuyo destino es el propio
   // <dialog> solo puede haber caído en el fondo oscurecido.
@@ -140,7 +175,9 @@ export function FormDialog({ open, title, onClose, discardQuestion = DEFAULT_DIS
             </button>
           </div>
           <FormDialogToneContext.Provider value={setTone}>
-            <FormDialogCloseContext.Provider value={requestClose}>{children}</FormDialogCloseContext.Provider>
+            <FormDialogCloseContext.Provider value={requestClose}>
+              <FormDialogSettledContext.Provider value={settle}>{children}</FormDialogSettledContext.Provider>
+            </FormDialogCloseContext.Provider>
           </FormDialogToneContext.Provider>
         </>
       )}
