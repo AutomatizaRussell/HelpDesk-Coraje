@@ -1,6 +1,19 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 77, U32: consulta del anillo de plazo, SIN DESPLEGAR)
+SOBRE:   `793769c` (corte 76)
+RAMA:    main
+UNIDAD:  U32, arreglo: `getPlazoProgress` contaba el total de días con `t.c` y `t.l`
+         en una consulta que solo selecciona `FROM u`. Desde `80b5dec` (corte 72)
+         PostgreSQL la rechaza, se registra `ticket.plazo_progreso_fallido` y el
+         anillo se dibuja vacío en todo ticket. Pasa a `u.c` y `u.l`. Evidencia:
+         `tsc`, `eslint`, pruebas 233/233. Sin ejecutar contra la base.
+LOCAL:   filtro de la bandeja, crear ticket y desbordes en móvil: van en los cortes
+         78 a 80, en el mismo push.
+SIGUE:   desplegar y abrir un ticket con fecha límite: el anillo debe llenarse.
+
+--- Corte 76, para contexto:
 CORTE:   05-nov-2026 (corte 76, U37: alcance de la trama del puntero a la mitad, SIN DESPLEGAR)
 SOBRE:   `722aab8` (corte 75)
 RAMA:    main
@@ -1960,6 +1973,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `793769c` | **Corte 76.** U37: alcance de la trama del puntero a la mitad. Los cortes 73 a 75 (`eb126d3` correos, `11b164c` ocupación legacy, `722aab8` cabecera en pantalla ancha) tampoco se habían anotado aquí. Publicado el 05-nov-2026 |
 | `80b5dec` | **Corte 72.** U32: fracción del día en el anillo de plazo. Los cortes 69 a 71 (`98ccfba`, `419dfa8`, `f8ab5c4`) y la calificación (`3eab809`) tampoco se habían anotado aquí. Publicado el 04-nov-2026 |
 | `253362c` | **Corte 68.** U32: la descripción como primer mensaje del solicitante. Publicado el 04-nov-2026 |
 | `bff418e` | **Corte 67.** U32: tope del semicírculo; arrastró por error `docs/specs/directorio-personal.md`, ajeno a la unidad. Publicado el 04-nov-2026 |

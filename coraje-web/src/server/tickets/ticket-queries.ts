@@ -814,7 +814,7 @@ export async function getPlazoProgress(idTicket: string): Promise<{ consumidos: 
                THEN EXTRACT(EPOCH FROM (u.fin - u.e::timestamp)) / 86400
              ELSE 0
            END)::float8 AS consumidos,
-        (SELECT count(*) FROM generate_series(t.c + 1, t.l, interval '1 day') AS g(d)
+        (SELECT count(*) FROM generate_series(u.c + 1, u.l, interval '1 day') AS g(d)
           WHERE EXTRACT(ISODOW FROM g.d) < 6 AND NOT core.is_colombia_holiday(g.d::date))::int AS total
       FROM u`;
     const row = rows[0];
