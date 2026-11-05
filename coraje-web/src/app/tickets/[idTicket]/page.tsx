@@ -267,7 +267,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     >
       <div className="space-y-5">
 
-        <div className="grid items-start gap-5 lg:grid-cols-3">
+        {/* `grid-cols-1` también en móvil: sin él, la única columna es `auto`
+            y crece hasta lo más ancho que lleve (un nombre de archivo, un
+            enlace), y la página entera se desborda y el navegador la aleja. */}
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
           <div className="space-y-5 lg:col-span-2">
             <section className={card} aria-label="Solicitud">
               <TicketRequest author={ticket.solicitante} fecha={ticket.fechaCreacion} text={ticket.descripcion} />
@@ -373,7 +376,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 <ul className="divide-y divide-line">
                   {mails.map((mail) => (
                     <li key={mail.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 wrap-anywhere">
                         <p className="text-sm font-bold text-ink">{mail.asunto}</p>
                         <p className="mt-0.5 text-sm text-ink-muted">
                           Para {mail.destinatario} · <span className="tabular-nums">{formatDateTime(mail.fecha)}</span>

@@ -1,6 +1,21 @@
 # Handoff técnico
 
 ```
+CORTE:   05-nov-2026 (corte 80, desbordes en móvil, SIN DESPLEGAR)
+SOBRE:   corte 79 (mismo push)
+RAMA:    main
+UNIDAD:  arreglo transversal (U31/U32): en móvil, el detalle usa `grid-cols-1` (una
+         columna `auto` crecía con el nombre de un adjunto y desbordaba la página);
+         adjuntos, mensajes y asuntos de correo parten palabras largas
+         (`wrap-anywhere`); en la bandeja, el interruptor de modo va encima de las
+         pestañas. Evidencia: `tsc`, `eslint`, pruebas 233/233. Sin ver en móvil.
+LOCAL:   nada.
+SIGUE:   desplegar los cortes 77 a 80 y revisar, en este orden: el anillo de plazo de
+         un ticket con fecha límite (corte 77), el filtro y las cifras de «Todo mi
+         alcance» (78), crear ticket con recarga (79) y el detalle de un ticket con
+         adjunto de nombre largo en el teléfono (80).
+
+--- Corte 79, para contexto:
 CORTE:   05-nov-2026 (corte 79, U33: crear ticket solo en la ventana, SIN DESPLEGAR)
 SOBRE:   corte 78 (mismo push)
 RAMA:    main

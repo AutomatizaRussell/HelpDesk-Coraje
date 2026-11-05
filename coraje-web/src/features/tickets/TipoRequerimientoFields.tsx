@@ -215,7 +215,7 @@ export function TipoRequerimientoFields({
       {areaField}
       {/* Con chips, la cascada va en una fila: las tres preguntas son una
           sola decisión, «de qué se trata», y así se leen. */}
-      {areaPicker === "chips" ? <div className="grid gap-4 sm:grid-cols-3">{cascade}</div> : cascade}
+      {areaPicker === "chips" ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">{cascade}</div> : cascade}
       <input type="hidden" name="idTipoReq" value={resolved?.idTipoReq ?? ""} />
     </>
   );

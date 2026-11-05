@@ -29,9 +29,12 @@ export function AttachmentLink({ idTicket, id, nombre, tamanoBytes }: { idTicket
   const base = `${APP_BASE_PATH}/api/tickets/${idTicket}/adjuntos/${id}`;
   const label = (
     <>
-      <Paperclip aria-hidden className="size-3.5" strokeWidth={iconStroke.regular} />
-      {nombre}
-      <span className="font-normal text-ink-muted">· {formatBytes(tamanoBytes)}</span>
+      <Paperclip aria-hidden className="size-3.5 shrink-0" strokeWidth={iconStroke.regular} />
+      {/* Un nombre de archivo es una sola palabra larga: sin `wrap-anywhere`
+          no se parte y ensancha todo lo que lo contiene. */}
+      <span className="min-w-0 wrap-anywhere">
+        {nombre} <span className="font-normal text-ink-muted">· {formatBytes(tamanoBytes)}</span>
+      </span>
     </>
   );
   const linkClass = cn("inline-flex items-center gap-1.5 rounded-control text-left text-sm font-bold text-heading hover:underline", focusRing);

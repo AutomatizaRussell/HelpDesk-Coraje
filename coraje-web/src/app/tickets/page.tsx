@@ -239,7 +239,9 @@ export default async function TicketsPage({
           )}
 
           <section aria-label={VIEW_LABEL[view]} className="overflow-hidden rounded-surface bg-surface shadow-raised">
-            <div className="flex items-center justify-between gap-4 border-b border-line px-6">
+            {/* En móvil, el interruptor de modo va encima de las vistas: en la
+                misma fila les dejaba sitio para una sola pestaña. */}
+            <div className="flex flex-col-reverse items-start gap-x-4 border-b border-line px-6 sm:flex-row sm:items-center sm:justify-between">
               <TabLinks
                 label="Vistas de la bandeja"
                 items={views.map((item) => ({ label: VIEW_LABEL[item], href: inboxHref(mode, item, filters), current: item === view }))}

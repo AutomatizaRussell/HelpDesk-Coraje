@@ -20,14 +20,18 @@ export async function InboxModeSwitch({ idPersonal, mode }: { idPersonal: string
 
   const otherMode: TicketMode = mode === "externo" ? "interno" : "externo";
   const otherPending = await countModePending(idPersonal, otherMode);
+  // En móvil va encima de las pestañas (la fila de la bandeja se apila): el
+  // aire superior es suyo, para que sin interruptor no quede un hueco.
   return (
-    <ModeSwitch
-      items={TICKET_MODES.map((item) => ({
-        label: TICKET_MODE_LABEL[item],
-        href: inboxPath(item),
-        current: item === mode,
-        pending: item === otherMode ? otherPending : 0,
-      }))}
-    />
+    <div className="pt-3 sm:pt-0">
+      <ModeSwitch
+        items={TICKET_MODES.map((item) => ({
+          label: TICKET_MODE_LABEL[item],
+          href: inboxPath(item),
+          current: item === mode,
+          pending: item === otherMode ? otherPending : 0,
+        }))}
+      />
+    </div>
   );
 }

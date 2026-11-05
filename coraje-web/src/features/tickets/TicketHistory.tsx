@@ -125,7 +125,7 @@ function EventLine({ idTicket, entry }: { idTicket: string; entry: TicketHistory
             </span>
           )}
         </p>
-        {entry.contenido && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink-muted">{entry.contenido}</p>}
+        {entry.contenido && <p className="mt-1 whitespace-pre-wrap wrap-anywhere text-sm text-ink-muted">{entry.contenido}</p>}
         <Attachments idTicket={idTicket} entry={entry} />
       </div>
     </li>
@@ -180,7 +180,7 @@ function MessageBubble({ idTicket, entry }: { idTicket: string; entry: TicketHis
                 : "bg-action text-on-action",
           )}
         >
-          <p className="whitespace-pre-wrap break-words text-base">{entry.contenido}</p>
+          <p className="whitespace-pre-wrap wrap-anywhere text-base">{entry.contenido}</p>
         </div>
         <p className={cn("mt-1 flex items-center gap-1.5 text-xs font-bold", internal ? "text-warning" : "text-ink-muted")}>
           {internal ? <Lock aria-hidden className="size-3" strokeWidth={iconStroke.regular} /> : <Eye aria-hidden className="size-3" strokeWidth={iconStroke.regular} />}
@@ -214,7 +214,7 @@ export function TicketRequest({ author, fecha, text }: { author: string | null; 
           <span className="font-bold text-ink">{name}</span> · Solicitud · <When fecha={fecha} />
         </p>
         <div className="mt-1.5 rounded-card rounded-tl-none bg-surface-sunken px-4 py-3 text-ink">
-          <p className="whitespace-pre-wrap break-words text-base">{text}</p>
+          <p className="whitespace-pre-wrap wrap-anywhere text-base">{text}</p>
         </div>
       </div>
     </div>
