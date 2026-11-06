@@ -206,6 +206,12 @@ export const helpdeskTheme = {
     // Anillo de plazo de la cabecera del detalle (U32) y el globo de su disco.
     plazoRing: "176px",
     ringGlobe: "96px",
+    // Alto del área de dibujo de un gráfico (U39, indicadores). El ancho es
+    // el del contenedor; el alto es fijo para que la página no salte mientras
+    // los gráficos montan. `chartTall`: barras horizontales con hasta doce
+    // personas o áreas, cada una con su etiqueta legible.
+    chart: "288px",
+    chartTall: "416px",
     heroStripe: "6px",
     // Trama que sigue al puntero sobre la cabecera (U30), en la bandeja y en
     // el detalle del ticket, del color del área y visible solo en un círculo

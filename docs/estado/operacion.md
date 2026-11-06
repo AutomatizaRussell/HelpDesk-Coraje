@@ -413,11 +413,12 @@ WITH crudo AS (
 ),
 d AS (
     SELECT crudo.*,
-           COALESCE(fecha_resp - fecha_max, 0)              AS dr,
-           COALESCE(fecha_solicitud + 0 - fecha_resp, 0)    AS s0,
-           COALESCE(fecha_solicitud + 1 - fecha_resp, 0)    AS s1,
-           COALESCE(fecha_solicitud + 2 - fecha_resp, 0)    AS s2,
-           COALESCE(fecha_solicitud + 3 - fecha_resp, 0)    AS s3
+           -- H2: una fecha en blanco es el día 0 de DAX (indicadores.md, I4).
+           COALESCE(fecha_resp, DATE '1899-12-30') - COALESCE(fecha_max, DATE '1899-12-30') AS dr,
+           fecha_solicitud + 0 - COALESCE(fecha_resp, DATE '1899-12-30') AS s0,
+           fecha_solicitud + 1 - COALESCE(fecha_resp, DATE '1899-12-30') AS s1,
+           fecha_solicitud + 2 - COALESCE(fecha_resp, DATE '1899-12-30') AS s2,
+           fecha_solicitud + 3 - COALESCE(fecha_resp, DATE '1899-12-30') AS s3
     FROM crudo
 ),
 c AS (

@@ -74,6 +74,17 @@ export const AVISO_ACTIONS = {
   consultar: "aviso.consultar",
 } as const;
 
+/**
+ * Panel de indicadores (U39, migración `20261106110000_indicadores_panel`).
+ * Alcance `TOTAL` provisional para los tres roles mientras no exista la
+ * visibilidad por nivel (U40, specs/indicadores.md §2): las consultas no
+ * filtran por persona hasta entonces.
+ */
+export const INDICADORES_ACTIONS = {
+  /** Ver `/indicadores`: volumen, oportunidad de respuesta y calidad. */
+  ver: "indicadores.ver",
+} as const;
+
 export type TicketAction = (typeof TICKET_ACTIONS)[keyof typeof TICKET_ACTIONS];
 
 export type PortalAction = (typeof PORTAL_ACTIONS)[keyof typeof PORTAL_ACTIONS];
@@ -82,5 +93,7 @@ export type SaludAction = (typeof SALUD_ACTIONS)[keyof typeof SALUD_ACTIONS];
 
 export type AvisoAction = (typeof AVISO_ACTIONS)[keyof typeof AVISO_ACTIONS];
 
+export type IndicadoresAction = (typeof INDICADORES_ACTIONS)[keyof typeof INDICADORES_ACTIONS];
+
 /** Cualquier acción del catálogo, sea sobre un ticket o no. */
-export type PermissionAction = TicketAction | PortalAction | SaludAction | AvisoAction;
+export type PermissionAction = TicketAction | PortalAction | SaludAction | AvisoAction | IndicadoresAction;

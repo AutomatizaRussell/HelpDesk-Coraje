@@ -76,6 +76,10 @@ const RUTAS_DECLARADAS: Record<string, { acceso: PathAccess; razon: string }> = 
     acceso: "EMPLEADO",
     razon: "Revisión de salud (U10); exige salud.consultar",
   },
+  "/indicadores": {
+    acceso: "EMPLEADO",
+    razon: "Panel de indicadores (U39); exige indicadores.ver",
+  },
   "/avisos": {
     acceso: "EMPLEADO",
     razon: "Avisos propios: lo que requiere atención y las novedades (U15); exige aviso.consultar",

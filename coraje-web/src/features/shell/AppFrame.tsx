@@ -7,7 +7,7 @@ import type { EmployeeSessionContext } from "@/server/auth/employee-session";
 import { readEntryContext } from "@/server/auth/entry-cookie";
 import { signOutAction } from "@/server/auth/sign-out-action";
 import { resolveGrants } from "@/server/authorization/authorizer";
-import { AVISO_ACTIONS, SALUD_ACTIONS } from "@/server/authorization/catalog";
+import { AVISO_ACTIONS, INDICADORES_ACTIONS, SALUD_ACTIONS } from "@/server/authorization/catalog";
 import { countBellNotices } from "@/server/notifications/ticket-notices";
 import { getPersonAreaName } from "@/server/personal/person-area";
 import { getModeAccess } from "@/server/tickets/mode-access";
@@ -64,7 +64,7 @@ export async function AppFrame({
 }) {
   const [entry, grants, modeAccess, areaName, suplantacion] = await Promise.all([
     readEntryContext(),
-    resolveGrants(employee.idPersonal, [SALUD_ACTIONS.consultar, AVISO_ACTIONS.consultar]),
+    resolveGrants(employee.idPersonal, [SALUD_ACTIONS.consultar, AVISO_ACTIONS.consultar, INDICADORES_ACTIONS.ver]),
     getModeAccess(employee.idPersonal),
     // U16: el color de la interfaz sigue el área de quien entra.
     getPersonAreaName(employee.idPersonal),
@@ -89,6 +89,7 @@ export async function AppFrame({
   const sections = helpdeskSections(mode, {
     administrarAccesos: modeAccess.administrarAccesos,
     consultarSalud: grants.has(SALUD_ACTIONS.consultar),
+    verIndicadores: grants.has(INDICADORES_ACTIONS.ver),
   });
   // SUPLANTACIÓN — bloque temporal para pruebas. Encima del contenido y no
   // dentro de los shells: así ninguno de los dos patrones del sistema de

@@ -818,17 +818,22 @@ Primera pieza de U39. El área de quien radica queda en el ticket al nacer
 da `area_remite_sin_resolver = 0`, y la consulta de `estado/operacion.md` («Área que
 remite (U38)») cuenta 3.078 tickets legacy con área y 10 sin ella.
 
-### U39 · Indicadores: traslado del Power BI «IND HELPDESK» — **en construcción: capa de datos en el corte 82**
+### U39 · Indicadores: traslado del Power BI «IND HELPDESK» — **en construcción: panel en el corte 83**
 
 Contrato en `specs/indicadores.md`. Pasos:
-1. Capa de datos: `helpdesk.v_indicador_ticket` y la conciliación (corte 82).
-2. Conciliar contra la base real y verificar una vez el reporte (indicadores.md §5).
-3. Permiso `indicadores.ver` y panel, con diseño propio.
+1. **Hecho.** Capa de datos: `helpdesk.v_indicador_ticket` y la conciliación (corte 82).
+2. **Hecho (06-nov-2026).** Conciliación contra la base real: 3.090 de 3.090 tickets,
+   medidas idénticas (I5). Los blancos del DAX se resolvieron con la documentación
+   (H2, I4), sin abrir el reporte.
+3. **Construido (corte 83).** Permiso `indicadores.ver` y panel `/indicadores` con
+   ECharts y diseño propio (`design/sistema-helpdesk.md` §5.9).
 4. Días hábiles.
 5. U40, visibilidad por nivel.
 
-**Condición de cierre del paso 1:** la conciliación de `estado/operacion.md` da 0
-diferencias y las dos filas de medidas iguales.
+**Condición de cierre del paso 3:**
+- Desplegado, el panel abre desde la navegación de Interno.
+- Sin filtros, sus cifras son las de la conciliación, salvo los 6 tickets que movió H2.
+- El usuario lo revisa en escritorio y en el teléfono, y lo aprueba o pide ajustes.
 
 El reporte de Power BI que hoy abre la pantalla `Indicadores` de PowerApps, rehecho en
 HelpDesk con su lógica y un diseño propio. El inventario salió del `.pbit`: seis

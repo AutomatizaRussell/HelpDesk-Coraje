@@ -577,6 +577,31 @@ una persona en una cita con filete Sky Blue, botón navy.
   `public-assets.ts`. Si el cliente de correo bloquea imágenes externas, queda el texto
   alternativo.
 
+### 5.9 `DECISIÓN` (06-nov-2026, U39) Gráficos
+
+Un solo componente dibuja gráficos: `components/Chart.tsx`, con Apache ECharts 6.0.0
+importado por módulos y dibujado en SVG, en el navegador. Concepto de Impulsa; paleta
+propia.
+
+- **Autoridades.**
+  - Tamaños en px: `foundations/data-viz.ts`, porque ECharts necesita números.
+  - Colores: `themes/helpdesk-chart.ts`, generados desde `brand.ts` y `helpdesk.ts`.
+  - Alto del área de dibujo: `size.chart` y `size.chartTall`, como clases. No hay
+    estilos en línea.
+- **Papeles de color,** pasados por el validador de paletas:
+
+  | Papel | Color | Uso |
+  |---|---|---|
+  | Serie | Navy | Una sola magnitud. Es el único color de marca con 3:1 sobre blanco |
+  | Escala | Rampa de navy a su tinta de 40 % | Una escala ordenada, de mejor a peor |
+  | Aparte | Sky Blue | Lo que no es un punto de la escala, siempre junto al navy |
+
+  Junto al navy, Sky Blue separa con ΔE 38,6 bajo daltonismo; junto a la tinta de 40 %,
+  solo con 1,6. Los colores de estado no pintan series.
+- **Un solo eje.** Dos medidas de distinta escala son dos gráficos.
+- **Cada gráfico lleva su tabla de datos** debajo, plegada en «Ver datos». Cubre el
+  lector de pantalla y el contraste bajo de la tinta clara.
+
 ## 6. Vistas que el contrato tiene que sostener
 
 | Vista | Exigencia dominante |

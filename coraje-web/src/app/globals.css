@@ -128,6 +128,8 @@
   --hd-size-hero-mark: 432px;
   --hd-size-plazo-ring: 176px;
   --hd-size-ring-globe: 96px;
+  --hd-size-chart: 288px;
+  --hd-size-chart-tall: 416px;
   --hd-size-hero-stripe: 6px;
   --hd-size-pointer-line: 1.5px;
   --hd-size-pointer-line-gap: 7px;
@@ -462,6 +464,8 @@
   --spacing-hero-mark-shift: calc((100cqw - min(100cqw, var(--hd-size-content-max))) / 4);
   --spacing-plazo-ring: var(--hd-size-plazo-ring);
   --spacing-ring-globe: var(--hd-size-ring-globe);
+  --spacing-chart: var(--hd-size-chart);
+  --spacing-chart-tall: var(--hd-size-chart-tall);
   --spacing-hero-stripe: var(--hd-size-hero-stripe);
   --spacing-empty-mark: var(--hd-size-empty-mark);
   --spacing-empty-mark-inner: var(--hd-size-empty-mark-inner);

@@ -51,6 +51,13 @@ test("la versión vigente cuenta días calendario, sin el calendario hábil", ()
   assert.doesNotMatch(viewSql, /add_colombia_business_days/);
 });
 
+test("un DATEDIFF con fecha en blanco usa el día 0 de DAX, no cero (H2, indicadores.md I4)", () => {
+  // H1, descartada, comparaba COALESCE(dias_respuesta, 0): un ticket sin
+  // fecha de respuesta salía Excelente. H2 sustituye la fecha, no la diferencia.
+  assert.doesNotMatch(viewSql, /COALESCE\(\s*diferencias\.dias_respuesta\s*,\s*0\s*\)/);
+  assert.match(viewSql, /COALESCE\(\s*base\.fecha_respuesta\s*,\s*DATE\s+'1899-12-30'\s*\)/);
+});
+
 test("la aplicación puede leer la vista", () => {
   const all = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())

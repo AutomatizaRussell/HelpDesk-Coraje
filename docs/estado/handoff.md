@@ -1,6 +1,25 @@
 # Handoff técnico
 
 ```
+CORTE:   06-nov-2026 (corte 84, U39: panel de indicadores, SIN DESPLEGAR)
+SOBRE:   `7ea0f95` (corte 83)
+RAMA:    main
+UNIDAD:  U39, paso 3 (specs/indicadores.md §3.1):
+         - `/indicadores` con cuatro pestañas, filtros en la URL y cifras;
+         - ECharts 6.0.0 detrás de `design-system/components/Chart.tsx` (§5.9);
+         - permiso `indicadores.ver`, TOTAL provisional para los tres roles;
+         - la vista pasa a H2 (I4).
+         El paso 2 cerró en la base real: conciliación con 0 diferencias en todo
+         salvo la fecha de solicitud de 12 tickets (§4). Evidencia: `tsc`, `eslint`,
+         pruebas 260/260, `next build`, y contra PGlite 33/33 con el SQL del panel
+         tal cual como `coraje_runtime`. Sin ver en navegador.
+LOCAL:   nada.
+SIGUE:   desplegar `web` (lleva también el corte 83) y abrir Indicadores. Sin
+         filtros, las cifras deben ser las de la conciliación, salvo los 6 tickets
+         que movió H2. Correr otra vez la conciliación de operacion.md, que ahora
+         lleva H2: debe dar 0 diferencias. Luego, lo del corte 83 (sidebar).
+
+--- Corte 83, para contexto:
 CORTE:   06-nov-2026 (corte 83, U19: réplica del shell de Conecta al día, SIN DESPLEGAR)
 SOBRE:   `d847453` (corte 82)
 RAMA:    main

@@ -24,6 +24,8 @@ export interface SectionGrants {
   administrarAccesos: boolean;
   /** `salud.consultar`: la revisión de salud de la aplicación (U10). */
   consultarSalud: boolean;
+  /** `indicadores.ver`: el panel de indicadores (U39). */
+  verIndicadores: boolean;
 }
 
 export function helpdeskSections(mode: TicketMode, grants: SectionGrants): readonly ModuleNavItem[] {
@@ -35,6 +37,7 @@ export function helpdeskSections(mode: TicketMode, grants: SectionGrants): reado
   }
   return [
     { label: "Tickets", href: inboxPath("interno") },
+    ...(grants.verIndicadores ? [{ label: "Indicadores", href: "/indicadores" }] : []),
     ...(grants.consultarSalud ? [{ label: "Salud", href: "/salud" }] : []),
   ];
 }
