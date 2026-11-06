@@ -1,6 +1,23 @@
 # Handoff técnico
 
 ```
+CORTE:   06-nov-2026 (corte 82, U39: capa de datos de indicadores, SIN DESPLEGAR)
+SOBRE:   `ab791e0` (corte 81)
+RAMA:    main
+UNIDAD:  U39, paso 1 (specs/indicadores.md): `helpdesk.v_indicador_ticket`, una fila
+         por ticket con la lógica del Power BI tal cual (días calendario), y la
+         conciliación de operacion.md contra una réplica del DAX sobre staging.
+         Cierra U38 y U36 con la evidencia de la base real del 06-nov (plan,
+         U38). Registra D6 (directorio-personal.md: el ítem 405 no se corrige a
+         mano). Evidencia: `tsc`, `eslint`, pruebas 248/248 (4 nuevas), y contra
+         PGlite 21/21 con la ingesta real. Sin ejercitar contra la base real.
+LOCAL:   cambios de otra sesión sin commit (shell de Conecta, globals.css,
+         package.json, integracion-conecta.md, sistema-helpdesk.md): no van en este
+         corte. Las pruebas corrieron sobre ese árbol.
+SIGUE:   desplegar `web` y correr la conciliación (operacion.md, «Conciliación de
+         indicadores (U39)»).
+
+--- Corte 81, para contexto:
 CORTE:   05-nov-2026 (corte 81, U38: área que remite, SIN DESPLEGAR)
 SOBRE:   `1642e95` (corte 80)
 RAMA:    main

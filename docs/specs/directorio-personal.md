@@ -341,6 +341,7 @@ tabla de ocupación quedan congeladas como histórico.
 | D3 | Ante una baja o una cuenta deshabilitada, ¿qué se hace? | **Decidido (05-nov-2026):** bloquear sin quitar el rol y avisar (§4.4) |
 | D4 | Donde un cambio en la lista llevó tickets a un marcador, ¿se reconstruye la atribución con los intervalos de §7.4 o se acepta el marcador? | **Decidido (05-nov-2026):** reconstruir los 7 tickets de `mercadeo.mde@` (§4.3) |
 | D5 | ¿Graph por personas con rol o por `delta` del tenant? | **Decidido (05-nov-2026):** por personas con rol (§4.6) |
+| D6 | Un correo inválido en la lista (ítem 405, `"."`), ¿se corrige a mano en SharePoint? | **Decidido (06-nov-2026):** no. La 03 ya lo neutraliza (U36). Mientras viva la lista, los tickets de esa persona quedan en un marcador; se mide en U39. La corrección estructural es enlazar por **cédula** con Conecta (fase C), sin depender del correo de la lista |
 
 ## 9. Datos a medir antes de construir
 

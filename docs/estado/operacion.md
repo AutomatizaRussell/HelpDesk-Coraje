@@ -372,6 +372,132 @@ docker exec -i coraje_postgres psql -X -P pager=off -U coraje_etl -d coraje \
  -c "SELECT origen_sistema, count(*) FILTER (WHERE id_area_remite IS NOT NULL) AS con_area, count(*) FILTER (WHERE id_area_remite IS NULL) AS sin_area FROM helpdesk.fact_ticket GROUP BY 1 ORDER BY 1"
 ```
 
+### Conciliación de indicadores (U39)
+
+`specs/indicadores.md` §5. Requiere `web` desplegado con `20261106100000_indicadores_ticket`. Compara, ticket por ticket, la réplica del Power BI sobre los campos crudos de SharePoint con `helpdesk.v_indicador_ticket`. Crea solo vistas temporales y termina en `ROLLBACK`.
+
+Esperado: en el bloque 1, 0 en todos los campos salvo `items_lista`; en el bloque 2, ninguna fila; en el bloque 3, las dos filas iguales. Una diferencia en `fecha_max` o `fecha_resp` en todos los tickets indica que la ingesta guardó las fechas en otra zona horaria (I3); una en `categoria` sola, una traducción equivocada.
+
+```bash
+docker exec -i coraje_postgres psql -X -P pager=off -U coraje_etl -d coraje <<'SQL'
+-- Solo crea vistas temporales y termina en ROLLBACK: no deja nada en la base.
+BEGIN;
+
+-- Réplica del DAX sobre los campos crudos de HelpDeskBd, como los lee el
+-- Power BI, comparada ticket por ticket con helpdesk.v_indicador_ticket.
+CREATE TEMP VIEW pbi AS
+WITH crudo AS (
+    SELECT
+        s.sp_id,
+        NULLIF(s.payload->>'Id_Req', '')                    AS id_req,
+        NULLIF(s.payload->>'OData__x00c1_rea_Destino', '')  AS area_destino,
+        s.payload->>'Estado'                                AS estado,
+        s.payload->>'Prioridad'                             AS prioridad,
+        COALESCE(s.payload->>'Respuesta', '') <> ''         AS respondido,
+        NULLIF(s.payload->>'Calificaci_x00f3_n', '')::INTEGER AS calificacion,
+        f.fecha AS fecha_solicitud, m.fecha AS fecha_max, r.fecha AS fecha_resp
+    FROM staging.sp_helpdesk_raw s
+    -- Las fechas llegan como DD/MM/YYYY o como ISO; las dos se aceptan.
+    CROSS JOIN LATERAL (SELECT CASE
+        WHEN s.payload->>'Fecha_Solicitud' ~ '^\d{1,2}/\d{1,2}/\d{4}$' THEN TO_DATE(s.payload->>'Fecha_Solicitud', 'DD/MM/YYYY')
+        WHEN s.payload->>'Fecha_Solicitud' ~ '^\d{4}-\d{2}-\d{2}' THEN ((s.payload->>'Fecha_Solicitud')::TIMESTAMPTZ AT TIME ZONE 'America/Bogota')::DATE
+        END AS fecha) f
+    CROSS JOIN LATERAL (SELECT CASE
+        WHEN s.payload->>'Fecha_Max_Respuesta' ~ '^\d{1,2}/\d{1,2}/\d{4}$' THEN TO_DATE(s.payload->>'Fecha_Max_Respuesta', 'DD/MM/YYYY')
+        WHEN s.payload->>'Fecha_Max_Respuesta' ~ '^\d{4}-\d{2}-\d{2}' THEN ((s.payload->>'Fecha_Max_Respuesta')::TIMESTAMPTZ AT TIME ZONE 'America/Bogota')::DATE
+        END AS fecha) m
+    CROSS JOIN LATERAL (SELECT CASE
+        WHEN s.payload->>'Fecha_Respuesta' ~ '^\d{1,2}/\d{1,2}/\d{4}$' THEN TO_DATE(s.payload->>'Fecha_Respuesta', 'DD/MM/YYYY')
+        WHEN s.payload->>'Fecha_Respuesta' ~ '^\d{4}-\d{2}-\d{2}' THEN ((s.payload->>'Fecha_Respuesta')::TIMESTAMPTZ AT TIME ZONE 'America/Bogota')::DATE
+        END AS fecha) r
+),
+d AS (
+    SELECT crudo.*,
+           COALESCE(fecha_resp - fecha_max, 0)              AS dr,
+           COALESCE(fecha_solicitud + 0 - fecha_resp, 0)    AS s0,
+           COALESCE(fecha_solicitud + 1 - fecha_resp, 0)    AS s1,
+           COALESCE(fecha_solicitud + 2 - fecha_resp, 0)    AS s2,
+           COALESCE(fecha_solicitud + 3 - fecha_resp, 0)    AS s3
+    FROM crudo
+),
+c AS (
+    SELECT d.*, CASE
+        WHEN estado IS DISTINCT FROM 'Cerrado' THEN 'Ticket abierto'
+        WHEN prioridad = 'Alta (1 día)'   AND dr <= 0 THEN '1.Excelente'
+        WHEN prioridad = 'Alta (1 día)'   AND dr = 1 THEN '2.Sobresaliente'
+        WHEN prioridad = 'Media (3 días)' AND (s1 = 0 OR s0 = 0) THEN '1.Excelente'
+        WHEN prioridad = 'Media (3 días)' AND (s2 = 0 OR dr = -2) THEN '2.Sobresaliente'
+        WHEN prioridad = 'Media (3 días)' AND s3 = 0 THEN '3.Regular'
+        WHEN prioridad = 'Media (3 días)' AND (dr = -1 OR dr = 0) THEN '3.Regular'
+        WHEN prioridad = 'Baja (5 días)'  AND (dr <= -5 OR dr <= -3) THEN '1.Excelente'
+        WHEN prioridad = 'Baja (5 días)'  AND dr <= -2 THEN '2.Sobresaliente'
+        WHEN prioridad = 'Baja (5 días)'  AND (dr <= -1 OR dr = 0) THEN '3.Regular'
+        ELSE '4.Deficiente' END AS categoria
+    FROM d
+)
+SELECT c.*, CASE
+    WHEN categoria = 'Ticket abierto' AND (NOW() AT TIME ZONE 'America/Bogota')::DATE > COALESCE(fecha_max, DATE '1899-12-30') THEN 0
+    WHEN categoria = '1.Excelente' THEN 1 WHEN categoria = '2.Sobresaliente' THEN 0.75
+    WHEN categoria = '3.Regular' THEN 0.5 WHEN categoria = '4.Deficiente' THEN 0.25
+    END::NUMERIC(3, 2) AS porcentaje
+FROM c;
+
+CREATE TEMP VIEW par AS
+SELECT pbi.*, v.id_ticket, v.codigo_ticket,
+       v.fecha_solicitud AS v_fecha_solicitud, v.fecha_max_respuesta AS v_fecha_max,
+       v.fecha_respuesta AS v_fecha_resp, v.respondido AS v_respondido,
+       v.calificacion AS v_calificacion, v.categoria_oportunidad AS v_categoria,
+       v.porcentaje_oportunidad AS v_porcentaje
+FROM pbi
+LEFT JOIN helpdesk.ticket_legacy_sharepoint_ref ref ON ref.sp_id = pbi.sp_id
+LEFT JOIN helpdesk.v_indicador_ticket v ON v.id_ticket = ref.id_ticket;
+
+\echo '== 1. Diferencias por campo (se espera 0 en todas)'
+SELECT count(*)                                                          AS items_lista,
+       count(*) FILTER (WHERE id_ticket IS NULL)                         AS sin_ticket,
+       count(*) FILTER (WHERE fecha_solicitud IS DISTINCT FROM v_fecha_solicitud AND id_ticket IS NOT NULL) AS fecha_solicitud,
+       count(*) FILTER (WHERE fecha_max       IS DISTINCT FROM v_fecha_max       AND id_ticket IS NOT NULL) AS fecha_max,
+       count(*) FILTER (WHERE fecha_resp      IS DISTINCT FROM v_fecha_resp      AND id_ticket IS NOT NULL) AS fecha_resp,
+       count(*) FILTER (WHERE respondido      IS DISTINCT FROM v_respondido      AND id_ticket IS NOT NULL) AS respondido,
+       count(*) FILTER (WHERE calificacion    IS DISTINCT FROM v_calificacion    AND id_ticket IS NOT NULL) AS calificacion,
+       count(*) FILTER (WHERE categoria       IS DISTINCT FROM v_categoria       AND id_ticket IS NOT NULL) AS categoria,
+       count(*) FILTER (WHERE porcentaje      IS DISTINCT FROM v_porcentaje      AND id_ticket IS NOT NULL) AS porcentaje
+FROM par;
+
+\echo '== 2. Primeros 15 tickets con alguna diferencia'
+SELECT sp_id, codigo_ticket, estado, prioridad,
+       fecha_solicitud, v_fecha_solicitud, fecha_max, v_fecha_max, fecha_resp, v_fecha_resp,
+       categoria, v_categoria
+FROM par
+WHERE id_ticket IS NOT NULL
+  AND (fecha_solicitud, fecha_max, fecha_resp, respondido, calificacion, categoria, porcentaje)
+      IS DISTINCT FROM
+      (v_fecha_solicitud, v_fecha_max, v_fecha_resp, v_respondido, v_calificacion, v_categoria, v_porcentaje)
+ORDER BY sp_id
+LIMIT 15;
+
+\echo '== 3. Medidas sin filtros: réplica del Power BI y vista de HelpDesk'
+SELECT 'power_bi' AS fuente,
+       count(id_req) FILTER (WHERE area_destino IS NOT NULL)            AS total,
+       count(id_req) FILTER (WHERE respondido)                          AS respondidos,
+       count(id_req) FILTER (WHERE NOT respondido)                      AS sin_respuesta,
+       round(avg(porcentaje), 4)                                        AS pct_oportunidad,
+       round(avg(calificacion), 4)                                      AS calidad_promedio
+FROM pbi
+UNION ALL
+SELECT 'helpdesk',
+       count(*) FILTER (WHERE id_area_destino IS NOT NULL),
+       count(*) FILTER (WHERE id_area_destino IS NOT NULL AND respondido),
+       count(*) FILTER (WHERE id_area_destino IS NOT NULL AND NOT respondido),
+       round(avg(porcentaje_oportunidad), 4),
+       round(avg(calificacion), 4)
+FROM helpdesk.v_indicador_ticket
+WHERE origen_sistema = 'SHAREPOINT_LEGACY';
+
+ROLLBACK;
+SQL
+```
+
 ### Retiro del espejo en PowerApps (U24)
 
 `specs/sincronizacion-sharepoint.md` §9. HelpDesk deja de escribir en SharePoint. La

@@ -773,7 +773,7 @@ ticket y los del portal, sobre un tercer adaptador del contrato de diseño
 **Condición de cierre:** desplegado, un ticket creado y cerrado produce correos que se
 ven con la marca en Outlook de escritorio y en Outlook web, con el logotipo cargado.
 
-### U36 · Atribución legacy congelada — **construida el 05-nov-2026 (corte 74)**
+### U36 · Atribución legacy congelada — **cerrada el 06-nov-2026 (corte 74; evidencia en U38)**
 
 Primera entrega de `specs/directorio-personal.md` (§4.3 y fase A1-A2). Dos ediciones de
 «Personal GCT» llevaron los 7 tickets de `mercadeo.mde@` de Juliana a un marcador
@@ -801,7 +801,13 @@ del detalle (`design/sistema-helpdesk.md` §5.4).
 con los hilos en el monitor ancho, y las rayas siguen al puntero en la bandeja y en el
 detalle.
 
-### U38 · Área que remite — **construida el 05-nov-2026 (corte 81)**
+### U38 · Área que remite — **cerrada el 06-nov-2026 (corte 81)**
+
+**Cierre (06-nov-2026, base real):** salida de la 06 con `area_remite_sin_resolver = 0`;
+`SHAREPOINT_LEGACY` 3.080 con área y 10 sin ella (3.090, dos nuevos desde el 05-nov);
+`SISTEMA_INTERNO` 2 de 2 con área. En la misma ejecución cerró U36:
+`atribucion_cambiada_total = 7`, los 7 de `mercadeo.mde@`, ahora de Juliana Tangarife;
+`ocupacion_sembrada = 260`.
 
 Primera pieza de U39. El área de quien radica queda en el ticket al nacer
 (`specs/tickets.md` §3.2): la 06 la toma de `Área_Remite` de SharePoint y
@@ -812,7 +818,17 @@ Primera pieza de U39. El área de quien radica queda en el ticket al nacer
 da `area_remite_sin_resolver = 0`, y la consulta de `estado/operacion.md` («Área que
 remite (U38)») cuenta 3.078 tickets legacy con área y 10 sin ella.
 
-### U39 · Indicadores: traslado del Power BI «IND HELPDESK» — **decidida en concepto el 05-nov-2026, sin construir**
+### U39 · Indicadores: traslado del Power BI «IND HELPDESK» — **en construcción: capa de datos en el corte 82**
+
+Contrato en `specs/indicadores.md`. Pasos:
+1. Capa de datos: `helpdesk.v_indicador_ticket` y la conciliación (corte 82).
+2. Conciliar contra la base real y verificar una vez el reporte (indicadores.md §5).
+3. Permiso `indicadores.ver` y panel, con diseño propio.
+4. Días hábiles.
+5. U40, visibilidad por nivel.
+
+**Condición de cierre del paso 1:** la conciliación de `estado/operacion.md` da 0
+diferencias y las dos filas de medidas iguales.
 
 El reporte de Power BI que hoy abre la pantalla `Indicadores` de PowerApps, rehecho en
 HelpDesk con su lógica y un diseño propio. El inventario salió del `.pbit`: seis
@@ -832,11 +848,10 @@ Decisiones del usuario (05-nov-2026):
 - **Visibilidad por jerarquía:** cada persona ve lo suyo y lo de quienes están por
   debajo. En Conecta la jerarquía es el nivel deducido del nombre del cargo dentro del
   área (Socio 0, Gerente 1, Senior 2, Líder o Semi-senior 3, Analista o Asistente 4),
-  sin jefe directo. Falta decidir entre dos formas:
-  - fijar el nivel en el ticket al nacer;
-  - usar el área del ticket con el nivel de quien consulta.
-
-  También falta ubicar a los 2 coordinadores, que no encajan en ningún nivel.
+  sin jefe directo. **Decidido el 06-nov-2026: el nivel se fija en el ticket**, igual
+  que el área que remite (U38), para quien radica y para quien atiende. Así, que alguien
+  salga o cambie de cargo no mueve sus tickets. Cargos sin nivel (coordinador,
+  aprendiz, practicante, externo): ven solo lo suyo, como en Conecta.
 
 **Depende de:** U38 desplegada.
 
