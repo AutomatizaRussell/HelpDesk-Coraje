@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { Chart, type ChartOption } from "@/design-system/components/Chart";
+import type { AreaThemeKey } from "@/design-system/patterns/area/area";
 import { helpdeskChart } from "@/design-system/themes/helpdesk-chart";
 
 import { etiquetaCategoria, formatCalificacion, formatEntero, formatMesCorto, formatPorcentaje } from "./format";
@@ -20,6 +21,9 @@ import { etiquetaCategoria, formatCalificacion, formatEntero, formatMesCorto, fo
  *   - evolución mensual: una línea para el porcentaje y columnas para el
  *     volumen, en dos gráficos. El Power BI los junta con dos ejes, que
  *     hace parecer relacionadas dos escalas que no lo están.
+ * Color (design/sistema-helpdesk.md §5.9): una barra que es un área lleva el
+ * color de esa área; cualquier otra serie, el del área de la vista (`tema`),
+ * igual que la cabecera. La escala de oportunidad no: es la rampa de navy.
  * Los números de cada gráfico están también en texto, en su tabla (la página
  * la pone al lado): un lector de pantalla no lee el SVG.
  */
@@ -55,10 +59,22 @@ const ejePorcentaje = {
 export interface BarraDato {
   nombre: string;
   valor: number | null;
+  /** Si la barra es un área, su color; si no, la barra toma el `tema`. */
+  area?: AreaThemeKey;
 }
 
 /** Ranking en barras horizontales. Hasta doce filas caben en `tall`; la página recorta antes. */
-export function BarrasHorizontales({ label, filas, formato }: { label: string; filas: readonly BarraDato[]; formato: Formato }) {
+export function BarrasHorizontales({
+  label,
+  filas,
+  formato,
+  tema,
+}: {
+  label: string;
+  filas: readonly BarraDato[];
+  formato: Formato;
+  tema: AreaThemeKey;
+}) {
   const option = useMemo<ChartOption>(() => {
     // ECharts dibuja la primera categoría abajo: se invierte para que la mayor quede arriba.
     const ordenadas = [...filas].reverse();
@@ -80,14 +96,14 @@ export function BarrasHorizontales({ label, filas, formato }: { label: string; f
       series: [
         {
           type: "bar",
-          data: ordenadas.map((fila) => fila.valor),
+          data: ordenadas.map((fila) => ({ value: fila.valor, itemStyle: { color: c.area[fila.area ?? tema] } })),
           barMaxWidth: s.bar.maxWidth,
           // Extremo de datos redondeado; la base queda recta contra el eje.
-          itemStyle: { color: c.serie, borderRadius: [0, s.bar.radius, s.bar.radius, 0] },
+          itemStyle: { borderRadius: [0, s.bar.radius, s.bar.radius, 0] },
         },
       ],
     };
-  }, [filas, formato]);
+  }, [filas, formato, tema]);
 
   return <Chart option={option} height={filas.length > 6 ? "tall" : "regular"} label={label} />;
 }
@@ -141,7 +157,7 @@ const ejeCalificacion = { type: "value" as const, min: 1, max: 5, interval: 1 };
  * Evolución mensual: columnas para un volumen; línea para un porcentaje o una
  * calificación, que son promedios y no cantidades que se acumulan.
  */
-export function SerieMensual({ label, filas, formato }: { label: string; filas: readonly MesDato[]; formato: Formato }) {
+export function SerieMensual({ label, filas, formato, tema }: { label: string; filas: readonly MesDato[]; formato: Formato; tema: AreaThemeKey }) {
   const option = useMemo<ChartOption>(() => {
     const meses = filas.map((fila) => formatMesCorto(fila.anio, fila.mes));
     const valores = filas.map((fila) => fila.valor);
@@ -158,16 +174,16 @@ export function SerieMensual({ label, filas, formato }: { label: string; filas: 
       yAxis: formato === "porcentaje" ? ejePorcentaje : formato === "calificacion" ? ejeCalificacion : { type: "value", minInterval: 1 },
       series: [
         formato !== "entero"
-          ? { type: "line", data: valores, connectNulls: false, itemStyle: { color: c.serie }, lineStyle: { color: c.serie } }
+          ? { type: "line", data: valores, connectNulls: false, itemStyle: { color: c.area[tema] }, lineStyle: { color: c.area[tema] } }
           : {
               type: "bar",
               data: valores,
               barMaxWidth: s.bar.maxWidth,
-              itemStyle: { color: c.serie, borderRadius: [s.bar.radius, s.bar.radius, 0, 0] },
+              itemStyle: { color: c.area[tema], borderRadius: [s.bar.radius, s.bar.radius, 0, 0] },
             },
       ],
     };
-  }, [filas, formato]);
+  }, [filas, formato, tema]);
 
   return <Chart option={option} height="regular" label={label} />;
 }

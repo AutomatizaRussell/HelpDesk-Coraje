@@ -49,6 +49,7 @@ export async function AppFrame({
   title,
   mode = "interno",
   hero,
+  themeAreaName,
   children,
 }: {
   employee: EmployeeSessionContext;
@@ -60,6 +61,12 @@ export async function AppFrame({
    * consulta para el color: así la vista no la vuelve a pedir.
    */
   hero?: (context: { areaName: string | null }) => ReactNode;
+  /**
+   * Área cuyo color toma la vista, si no es la de quien entra (U39: los
+   * indicadores filtrados por un área toman el color de esa área). Sin
+   * valor, el color sigue el área de quien entra (U16).
+   */
+  themeAreaName?: string;
   children: ReactNode;
 }) {
   const [entry, grants, modeAccess, areaName, suplantacion] = await Promise.all([
@@ -83,8 +90,9 @@ export async function AppFrame({
       <NoticeBellMenu count={bellCount} anchor={anchor} allHref={mode === "externo" ? "/avisos?modo=externo" : "/avisos"} />
     );
 
-  const areaTheme = areaThemeKey(areaName);
-  const heroNode = hero?.({ areaName });
+  const themedArea = themeAreaName ?? areaName;
+  const areaTheme = areaThemeKey(themedArea);
+  const heroNode = hero?.({ areaName: themedArea });
 
   const sections = helpdeskSections(mode, {
     administrarAccesos: modeAccess.administrarAccesos,

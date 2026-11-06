@@ -592,12 +592,21 @@ propia.
 
   | Papel | Color | Uso |
   |---|---|---|
-  | Serie | Navy | Una sola magnitud. Es el único color de marca con 3:1 sobre blanco |
-  | Escala | Rampa de navy a su tinta de 40 % | Una escala ordenada, de mejor a peor |
+  | Área | El color pleno de cada área, el de la bandeja | Una barra que es un área lleva el suyo. Cualquier otra serie, el del área de la vista |
+  | Escala | Rampa de navy a su tinta de 40 % | Una escala ordenada, de mejor a peor. Navy en todas las áreas |
   | Aparte | Sky Blue | Lo que no es un punto de la escala, siempre junto al navy |
 
-  Junto al navy, Sky Blue separa con ΔE 38,6 bajo daltonismo; junto a la tinta de 40 %,
-  solo con 1,6. Los colores de estado no pintan series.
+  - **La escala no sigue al área.** Las rampas de naranja, Sea Green, Sky Blue y magenta
+    separan sus pasos vecinos con ΔE 4 a 9, por debajo de 15: no se distinguen ni con
+    visión normal (validador, 06-nov-2026).
+  - **Sky Blue va siempre junto al navy.** Junto al navy separa con ΔE 38,6 bajo
+    daltonismo; junto a la tinta de 40 %, solo con 1,6.
+  - **El naranja, el Sea Green y el Sky Blue no llegan a 3:1 sobre blanco.** Por eso el
+    nombre del área va en el eje.
+  - **Los colores de estado no pintan series.**
+- **Color de la vista.** Los indicadores llevan la cabecera del área (`AreaHero`, §5.4)
+  con sus cinco cifras. Toman el color del área destino filtrada o, sin ese filtro, el
+  de quien entra (`AppFrame`, `themeAreaName`).
 - **Un solo eje.** Dos medidas de distinta escala son dos gráficos.
 - **Cada gráfico lleva su tabla de datos** debajo, plegada en «Ver datos». Cubre el
   lector de pantalla y el contraste bajo de la tinta clara.

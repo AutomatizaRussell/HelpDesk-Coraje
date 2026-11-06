@@ -1,5 +1,6 @@
 import { brandPrimitives, tint } from "../foundations/brand";
 import { dataViz } from "../foundations/data-viz";
+import type { AreaThemeKey } from "../patterns/area/area";
 import { helpdeskTheme } from "./helpdesk";
 
 /**
@@ -13,12 +14,18 @@ import { helpdeskTheme } from "./helpdesk";
  * desde el CSS y nunca escribiendo un valor en un gráfico.
  *
  * PAPELES DE COLOR (validados con el validador de paletas, 06-nov-2026):
- *   - `serie`: una sola magnitud (tickets por área, % por mes). Navy, el
- *     único color de marca con 3:1 sobre blanco; Sky Blue no llega.
+ *   - `area`: el color pleno de cada área (`helpdeskTheme.area`), el mismo con
+ *     que la bandeja la pinta (U16). Pinta las barras de un gráfico por área
+ *     y, para los demás gráficos, la serie única del área de la vista. El
+ *     naranja, el Sea Green y el Sky Blue quedan bajo 3:1 sobre blanco: el
+ *     nombre va en el eje y los números en la tabla, nunca solo en el color.
  *   - `escala`: una escala ordenada de mejor a peor (la oportunidad de
- *     respuesta). Rampa secuencial de un solo tono, de navy a su tinta de
- *     40 %, con la claridad creciendo pareja (L 0,28 → 0,72). La tinta clara
- *     queda bajo 3:1: cada gráfico lleva su tabla de datos al lado.
+ *     respuesta). Rampa secuencial de navy a su tinta de 40 %, con la
+ *     claridad creciendo pareja (L 0,28 → 0,72). Se queda en navy aunque la
+ *     vista sea de otra área: las rampas de naranja, Sea Green, Sky Blue y
+ *     magenta separan sus pasos vecinos con ΔE 4 a 9, por debajo del mínimo
+ *     de 15 que se distingue con visión normal. La tinta clara queda bajo
+ *     3:1: cada gráfico lleva su tabla de datos al lado.
  *   - `aparte`: lo que no es un punto de la escala (un ticket abierto no es
  *     ni bueno ni malo). Sky Blue, siempre junto al navy y nunca junto a la
  *     tinta clara: junto a navy separa con ΔE 38,6 bajo daltonismo; junto a
@@ -26,8 +33,14 @@ import { helpdeskTheme } from "./helpdesk";
  * Los colores de estado (`danger`, `warning`, `success`) no pintan series:
  * conservan su significado.
  */
+const areaMarks = Object.fromEntries(
+  (Object.keys(helpdeskTheme.area) as AreaThemeKey[]).map((key) => [key, helpdeskTheme.area[key].mark]),
+) as Record<AreaThemeKey, string>;
+
 export const helpdeskChart = {
   color: {
+    area: areaMarks,
+    /** Color del tema de ECharts cuando un gráfico no fija el suyo. */
     serie: brandPrimitives.navy,
     escala: [brandPrimitives.navy, tint("navy", 80), tint("navy", 60), tint("navy", 40)],
     aparte: brandPrimitives.skyBlue,

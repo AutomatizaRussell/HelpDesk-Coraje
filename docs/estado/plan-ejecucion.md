@@ -825,8 +825,10 @@ Contrato en `specs/indicadores.md`. Pasos:
 2. **Hecho (06-nov-2026).** Conciliación contra la base real: 3.090 de 3.090 tickets,
    medidas idénticas (I5). Los blancos del DAX se resolvieron con la documentación
    (H2, I4), sin abrir el reporte.
-3. **Construido (corte 83).** Permiso `indicadores.ver` y panel `/indicadores` con
-   ECharts y diseño propio (`design/sistema-helpdesk.md` §5.9).
+3. **Construido (cortes 84 y 85).** Permiso `indicadores.ver` y panel `/indicadores`
+   con ECharts y diseño propio (`design/sistema-helpdesk.md` §5.9). El corte 85 le pone
+   el color del área, pedido por el usuario: la cabecera de la bandeja y las barras
+   de cada área en su color.
 4. Días hábiles.
 5. U40, visibilidad por nivel.
 

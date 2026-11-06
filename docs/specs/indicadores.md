@@ -83,7 +83,11 @@ cubren las seis páginas del Power BI:
 
 - **Filtros:** año, mes, área destino, área que remite, estado, tipo de requerimiento y
   responsable. Van en la URL, comunes a las cuatro pestañas.
-- **Cifras arriba:** tickets, respondidos, sin respuesta, oportunidad y calidad.
+- **Cabecera del área,** la de la bandeja, con las cinco cifras: tickets, respondidos,
+  sin respuesta, oportunidad y calidad.
+- **Color:** el del área destino filtrada o, sin ese filtro, el del área de quien
+  entra. En los gráficos por área, cada barra lleva el color de su área
+  (`design/sistema-helpdesk.md` §5.9).
 - **Diferencias de forma con el Power BI:**
   - El gráfico combinado de dos ejes (volumen y % por mes) son dos gráficos
     (`design/sistema-helpdesk.md` §5.9).

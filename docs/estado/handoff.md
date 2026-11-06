@@ -1,6 +1,26 @@
 # Handoff técnico
 
 ```
+CORTE:   06-nov-2026 (corte 85, U39: indicadores con el color del área, SIN DESPLEGAR)
+SOBRE:   `612cca1` (corte 84)
+RAMA:    main
+UNIDAD:  U39, paso 3, ajuste pedido por el usuario (design/sistema-helpdesk.md §5.9):
+         - el panel lleva la cabecera de la bandeja (`AreaHero`) con las cinco cifras;
+         - toma el color del área destino filtrada o, sin filtro, el de quien entra
+           (`AppFrame` acepta `themeAreaName`);
+         - las barras por área van en el color de cada área, y el resto de series en
+           el de la vista;
+         - la escala de oportunidad sigue en navy: el validador midió que las rampas
+           de las demás áreas no se distinguen (ΔE 4 a 9).
+         `AreaHero` admite una cifra ya escrita (`display`) y cinco columnas.
+         Evidencia: `tsc`, `eslint`, pruebas 262/262 (2 nuevas del tema de
+         gráficos), `next build`. Sin ver en navegador.
+LOCAL:   nada.
+SIGUE:   desplegar `web` (cortes 83 a 85) y abrir Indicadores: con un filtro de
+         área destino, la cabecera cambia a su color; sin filtro, lleva el de quien
+         entra. Después, lo pendiente del corte 84.
+
+--- Corte 84, para contexto:
 CORTE:   06-nov-2026 (corte 84, U39: panel de indicadores, SIN DESPLEGAR)
 SOBRE:   `7ea0f95` (corte 83)
 RAMA:    main

@@ -14,13 +14,12 @@ import {
   type IndicadoresFiltros,
   type IndicadoresVista,
 } from "@/server/indicadores/indicadores-filters";
-import type { FilaTicket, OpcionesFiltro, Resumen } from "@/server/indicadores/indicadores-queries";
+import type { FilaTicket, OpcionesFiltro } from "@/server/indicadores/indicadores-queries";
 
-import { etiquetaCategoria, formatCalificacion, formatEntero, formatFechaDia, formatPorcentaje, nombreMes, SIN_DATO } from "./format";
+import { etiquetaCategoria, formatEntero, formatFechaDia, nombreMes, SIN_DATO } from "./format";
 
 /**
- * Piezas de servidor del panel de indicadores (U39): filtros, cifras,
- * tarjetas de gráfico con su tabla y el detalle de tickets. Los gráficos
+ * Piezas de servidor del panel de indicadores (U39): filtros, tarjetas de gráfico con su tabla y el detalle de tickets. Los gráficos
  * son de cliente (`IndicadorCharts.tsx`); todo lo demás se renderiza en el
  * servidor y funciona sin JavaScript.
  */
@@ -82,35 +81,6 @@ export function FiltrosIndicadores({
         </div>
       </div>
     </form>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Cifras
-// ---------------------------------------------------------------------------
-
-/**
- * Las cinco cifras de la tarjeta del Power BI. Son cifras, no gráficos: un
- * número solo se lee mejor que una barra sola.
- */
-export function CifrasIndicadores({ resumen }: { resumen: Resumen }) {
-  const cifras: { label: string; value: string; hint: string }[] = [
-    { label: "Tickets", value: formatEntero(resumen.total), hint: "Con área destino" },
-    { label: "Respondidos", value: formatEntero(resumen.respondidos), hint: "Con respuesta escrita" },
-    { label: "Sin respuesta", value: formatEntero(resumen.sinRespuesta), hint: "Incluye cerrados sin texto" },
-    { label: "Oportunidad", value: formatPorcentaje(resumen.oportunidad), hint: "Promedio de la escala" },
-    { label: "Calidad", value: formatCalificacion(resumen.calidad), hint: "Calificación de 1 a 5" },
-  ];
-  return (
-    <dl className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      {cifras.map((cifra) => (
-        <div key={cifra.label} className={cn(surface({ padded: false }), "p-4")}>
-          <dt className="text-sm text-ink-muted">{cifra.label}</dt>
-          <dd className="mt-1 text-2xl font-bold tabular-nums text-heading">{cifra.value}</dd>
-          <dd className="mt-1 text-xs text-ink-muted">{cifra.hint}</dd>
-        </div>
-      ))}
-    </dl>
   );
 }
 

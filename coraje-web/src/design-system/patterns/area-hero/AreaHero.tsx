@@ -31,6 +31,12 @@ import { HeroPointerGrid } from "./HeroPointerGrid";
 export type HeroStat = {
   label: string;
   value: number;
+  /**
+   * La cifra ya escrita, cuando no es un conteo (un porcentaje, un promedio:
+   * U39). Se muestra tal cual, sin la animación de conteo, que solo tiene
+   * sentido para enteros que crecen desde cero.
+   */
+  display?: string;
   /** Tono del marcador: el del estado que cuenta (`ticket-status.ts`). */
   tone: BadgeTone;
 };
@@ -142,9 +148,10 @@ export function AreaHero({
             </div>
             {action}
           </div>
-          {/* Cuatro cifras (abiertos, asignados, vencidos, cerrados): dos por
-              fila en móvil y las cuatro en una fila desde tableta. */}
-          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* La bandeja lleva cuatro cifras (abiertos, asignados, vencidos,
+              cerrados) y los indicadores cinco (U39): dos por fila en móvil y
+              todas en una fila desde tableta o, con cinco, desde escritorio. */}
+          <dl className={cn("mt-5 grid grid-cols-2 gap-3", stats.length > 4 ? "sm:grid-cols-3 lg:grid-cols-5" : "sm:grid-cols-4")}>
             {stats.map((stat) => (
               <div key={stat.label} className="rounded-card bg-surface/75 px-3.5 py-2.5">
                 <dt className="flex items-center gap-2 text-sm text-ink-muted">
@@ -152,7 +159,7 @@ export function AreaHero({
                   {stat.label}
                 </dt>
                 <dd className={cn("mt-0.5 text-2xl font-bold tabular-nums", stat.tone === "danger" && stat.value > 0 ? "text-danger" : "text-heading")}>
-                  <CountUp value={stat.value} />
+                  {stat.display ?? <CountUp value={stat.value} />}
                 </dd>
               </div>
             ))}
