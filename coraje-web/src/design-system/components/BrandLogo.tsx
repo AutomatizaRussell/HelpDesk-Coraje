@@ -39,9 +39,10 @@ const placements = {
   },
   sidebar: {
     source: logoWhite,
-    frame: "p-logo-clear-sidebar md:p-logo-clear-sidebar-md lg:p-logo-clear-sidebar-lg xl:p-logo-clear-sidebar-xl",
-    image: "w-logo-sidebar md:w-logo-sidebar-md lg:w-logo-sidebar-lg xl:w-logo-sidebar-xl",
-    width: helpdeskTheme.size.logoSidebarXl,
+    // Los cortes siguen los anchos del sidebar (`size.sidebar*`).
+    frame: "p-logo-clear-sidebar md:p-logo-clear-sidebar-md 2xl:p-logo-clear-sidebar-wide",
+    image: "w-logo-sidebar md:w-logo-sidebar-md 2xl:w-logo-sidebar-wide",
+    width: helpdeskTheme.size.logoSidebarWide,
   },
   access: {
     source: logoBlue,

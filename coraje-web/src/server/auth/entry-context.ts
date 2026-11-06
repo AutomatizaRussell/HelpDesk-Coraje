@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  CONECTA_MENU_MODULES,
+  pickConectaModules,
+  type ConectaModule,
+} from "@/design-system/patterns/conecta-shell/conecta-modules";
+
 import { sanitizeLoginHint } from "./login-hint";
 
 /**
@@ -28,25 +34,25 @@ import { sanitizeLoginHint } from "./login-hint";
  * 2. **Solo si es de la misma persona.** El callback lo descarta si su correo
  *    no coincide con el de la cuenta admitida: en un navegador compartido no
  *    se muestra el nombre de otro empleado.
- * 3. **Mínimo.** Del objeto de Conecta se toman cinco datos, con límites de
- *    longitud; nada de tokens, ni de identificadores internos, ni del resto
- *    de la ficha.
+ * 3. **Mínimo.** Del objeto de Conecta se toman el correo, el nombre corto y
+ *    los módulos que su menú usa, con límites de longitud; nada de tokens, ni
+ *    de identificadores internos, ni del resto de la ficha.
  * 4. **Fallo cerrado.** Si falta, no valida o no coincide, HelpDesk usa sus
  *    propios datos. Nunca se rompe el ingreso por culpa de este contexto.
  */
 
 /** Forma que envía `/ingreso`, tomada de `gct_empleado`. Todo es opcional
- *  salvo el correo: Conecta puede cambiar su objeto sin avisar. */
+ *  salvo el correo: Conecta puede cambiar su objeto sin avisar.
+ *
+ *  `permisos` es la lista de módulos que el backend de Conecta calcula para
+ *  la persona (`core.permisos.permisos_de`). Si llega con otra forma, se pierde
+ *  solo ese campo (`catch`), no el perfil: el nombre se sigue pintando y el
+ *  menú cae a lo que ve cualquier empleado. */
 const conectaEmployeeSchema = z.object({
   correo_corporativo: z.string().max(254),
   primer_nombre: z.string().max(100).optional().nullable(),
   primer_apellido: z.string().max(100).optional().nullable(),
-  nombre_area: z.string().max(100).optional().nullable(),
-  nombre_cargo: z.string().max(100).optional().nullable(),
-  acceso_sqf_clientes: z.boolean().optional().nullable(),
-  acceso_sqf_contratos: z.boolean().optional().nullable(),
-  acceso_sqf_facturacion: z.boolean().optional().nullable(),
-  acceso_sqf_auditoria: z.boolean().optional().nullable(),
+  permisos: z.array(z.string().max(64)).max(64).nullable().optional().catch(null),
 });
 
 /** Lo que HelpDesk conserva de Conecta. */
@@ -54,10 +60,8 @@ export interface ConectaProfile {
   email: string;
   /** «Primer nombre + primer apellido», como lo pinta Conecta. */
   shortName: string | null;
-  /** Área, o cargo si no hay área (misma regla que Conecta). */
-  subtitle: string | null;
-  /** Algún permiso SQF: hace visible «Mis clientes» en el menú de Conecta. */
-  sqfAccess: boolean;
+  /** Módulos de Conecta que deciden qué entradas de su menú se muestran. */
+  modules: ConectaModule[];
 }
 
 export type EntryContext =
@@ -96,13 +100,7 @@ export function parseConectaProfile(raw: string | null | undefined): ConectaProf
   return {
     email,
     shortName: shortName || null,
-    subtitle: clean(data.nombre_area) ?? clean(data.nombre_cargo),
-    sqfAccess: Boolean(
-      data.acceso_sqf_clientes ||
-        data.acceso_sqf_contratos ||
-        data.acceso_sqf_facturacion ||
-        data.acceso_sqf_auditoria,
-    ),
+    modules: pickConectaModules(data.permisos ?? []),
   };
 }
 
@@ -118,7 +116,13 @@ export function bindProfileToIdentity(
   return profile.email === admittedEmail.trim().toLowerCase() ? profile : null;
 }
 
-/** Forma persistida en la cookie de entrada (sellada, ver `entry-cookie.ts`). */
+/**
+ * Forma persistida en la cookie de entrada (sellada, ver `entry-cookie.ts`).
+ *
+ * `modules` cae a `[]` si falta o no valida: las cookies emitidas antes de
+ * este campo (con `sqfAccess`) siguen vivas hasta 8 h y se leen como perfil
+ * con el menú mínimo, en vez de mandar la sesión a modo directo.
+ */
 const entryContextSchema = z.discriminatedUnion("via", [
   z.object({ via: z.literal("directo") }),
   z.object({
@@ -127,8 +131,7 @@ const entryContextSchema = z.discriminatedUnion("via", [
       .object({
         email: z.string(),
         shortName: z.string().nullable(),
-        subtitle: z.string().nullable(),
-        sqfAccess: z.boolean(),
+        modules: z.array(z.enum(CONECTA_MENU_MODULES)).catch([]),
       })
       .nullable(),
   }),

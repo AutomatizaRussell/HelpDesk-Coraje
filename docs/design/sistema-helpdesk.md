@@ -69,7 +69,7 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 >     la marca va en el sidebar, como en Conecta.
 >   - **Sidebar desplegado** con el logotipo blanco. Se **superpone** al contenido en
 >     lugar de empujarlo, para que la bandeja no cambie de ancho.
->   - Los datos de la persona (nombre corto, área, «Mis clientes») salen del perfil de
+>   - El nombre corto y los módulos de Conecta que deciden su menú salen del perfil de
 >     Conecta cotejado en servidor.
 > - **Directo** (`patterns/app-shell/StandaloneShell.tsx`): barra propia de HelpDesk
 >   con el logotipo azul y su espacio libre (72 px, 84 en escritorio), y el avatar con su
@@ -81,17 +81,24 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 >
 > `DECISIÓN` (04-nov-2026, U32) La topbar de Conecta **se conserva, mínima**: §5.7.
 >
-> **Fuente de la réplica:** RBGCT-REACT, verificada el 24-sep-2026 con acceso de
-> lectura. `main`, `stiben` y `lulox` apuntan las tres a `cb06681` (21-sep-2026), y el
-> fragmento de JS desplegado en producción contiene los mismos valores
-> (`text-[13px]`, `w-56 md:w-64 lg:w-72 xl:w-80`, `acceso_sqf`). La primera versión que se
-> tomó, con sidebar blanco, era un `main` antiguo (`e27662b`) reescrito después con
-> *force push*.
+> **Fuente de la réplica:** el `main` de RBGCT-REACT en el commit que fija
+> `patterns/conecta-shell/conecta-upstream.json`; `pnpm conecta:diff` muestra qué
+> cambió desde entonces (`specs/integracion-conecta.md` §6.1). Al 06-nov-2026, `483a92a`,
+> con el rediseño del shell del 04-nov-2026: ítem activo en pastilla blanca, sin tarjeta
+> de la persona ni etiqueta del panel, y un pie con la franja Sea Green, el lema y el
+> globo como marca de agua. El CSS desplegado en producción ese día ya tenía la
+> pastilla. La primera réplica (24-sep-2026) salió de `cb06681`; antes se tomó un `main`
+> antiguo (`e27662b`), reescrito después con *force push*.
 >
 > **Diferencias deliberadas con Conecta:**
 > - El sidebar desplegado se superpone al contenido en lugar de empujarlo.
-> - El logotipo del sidebar va a 130/150/170/190 px según el ancho, siempre con su
+> - El logotipo del sidebar va a 130/150/170 px según el ancho, siempre con su
 >   espacio libre. Conecta pone 170 px ya en el sidebar de 224 px.
+> - En pantallas bajas (≤ 720 px de alto), Conecta oculta el lema y encoge el globo
+>   del pie. Aquí no: una consulta de medios no puede consumir un token del contrato, y
+>   el menú del diálogo se desplaza, así que nada queda fuera de alcance.
+> - «Analitica» no aparece en los accesos rápidos: Conecta solo la muestra si se
+>   compiló con su dirección (`VITE_EEFF_URL`), que no se conoce desde aquí.
 > - Las etiquetas de sección van en blanco al 60 %, no al 45 %: al 45 % dan 4,2:1,
 >   por debajo de AA.
 > - La tipografía es Lato, no Inter (decisión del usuario): se ve algo más pequeña.
@@ -103,11 +110,16 @@ de ninguna parte (`contexto-canonico.md` §1.1).
 > - Barra de desplazamiento: la de Conecta (6 px, pulgar `#cbd5e1`), en toda la app.
 > - El ítem activo es «Auto gestión»: el acceso a HelpDesk irá en esa vista de Conecta,
 >   no en su menú. Se construye cuando HelpDesk esté listo (decisión del 24-sep-2026).
+>   El código no lo marcaba desde `ed0bd1d`; corregido el 06-nov-2026.
 > - **El foco con teclado se ve**, en blanco sobre el navy. Los ítems de Conecta llevan
 >   `focus:outline-none` sin reemplazo, un defecto de accesibilidad (WCAG 2.4.7) que no
 >   se replica. Solo aparece al usar el teclado, así que con el ratón no cambia nada.
-> - `ABIERTO`: se replica solo el menú del **empleado**. Conecta muestra otro distinto a
->   administradores, editores y superadministradores (`sidebarConfig.js`).
+> - Se replica solo el menú del **empleado**. Conecta muestra otro distinto a
+>   administradores, editores y superadministradores (`sidebarConfig.js`), pero sus
+>   secciones de administrador no tienen URL: `AdminDashboard.jsx` guarda la sección en
+>   el estado de React, y el editor solo traduce algunas rutas antiguas. Desde HelpDesk,
+>   todos esos enlaces caerían en la portada del panel. Queda así hasta que Conecta dé
+>   una URL a cada sección (06-nov-2026).
 
 **Marca corporativa.** La fuente de verdad es el *Manual de Marca Corporativa* de
 Russell Bedford (inspeccionado el 23-sep-2026). Lo que obliga a este contrato:

@@ -76,6 +76,7 @@
   --hd-radius-pill: 999px;
   --hd-radius-card: 12px;
   --hd-radius-shell-item: 8px;
+  --hd-radius-shell-item-active: 10px;
   --hd-radius-scrollbar: 3px;
 
   --hd-shadow-overlay: 0 16px 48px rgba(0, 24, 113, 0.18);
@@ -107,12 +108,12 @@
   --hd-size-isotype: 36px;
   --hd-size-sidebar: 224px;
   --hd-size-sidebar-md: 256px;
-  --hd-size-sidebar-lg: 288px;
-  --hd-size-sidebar-xl: 320px;
+  --hd-size-sidebar-wide: 288px;
   --hd-size-logo-sidebar: 130px;
   --hd-size-logo-sidebar-md: 150px;
-  --hd-size-logo-sidebar-lg: 170px;
-  --hd-size-logo-sidebar-xl: 190px;
+  --hd-size-logo-sidebar-wide: 170px;
+  --hd-size-shell-watermark: 192px;
+  --hd-size-shell-accent-bar: 3px;
   --hd-size-logo-access: 200px;
   --hd-size-stripe: 4px;
   --hd-size-scrollbar: 6px;
@@ -149,15 +150,15 @@
   --hd-shell-divider: rgba(255, 255, 255, 0.1);
   --hd-shell-item-ink: rgba(255, 255, 255, 0.72);
   --hd-shell-item-hover-surface: rgba(255, 255, 255, 0.08);
-  --hd-shell-item-active-surface: rgba(255, 255, 255, 0.14);
+  --hd-shell-item-active-surface: #ffffff;
+  --hd-shell-item-active-ink: #001871;
+  --hd-shell-item-active-shadow: 0 1px 2px rgba(0, 10, 50, 0.25);
   --hd-shell-on-surface: #ffffff;
   --hd-shell-on-surface-muted: rgba(255, 255, 255, 0.6);
-  --hd-shell-badge-surface: rgba(255, 255, 255, 0.12);
-  --hd-shell-badge-ink: rgba(255, 255, 255, 0.9);
-  --hd-shell-card-line: rgba(255, 255, 255, 0.15);
-  --hd-shell-card-surface: rgba(255, 255, 255, 0.05);
-  --hd-shell-avatar-from: rgba(255, 255, 255, 0.25);
-  --hd-shell-avatar-to: rgba(255, 255, 255, 0.1);
+  --hd-shell-group-line: rgba(255, 255, 255, 0.15);
+  --hd-shell-accent-bar: #00bfb3;
+  --hd-shell-slogan-ink: rgba(255, 255, 255, 0.8);
+  --hd-shell-watermark-opacity: 0.12;
   --hd-shell-sign-out-ink: rgba(255, 255, 255, 0.7);
   --hd-shell-sign-out-hover-surface: rgba(239, 68, 68, 0.15);
   --hd-shell-sign-out-hover-ink: #fecaca;
@@ -379,14 +380,12 @@
   --color-shell-item-ink: var(--hd-shell-item-ink);
   --color-shell-item-hover-surface: var(--hd-shell-item-hover-surface);
   --color-shell-item-active-surface: var(--hd-shell-item-active-surface);
+  --color-shell-item-active-ink: var(--hd-shell-item-active-ink);
   --color-shell-on-surface: var(--hd-shell-on-surface);
   --color-shell-on-surface-muted: var(--hd-shell-on-surface-muted);
-  --color-shell-badge-surface: var(--hd-shell-badge-surface);
-  --color-shell-badge-ink: var(--hd-shell-badge-ink);
-  --color-shell-card-line: var(--hd-shell-card-line);
-  --color-shell-card-surface: var(--hd-shell-card-surface);
-  --color-shell-avatar-from: var(--hd-shell-avatar-from);
-  --color-shell-avatar-to: var(--hd-shell-avatar-to);
+  --color-shell-group-line: var(--hd-shell-group-line);
+  --color-shell-accent-bar: var(--hd-shell-accent-bar);
+  --color-shell-slogan-ink: var(--hd-shell-slogan-ink);
   --color-shell-sign-out-ink: var(--hd-shell-sign-out-ink);
   --color-shell-sign-out-hover-surface: var(--hd-shell-sign-out-hover-surface);
   --color-shell-sign-out-hover-ink: var(--hd-shell-sign-out-hover-ink);
@@ -414,10 +413,12 @@
   --radius-pill: var(--hd-radius-pill);
   --radius-card: var(--hd-radius-card);
   --radius-shell-item: var(--hd-radius-shell-item);
+  --radius-shell-item-active: var(--hd-radius-shell-item-active);
 
   --shadow-overlay: var(--hd-shadow-overlay);
   --shadow-raised: var(--hd-shadow-raised);
   --shadow-shell-menu: var(--hd-shell-menu-shadow);
+  --shadow-shell-item-active: var(--hd-shell-item-active-shadow);
 
   --ease-standard: var(--hd-motion-easing);
 
@@ -432,22 +433,21 @@
   --spacing-isotype: var(--hd-size-isotype);
   --spacing-logo-sidebar: var(--hd-size-logo-sidebar);
   --spacing-logo-sidebar-md: var(--hd-size-logo-sidebar-md);
-  --spacing-logo-sidebar-lg: var(--hd-size-logo-sidebar-lg);
-  --spacing-logo-sidebar-xl: var(--hd-size-logo-sidebar-xl);
+  --spacing-logo-sidebar-wide: var(--hd-size-logo-sidebar-wide);
   --spacing-logo-access: var(--hd-size-logo-access);
   --spacing-logo-clear-app-bar: calc(var(--hd-size-logo-app-bar) * 0.2);
   --spacing-logo-clear-app-bar-compact: calc(var(--hd-size-logo-app-bar-compact) * 0.2);
   --spacing-logo-clear-sidebar: calc(var(--hd-size-logo-sidebar) * 0.2);
   --spacing-logo-clear-sidebar-md: calc(var(--hd-size-logo-sidebar-md) * 0.2);
-  --spacing-logo-clear-sidebar-lg: calc(var(--hd-size-logo-sidebar-lg) * 0.2);
-  --spacing-logo-clear-sidebar-xl: calc(var(--hd-size-logo-sidebar-xl) * 0.2);
+  --spacing-logo-clear-sidebar-wide: calc(var(--hd-size-logo-sidebar-wide) * 0.2);
   --spacing-logo-clear-access: calc(var(--hd-size-logo-access) * 0.2);
   --spacing-stripe: var(--hd-size-stripe);
   --spacing-rail: var(--hd-size-rail);
   --spacing-sidebar: var(--hd-size-sidebar);
   --spacing-sidebar-md: var(--hd-size-sidebar-md);
-  --spacing-sidebar-lg: var(--hd-size-sidebar-lg);
-  --spacing-sidebar-xl: var(--hd-size-sidebar-xl);
+  --spacing-sidebar-wide: var(--hd-size-sidebar-wide);
+  --spacing-shell-watermark: var(--hd-size-shell-watermark);
+  --spacing-shell-accent-bar: var(--hd-size-shell-accent-bar);
   --spacing-preview: var(--hd-size-preview);
   --spacing-hero-globe: var(--hd-size-hero-globe);
   --spacing-hero-mark: var(--hd-size-hero-mark);

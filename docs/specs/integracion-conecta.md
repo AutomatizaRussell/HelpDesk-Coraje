@@ -6,20 +6,26 @@ ESTADO:      Opción 3 DECIDIDA (§1.1): navegador y endpoint, las dos partes.
              Parte 2 (§5, endpoint en Conecta) decidida y diseñada, PENDIENTE
              DE CONSTRUIR (U5.2). Toca RBGCT-REACT, así que su diff concreto se
              presenta al usuario antes de escribirlo (§1.2)
-CORTE:       24-sep-2026
-EVIDENCIA:   `pnpm test` 62/62 (entry-context, login-hint, proxy, perímetro),
-             `tsc --noEmit`, `eslint` y `next build` limpios. **Ejercitado por el
-             usuario contra el despliegue, 24-sep-2026:** entrada desde Conecta
-             sin selector de cuenta, con nombre corto, área y «Mis clientes»;
-             entrada directa con `/login`, selector y barra propia
+             §6.1 capa 1: réplica al día con `483a92a` y `pnpm conecta:diff`
+             construidos (06-nov-2026); el aviso diario por GitHub Action, sin
+             construir. Capa 2 diferida (§6.1)
+CORTE:       06-nov-2026
+EVIDENCIA:   24-sep-2026: **ejercitado por el usuario contra el despliegue**:
+             entrada desde Conecta sin selector de cuenta, con nombre corto, área
+             y «Mis clientes»; entrada directa con `/login`, selector y barra
+             propia. 06-nov-2026: `pnpm test` 249/249 (entry-context,
+             conecta-navigation, contrato), `tsc --noEmit`, `eslint` y
+             `next build` limpios; la lectura de `permisos` y el sidebar nuevo,
+             sin ejercitar
 ```
 
 **Autoridad:** decisiones del usuario del 23 y 24-sep-2026 recogidas aquí. Complementa
 `acceso-empleados.md` (identidad propia, ningún token entre módulos) y
 `contexto-canonico.md` §1.1 (HelpDesk parece parte de Conecta y cuelga de su URL).
 
-**Referencia inspeccionada:** RBGCT-REACT `cb06681` (21-sep-2026), que es a la vez
-`main`, `stiben` y `lulox`. Coolify despliega Conecta desde `main`, a mano. Acceso de
+**Referencia inspeccionada:** RBGCT-REACT `cb06681` (21-sep-2026), que era a la vez
+`main`, `stiben` y `lulox`; desde el 06-nov-2026, el `main` en `483a92a` para el shell
+y `gct_empleado` (§6.1). Coolify despliega Conecta desde `main`, a mano. Acceso de
 lectura concedido a `Daniezen` el 24-sep-2026. **Regla vigente:** en Conecta no se
 cambia nada sin petición o aprobación explícita del usuario, y un cambio aprobado va en
 `lulox`.
@@ -35,7 +41,7 @@ replica el menú de Conecta, pero dibujarlo igual exige datos que solo Conecta t
 | Correo de la cuenta | Que Microsoft entre sin preguntar entre varias cuentas | Conecta: backend y navegador |
 | Primer nombre + primer apellido | Nombre en topbar y tarjeta («DANIEL LOPERA») | Conecta: backend y navegador |
 | Área o cargo | Subtítulo de la tarjeta | Conecta: backend y navegador |
-| Permisos `acceso_sqf_*` | Que aparezca «Mis clientes» | Conecta: backend y navegador |
+| Módulos efectivos (`permisos`) | Qué entradas del menú aparecen: «Mis clientes», Tesorería, AuditHub (§3) | Conecta: backend y navegador |
 | Cursos vigentes | Que aparezca «Formación» | **Solo** el backend de Conecta, calculado por persona |
 
 HelpDesk tiene `nombre_completo` en una sola cadena. No se puede partir en «primer
@@ -132,10 +138,18 @@ Conecta guarda la ficha del empleado en `localStorage` al iniciar sesión. Los n
 separan ese almacenamiento **por origen**, y HelpDesk comparte origen con Conecta, así que
 puede leerla sin llamar a su servidor.
 
-**Solo se lee en `/ingreso`** (`features/ingreso/EntryHandoff.tsx`), y solo nueve campos:
-`correo_corporativo`, `primer_nombre`, `primer_apellido`, `nombre_area`, `nombre_cargo`
-y los cuatro `acceso_sqf_*`. Nunca los tokens de Conecta, que viven en el mismo
-almacenamiento.
+**Solo se lee en `/ingreso`** (`features/ingreso/EntryHandoff.tsx`), y solo cuatro campos:
+`correo_corporativo`, `primer_nombre`, `primer_apellido` y `permisos`. Nunca los tokens
+de Conecta, que viven en el mismo almacenamiento.
+
+`permisos` es la lista de módulos que el backend de Conecta calcula para la persona
+(`core.permisos.permisos_de`), la misma que consulta su sidebar con `puede()`. La guarda
+en `gct_empleado` al iniciar sesión y la refresca en cada carga (`/empleados/me/`). El
+servidor de HelpDesk se queda solo con las cinco claves que usa su menú
+(`conecta-shell/conecta-modules.ts`). Sustituye a los cuatro `acceso_sqf_*` del 24-sep-2026,
+que ya no bastaban: Conecta añadió Seguimiento Facturación, Tesorería y AuditHub con
+reglas propias (06-nov-2026). El área y el cargo dejaron de leerse ese mismo día: solo
+los pintaba la tarjeta de la persona, que Conecta quitó de su sidebar.
 
 **Viaja por POST, no por la URL**, para que el correo y el nombre no queden en los
 registros del proxy ni en el historial del navegador. El servidor responde 303, no 307,
@@ -152,7 +166,9 @@ Implementadas en `server/auth/entry-context.ts` y probadas en `entry-context.tes
    con el de la cuenta que Microsoft y el directorio acaban de admitir. En un navegador
    compartido, no se muestra el nombre de otro empleado.
 3. **Mínimo y acotado.** Esquema `zod` con longitudes máximas; un JSON de más de 4 KB, mal
-   formado o con tipos inesperados produce «sin perfil».
+   formado o con tipos inesperados produce «sin perfil». Excepción: si solo `permisos`
+   llega con otra forma, se pierde ese campo y no el perfil, y el menú cae a lo que ve
+   cualquier empleado.
 4. **Fallo cerrado.** Sin perfil válido, HelpDesk pinta sus propios datos. Este contexto
    nunca puede romper el ingreso.
 5. **Sellado en la sesión.** Tras admitir, modo y perfil se guardan en una cookie sellada
@@ -250,6 +266,36 @@ y sigue con lo visual.
 Facturación», `acceso_sqf_seguimiento_general` leído de `gct_empleado`) y fijar ese
 commit como referencia inicial.
 
+**Estado al 06-nov-2026.** El desfase ya no era de un menú: entre `cb06681` y `483a92a`
+hubo 27 commits sobre el shell, incluido un rediseño del sidebar (04-nov-2026) que ya
+estaba en producción. Se construyó:
+
+- **Réplica al día con `483a92a`:** menú de empleado completo (§3, `permisos`) y aspecto
+  del rediseño (pastilla activa, pie con franja, lema y marca de agua, sin tarjeta de la
+  persona). Las diferencias deliberadas, en `design/sistema-helpdesk.md` §2.
+- **Referencia y diff, sin huellas:** `conecta-shell/conecta-upstream.json` guarda el
+  commit copiado y la lista de archivos vigilados; `pnpm conecta:diff` (en `coraje-web/`)
+  hace `git fetch` de la copia local de RBGCT-REACT y muestra el diff desde ese commit.
+  Con el commit basta, porque tanto el script como una Action pueden comparar con git;
+  las huellas sha256 serían una segunda fuente de lo mismo.
+- **Sin construir:** la GitHub Action diaria. Necesita un token de solo lectura sobre
+  RBGCT-REACT como secreto del repositorio de HelpDesk, y no existe todavía. Hasta
+  entonces, el aviso es correr `pnpm conecta:diff` a mano.
+
+**Decisiones del usuario del 06-nov-2026:**
+
+- **Descartado que Conecta envuelva a HelpDesk en un iframe** (`/app/helpdesk/*` con su
+  propio layout). Habría hecho automático el shell entero, pero en modo Conecta se
+  perdían la topbar propia (U32), el color del área en el marco (U16), la topbar navy del
+  modo Externo (U17) y el sidebar superpuesto.
+- **Diferido: un paquete versionado `conecta-shell`** compartido por las apps que copien
+  el shell de Conecta, idealmente consumido también por Conecta. Se retoma cuando
+  HelpDesk esté terminado y llegue una app nueva: con un solo consumidor, la abstracción
+  arriesga diseñarse mal. Sustituiría a la capa 2 de arriba, que solo cubría el menú.
+- **Menús por rol, no viables hoy:** las secciones de administrador de Conecta no tienen
+  URL (`AdminDashboard.jsx` las guarda en el estado de React). Se replica solo el menú
+  de empleado.
+
 ## 7. Verificación contra código
 
 | # | Afirmación | Dónde | Estado |
@@ -259,13 +305,15 @@ commit como referencia inicial.
 | I3 | El modo directo obliga a elegir cuenta y nunca envía pista | `entra-oidc.ts`, `login-hint.test.mts` | Verificado (prueba) |
 | I4 | El perfil de Conecta se valida con esquema y falla cerrado | `entry-context.ts`, `entry-context.test.mts` | Verificado (prueba) |
 | I5 | El perfil solo se conserva si su correo es el de la cuenta admitida | `callback/route.ts`, `bindProfileToIdentity` | Verificado (prueba de la función; el callback sin ejercitar) |
-| I6 | Solo viajan los nueve campos, por POST | `EntryHandoff.tsx` | Inspección; sin ejercitar |
+| I6 | Solo viajan los cuatro campos, por POST | `EntryHandoff.tsx` | Inspección; sin ejercitar |
+| I6b | De `permisos` solo quedan las claves del menú; si llega con otra forma, se pierde ese campo y no el perfil; una cookie anterior se lee con el menú mínimo | `entry-context.ts`, `entry-context.test.mts` | Verificado (prueba), 06-nov-2026 |
+| I6c | Cada entrada condicionada del menú aparece con el mismo módulo que en Conecta, y el único ítem activo es «Auto gestión» | `conecta-navigation.ts`, `conecta-navigation.test.mts` | Verificado (prueba), 06-nov-2026 |
 | I7 | Con sesión de Conecta se entra sin selector aunque haya varias cuentas | Despliegue + Entra real | **Ejercitado** por el usuario, 24-sep-2026 |
 | I8 | Cerrar sesión borra el modo de entrada | `sign-out-action.ts`, `logout/route.ts` | Inspección; sin ejercitar |
 | I9 | Cerrar sesión en HelpDesk lleva a Conecta (`/app`) en los dos modos de entrada, sin cerrar la sesión de Conecta (decisión del 25-sep-2026) | `server/auth/conecta-return.ts` | Construido (corte 18); sin ejercitar |
 | I9 | Endpoint de Conecta con los controles de §5.1 | RBGCT-REACT | **Decidido, pendiente de construir** (U5.2) |
-| I10 | Un cambio en el shell de Conecta avisa en HelpDesk (§6.1, capa 1) | GitHub Action + archivo de referencia | **Decidido, sin construir** (U19) |
-| I11 | La réplica coincide con el `main` de Conecta | `conecta-shell/` contra RBGCT-REACT | **No**: copia `cb06681`; `main` va por `513316b` (06-oct-2026) |
+| I10 | Un cambio en el shell de Conecta avisa en HelpDesk (§6.1, capa 1) | `conecta-upstream.json` + `pnpm conecta:diff`; GitHub Action | **Parcial**: el diff a mano funciona (ejecutado el 06-nov-2026, «sin cambios»); la Action, sin construir |
+| I11 | La réplica coincide con el `main` de Conecta | `conecta-shell/` contra RBGCT-REACT | Al día con `483a92a` (06-nov-2026); sin ejercitar en el despliegue |
 
 **Changelog:**
 - 24-sep-2026 — línea base. Modos de entrada (§2) y dato del navegador con sus reglas
@@ -278,3 +326,8 @@ commit como referencia inicial.
 - 06-oct-2026 — §6.1: decisión de seguir el paso del shell de Conecta en dos capas
   (aviso automático por huellas y menú publicado como datos). §1.2: `Daniezen` pasa a
   Write. I10 e I11 nuevas; la réplica está desfasada respecto a `513316b`.
+- 06-nov-2026 — réplica al día con `483a92a` (rediseño del 04-nov-2026). §3: se leen
+  `permisos` en lugar de los cuatro `acceso_sqf_*`, y ya no el área ni el cargo. §6.1:
+  referencia y `pnpm conecta:diff` construidos; la Action, pendiente de un token;
+  descartado el iframe, diferido el paquete compartido, menús por rol no viables. I6b e
+  I6c nuevas.

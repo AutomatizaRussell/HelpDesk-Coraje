@@ -15,12 +15,7 @@ const conecta = (overrides: Record<string, unknown> = {}) =>
     correo_corporativo: "DanielLopera@rbcol.co",
     primer_nombre: "DANIEL",
     primer_apellido: "LOPERA",
-    nombre_area: "ADMINISTRACIÓN",
-    nombre_cargo: "ANALISTA",
-    acceso_sqf_clientes: false,
-    acceso_sqf_contratos: false,
-    acceso_sqf_facturacion: false,
-    acceso_sqf_auditoria: false,
+    permisos: [],
     ...overrides,
   });
 
@@ -28,19 +23,23 @@ test("un perfil válido se reduce a lo que pinta el menú", () => {
   assert.deepEqual(parseConectaProfile(conecta()), {
     email: "daniellopera@rbcol.co",
     shortName: "DANIEL LOPERA",
-    subtitle: "ADMINISTRACIÓN",
-    sqfAccess: false,
+    modules: [],
   });
 });
 
-test("cualquier permiso SQF hace visible «Mis clientes»", () => {
-  for (const flag of ["acceso_sqf_clientes", "acceso_sqf_contratos", "acceso_sqf_facturacion", "acceso_sqf_auditoria"]) {
-    assert.equal(parseConectaProfile(conecta({ [flag]: true }))?.sqfAccess, true, flag);
-  }
+test("de los permisos de Conecta solo quedan los que usa su menú", () => {
+  const profile = parseConectaProfile(
+    conecta({ permisos: ["formacion", "audithub", "sqf", "eeff", "tesoreria_ver", "sqf", "colaboradores_ver"] }),
+  );
+  assert.deepEqual(profile?.modules, ["sqf", "tesoreria_ver", "audithub"]);
 });
 
-test("sin área se usa el cargo, como en Conecta", () => {
-  assert.equal(parseConectaProfile(conecta({ nombre_area: "" }))?.subtitle, "ANALISTA");
+test("permisos ausentes o con otra forma dejan el perfil con el menú mínimo", () => {
+  for (const permisos of [undefined, null, "sqf", [1, 2], ["x".repeat(65)], Array.from({ length: 65 }, () => "sqf")]) {
+    const profile = parseConectaProfile(conecta({ permisos }));
+    assert.equal(profile?.shortName, "DANIEL LOPERA", JSON.stringify(permisos));
+    assert.deepEqual(profile?.modules, [], JSON.stringify(permisos));
+  }
 });
 
 test("fallo cerrado: lo que no es un empleado de Conecta no produce perfil", () => {
@@ -53,7 +52,6 @@ test("fallo cerrado: lo que no es un empleado de Conecta no produce perfil", () 
     conecta({ correo_corporativo: "sin-arroba" }),
     conecta({ correo_corporativo: 42 }),
     conecta({ primer_nombre: "x".repeat(101) }),
-    conecta({ acceso_sqf_clientes: "true" }),
     "x".repeat(5000),
   ]) {
     assert.equal(parseConectaProfile(raw), null, `Debió rechazarse: ${String(raw).slice(0, 60)}`);
@@ -73,4 +71,26 @@ test("la cookie de entrada ilegible o ajena equivale a entrada directa", () => {
     assert.deepEqual(parseEntryContext(raw), { via: "directo" }, String(raw));
   }
   assert.deepEqual(parseEntryContext('{"via":"conecta","profile":null}'), { via: "conecta", profile: null });
+});
+
+test("una cookie anterior a los módulos se lee con el menú mínimo, sin perder el modo", () => {
+  const legacy = JSON.stringify({
+    via: "conecta",
+    profile: { email: "daniellopera@rbcol.co", shortName: "DANIEL LOPERA", subtitle: "ADMINISTRACIÓN", sqfAccess: true },
+  });
+  assert.deepEqual(parseEntryContext(legacy), {
+    via: "conecta",
+    profile: { email: "daniellopera@rbcol.co", shortName: "DANIEL LOPERA", modules: [] },
+  });
+});
+
+test("una cookie con un módulo desconocido cae al menú mínimo", () => {
+  const cookie = JSON.stringify({
+    via: "conecta",
+    profile: { email: "daniellopera@rbcol.co", shortName: null, modules: ["sqf", "superadmin"] },
+  });
+  assert.deepEqual(parseEntryContext(cookie), {
+    via: "conecta",
+    profile: { email: "daniellopera@rbcol.co", shortName: null, modules: [] },
+  });
 });

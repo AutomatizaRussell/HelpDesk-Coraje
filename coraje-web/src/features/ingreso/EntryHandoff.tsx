@@ -28,18 +28,12 @@ import { buildAppPath } from "@/server/auth/base-path";
 /** Clave con la que Conecta guarda la ficha del empleado (AuthContext.jsx). */
 const CONECTA_EMPLOYEE_KEY = "gct_empleado";
 
-/** Campos de la ficha de Conecta que viajan; el resto se descarta aquí. */
-const FORWARDED_FIELDS = [
-  "correo_corporativo",
-  "primer_nombre",
-  "primer_apellido",
-  "nombre_area",
-  "nombre_cargo",
-  "acceso_sqf_clientes",
-  "acceso_sqf_contratos",
-  "acceso_sqf_facturacion",
-  "acceso_sqf_auditoria",
-] as const;
+/**
+ * Campos de la ficha de Conecta que viajan; el resto se descarta aquí.
+ * `permisos` es la lista de módulos que calcula el backend de Conecta: el
+ * servidor se queda solo con los que su menú usa (`conecta-modules.ts`).
+ */
+const FORWARDED_FIELDS = ["correo_corporativo", "primer_nombre", "primer_apellido", "permisos"] as const;
 
 function readConectaEmployee(): string | null {
   try {

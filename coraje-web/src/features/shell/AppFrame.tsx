@@ -25,9 +25,9 @@ import { helpdeskSections } from "./helpdesk-sections";
  * Marco de toda vista de empleado: elige el shell según por dónde entró la
  * persona (specs/integracion-conecta.md §2) y le pasa lo que debe mostrar.
  *
- * - Entró desde Conecta → `ConectaShell`, con su nombre corto, área y
- *   permisos SQF si el perfil de Conecta coincidió con la cuenta admitida; si
- *   no, con los datos propios de HelpDesk.
+ * - Entró desde Conecta → `ConectaShell`, con su nombre corto y sus módulos
+ *   de Conecta si el perfil de Conecta coincidió con la cuenta admitida; si
+ *   no, con los datos propios de HelpDesk y el menú mínimo.
  * - Entró directo → `StandaloneShell`, sin nada de Conecta.
  *
  * Recibe al empleado ya resuelto por la vista (que es quien decide qué hacer
@@ -111,8 +111,7 @@ export async function AppFrame({
       <ConectaShell
         title={title}
         displayName={profile?.shortName ?? employee.nombreCompleto}
-        subtitle={profile?.subtitle ?? null}
-        sqfAccess={profile?.sqfAccess ?? false}
+        conectaModules={profile?.modules ?? []}
         moduleNav={sections}
         areaTheme={areaTheme}
         mode={mode}

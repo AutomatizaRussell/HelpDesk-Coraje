@@ -1,0 +1,16 @@
+{
+  "repo": "AutomatizaRussell/RBGCT-REACT",
+  "branch": "main",
+  "commit": "483a92a1abf47612afd16df8c83f94222b58be64",
+  "copiedOn": "2026-11-06",
+  "files": [
+    "frontend/src/components/layout/sidebarConfig.js",
+    "frontend/src/components/layout/RoleSidebar.jsx",
+    "frontend/src/components/layout/SidebarShell.jsx",
+    "frontend/src/components/layout/Topbar.jsx",
+    "frontend/src/lib/permisos.js",
+    "frontend/src/context/AuthContext.jsx",
+    "frontend/src/index.css",
+    "frontend/src/assets"
+  ]
+}

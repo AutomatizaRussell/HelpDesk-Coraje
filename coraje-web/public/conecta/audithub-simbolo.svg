@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Símbolo AuditHub: hexágono "hub" de 6 facetas en los naranjas/amarillos
+       de la portada de AuditHUB (estilo low-poly) con un check navy. -->
+  <g stroke-linejoin="round" stroke-width="0.6">
+    <path d="M32 32 L32 4 L56.25 18 Z" fill="#FCC42C" stroke="#FCC42C"/>
+    <path d="M32 32 L56.25 18 L56.25 46 Z" fill="#FDDC4A" stroke="#FDDC4A"/>
+    <path d="M32 32 L56.25 46 L32 60 Z" fill="#FBB11F" stroke="#FBB11F"/>
+    <path d="M32 32 L32 60 L7.75 46 Z" fill="#F7941D" stroke="#F7941D"/>
+    <path d="M32 32 L7.75 46 L7.75 18 Z" fill="#F9A11B" stroke="#F9A11B"/>
+    <path d="M32 32 L7.75 18 L32 4 Z" fill="#FDBF5E" stroke="#FDBF5E"/>
+  </g>
+  <path d="M20.5 32.5 L28.5 40.5 L44 24.5" fill="none" stroke="#001871" stroke-width="5.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

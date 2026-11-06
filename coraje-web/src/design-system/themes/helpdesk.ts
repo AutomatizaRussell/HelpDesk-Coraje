@@ -90,6 +90,7 @@ export const helpdeskTheme = {
     // superficie de trabajo porque flotan sobre el color, no ordenan datos.
     card: "12px",
     shellItem: "8px", // réplica de Conecta (`rounded-lg` de sus ítems)
+    shellItemActive: "10px", // réplica de Conecta (`.rb-sidebar-item-active`)
     scrollbar: "3px", // réplica de Conecta (::-webkit-scrollbar-thumb)
   },
   shadow: {
@@ -151,19 +152,25 @@ export const helpdeskTheme = {
     logoAppBarCompact: "116px",
     // Isotipo de la columna replegada, como en Conecta (md:h-9).
     isotype: "36px",
-    // Sidebar desplegado: los cuatro anchos de Conecta (w-56 md:w-64 lg:w-72
-    // xl:w-80). El logotipo crece con él y siempre cabe con su espacio libre
-    // (20 % por lado) más el botón de cerrar: 130·1,4+36 ≤ 224, 150·1,4+36 ≤ 256,
-    // 170·1,4+36 ≤ 288, 190·1,4+36 ≤ 320. Conecta pone 170 ya en 224 px, sin
-    // espacio libre; aquí manda el manual.
+    // Sidebar desplegado: los tres anchos de Conecta (w-56 md:w-64 2xl:w-72;
+    // hasta su rediseño del 04-nov-2026 llegaba a w-80). El logotipo crece con
+    // él y siempre cabe con su espacio libre (20 % por lado) más el botón de
+    // cerrar: 130·1,4+36 ≤ 224, 150·1,4+36 ≤ 256, 170·1,4+36 ≤ 288. Conecta
+    // pone 170 ya en 224 px, sin espacio libre; aquí manda el manual.
     sidebar: "224px",
     sidebarMd: "256px",
-    sidebarLg: "288px",
-    sidebarXl: "320px",
+    sidebarWide: "288px",
     logoSidebar: "130px",
     logoSidebarMd: "150px",
-    logoSidebarLg: "170px",
-    logoSidebarXl: "190px",
+    logoSidebarWide: "170px",
+    // Pie del sidebar (rediseño de Conecta del 04-nov-2026): el globo como
+    // marca de agua, saliéndose por la esquina (h-48), y la franja corta
+    // sobre el lema (h-[3px]). Conecta encoge el globo y oculta el lema con
+    // `max-height: 720px`; aquí no, porque una consulta de medios no puede
+    // consumir un token. El menú del diálogo se desplaza, así que en una
+    // pantalla baja nada queda fuera de alcance.
+    shellWatermark: "192px",
+    shellAccentBar: "3px",
     logoAccess: "200px",
     stripe: "4px",
     scrollbar: "6px", // réplica de Conecta (::-webkit-scrollbar)
@@ -238,8 +245,8 @@ export const helpdeskTheme = {
 
   /**
    * Réplica del shell de Conecta (sidebar y topbar), y **nada más** de Conecta
-   * (design/sistema-helpdesk.md §2). Son los valores de RBGCT-REACT `cb06681`
-   * (`main` = `stiben` = `lulox`, verificado el 24-sep-2026 contra lo desplegado):
+   * (design/sistema-helpdesk.md §2). Son los valores del commit de RBGCT-REACT
+   * que fija `patterns/conecta-shell/conecta-upstream.json`:
    * `components/layout/{SidebarShell,RoleSidebar,Topbar}.jsx` y las reglas
    * `.rb-sidebar-*` de `index.css`, pasados de clases de Tailwind a valor.
    * Viven agrupados para que se sepa que son copia: si Conecta cambia, este es
@@ -256,15 +263,18 @@ export const helpdeskTheme = {
     divider: "rgba(255, 255, 255, 0.1)",
     itemInk: "rgba(255, 255, 255, 0.72)",
     itemHoverSurface: "rgba(255, 255, 255, 0.08)",
-    itemActiveSurface: "rgba(255, 255, 255, 0.14)",
+    // Ítem activo: pastilla blanca con texto navy (rediseño del 04-nov-2026).
+    itemActiveSurface: brandPrimitives.white,
+    itemActiveInk: brandPrimitives.navy,
+    itemActiveShadow: "0 1px 2px rgba(0, 10, 50, 0.25)",
     onSurface: brandPrimitives.white,
     onSurfaceMuted: "rgba(255, 255, 255, 0.6)",
-    badgeSurface: "rgba(255, 255, 255, 0.12)",
-    badgeInk: "rgba(255, 255, 255, 0.9)",
-    cardLine: "rgba(255, 255, 255, 0.15)",
-    cardSurface: "rgba(255, 255, 255, 0.05)",
-    avatarFrom: "rgba(255, 255, 255, 0.25)",
-    avatarTo: "rgba(255, 255, 255, 0.1)",
+    // Línea que cuelga los hijos de un grupo («Mis clientes»).
+    groupLine: "rgba(255, 255, 255, 0.15)",
+    // Pie: franja Sea Green (el `rb-turquesa` de Conecta), lema y marca de agua.
+    accentBar: brandPrimitives.seaGreen,
+    sloganInk: "rgba(255, 255, 255, 0.8)",
+    watermarkOpacity: "0.12",
     signOutInk: "rgba(255, 255, 255, 0.7)",
     signOutHoverSurface: "rgba(239, 68, 68, 0.15)",
     signOutHoverInk: "#fecaca",

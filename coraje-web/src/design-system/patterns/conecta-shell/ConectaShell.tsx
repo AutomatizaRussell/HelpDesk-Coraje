@@ -1,30 +1,46 @@
 "use client";
 
 import { LogOut, Menu, X } from "lucide-react";
+import Image from "next/image";
 import { useMemo, useRef, type MouseEvent, type ReactNode } from "react";
 
+import audithubSymbol from "../../../../public/conecta/audithub-simbolo.svg";
+import sqfSymbol from "../../../../public/conecta/sqf-simbolo.png";
+import isotypeWatermark from "../../../../public/rb-isotype-white-hero.png";
 import { BrandIsotype } from "../../components/BrandIsotype";
 import { BrandLogo } from "../../components/BrandLogo";
 import { iconStroke } from "../../foundations/iconography";
 import { colorTransition, focusRingInverse, focusRingTopbar, modeTransition } from "../../recipes/interaction";
+import { helpdeskTheme } from "../../themes/helpdesk";
 import { cn } from "../../utilities/cn";
 import { ModuleNav, type ModuleNavItem } from "../module-nav/ModuleNav";
 import type { ColorMode } from "../mode-switch/ModeSwitch";
 import type { AreaThemeKey } from "../area/area";
 import { UserMenu } from "../user-menu/UserMenu";
+import type { ConectaModule } from "./conecta-modules";
 import {
-  CONECTA_BADGE,
   CONECTA_ROLE_LABEL,
-  CONECTA_SUBTITLE_FALLBACK,
   conectaNavigation,
+  type ConectaAppSymbol,
   type ConectaNavEntry,
   type ConectaNavLink,
 } from "./conecta-navigation";
 
+/** Lema del pie del sidebar de Conecta (`SidebarShell.jsx`). */
+const CONECTA_SLOGAN = "Personas, conocimiento y oportunidades para llegar más lejos.";
+
+/**
+ * Símbolos de las aplicaciones de los accesos rápidos, copiados de
+ * RBGCT-REACT `frontend/src/assets/`. Importación estática, como el logotipo:
+ * Next les antepone el `basePath` y el perímetro no las intercepta.
+ */
+const APP_SYMBOLS = { sqf: sqfSymbol, audithub: audithubSymbol } satisfies Record<ConectaAppSymbol, unknown>;
+
 /**
  * Shell de HelpDesk cuando se entra **desde Conecta**: réplica del de Conecta
- * (RBGCT-REACT `cb06681`), para que pasar de un módulo al otro se lea
- * continuo (design/sistema-helpdesk.md §2; specs/integracion-conecta.md §2).
+ * (RBGCT-REACT, en el commit que fija `conecta-upstream.json`), para que pasar
+ * de un módulo al otro se lea continuo (design/sistema-helpdesk.md §2;
+ * specs/integracion-conecta.md §2).
  *
  * - **Columna replegada** (≥ lg): navy, con el isotipo blanco arriba y los
  *   iconos del menú de Conecta, como en Conecta.
@@ -38,9 +54,12 @@ import {
  *   empuja el contenido. Aquí es un `<dialog>` modal que se **superpone** sin
  *   desplazar nada, para que la bandeja no cambie de ancho. El diálogo nativo
  *   aporta el bloqueo del foco, el cierre con Esc, la devolución del foco y la
- *   capa superior sin librería ni índices z.
+ *   capa superior sin librería ni índices z. Como en Conecta desde su
+ *   rediseño del 04-nov-2026: sin tarjeta de la persona (sus datos van en la
+ *   topbar), ítem activo en pastilla blanca y un pie con la franja, el lema y
+ *   el globo como marca de agua.
  *
- * Los datos de la persona (nombre corto, área, permisos SQF) llegan del perfil
+ * Los datos de la persona (nombre corto, módulos de Conecta) llegan del perfil
  * de Conecta ya cotejado en servidor; si no lo hay, el llamador pasa los datos
  * propios de HelpDesk. **Solo deciden qué se muestra**, nunca un permiso.
  */
@@ -52,9 +71,8 @@ export type ConectaShellProps = {
    */
   title: string;
   displayName: string;
-  /** Área o cargo; `null` pinta el mismo texto por defecto que Conecta. */
-  subtitle: string | null;
-  sqfAccess: boolean;
+  /** Módulos de Conecta de la persona: deciden qué entradas del menú se ven. */
+  conectaModules: readonly ConectaModule[];
   moduleNav: readonly ModuleNavItem[];
   signOutAction: () => Promise<void>;
   /** Área de quien entra (U16): redefine el acento de todo el shell. */
@@ -78,8 +96,7 @@ export type ConectaShellProps = {
 export function ConectaShell({
   title,
   displayName,
-  subtitle,
-  sqfAccess,
+  conectaModules,
   moduleNav,
   signOutAction,
   noticeBell,
@@ -90,8 +107,7 @@ export function ConectaShell({
   children,
 }: ConectaShellProps) {
   const sidebarRef = useRef<HTMLDialogElement>(null);
-  const sections = useMemo(() => conectaNavigation({ sqfAccess }), [sqfAccess]);
-  const initial = displayName.trim().charAt(0).toUpperCase();
+  const sections = useMemo(() => conectaNavigation(conectaModules), [conectaModules]);
 
   const openSidebar = () => sidebarRef.current?.showModal();
   const closeSidebar = () => sidebarRef.current?.close();
@@ -117,7 +133,7 @@ export function ConectaShell({
                 const link = entry.kind === "group" ? { ...entry.children[0], label: entry.label, icon: entry.icon } : entry;
                 return (
                   <NavLink key={entry.label} item={link} className="justify-center px-2 py-2" ariaLabel={link.label}>
-                    <link.icon aria-hidden="true" className="size-5" strokeWidth={iconStroke.light} />
+                    <NavGlyph item={link} className="size-5" />
                   </NavLink>
                 );
               })}
@@ -196,43 +212,23 @@ export function ConectaShell({
         ref={sidebarRef}
         aria-label="Menú de Conecta"
         onClick={closeOnBackdrop}
-        className="m-0 h-dvh max-h-dvh w-sidebar max-w-full bg-shell-surface text-shell-on-surface shadow-overlay backdrop:bg-shell-scrim md:w-sidebar-md lg:w-sidebar-lg xl:w-sidebar-xl"
+        className="m-0 h-dvh max-h-dvh w-sidebar max-w-full overflow-hidden bg-shell-surface text-shell-on-surface shadow-overlay backdrop:bg-shell-scrim md:w-sidebar-md 2xl:w-sidebar-wide"
       >
         <div className="flex h-full flex-col">
-          <div>
-            <div className="flex items-start justify-between">
-              <BrandLogo placement="sidebar" />
-              <button
-                type="button"
-                onClick={closeSidebar}
-                aria-label="Cerrar menú"
-                className={cn(
-                  "mr-1 mt-2 rounded-shell-item p-2 text-shell-on-surface-muted hover:bg-shell-item-hover-surface hover:text-shell-on-surface",
-                  colorTransition,
-                  focusRingInverse,
-                )}
-              >
-                <X aria-hidden="true" className="size-5" strokeWidth={iconStroke.regular} />
-              </button>
-            </div>
-            <p className="mx-logo-clear-sidebar mb-4 inline-flex rounded-pill bg-shell-badge-surface px-2.5 py-0.5 text-xs font-bold uppercase tracking-widest text-shell-badge-ink md:mx-logo-clear-sidebar-md lg:mx-logo-clear-sidebar-lg xl:mx-logo-clear-sidebar-xl">
-              {CONECTA_BADGE}
-            </p>
-          </div>
-
-          <div className="border-b border-shell-divider px-4 py-4">
-            <div className="flex items-center gap-3 rounded-surface border border-shell-card-line bg-shell-card-surface px-4 py-3">
-              <span
-                aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-surface bg-linear-to-br from-shell-avatar-from to-shell-avatar-to text-base font-bold text-shell-on-surface"
-              >
-                {initial}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-base font-bold text-shell-on-surface">{displayName}</p>
-                <p className="truncate text-xs text-shell-on-surface-muted">{subtitle ?? CONECTA_SUBTITLE_FALLBACK}</p>
-              </div>
-            </div>
+          <div className="flex items-start justify-between">
+            <BrandLogo placement="sidebar" />
+            <button
+              type="button"
+              onClick={closeSidebar}
+              aria-label="Cerrar menú"
+              className={cn(
+                "mr-1 mt-2 rounded-shell-item p-2 text-shell-on-surface-muted hover:bg-shell-item-hover-surface hover:text-shell-on-surface",
+                colorTransition,
+                focusRingInverse,
+              )}
+            >
+              <X aria-hidden="true" className="size-5" strokeWidth={iconStroke.regular} />
+            </button>
           </div>
 
           <nav aria-label="Conecta" className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
@@ -250,19 +246,34 @@ export function ConectaShell({
             ))}
           </nav>
 
-          <form action={signOutAction} className="border-t border-shell-divider p-3">
-            <button
-              type="submit"
-              className={cn(
-                "flex w-full items-center gap-3 rounded-surface px-4 py-3 text-base font-bold text-shell-sign-out-ink hover:bg-shell-sign-out-hover-surface hover:text-shell-sign-out-hover-ink",
-                colorTransition,
-                focusRingInverse,
-              )}
-            >
-              <LogOut aria-hidden="true" className="size-4" strokeWidth={iconStroke.regular} />
-              Cerrar sesión de HelpDesk
-            </button>
-          </form>
+          {/* Pie de Conecta: la marca de agua va detrás y no ocupa alto. A
+              diferencia de Conecta, el lema no se oculta en pantallas bajas
+              (ver `size.shellWatermark` en el tema). */}
+          <div className="relative overflow-hidden border-t border-shell-divider px-5 pb-3 pt-5">
+            <Image
+              src={isotypeWatermark}
+              alt=""
+              aria-hidden="true"
+              width={Number.parseFloat(helpdeskTheme.size.shellWatermark)}
+              height={Number.parseFloat(helpdeskTheme.size.shellWatermark)}
+              className="pointer-events-none absolute -bottom-12 -right-12 size-shell-watermark opacity-(--hd-shell-watermark-opacity)"
+            />
+            <span aria-hidden="true" className="block h-shell-accent-bar w-8 rounded-pill bg-shell-accent-bar" />
+            <p className="relative mt-3 max-w-44 text-sm text-shell-slogan-ink">{CONECTA_SLOGAN}</p>
+            <form action={signOutAction} className="relative -mx-2 mt-4">
+              <button
+                type="submit"
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-surface px-4 py-3 text-sm font-bold text-shell-sign-out-ink hover:bg-shell-sign-out-hover-surface hover:text-shell-sign-out-hover-ink",
+                  colorTransition,
+                  focusRingInverse,
+                )}
+              >
+                <LogOut aria-hidden="true" className="size-4" strokeWidth={iconStroke.regular} />
+                Cerrar sesión de HelpDesk
+              </button>
+            </form>
+          </div>
         </div>
       </dialog>
     </div>
@@ -277,7 +288,7 @@ function SidebarEntry({ entry }: { entry: ConectaNavEntry }) {
   if (entry.kind === "link") {
     return (
       <NavLink item={entry} className="px-3 py-2 text-sm">
-        <entry.icon aria-hidden="true" className="size-4.5 shrink-0" strokeWidth={iconStroke.light} />
+        <NavGlyph item={entry} className="size-4.5" />
         <span className="ml-3 truncate">{entry.label}</span>
       </NavLink>
     );
@@ -295,16 +306,31 @@ function SidebarEntry({ entry }: { entry: ConectaNavEntry }) {
         <entry.icon aria-hidden="true" className="size-4.5 shrink-0" strokeWidth={iconStroke.light} />
         <span className="ml-3 truncate">{entry.label}</span>
       </summary>
-      <div className="ml-5.5 space-y-0.5 border-l border-shell-card-line pl-2">
+      <div className="ml-5.5 space-y-0.5 border-l border-shell-group-line pl-2">
         {entry.children.map((child) => (
           <NavLink key={child.href} item={child} className="px-3 py-2 text-sm">
-            <child.icon aria-hidden="true" className="size-4.5 shrink-0" strokeWidth={iconStroke.light} />
+            <NavGlyph item={child} className="size-4.5" />
             <span className="ml-3 truncate">{child.label}</span>
           </NavLink>
         ))}
       </div>
     </details>
   );
+}
+
+/**
+ * Icono de una entrada: el símbolo de su aplicación, en su color, si es un
+ * acceso rápido (SQF, AuditHub), o el icono de línea del menú. Decorativo: el
+ * nombre accesible lo da el enlace.
+ */
+function NavGlyph({ item, className }: { item: ConectaNavLink; className: string }) {
+  if (item.symbol) {
+    return (
+      <Image src={APP_SYMBOLS[item.symbol]} alt="" aria-hidden="true" className={cn("shrink-0 object-contain", className)} />
+    );
+  }
+  if (!item.icon) return null;
+  return <item.icon aria-hidden="true" className={cn("shrink-0", className)} strokeWidth={iconStroke.light} />;
 }
 
 /**
@@ -332,12 +358,15 @@ function NavLink({
       target={item.external ? "_blank" : undefined}
       rel={item.external ? "noopener noreferrer" : undefined}
       className={cn(
-        "flex w-full items-center rounded-shell-item",
+        "flex w-full items-center",
         colorTransition,
         focusRingInverse,
+        // Activo: pastilla blanca con texto navy, como en Conecta. El foco
+        // sigue siendo el anillo blanco con separación: queda sobre el navy
+        // que rodea la pastilla, no sobre ella.
         item.current
-          ? "bg-shell-item-active-surface font-bold text-shell-on-surface"
-          : "text-shell-item-ink hover:bg-shell-item-hover-surface hover:text-shell-on-surface",
+          ? "rounded-shell-item-active bg-shell-item-active-surface font-bold text-shell-item-active-ink shadow-shell-item-active"
+          : "rounded-shell-item text-shell-item-ink hover:bg-shell-item-hover-surface hover:text-shell-on-surface",
         className,
       )}
     >

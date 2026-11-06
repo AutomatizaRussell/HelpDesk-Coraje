@@ -1,6 +1,26 @@
 # Handoff técnico
 
 ```
+CORTE:   06-nov-2026 (corte 83, U19: réplica del shell de Conecta al día, SIN DESPLEGAR)
+SOBRE:   `d847453` (corte 82)
+RAMA:    main
+UNIDAD:  U19, capa 1 parcial (specs/integracion-conecta.md §6.1). Réplica al día
+         con RBGCT-REACT `483a92a`, que incluye el rediseño del sidebar del 04-nov,
+         ya en producción en Conecta. El menú se decide con `gct_empleado.permisos`
+         (módulos de Conecta, §3) en lugar de los cuatro `acceso_sqf_*`, y ya no se
+         leen área ni cargo. «Auto gestión» vuelve a marcarse activa, como decidió el
+         usuario el 24-sep. Nuevos: `conecta-upstream.json` y `pnpm conecta:diff`.
+         Evidencia: `tsc`, `eslint`, pruebas 249/249 (entry-context y
+         conecta-navigation), `next build` con `DATABASE_URL` de relleno. Sin ver
+         en navegador.
+LOCAL:   nada.
+SIGUE:   desplegar `web`, correr la conciliación de U39 (corte 82) y abrir HelpDesk
+         desde Conecta: el sidebar desplegado lleva la pastilla en «Auto gestión»,
+         el pie con el lema, y las entradas que la persona ve en Conecta. Las
+         sesiones abiertas antes del despliegue ven el menú mínimo durante 8 h
+         como máximo: hay que cerrar sesión y volver a entrar.
+
+--- Corte 82, para contexto:
 CORTE:   06-nov-2026 (corte 82, U39: capa de datos de indicadores, SIN DESPLEGAR)
 SOBRE:   `ab791e0` (corte 81)
 RAMA:    main
@@ -2030,7 +2050,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 | ~~**La regla de enrutamiento que reenvía `/helpdesk/*` al contenedor de HelpDesk no existe todavía**~~ — **cerrado 22-sep-2026:** declarada en Traefik de Coolify, sin *strip prefix* (los assets de Next.js cargan y el preflight de Tailwind se aplica), redirect URI de Entra y `ENTRA_REDIRECT_URI` alineados a `/helpdesk`, y `https://conecta.rbgct.cloud/app` sigue sirviendo el SPA de Conecta — la regla no se comió el dominio. Al ejercitarla apareció un defecto que solo el despliegue podía revelar (`Location` absoluto derivado de `request.url`, que resolvía a `0.0.0.0:3000`), corregido en `306d286`. Texto original: (actualizado 18-sep-2026: el prefijo era `/app/HelpDesk` hasta este corte). `basePath` está construido de este lado (`next.config.ts`), pero sin la regla en Traefik de Coolify no hay tráfico real que llegue, y el redirect URI de Entra apunta además a la ruta anterior | Nadie puede completar un ingreso real hasta que se configure, aunque el App Registration, las variables de Coolify y el rol de la primera persona ya estén listos | Declarar el dominio con path en el recurso `web` de Coolify, verificar que no se aplique *strip prefix*, y alinear el redirect URI de Entra y `ENTRA_REDIRECT_URI` — el Nginx de Conecta no se toca (ver "Acción inmediata") |
 | **El perímetro no está verificado en ejecución sobre el punto que más podría fallar.** Ninguna prueba demuestra cómo llega el prefijo `/helpdesk` al pathname dentro del proxy real; lo que hay es una normalización que clasifica igual en los dos casos | Si esa suposición fuera falsa **y** la normalización se retirara o se rompiera, el perímetro clasificaría mal en bloque: o deja pasar todo como público, o deniega todo incluido `/login`. No es un fallo parcial ni ruidoso | No tocar `normalizeAppPathname` sin ejercitar después contra el despliegue. La salida ante un fallo total es `git revert` del commit del perímetro y redesplegar: no hay riesgo para los datos |
 | **Aceptado explícitamente por el usuario (corte 9), contra la recomendación dada:** HelpDesk reutiliza el App Registration de Entra ID de Conecta en vez de uno propio | Un incidente administrativo sobre ese App Registration (rotación total de secrets, deshabilitar `ID tokens`, eliminación) tumba **Conecta y HelpDesk a la vez** — ninguno puede aislarse del otro. Los logs de sign-in de Entra quedan mezclados por `client_id`, sin distinguir tráfico de un módulo u otro sin filtrar por redirect URI | Ninguno construido: cada módulo genera su propio `client secret` dentro del App Registration compartido (mitiga la rotación, no el resto). Si el acoplamiento se materializa en un incidente real, es la señal para revisar esta decisión |
-| **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, decidido y pendiente de construir (U5.2) |
+| **HelpDesk queda acoplado al código de Conecta sin contrato** (U5): la réplica del shell copia `cb06681`, y el modo «desde Conecta» lee su clave interna `gct_empleado`. Nadie del equipo de Conecta sabe que ese acoplamiento existe | Un cambio en su menú o en su almacenamiento deja a HelpDesk con un shell distinto, o con el ingreso sin selector perdido en silencio. Falla cerrado: nunca rompe el ingreso ni la seguridad | Registrado en `specs/integracion-conecta.md`. Revisar la réplica contra RBGCT-REACT al tocar el shell (acceso Read de `Daniezen`). La salida estructural es el endpoint de §5, decidido y pendiente de construir (U5.2). **06-nov-2026 (corte 83):** el desfase ya se puede medir. `pnpm conecta:diff` compara contra el commit de `conecta-upstream.json` (`483a92a`); el aviso automático espera un token (U19) |
 | **Compartir origen con Conecta** (D7) expone a cada app lo que la otra guarda en el navegador, incluidos los tokens de sesión de Conecta | Un XSS en cualquiera de las dos compromete a ambas | Disciplina contra XSS (sin `dangerouslySetInnerHTML` ni HTML de terceros), y una política de seguridad de contenido antes de renderizar contenido de clientes (`integracion-conecta.md` §6) |
 | **U8: los correos del portal dependen de una credencial delegada del buzón `automatizacionmedellin@`** en n8n | Si le cambian la contraseña, le revocan las sesiones o pasa unos 90 días sin enviar, ni invitaciones ni códigos salen: ningún cliente nuevo entra y ningún navegador nuevo se verifica. Los navegadores ya recordados siguen entrando | Alerta de Teams (workflow de error) y `app.portal_auditoria` con `CODIGO_ENVIADO`/`INVITACION_ENVIADA` en `FALLO`. Reautorizar la credencial (`operacion.md`). Salida estructural si se repite: permiso de aplicación restringido al buzón, en una App Registration propia |
 | ~~U8: los tickets del portal no llegan a PowerApps~~ | **Resuelto en diseño por U9 (corte 20)**, sin desplegar: con el espejo encendido, se reflejan en HelpDeskBd al clasificarse | — |
@@ -2048,6 +2068,7 @@ con el fix de F10 — confirmado por ejecución real, no por inspección del exp
 
 | Commit | Cambio |
 |---|---|
+| `d847453` | **Corte 82.** U39 paso 1: vista de indicadores por ticket. Los cortes 77 a 81 (`5973891`, `c9b9580`, `92ff6cb`, `1642e95`, `ab791e0`) tampoco se habían anotado aquí. Publicado el 06-nov-2026 |
 | `793769c` | **Corte 76.** U37: alcance de la trama del puntero a la mitad. Los cortes 73 a 75 (`eb126d3` correos, `11b164c` ocupación legacy, `722aab8` cabecera en pantalla ancha) tampoco se habían anotado aquí. Publicado el 05-nov-2026 |
 | `80b5dec` | **Corte 72.** U32: fracción del día en el anillo de plazo. Los cortes 69 a 71 (`98ccfba`, `419dfa8`, `f8ab5c4`) y la calificación (`3eab809`) tampoco se habían anotado aquí. Publicado el 04-nov-2026 |
 | `253362c` | **Corte 68.** U32: la descripción como primer mensaje del solicitante. Publicado el 04-nov-2026 |

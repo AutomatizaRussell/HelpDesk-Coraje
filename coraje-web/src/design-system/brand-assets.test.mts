@@ -36,7 +36,9 @@ const assets = [
   { file: "rb-isotype-white.png", display: Math.max(px("isotype"), px("emptyIsotype")) },
   // El de la cabecera del área (U30) es otro archivo: a 256 px, el de 108 px
   // se vería borroso, y servir uno de 512 px en la columna sería desperdicio.
-  { file: "rb-isotype-white-hero.png", display: px("heroGlobe") },
+  // También la marca de agua del pie del sidebar de Conecta, que pasa del
+  // tamaño del isotipo pequeño.
+  { file: "rb-isotype-white-hero.png", display: Math.max(px("heroGlobe"), px("shellWatermark")) },
 ];
 
 for (const { file, display } of assets) {

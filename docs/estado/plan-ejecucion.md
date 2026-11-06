@@ -855,7 +855,7 @@ Decisiones del usuario (05-nov-2026):
 
 **Depende de:** U38 desplegada.
 
-### U19 · Seguir el paso de Conecta — **decidida el 06-oct-2026, sin construir**
+### U19 · Seguir el paso de Conecta — **capa 1 parcial, construida el 06-nov-2026 (corte 83), sin desplegar**
 
 Que la réplica del shell no se desfase de Conecta sin que nadie lo note
 (`specs/integracion-conecta.md` §6.1). Dos capas que conviven: **primero**, un aviso
@@ -864,6 +864,19 @@ Conecta con las de referencia y abre un issue si cambian); **después**, el men�
 por Conecta como datos, con su diff aprobado y por `lulox`. Empieza poniendo la réplica
 al día con `513316b`. **Va después de los adjuntos de U7.** Necesita un token de solo
 lectura sobre RBGCT-REACT como secreto del repositorio de HelpDesk.
+
+**Construido el 06-nov-2026 (corte 83):**
+- La réplica, al día con `483a92a`, que ya incluye el rediseño del sidebar del 04-nov.
+  El menú se decide con `gct_empleado.permisos` (la lista de módulos que calcula
+  Conecta) en lugar de los cuatro `acceso_sqf_*`.
+- `conecta-upstream.json` guarda el commit copiado; las huellas sha256 se descartan
+  porque el commit basta.
+- `pnpm conecta:diff` muestra lo que cambió desde ese commit.
+
+**Falta:** la Action, que espera el token. **Decidido el mismo día:** se descarta el
+iframe; se difiere un paquete `conecta-shell` compartido, que sustituiría a la capa 2,
+hasta que HelpDesk esté terminado y llegue otra app; los menús de administrador y editor
+no se replican porque sus secciones no tienen URL.
 
 **Condición de cierre (capa 1):** un cambio de prueba en una copia de la referencia hace
 fallar la Action y abre el issue; con la referencia correcta pasa; la réplica muestra
@@ -963,3 +976,7 @@ convertir recomendaciones futuras en una lista implícita de tareas.**
   guarda los adjuntos como adjuntos del ítem de HelpDeskBd, no en una biblioteca; el
   destino de §14 se reabre y espera la decisión del usuario. **Cabeza de la cola:
   desplegar U20; después, adjuntos.**
+- 06-nov-2026 — U19, capa 1 parcial (corte 83): réplica al día con `483a92a` y
+  `pnpm conecta:diff`. La Action espera un token. Se descarta el iframe, se difiere el
+  paquete compartido del shell y los menús por rol no son viables (U19). La cabeza de la
+  cola no cambia: desplegar y conciliar U39.
